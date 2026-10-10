@@ -61,4 +61,12 @@ public class ConfigurationTests
         Assert.True(options.SameTime(t, t.AddHours(1).AddSeconds(1)));
         Assert.False(options.SameTime(t, t.AddHours(3)));
     }
+
+    [Fact]
+    public void Legacy_default_rules_are_recognized()
+    {
+        Assert.Empty(HighlightRule.Defaults());
+        Assert.True(HighlightRule.IsLegacyDefault(new HighlightRule { Masks = "*.exe;*.com;*.bat;*.cmd;*.ps1;*.msi", Directory = false, Color = "#2E9E5B" }));
+        Assert.False(HighlightRule.IsLegacyDefault(new HighlightRule { Masks = "*.exe", Directory = false, Color = "#2E9E5B" }));
+    }
 }

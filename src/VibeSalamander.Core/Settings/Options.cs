@@ -252,7 +252,7 @@ public sealed class ProgramRule
 /// <summary>Colors of the panels: a scheme and the user's own colors (#AARRGGBB or #RRGGBB, "" = scheme color).</summary>
 public sealed class ColorOptions
 {
-    /// <summary>"Vibe", "Salamander", "Explorer", "Norton", "Navigator" or "Custom".</summary>
+    /// <summary>Scheme id (see UiState.Schemes in the app), e.g. "Vibe", "Yazi", "Norton" or "Custom".</summary>
     public string Scheme { get; set; } = "Vibe";
 
     public string Text { get; set; } = string.Empty;
@@ -261,6 +261,11 @@ public sealed class ColorOptions
     public string Folder { get; set; } = string.Empty;
     public string PanelBackground { get; set; } = string.Empty;
     public string FocusBackground { get; set; } = string.Empty;
+    public string DirectoryText { get; set; } = string.Empty;
+    public string FocusText { get; set; } = string.Empty;
+
+    /// <summary>Use the scheme's colors for file types (executables, archives, images, media, documents, code).</summary>
+    public bool FileTypeColors { get; set; } = true;
 
     /// <summary>Additional rules for highlighting files and directories (first match wins).</summary>
     public List<HighlightRule> Rules { get; set; } = HighlightRule.Defaults();
@@ -290,11 +295,15 @@ public sealed class HighlightRule
         return copy;
     }
 
-    public static List<HighlightRule> Defaults() => new()
-    {
-        new() { Masks = "*.exe;*.com;*.bat;*.cmd;*.ps1;*.msi", Directory = false, Color = "#2E9E5B" },
-        new() { Masks = "*.zip;*.7z;*.rar;*.tar;*.gz;*.tgz;*.bz2;*.xz;*.cab;*.iso", Directory = false, Color = "#9B59B6" },
-    };
+    /// <summary>No rules: file types are colored by the scheme (Configuration → Colors → File type colors).</summary>
+    public static List<HighlightRule> Defaults() => new();
+
+    /// <summary>The two rules earlier versions created by default (now covered by the scheme's file type colors).</summary>
+    public static bool IsLegacyDefault(HighlightRule rule) =>
+        rule.Directory == false && rule.Archive == null && rule.ReadOnly == null && rule.Hidden == null &&
+        rule.System == null && rule.Compressed == null && rule.Encrypted == null &&
+        ((rule.Masks == "*.exe;*.com;*.bat;*.cmd;*.ps1;*.msi" && rule.Color == "#2E9E5B") ||
+         (rule.Masks == "*.zip;*.7z;*.rar;*.tar;*.gz;*.tgz;*.bz2;*.xz;*.cab;*.iso" && rule.Color == "#9B59B6"));
 
     /// <summary>True when the item matches the masks and every attribute condition.</summary>
     public bool Matches(string name, FileAttributes attributes, bool isDirectory)

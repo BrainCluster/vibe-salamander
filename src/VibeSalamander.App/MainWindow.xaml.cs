@@ -431,6 +431,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         if (_settingsWindow == null)
         {
             _settingsWindow = new SettingsWindow(this, RootGrid.ActualTheme, page);
+            _settingsWindow.SetOwner(WindowHandle); // stays in front of the main window while open
             _settingsWindow.Closed += (_, _) =>
             {
                 _settingsWindow = null;
@@ -869,7 +870,9 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
 
     public void ApplyAlwaysOnTop(bool onTop)
     {
-        if (AppWindow.Presenter is OverlappedPresenter presenter)
+        // setting the flag (even to its current value) moves the window to the top of the z-order,
+        // which would put it over the configuration window on every settings change
+        if (AppWindow.Presenter is OverlappedPresenter presenter && presenter.IsAlwaysOnTop != onTop)
             presenter.IsAlwaysOnTop = onTop;
     }
 
