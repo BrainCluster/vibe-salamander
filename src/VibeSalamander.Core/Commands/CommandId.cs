@@ -28,11 +28,13 @@ public enum CommandId
     SortByDate,
     SortByAttributes,
     ToggleHiddenFiles,
+    Filter,
 
     // files
     Open,
     QuickRename,
     View,
+    OpenWith,
     Edit,
     EditNewFile,
     Copy,
@@ -40,6 +42,11 @@ public enum CommandId
     Delete,
     DeletePermanently,
     Properties,
+    ContextMenu,
+    ChangeAttributes,
+    ChangeCase,
+    GoToShortcutTarget,
+    FindFiles,
     CreateDirectory,
     ChangeDirectory,
     OpenActiveFolder,
@@ -51,6 +58,20 @@ public enum CommandId
     SelectAll,
     UnselectAll,
     InvertSelection,
+    SelectByMask,
+    UnselectByMask,
+    RestoreSelection,
+    SelectSameExtension,
+    UnselectSameExtension,
+    SelectSameName,
+    UnselectSameName,
+    GoToPreviousSelected,
+    GoToNextSelected,
+
+    // clipboard (files)
+    ClipboardCut,
+    ClipboardCopy,
+    ClipboardPaste,
 
     // clipboard text
     CopyFullNameAsText,

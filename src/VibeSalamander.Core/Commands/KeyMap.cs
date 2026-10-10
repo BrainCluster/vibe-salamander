@@ -17,7 +17,8 @@ public static class VK
 {
     public const int Back = 0x08, Tab = 0x09, Enter = 0x0D, Space = 0x20, PageUp = 0x21, PageDown = 0x22;
     public const int Left = 0x25, Up = 0x26, Right = 0x27, Down = 0x28, Insert = 0x2D, Delete = 0x2E;
-    public const int A = 0x41, D = 0x44, H = 0x48, R = 0x52, U = 0x55;
+    public const int A = 0x41, C = 0x43, D = 0x44, H = 0x48, R = 0x52, T = 0x54, U = 0x55, V = 0x56, W = 0x57, X = 0x58;
+    public const int Apps = 0x5D;
     public const int Multiply = 0x6A, Add = 0x6B, Subtract = 0x6D, Divide = 0x6F;
     public const int F1 = 0x70, F2 = 0x71, F3 = 0x72, F4 = 0x73, F5 = 0x74, F6 = 0x75, F7 = 0x76,
                      F8 = 0x77, F9 = 0x78, F10 = 0x79, F11 = 0x7A, F12 = 0x7B;
@@ -77,8 +78,29 @@ public sealed class KeyMap
         m.Bind(VK.A, C, CommandId.SelectAll);
         m.Bind(VK.D, C, CommandId.UnselectAll);
         m.Bind(VK.Multiply, N, CommandId.InvertSelection);
-        m.Bind(VK.Add, N, CommandId.SelectAll);       // Phase 2: opens the "Select" mask dialog
-        m.Bind(VK.Subtract, N, CommandId.UnselectAll); // Phase 2: opens the "Unselect" mask dialog
+        m.Bind(VK.Add, N, CommandId.SelectByMask);
+        m.Bind(VK.Subtract, N, CommandId.UnselectByMask);
+        m.Bind(VK.W, C, CommandId.RestoreSelection);
+        m.Bind(VK.Add, S, CommandId.SelectSameExtension);
+        m.Bind(VK.Subtract, S, CommandId.UnselectSameExtension);
+        m.Bind(VK.Add, C | S, CommandId.SelectSameName);
+        m.Bind(VK.Subtract, C | S, CommandId.UnselectSameName);
+        m.Bind(VK.Up, A, CommandId.GoToPreviousSelected);
+        m.Bind(VK.Down, A, CommandId.GoToNextSelected);
+
+        m.Bind(VK.X, C, CommandId.ClipboardCut);
+        m.Bind(VK.C, C, CommandId.ClipboardCopy);
+        m.Bind(VK.V, C, CommandId.ClipboardPaste);
+
+        m.Bind(VK.F12, C, CommandId.Filter);
+        m.Bind(VK.F3, A, CommandId.OpenWith);
+        m.Bind(VK.F3, C | S, CommandId.OpenWith);
+        m.Bind(VK.F2, C, CommandId.ChangeAttributes);
+        m.Bind(VK.F7, C, CommandId.ChangeCase);
+        m.Bind(VK.T, C, CommandId.GoToShortcutTarget);
+        m.Bind(VK.F7, A, CommandId.FindFiles);
+        m.Bind(VK.F10, S, CommandId.ContextMenu);
+        m.Bind(VK.Apps, N, CommandId.ContextMenu);
 
         m.Bind(VK.Insert, A, CommandId.CopyFullNameAsText);
         m.Bind(VK.Insert, A | S, CommandId.CopyNameAsText);
@@ -127,6 +149,7 @@ public sealed class KeyMap
             VK.Subtract => "Num -",
             VK.Divide => "Num /",
             VK.Period => ".",
+            VK.Apps => "Menu",
             _ => ((char)chord.Key).ToString(),
         };
         return prefix + key;

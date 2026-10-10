@@ -66,6 +66,10 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     private FileSystemWatcher? _watcher;
     private DispatcherQueueTimer? _refreshTimer;
     private int _hiddenCount;
+    private int _filteredCount;
+    private string _filter = string.Empty;
+    private WildcardMask? _filterMask;
+    private List<string> _rememberedSelection = new();
 
     public PaneViewModel(string name, FileSystemRegistry registry, DispatcherQueue dispatcher, IconCache icons,
                          PanelSettings settings, Func<bool> showHidden)
@@ -163,6 +167,25 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         private set => SetProperty(ref _quickSearch, value);
     }
 
+    /// <summary>Panel filter mask (Ctrl+F12); empty = no filter. Applies to files only, like Salamander.</summary>
+    public string Filter
+    {
+        get => _filter;
+        set
+        {
+            value ??= string.Empty;
+            if (SetProperty(ref _filter, value))
+            {
+                _filterMask = value.Length == 0 ? null : new WildcardMask(value);
+                OnPropertyChanged(nameof(FilterText));
+                Rebuild();
+            }
+        }
+    }
+
+    /// <summary>Indicator text for the directory line ("Filter: *.txt").</summary>
+    public string FilterText => _filter.Length == 0 ? string.Empty : "Filter: " + _filter;
+
     /// <summary>Index of the focused item (the ListView's selected index).</summary>
     public int CaretIndex
     {
@@ -199,7 +222,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
 
             FileItemViewModel? item = FocusedItem;
             if (item == null)
-                return _hiddenCount > 0 ? $"No visible items ({_hiddenCount} hidden)" : "No items";
+                return _hiddenCount + _filteredCount > 0 ? $"No visible items ({_hiddenCount + _filteredCount} hidden or filtered)" : "No items";
             if (item.Drive is { } d)
             {
                 return d.HasSize
@@ -357,7 +380,14 @@ public sealed class PaneViewModel : BindableBase, IDisposable
 
     private void ApplySort(string? focusName, HashSet<string>? marked, int fallbackCaret)
     {
-        List<FileEntry> sorted = new EntryComparer(_sortMode, _sortDescending).Sort(_entries);
+        IEnumerable<FileEntry> visible = _entries;
+        _filteredCount = 0;
+        if (_filterMask != null)
+        {
+            visible = _entries.Where(e => e.IsDirectory || _filterMask.IsMatch(e.Name)).ToList();
+            _filteredCount = _entries.Count - ((List<FileEntry>)visible).Count;
+        }
+        List<FileEntry> sorted = new EntryComparer(_sortMode, _sortDescending).Sort(visible);
         var items = new List<FileItemViewModel>(sorted.Count);
         foreach (FileEntry entry in sorted)
         {
@@ -435,8 +465,73 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         OnPropertyChanged(nameof(InfoText));
     }
 
+    /// <summary>Remembers the marked names for Restore Selection (Ctrl+W).</summary>
+    public void RememberSelection()
+    {
+        var names = _items.Where(i => i.IsMarked).Select(i => i.Entry.Name).ToList();
+        if (names.Count > 0)
+            _rememberedSelection = names;
+    }
+
+    public void RestoreSelection()
+    {
+        var names = new HashSet<string>(_rememberedSelection, StringComparer.OrdinalIgnoreCase);
+        foreach (var item in _items)
+            if (!item.Entry.IsUpDir && !item.IsDrive && names.Contains(item.Entry.Name))
+                item.IsMarked = true;
+        OnPropertyChanged(nameof(InfoText));
+    }
+
+    /// <summary>Select/Unselect by mask (Num + / Num -).</summary>
+    public int MarkByMask(string mask, bool includeDirectories, bool mark)
+    {
+        var m = new WildcardMask(mask);
+        int count = 0;
+        foreach (var item in _items)
+        {
+            if (item.Entry.IsUpDir || item.IsDrive || (item.Entry.IsDirectory && !includeDirectories))
+                continue;
+            if (m.IsMatch(item.Entry.Name))
+            {
+                item.IsMarked = mark;
+                count++;
+            }
+        }
+        OnPropertyChanged(nameof(InfoText));
+        return count;
+    }
+
+    /// <summary>(Un)marks all files with the focused file's extension (Shift+Num ±) or base name (Ctrl+Shift+Num ±).</summary>
+    public void MarkSame(bool byExtension, bool mark)
+    {
+        FileItemViewModel? focused = FocusedItem;
+        if (focused == null || focused.Entry.IsUpDir || focused.IsDrive)
+            return;
+        string key = byExtension ? focused.Entry.Extension : focused.Entry.BaseName;
+        foreach (var item in _items)
+        {
+            if (item.Entry.IsUpDir || item.IsDrive || item.Entry.IsDirectory != focused.Entry.IsDirectory)
+                continue;
+            string value = byExtension ? item.Entry.Extension : item.Entry.BaseName;
+            if (string.Equals(value, key, StringComparison.OrdinalIgnoreCase))
+                item.IsMarked = mark;
+        }
+        OnPropertyChanged(nameof(InfoText));
+    }
+
+    /// <summary>Index of the previous/next marked item from the caret (Alt+Up / Alt+Down), or -1.</summary>
+    public int FindMarked(int direction)
+    {
+        for (int i = _caretIndex + direction; i >= 0 && i < _items.Count; i += direction)
+            if (_items[i].IsMarked)
+                return i;
+        return -1;
+    }
+
     public void MarkAll(bool mark)
     {
+        if (!mark)
+            RememberSelection();
         foreach (var item in _items)
             if (!item.Entry.IsUpDir && !item.IsDrive)
                 item.IsMarked = mark;
