@@ -177,7 +177,6 @@
                 <MenuFlyoutItem Text="Addons Manager... (planned)" IsEnabled="False" />
             </MenuBarItem>
             <MenuBarItem Title="Options">
-                <ToggleMenuFlyoutItem x:Name="HiddenFilesMenuItem" Text="Show Hidden and System Files" Tag="ToggleHiddenFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+H" />
                 <MenuFlyoutSubItem Text="Theme">
                     <RadioMenuFlyoutItem x:Name="ThemeSystemItem" Text="Use System Setting" GroupName="Theme" Tag="System" Click="Theme_Click" />
                     <RadioMenuFlyoutItem x:Name="ThemeLightItem" Text="Light" GroupName="Theme" Tag="Light" Click="Theme_Click" />
@@ -193,8 +192,7 @@
                     <ToggleMenuFlyoutItem x:Name="ShowFKeyBarItem" Text="Bottom Toolbar" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowTransfersItem" Text="Transfer Panel" Click="ShowBars_Click" />
                 </MenuFlyoutSubItem>
-                <ToggleMenuFlyoutItem x:Name="AskCopyMoveItem" Text="Ask for Copy/Move Target" Click="AskCopyMove_Click" />
-                <ToggleMenuFlyoutItem x:Name="ConfirmRecycleItem" Text="Confirm Delete to Recycle Bin" Click="ConfirmRecycle_Click" />
+                <ToggleMenuFlyoutItem x:Name="HiddenFilesMenuItem" Text="Show Hidden and System Files" Tag="ToggleHiddenFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+H" />
                 <ToggleMenuFlyoutItem x:Name="AlwaysOnTopMenuItem" Text="Always on Top" Tag="AlwaysOnTop" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Configuration..." Tag="Configuration" Click="Menu_Click" />

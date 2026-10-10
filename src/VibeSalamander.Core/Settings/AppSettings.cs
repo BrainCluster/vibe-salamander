@@ -101,7 +101,7 @@ public sealed class AppSettings
 
     /// <summary>
     /// F5/F6 ask for the target. When switched off ("Don't show this dialog again"), files go straight
-    /// into the other panel's directory. Options → Ask for Copy/Move Target turns it back on.
+    /// into the other panel's directory. Configuration → Confirmations turns it back on.
     /// </summary>
     public bool AskCopyMoveTarget { get; set; } = true;
 
