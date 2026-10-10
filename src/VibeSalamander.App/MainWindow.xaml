@@ -59,7 +59,7 @@
                 <MenuFlyoutItem Text="Open (Default App)" Tag="View" Click="Menu_Click" KeyboardAcceleratorTextOverride="F3" />
                 <MenuFlyoutItem Text="Open With..." Tag="OpenWith" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F3" />
                 <MenuFlyoutItem Text="Edit" Tag="Edit" Click="Menu_Click" KeyboardAcceleratorTextOverride="F4" />
-                <MenuFlyoutItem Text="Edit New File..." Tag="EditNewFile" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F4" />
+                <MenuFlyoutItem Text="Edit New File" Tag="EditNewFile" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F4" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Copy..." Tag="Copy" Click="Menu_Click" KeyboardAcceleratorTextOverride="F5" />
                 <MenuFlyoutItem Text="Move/Rename..." Tag="Move" Click="Menu_Click" KeyboardAcceleratorTextOverride="F6" />
@@ -101,8 +101,8 @@
                 </MenuFlyoutSubItem>
             </MenuBarItem>
             <MenuBarItem Title="Commands">
-                <MenuFlyoutItem Text="Create Directory..." Tag="CreateDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="F7" />
-                <MenuFlyoutItem Text="Change Directory..." Tag="ChangeDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F7" />
+                <MenuFlyoutItem Text="Create Directory" Tag="CreateDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="F7" />
+                <MenuFlyoutItem Text="Change Directory" Tag="ChangeDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F7" />
                 <MenuFlyoutItem Text="Compare Directories..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F10" />
                 <MenuFlyoutItem Text="Calculate Occupied Space" IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F10" />
                 <MenuFlyoutItem Text="Drive Information..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F1" />
@@ -133,6 +133,7 @@
                     <ToggleMenuFlyoutItem x:Name="ShowTransfersItem" Text="Transfer Panel" Click="ShowBars_Click" />
                 </MenuFlyoutSubItem>
                 <ToggleMenuFlyoutItem x:Name="AskCopyMoveItem" Text="Ask for Copy/Move Target" Click="AskCopyMove_Click" />
+                <ToggleMenuFlyoutItem x:Name="ConfirmRecycleItem" Text="Confirm Delete to Recycle Bin" Click="ConfirmRecycle_Click" />
                 <ToggleMenuFlyoutItem x:Name="AlwaysOnTopMenuItem" Text="Always on Top" Tag="AlwaysOnTop" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Configuration..." IsEnabled="False" />
@@ -257,6 +258,14 @@
         </Grid>
 
         <!-- command line -->
+        <!-- notifications: short messages instead of dialogs; they close by themselves -->
+        <Border x:Name="NotificationHost" Grid.Row="3" VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                MaxWidth="720" Margin="24,0,24,20" CornerRadius="8" Visibility="Collapsed"
+                Background="{ThemeResource SolidBackgroundFillColorTertiaryBrush}"
+                BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" BorderThickness="1">
+            <InfoBar x:Name="Notification" IsOpen="True" IsClosable="True" Closed="Notification_Closed" />
+        </Border>
+
         <!-- transfer panel (WinSCP-style queue; visible while it has items) -->
         <views:PanelSplitter x:Name="TransfersSplitter" Grid.Row="4" Horizontal="True" Background="Transparent" Margin="6,0"
                              PointerPressed="TransfersSplitter_PointerPressed" PointerMoved="TransfersSplitter_PointerMoved"

@@ -28,6 +28,10 @@ public interface IUiHost
 
     // phase 2
     Views.Dialogs Dialogs { get; }
+    /// <summary>A short non-modal message (errors, hints) that disappears by itself, instead of a dialog.</summary>
+    void Notify(string message, bool isError = true);
+    /// <summary>Shift+F7: puts the pane's address bar into edit mode (no dialog).</summary>
+    void EditPath(PaneViewModel pane);
     void ShowFindWindow(string directory);
     Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item);
     void ShowContextMenu(PaneViewModel pane);
@@ -239,7 +243,7 @@ public sealed class MainViewModel : BindableBase
                 case CommandId.DeletePermanently: await DeleteAsync(permanent: true); break;
                 case CommandId.Properties: ShowProperties(); break;
                 case CommandId.CreateDirectory: await CreateDirectoryAsync(); break;
-                case CommandId.ChangeDirectory: await ChangeDirectoryAsync(); break;
+                case CommandId.ChangeDirectory: ChangeDirectory(); break;
                 case CommandId.OpenActiveFolder: if (p.IsLocalDisk) ShellOperations.OpenInExplorer(p.Path); else ShellOperations.OpenInExplorer("shell:MyComputerFolder"); break;
                 case CommandId.CommandShell: if (p.IsLocalDisk) ShellOperations.OpenCommandShell(p.Path); break;
 
@@ -270,7 +274,7 @@ public sealed class MainViewModel : BindableBase
         }
         catch (Exception ex)
         {
-            await _host.ShowMessageAsync("Vibe Salamander", ex.Message);
+            _host.Notify(ex.Message);
         }
         OnPropertyChanged(nameof(WindowTitle));
     }
@@ -336,18 +340,50 @@ public sealed class MainViewModel : BindableBase
             ShellOperations.Edit(item.Entry.FullPath);
     }
 
+    /// <summary>
+    /// Shift+F4: creates "New Text Document.txt" in the panel and lets you name it in place (like Explorer),
+    /// then opens it in the editor. Esc keeps the suggested name.
+    /// </summary>
     private async Task EditNewFileAsync()
     {
-        if (!_active.IsLocalDisk)
+        PaneViewModel pane = _active;
+        if (!pane.IsLocalDisk)
             return;
-        string? name = await _host.PromptAsync("Edit New File", "File name:", "New Text Document.txt", "Create and edit", selectNameWithoutExtension: true);
-        if (string.IsNullOrWhiteSpace(name))
-            return;
-        string path = System.IO.Path.Combine(_active.Path, name.Trim());
-        if (!File.Exists(path))
-            await File.WriteAllTextAsync(path, string.Empty);
-        await _active.NavigateAsync(_active.Path, System.IO.Path.GetFileName(path), addToHistory: false);
-        ShellOperations.Edit(path);
+        string path = UniquePath(pane.Path, "New Text Document", ".txt");
+        await File.WriteAllTextAsync(path, string.Empty);
+        string? final = await CreatedItemRenameAsync(pane, path, allowSubdirectories: false);
+        if (final != null && File.Exists(final))
+            ShellOperations.Edit(final);
+    }
+
+    /// <summary>"name.ext", or "name (2).ext", "name (3).ext"... - the first one that doesn't exist yet.</summary>
+    private static string UniquePath(string directory, string name, string extension)
+    {
+        string path = Path.Combine(directory, name + extension);
+        for (int i = 2; File.Exists(path) || Directory.Exists(path); i++)
+            path = Path.Combine(directory, $"{name} ({i}){extension}");
+        return path;
+    }
+
+    /// <summary>Focuses a just created item and starts the in-place rename on it. Returns its final path.</summary>
+    private async Task<string?> CreatedItemRenameAsync(PaneViewModel pane, string path, bool allowSubdirectories)
+    {
+        string name = Path.GetFileName(path);
+        await pane.NavigateAsync(pane.Path, name, addToHistory: false);
+        if (pane.FocusedItem is not { } focused || !string.Equals(focused.Entry.Name, name, StringComparison.OrdinalIgnoreCase))
+            await pane.NavigateAsync(pane.Path, name, addToHistory: false); // an auto refresh (after creating it) replaced that load
+        // like Explorer, a name that can't be used (exists already, invalid) puts you back into the edit
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            FileItemViewModel? item = pane.FocusedItem;
+            if (item == null || !string.Equals(item.Entry.Name, name, StringComparison.OrdinalIgnoreCase))
+                return path; // created, but not visible (e.g. filtered out)
+            string? final = await RenameItemAsync(pane, item, allowSubdirectories);
+            if (final != null)
+                return final;
+            await pane.NavigateAsync(pane.Path, name, addToHistory: false);
+        }
+        return path;
     }
 
     private async Task CopyOrMoveAsync(bool move)
@@ -413,11 +449,16 @@ public sealed class MainViewModel : BindableBase
         string what = items.Count == 1
             ? $"{(items[0].Entry.IsDirectory ? "directory" : "file")} \"{items[0].Entry.Name}\""
             : $"{items.Count} selected items";
-        string message = permanent
-            ? $"Do you want to permanently delete the {what}?\nThis cannot be undone."
-            : $"Do you want to move the {what} to the Recycle Bin?";
-        if (!await _host.ConfirmAsync("Delete", message, "Delete"))
-            return;
+        // the Recycle Bin can be undone, so (like Explorer) it only asks when switched on in Options;
+        // a permanent delete always asks
+        if (permanent || Settings.ConfirmRecycle)
+        {
+            string message = permanent
+                ? $"Do you want to permanently delete the {what}?\nThis cannot be undone."
+                : $"Do you want to move the {what} to the Recycle Bin?";
+            if (!await _host.ConfirmAsync("Delete", message, "Delete"))
+                return;
+        }
 
         int caret = _active.CaretIndex;
         var paths = items.Select(i => i.Entry.FullPath).ToList();
@@ -441,55 +482,88 @@ public sealed class MainViewModel : BindableBase
         FileItemViewModel? item = _active.FocusedItem;
         if (item == null || item.Entry.IsUpDir || item.IsDrive || !_active.IsLocalDisk)
             return;
-        PaneViewModel pane = _active;
+        await RenameItemAsync(_active, item, allowSubdirectories: false);
+    }
+
+    /// <summary>
+    /// Edits the item's name in its row and renames it. Problems are reported with a notification, not a
+    /// dialog. With <paramref name="allowSubdirectories"/> (a new folder) a typed "a\b" creates the path.
+    /// Returns the item's path afterwards (unchanged when cancelled), or null when the rename failed.
+    /// </summary>
+    private async Task<string?> RenameItemAsync(PaneViewModel pane, FileItemViewModel item, bool allowSubdirectories)
+    {
+        string oldPath = item.Entry.FullPath;
         string? newName = await _host.EditNameInPlaceAsync(pane, item);
-        newName = newName?.Trim();
+        newName = newName?.Trim().TrimEnd('.', ' ');
         if (string.IsNullOrEmpty(newName) || newName == item.Entry.Name)
-            return;
-        if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            return oldPath;
+
+        bool nested = allowSubdirectories && item.Entry.IsDirectory && newName.IndexOfAny(new[] { '\\', '/' }) >= 0;
+        string target;
+        if (nested)
         {
-            await _host.ShowMessageAsync("Rename", $"\"{newName}\" contains characters that are not allowed in file names.");
-            return;
+            target = PathUtil.Resolve(pane.Path, newName);
         }
-        string target = Path.Combine(pane.Path, newName);
+        else if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            _host.Notify($"\"{newName}\" contains characters that are not allowed in file names (\\ / : * ? \" < > |).");
+            return null;
+        }
+        else
+        {
+            target = Path.Combine(pane.Path, newName);
+        }
+
         try
         {
-            bool caseOnly = string.Equals(newName, item.Entry.Name, StringComparison.OrdinalIgnoreCase);
+            bool caseOnly = string.Equals(target, oldPath, StringComparison.OrdinalIgnoreCase);
             if (item.Entry.IsDirectory)
             {
+                if (nested)
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 if (caseOnly)
                 {
-                    string temp = item.Entry.FullPath + ".~rename";
-                    Directory.Move(item.Entry.FullPath, temp);
+                    string temp = oldPath + ".~rename";
+                    Directory.Move(oldPath, temp);
                     Directory.Move(temp, target);
                 }
                 else
                 {
-                    Directory.Move(item.Entry.FullPath, target);
+                    Directory.Move(oldPath, target);
                 }
             }
             else
             {
-                File.Move(item.Entry.FullPath, target);
+                File.Move(oldPath, target);
             }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            await _host.ShowMessageAsync("Rename", ex.Message);
-            return;
+            _host.Notify(ex.Message);
+            return null;
         }
-        await pane.NavigateAsync(pane.Path, newName, addToHistory: false);
+
+        // focus the renamed item (for a nested path: the first new directory in this panel)
+        string relative = Path.GetRelativePath(pane.Path, target);
+        string focus = relative.Split(Path.DirectorySeparatorChar)[0];
+        await pane.NavigateAsync(pane.Path, focus, addToHistory: false);
+        return target;
     }
 
     // ---- phase 2 helpers -------------------------------------------------------------------
 
-    private async Task ReportProblemsAsync(OperationResult? result)
+    private Task ReportProblemsAsync(OperationResult? result)
     {
         if (result != null && result.Failed > 0)
-            await _host.ShowMessageAsync("Vibe Salamander", $"{result.Failed} item{(result.Failed == 1 ? "" : "s")} could not be processed.");
+            _host.Notify($"{result.Failed} item{(result.Failed == 1 ? "" : "s")} could not be processed.");
+        return Task.CompletedTask;
     }
 
-    public Task ShowErrorAsync(string message) => _host.ShowMessageAsync("Vibe Salamander", message);
+    public Task ShowErrorAsync(string message)
+    {
+        _host.Notify(message);
+        return Task.CompletedTask;
+    }
 
     private Task RefreshAllAsync() => Task.WhenAll(Left.RefreshAsync(), Right.RefreshAsync());
 
@@ -542,7 +616,7 @@ public sealed class MainViewModel : BindableBase
         string? target = ShellLink.GetTarget(item.Entry.FullPath);
         if (string.IsNullOrEmpty(target))
         {
-            await _host.ShowMessageAsync("Go to Shortcut Target", "The focused item is not a shortcut, or its target cannot be resolved.");
+            _host.Notify("The focused item is not a shortcut, or its target cannot be resolved.", isError: false);
             return;
         }
         if (Uri.TryCreate(target, UriKind.Absolute, out Uri? uri) && !uri.IsFile)
@@ -595,38 +669,22 @@ public sealed class MainViewModel : BindableBase
             Clipboard.Clear(); // cut + paste moves once, like Explorer
     }
 
+    /// <summary>
+    /// F7: creates "New Folder" in the panel and lets you name it in place, like Explorer (Esc keeps the
+    /// name). Typing a path such as "a\b\c" creates the nested directories, as Salamander's F7 does.
+    /// </summary>
     private async Task CreateDirectoryAsync()
     {
-        if (!_active.IsLocalDisk)
+        PaneViewModel pane = _active;
+        if (!pane.IsLocalDisk)
             return;
-        string? name = await _host.PromptAsync("Create Directory", "Directory name:", string.Empty, "Create");
-        if (string.IsNullOrWhiteSpace(name))
-            return;
-        string path = PathUtil.Resolve(_active.Path, name);
+        string path = UniquePath(pane.Path, "New Folder", string.Empty);
         Directory.CreateDirectory(path);
-        // focus the new directory (first component when a nested path was typed)
-        string relative = System.IO.Path.GetRelativePath(_active.Path, path);
-        string first = relative.Split(System.IO.Path.DirectorySeparatorChar)[0];
-        await _active.NavigateAsync(_active.Path, first, addToHistory: false);
+        await CreatedItemRenameAsync(pane, path, allowSubdirectories: true);
     }
 
-    private async Task ChangeDirectoryAsync()
-    {
-        string current = _active.IsLocalDisk ? _active.Path : string.Empty;
-        string? input = await _host.PromptAsync("Change Directory", "Path:", current, "Go");
-        if (string.IsNullOrWhiteSpace(input))
-            return;
-        if (input.Trim().Equals("this pc", StringComparison.OrdinalIgnoreCase) || Registry.Find(input) is ThisPcProvider)
-        {
-            await _active.NavigateAsync(ThisPcProvider.RootPath);
-            return;
-        }
-        string target = PathUtil.Resolve(_active.IsLocalDisk ? _active.Path : Environment.CurrentDirectory, input);
-        if (File.Exists(target))
-            await _active.NavigateAsync(System.IO.Path.GetDirectoryName(target)!, System.IO.Path.GetFileName(target));
-        else
-            await _active.NavigateAsync(target);
-    }
+    /// <summary>Shift+F7: type a path straight into the address bar.</summary>
+    private void ChangeDirectory() => _host.EditPath(_active);
 
     private void ShowProperties()
     {

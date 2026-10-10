@@ -52,6 +52,9 @@ public sealed class AppSettings
     /// </summary>
     public bool AskCopyMoveTarget { get; set; } = true;
 
+    /// <summary>Ask before moving to the Recycle Bin (F8/Del). Off by default: it can be undone, like in Explorer.</summary>
+    public bool ConfirmRecycle { get; set; }
+
     /// <summary>Transfer panel below the file panels (shown while it has items).</summary>
     public bool ShowTransfers { get; set; } = true;
 

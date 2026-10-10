@@ -384,6 +384,13 @@ public sealed partial class MainWindow : Window, IUiHost
         ShowFKeyBarItem.IsChecked = _vm.Settings.ShowFunctionKeyBar;
         ShowTransfersItem.IsChecked = _vm.Settings.ShowTransfers;
         AskCopyMoveItem.IsChecked = _vm.Settings.AskCopyMoveTarget;
+        ConfirmRecycleItem.IsChecked = _vm.Settings.ConfirmRecycle;
+    }
+
+    private void ConfirmRecycle_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.Settings.ConfirmRecycle = ConfirmRecycleItem.IsChecked;
+        _vm.SaveSettings();
     }
 
     private void AskCopyMove_Click(object sender, RoutedEventArgs e)
@@ -732,6 +739,43 @@ public sealed partial class MainWindow : Window, IUiHost
     // ---- phase 2 host services -----------------------------------------------------------------
 
     public Dialogs Dialogs { get; }
+
+    // ---- notifications (instead of message dialogs) -------------------------------------------
+
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _notificationTimer;
+
+    public void Notify(string message, bool isError = true)
+    {
+        Notification.Severity = isError ? InfoBarSeverity.Error : InfoBarSeverity.Informational;
+        Notification.Title = isError ? "Couldn't do that" : string.Empty;
+        Notification.Message = message;
+        Notification.IsOpen = true;
+        NotificationHost.Visibility = Visibility.Visible;
+        if (_notificationTimer == null)
+        {
+            _notificationTimer = DispatcherQueue.CreateTimer();
+            _notificationTimer.IsRepeating = false;
+            _notificationTimer.Tick += (_, _) => HideNotification();
+        }
+        // long enough to read; longer messages stay a bit longer
+        _notificationTimer.Interval = TimeSpan.FromSeconds(Math.Clamp(4 + message.Length / 40.0, 5, 12));
+        _notificationTimer.Stop();
+        _notificationTimer.Start();
+    }
+
+    private void HideNotification()
+    {
+        _notificationTimer?.Stop();
+        NotificationHost.Visibility = Visibility.Collapsed;
+    }
+
+    private void Notification_Closed(InfoBar sender, InfoBarClosedEventArgs args)
+    {
+        HideNotification(); // Notify opens it again for the next message
+        PaneView(_vm.Active).FocusList();
+    }
+
+    public void EditPath(PaneViewModel pane) => PaneView(pane).BeginPathEdit();
 
     public void ShowFindWindow(string directory)
     {

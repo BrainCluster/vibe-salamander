@@ -97,8 +97,14 @@ public sealed class TransferItemViewModel : BindableBase
         TransferState.Completed => "Done",
         TransferState.CompletedWithErrors => $"Done, {Result?.Failed ?? 0} failed",
         TransferState.Cancelled => "Cancelled",
-        _ => "Failed",
+        _ => string.IsNullOrEmpty(ErrorText) ? "Failed" : "Failed: " + ErrorText,
     };
+
+    /// <summary>Why the operation failed (shown in the row instead of a message box).</summary>
+    public string ErrorText { get; internal set; } = string.Empty;
+
+    /// <summary>Set by "Clear all": the item leaves the list as soon as it has stopped.</summary>
+    internal bool RemoveWhenDone { get; set; }
 
     public double Percent
     {
@@ -301,10 +307,11 @@ public sealed class TransfersViewModel : BindableBase
         {
             item.State = TransferState.Cancelled;
             Finished?.Invoke(this, item);
+            if (item.RemoveWhenDone)
+                Items.Remove(item);
             return;
         }
 
-        Exception? failure = null;
         try
         {
             // cancelled between getting the slot and this continuation (it already shows "Cancelled")
@@ -325,26 +332,16 @@ public sealed class TransfersViewModel : BindableBase
         catch (Exception ex)
         {
             item.Result = new OperationResult { Failed = 1 };
+            item.ErrorText = ex.Message; // before State, so StatusText includes it
             item.State = TransferState.Failed;
-            failure = ex;
         }
         finally
         {
-            // free the slot before any message, so the queue does not wait for the user
             _slots.Release();
         }
         Finished?.Invoke(this, item);
-        if (failure != null)
-        {
-            try
-            {
-                await _dialogs.MessageAsync(item.Title, failure.Message);
-            }
-            catch (Exception)
-            {
-                // the window is closing; the panel shows "Failed" anyway
-            }
-        }
+        if (item.RemoveWhenDone)
+            Items.Remove(item);
     }
 
     public void Remove(TransferItemViewModel item)
@@ -357,6 +354,23 @@ public sealed class TransfersViewModel : BindableBase
     {
         foreach (var item in Items.Where(i => !i.IsActive).ToList())
             Items.Remove(item);
+    }
+
+    /// <summary>Empties the list: finished items go at once, running and queued ones are cancelled and go when stopped.</summary>
+    public void ClearAll()
+    {
+        foreach (var item in Items.ToList())
+        {
+            if (item.IsActive)
+            {
+                item.RemoveWhenDone = true;
+                item.Cancel();
+            }
+            else
+            {
+                Items.Remove(item);
+            }
+        }
     }
 
     public void CancelAll()
