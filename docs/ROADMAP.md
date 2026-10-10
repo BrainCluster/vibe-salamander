@@ -108,7 +108,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Recycle Bin: never / always / by file masks | 3 | [x] |
 | Panel options: select includes directories, name casing, size format, typing to command line, Shift+digit hot paths, right-click marks, slow-click rename, drag threshold, regional / numerical / newest-first sorting, directories with extensions | 3 | [x] |
 | Appearance: single-click open, dim hidden items, panel font and size, information line format, thumbnail size, maximize button in address bar | 3 | [x] |
-| Colors: schemes (Vibe, Salamander, Explorer, Norton, Navigator, Custom) and file highlighting by mask and attributes | 3 | [x] |
+| Colors: schemes (Vibe, Explorer, terminal-inspired Yazi / Superfile / Tokyo Night / Gruvbox / Dracula / Nord / Phosphor, Norton Commander, DOS Navigator, Custom) with file type colors, cursor-bar text color, live preview; file highlighting by mask and attributes | 3 | [x] |
 | Main window title (full path / directory / custom prefix); single instance; beep when background transfers finish | 3 | [x] |
 | Drives: auto-refresh and simple icons per drive type, refresh on activation, fallback for inaccessible directories; Change Drive menu (hidden drives, separators, extra items) | 3 | [x] |
 | Viewers / editors by file mask (default Windows app otherwise); history options and command line history | 3 | [x] |

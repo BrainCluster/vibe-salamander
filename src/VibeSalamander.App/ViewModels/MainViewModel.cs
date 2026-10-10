@@ -135,6 +135,7 @@ public sealed class MainViewModel : BindableBase
         Settings.Appearance ??= new AppearanceOptions();
         Settings.Colors ??= new ColorOptions();
         Settings.Colors.Rules ??= HighlightRule.Defaults();
+        Settings.Colors.Rules.RemoveAll(HighlightRule.IsLegacyDefault); // replaced by the schemes' file type colors
         Settings.Window ??= new MainWindowOptions();
         Settings.Window.TitlePrefix ??= string.Empty;
         Settings.Drives ??= new DriveOptions();

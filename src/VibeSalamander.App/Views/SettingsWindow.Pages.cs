@@ -253,11 +253,20 @@ public sealed partial class SettingsWindow
         StackPanel page = Page("Colors", "A color scheme for the panels and additional rules for highlighting files and directories.");
 
         var schemes = UiState.Schemes.Select(x => (x.Name, x.Id)).ToArray();
-        page.Children.Add(Choice("Scheme", "Custom uses the colors below.", schemes, c.Scheme, v =>
+        page.Children.Add(Choice("Scheme", "Terminal-style schemes (Yazi, Superfile, ...) make the panels dark and color files by type. Custom uses the colors below.",
+            schemes, c.Scheme, v =>
         {
             c.Scheme = v;
-            Render(_currentPage); // the color items enable / disable
+            // after the change is applied: the preview and the color items (enabled for Custom) follow
+            DispatcherQueue.TryEnqueue(() => Render(_currentPage));
         }, display: true));
+        page.Children.Add(BuildSchemePreview());
+        page.Children.Add(Toggle("File type colors", "Executables, archives, images, audio / video, documents and source code in the scheme's colors.",
+            c.FileTypeColors, v =>
+            {
+                c.FileTypeColors = v;
+                DispatcherQueue.TryEnqueue(() => Render(_currentPage));
+            }, display: true));
 
         bool custom = c.Scheme == "Custom";
         bool dark = RootGrid.ActualTheme == ElementTheme.Dark;
@@ -270,6 +279,8 @@ public sealed partial class SettingsWindow
             ("Folder icons", c.Folder, dark ? Default(0xF2, 0xC2, 0x4E) : Default(0xE3, 0xA8, 0x2B), v => c.Folder = v),
             ("Panel background", c.PanelBackground, dark ? Default(0x20, 0x20, 0x20) : Default(0xFF, 0xFF, 0xFF), v => c.PanelBackground = v),
             ("Focused item background", c.FocusBackground, dark ? Default(0x3A, 0x3A, 0x3A) : Default(0xCC, 0xE4, 0xF7), v => c.FocusBackground = v),
+            ("Focused item text", c.FocusText, dark ? Default(0xF0, 0xF0, 0xF0) : Default(0x1A, 0x1A, 0x1A), v => c.FocusText = v),
+            ("Directory names", c.DirectoryText, dark ? Default(0xF0, 0xF0, 0xF0) : Default(0x1A, 0x1A, 0x1A), v => c.DirectoryText = v),
         };
         foreach (var (label, value, fallback, set) in items)
         {
@@ -285,6 +296,69 @@ public sealed partial class SettingsWindow
                                "Attribute boxes: checked = must have, unchecked = must not have, indeterminate = don't care."));
         page.Children.Add(BuildHighlightEditor(c));
         return page;
+    }
+
+    /// <summary>A few sample rows in the current scheme: directory, cursor bar, marked file, file types.</summary>
+    private FrameworkElement BuildSchemePreview()
+    {
+        var rows = new StackPanel { Padding = new Thickness(8, 6, 8, 6) };
+        static FileEntry Sample(string name, bool directory = false) =>
+            new(name, @"C:\" + name, directory, 0, DateTime.Now, directory ? FileAttributes.Directory : FileAttributes.Archive);
+        (FileEntry Entry, string Size, bool Caret, bool Marked)[] samples =
+        {
+            (Sample("Projects", true), "<DIR>", false, false),
+            (Sample("Music", true), "<DIR>", true, false),
+            (Sample("setup.exe"), "4 812 288", false, false),
+            (Sample("backup.7z"), "91 554 120", false, true),
+            (Sample("photo.jpg"), "2 304 551", false, false),
+            (Sample("track01.flac"), "31 220 870", false, false),
+            (Sample("report.pdf"), "880 112", false, false),
+            (Sample("Program.cs"), "12 044", false, false),
+            (Sample("readme"), "1 024", false, false),
+        };
+        foreach (var (entry, size, caret, marked) in samples)
+        {
+            Brush name = marked ? UiState.MarkedBrush
+                : caret && UiState.FocusTextBrush is { } ft ? ft
+                : UiState.HighlightBrush(entry) ?? UiState.TextBrush;
+            Brush other = marked ? UiState.MarkedBrush
+                : caret && UiState.FocusTextBrush is { } ft2 ? ft2 : UiState.SecondaryTextBrush;
+            Brush glyph = caret && UiState.FocusTextBrush is { } ft3 ? ft3
+                : entry.IsDirectory ? UiState.FolderBrush : UiState.SecondaryTextBrush;
+            var row = new Grid { Height = 22, Padding = new Thickness(6, 0, 6, 0), CornerRadius = new CornerRadius(3) };
+            if (caret)
+                row.Background = UiState.FocusBackground ?? (Brush)Application.Current.Resources["SubtleFillColorSecondaryBrush"];
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var icon = new FontIcon { Glyph = entry.IsDirectory ? "\uE8B7" : "\uE7C3", FontSize = 13, Foreground = glyph };
+            var label = new TextBlock { Text = entry.Name, Foreground = name, VerticalAlignment = VerticalAlignment.Center, FontSize = UiState.FontSize };
+            var detail = new TextBlock { Text = size, Foreground = other, VerticalAlignment = VerticalAlignment.Center, FontSize = UiState.FontSize };
+            if (UiState.PanelFont is { } font)
+            {
+                label.FontFamily = font;
+                detail.FontFamily = font;
+            }
+            Grid.SetColumn(label, 1);
+            Grid.SetColumn(detail, 2);
+            row.Children.Add(icon);
+            row.Children.Add(label);
+            row.Children.Add(detail);
+            rows.Children.Add(row);
+        }
+        var frame = new Border
+        {
+            Child = rows,
+            MaxWidth = 460,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Style = ThemedStyle("SettingsFrameStyle"),
+            RequestedTheme = UiState.PanelTheme,
+        };
+        if (UiState.PanelBackground is { } background)
+            frame.Background = background;
+        else
+            frame.Background = (Brush)Application.Current.Resources["LayerFillColorDefaultBrush"];
+        return frame;
     }
 
     private FrameworkElement BuildHighlightEditor(ColorOptions c)

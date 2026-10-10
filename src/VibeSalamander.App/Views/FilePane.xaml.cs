@@ -149,6 +149,12 @@ public sealed partial class FilePane : UserControl
 
     private void List_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        foreach (object removed in e.RemovedItems)
+            if (removed is FileItemViewModel r)
+                r.IsCaret = false;
+        foreach (object added in e.AddedItems)
+            if (added is FileItemViewModel a)
+                a.IsCaret = true;
         if (ViewModel != null && FileList.SelectedIndex >= 0)
         {
             if (!KeyboardState.IsDown(KeyboardState.Shift))
@@ -1112,6 +1118,8 @@ public sealed partial class FilePane : UserControl
             FileList.ClearValue(Control.FontFamilyProperty);
         MaximizeButton.Visibility = _main.Settings.Appearance.MaximizeButtonInAddressBar ? Visibility.Visible : Visibility.Collapsed;
 
+        // dark schemes (terminal styles) make the whole panel dark: address bar, header, drive bar
+        RequestedTheme = UiState.PanelTheme; // Default = the window's theme
         // color scheme: panel background and the focused row (lightweight styling of the list items)
         if (UiState.PanelBackground is { } background)
             FileList.Background = background;
