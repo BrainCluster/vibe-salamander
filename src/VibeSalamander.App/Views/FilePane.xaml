@@ -375,6 +375,7 @@
                   IsItemClickEnabled="False"
                   Padding="0,2,0,2"
                   SelectionChanged="List_SelectionChanged"
+                  PreviewKeyDown="List_PreviewKeyDown"
                   DoubleTapped="List_DoubleTapped"
                   ContainerContentChanging="List_ContainerContentChanging"
                   GotFocus="List_GotFocus"

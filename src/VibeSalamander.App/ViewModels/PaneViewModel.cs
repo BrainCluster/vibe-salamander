@@ -575,6 +575,19 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         OnPropertyChanged(nameof(InfoText));
     }
 
+    /// <summary>Marks or unmarks the items from <paramref name="from"/> to <paramref name="to"/> (inclusive, any order).</summary>
+    public void MarkRange(int from, int to, bool mark)
+    {
+        if (_items.Count == 0)
+            return;
+        int lo = Math.Clamp(Math.Min(from, to), 0, _items.Count - 1);
+        int hi = Math.Clamp(Math.Max(from, to), 0, _items.Count - 1);
+        for (int i = lo; i <= hi; i++)
+            if (!_items[i].Entry.IsUpDir && !_items[i].IsDrive)
+                _items[i].IsMarked = mark;
+        OnPropertyChanged(nameof(InfoText));
+    }
+
     /// <summary>Remembers the marked names for Restore Selection (Ctrl+W).</summary>
     public void RememberSelection()
     {
