@@ -277,7 +277,7 @@ public sealed partial class SettingsWindow
         };
         font.TextSubmitted += (_, args) => SetFont(args.Text);
         page.Children.Add(Card("Font", "Any installed font; type its name.", font));
-        page.Children.Add(Number("Font size", "0 = the size of the density.", a.FontSize, 0, 28, v => a.FontSize = v, display: true));
+        page.Children.Add(Number("Font size", "0 = the default of the density (13 compact, 14 comfortable).", a.FontSize, 0, 28, v => a.FontSize = v, display: true));
 
         page.Children.Add(Section("Content of the information line"));
         var info = new TextBox { Text = a.InfoLineFormat, Width = 520, HorizontalAlignment = HorizontalAlignment.Left, IsSpellCheckEnabled = false };
