@@ -243,10 +243,18 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Button x:Name="DriveMenuButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                <!-- drive drop-down (Alt+F1 / Alt+F2), like Salamander's: the current drive, click for the drive menu -->
+                <Button x:Name="DriveMenuButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2,4,2"
                         Click="DriveMenuButton_Click" ToolTipService.ToolTip="Change drive (Alt+F1 / Alt+F2)">
-                    <FontIcon Glyph="&#xE7F4;" FontFamily="{StaticResource VibeIconFont}" FontSize="13"
-                              Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <FontIcon Glyph="{x:Bind ViewModel.DriveMenuGlyph, Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="13"
+                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Bind ViewModel.DriveMenuText, Mode=OneWay}" VerticalAlignment="Center" FontWeight="SemiBold"
+                                   Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
+                                   Visibility="{x:Bind VisibleIfText(ViewModel.DriveMenuText), Mode=OneWay}" />
+                        <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="8" VerticalAlignment="Center"
+                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                    </StackPanel>
                 </Button>
                 <Grid x:Name="BreadcrumbHost" Grid.Column="1" SizeChanged="BreadcrumbHost_SizeChanged">
                     <StackPanel x:Name="Breadcrumb" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" />

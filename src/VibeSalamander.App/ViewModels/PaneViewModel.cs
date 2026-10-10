@@ -200,6 +200,8 @@ public sealed class PaneViewModel : BindableBase, IDisposable
                 OnPropertyChanged(nameof(IsThisPc));
                 OnPropertyChanged(nameof(IsLocalDisk));
                 OnPropertyChanged(nameof(EffectiveViewMode));
+                OnPropertyChanged(nameof(DriveMenuText));
+                OnPropertyChanged(nameof(DriveMenuGlyph));
                 _directorySizes.Clear(); // sizes belong to the directory we left
                 _hiddenNames.Clear();
             }
@@ -207,6 +209,31 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     }
 
     public string DisplayPath => _provider.GetDisplayPath(_path);
+
+    /// <summary>Drive drop-down at the start of the address bar: "C:", the server of a share, or empty (This PC).</summary>
+    public string DriveMenuText
+    {
+        get
+        {
+            if (IsThisPc || _path.Length < 2)
+                return string.Empty;
+            if (_path.StartsWith(@"\\", StringComparison.Ordinal))
+            {
+                string server = _path[2..].Split('\\', 2)[0];
+                return server.Length > 14 ? server[..13] + "…" : server;
+            }
+            return _path[1] == ':' ? _path[..2].ToUpperInvariant() : string.Empty;
+        }
+    }
+
+    /// <summary>Icon of the drive drop-down: This PC, or the kind of drive the panel is on.</summary>
+    public string DriveMenuGlyph => IsThisPc ? "\uE7F4" : CurrentDriveType switch
+    {
+        DriveType.Removable => "\uE88E",
+        DriveType.CDRom => "\uE958",
+        DriveType.Network => "\uE8CE",
+        _ => "\uEDA2",
+    };
     public bool IsThisPc => _provider is ThisPcProvider;
     public bool IsLocalDisk => _provider.IsLocalDisk;
 
