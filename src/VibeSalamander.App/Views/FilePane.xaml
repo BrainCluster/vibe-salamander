@@ -25,10 +25,10 @@
                 <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16"
                        HorizontalAlignment="Left" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Text="{x:Bind Name}" Foreground="{x:Bind NameBrush, Mode=OneWay}"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" HorizontalAlignment="Left"
                            Visibility="{x:Bind NameVisibility, Mode=OneWay}" />
                 <TextBlock Grid.Column="2" Text="{x:Bind Ext}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="6,0,0,0"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="6,0,0,0"
                            Visibility="{x:Bind NameVisibility, Mode=OneWay}" />
                 <!-- F2: the name label itself becomes editable (name + extension, like Salamander); created only while renaming -->
                 <TextBox x:Name="RenameBox" x:Load="{x:Bind IsRenaming, Mode=OneWay}" Grid.Column="1" Grid.ColumnSpan="2" Tag="RenameBox"
@@ -407,6 +407,14 @@
                 <TransitionCollection />
             </ListView.ItemContainerTransitions>
         </ListView>
+
+        <!-- mouse rectangle selection (drawn over the list, doesn't take clicks) -->
+        <Canvas x:Name="MarqueeLayer" Grid.Row="3" IsHitTestVisible="False">
+            <Border x:Name="Marquee" Visibility="Collapsed" BorderThickness="1" CornerRadius="2"
+                    BorderBrush="{ThemeResource AccentFillColorDefaultBrush}">
+                <Rectangle Fill="{ThemeResource AccentFillColorDefaultBrush}" Opacity="0.18" />
+            </Border>
+        </Canvas>
 
         <!-- information line -->
         <Border x:Name="InfoLine" Grid.Row="4" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource VibePaneBorderBrush}"
