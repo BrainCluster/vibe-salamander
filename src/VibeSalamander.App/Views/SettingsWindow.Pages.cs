@@ -520,7 +520,7 @@ public sealed partial class SettingsWindow
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        void Cell(UIElement e, int row, int column)
+        void Cell(FrameworkElement e, int row, int column)
         {
             Grid.SetRow(e, row);
             Grid.SetColumn(e, column);
