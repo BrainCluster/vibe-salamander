@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="VibeSalamander.Views.FilePane"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:VibeSalamander.ViewModels"
+    xmlns:views="using:VibeSalamander.Views">
+
+    <UserControl.Resources>
+
+        <DataTemplate x:Key="FileRowTemplate" x:DataType="vm:FileItemViewModel">
+            <Grid Height="{x:Bind RowHeight}" Opacity="{x:Bind ItemOpacity}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="22" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="56" />
+                    <ColumnDefinition Width="112" />
+                    <ColumnDefinition Width="84" />
+                    <ColumnDefinition Width="70" />
+                    <ColumnDefinition Width="52" />
+                </Grid.ColumnDefinitions>
+                <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
+                          Foreground="{x:Bind GlyphBrush}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}"
+                          HorizontalAlignment="Left" VerticalAlignment="Center" />
+                <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16"
+                       HorizontalAlignment="Left" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{x:Bind Name}" Foreground="{x:Bind NameBrush, Mode=OneWay}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{x:Bind Ext}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="6,0,0,0" />
+                <TextBlock Grid.Column="3" Text="{x:Bind SizeText}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Grid.Column="4" Text="{x:Bind DateText}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Grid.Column="5" Text="{x:Bind TimeText}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Grid.Column="6" Text="{x:Bind AttrText}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
+                           VerticalAlignment="Center" Margin="4,0,0,0" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="DriveRowTemplate" x:DataType="vm:FileItemViewModel">
+            <Grid Height="{x:Bind RowHeight}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="22" />
+                    <ColumnDefinition Width="40" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="112" />
+                    <ColumnDefinition Width="84" />
+                    <ColumnDefinition Width="84" />
+                    <ColumnDefinition Width="150" />
+                </Grid.ColumnDefinitions>
+                <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
+                          Visibility="{x:Bind GlyphVisibility, Mode=OneWay}"
+                          HorizontalAlignment="Left" VerticalAlignment="Center" />
+                <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16"
+                       HorizontalAlignment="Left" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{x:Bind Name}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{x:Bind DriveLabel}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" Text="{x:Bind DriveType}" Foreground="{x:Bind TextBrush}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                <TextBlock Grid.Column="4" Text="{x:Bind DriveTotal}" Foreground="{x:Bind TextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Grid.Column="5" Text="{x:Bind DriveFree}" Foreground="{x:Bind TextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <Grid Grid.Column="6" Visibility="{x:Bind UsedVisibility}" ColumnSpacing="8" Margin="4,0,4,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="36" />
+                    </Grid.ColumnDefinitions>
+                    <ProgressBar Value="{x:Bind UsedPercent}" Maximum="100" Foreground="{x:Bind UsedBrush}"
+                                 Background="{ThemeResource VibeUsedTrackBrush}" MinHeight="6" Height="6"
+                                 CornerRadius="3" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{x:Bind UsedText}" Foreground="{x:Bind TextBrush}"
+                               HorizontalAlignment="Right" VerticalAlignment="Center" />
+                </Grid>
+            </Grid>
+        </DataTemplate>
+
+        <views:FileRowTemplateSelector x:Key="RowTemplateSelector"
+                                       FileTemplate="{StaticResource FileRowTemplate}"
+                                       DriveTemplate="{StaticResource DriveRowTemplate}" />
+    </UserControl.Resources>
+
+    <Grid x:Name="RootGrid" Background="{ThemeResource VibePaneBackgroundBrush}"
+          BorderBrush="{ThemeResource VibePaneBorderBrush}" BorderThickness="1" CornerRadius="6">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- drive bar -->
+        <ScrollViewer x:Name="DriveBar" Grid.Row="0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                      HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled" Padding="4,3,4,1">
+            <StackPanel Orientation="Horizontal" Spacing="1">
+                <Button Style="{StaticResource VibeDriveButtonStyle}" Click="ThisPcButton_Click" ToolTipService.ToolTip="This PC">
+                    <FontIcon Glyph="&#xE7F4;" FontFamily="{StaticResource VibeIconFont}" FontSize="14" />
+                </Button>
+                <ItemsControl ItemsSource="{x:Bind ViewModel.Drives, Mode=OneWay}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:DriveButtonViewModel">
+                            <Button Style="{StaticResource VibeDriveButtonStyle}" Click="DriveButton_Click"
+                                    ToolTipService.ToolTip="{x:Bind ToolTip}">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <Grid Width="16" Height="16">
+                                        <FontIcon Glyph="&#xEDA2;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />
+                                        <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16" />
+                                    </Grid>
+                                    <TextBlock Text="{x:Bind Letter}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- directory line: path, quick search, free space; accent-filled when this panel is active -->
+        <Grid Grid.Row="1" Margin="4,2,4,2" MinHeight="26" CornerRadius="4" PointerPressed="DirectoryLine_PointerPressed">
+            <Border Background="{ThemeResource VibeInactivePathBrush}" CornerRadius="4" />
+            <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4"
+                    Visibility="{x:Bind VisibleIf(ViewModel.IsActive), Mode=OneWay}" />
+            <Grid ColumnSpacing="6" Padding="2,0,8,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="DriveMenuButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                        Click="DriveMenuButton_Click" ToolTipService.ToolTip="Change drive (Alt+F1 / Alt+F2)">
+                    <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                              Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                </Button>
+                <TextBlock x:Name="PathText" Grid.Column="1" Text="{x:Bind ViewModel.DisplayPath, Mode=OneWay}"
+                           Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontWeight="SemiBold" />
+                <TextBox x:Name="PathEditor" Grid.Column="1" Visibility="Collapsed" MinHeight="0" Padding="6,2"
+                         VerticalAlignment="Center" KeyDown="PathEditor_KeyDown" LostFocus="PathEditor_LostFocus" />
+                <Border Grid.Column="2" Visibility="{x:Bind VisibleIfText(ViewModel.QuickSearch), Mode=OneWay}"
+                        Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" CornerRadius="3" Padding="6,0">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <FontIcon Glyph="&#xE721;" FontFamily="{StaticResource VibeIconFont}" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Bind ViewModel.QuickSearch, Mode=OneWay}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <ProgressRing Grid.Column="3" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" Width="14" Height="14"
+                              Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                <TextBlock Grid.Column="4" Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"
+                           Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
+                           VerticalAlignment="Center" Opacity="0.85" />
+            </Grid>
+        </Grid>
+
+        <!-- header line (files) -->
+        <Grid x:Name="FileHeader" Grid.Row="2" Height="24" Padding="10,0,4,0"
+              Visibility="{x:Bind VisibleIfNot(ViewModel.IsThisPc), Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="22" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="56" />
+                <ColumnDefinition Width="112" />
+                <ColumnDefinition Width="84" />
+                <ColumnDefinition Width="70" />
+                <ColumnDefinition Width="52" />
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Name" Click="Header_Click" Padding="22,0,6,0">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Text="Name" />
+                    <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Name'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Extension" Click="Header_Click">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Text="Ext" />
+                    <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Extension'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="3" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Size" Click="Header_Click" HorizontalContentAlignment="Right">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Size'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
+                    <TextBlock Text="Size" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="4" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Date" Click="Header_Click" HorizontalContentAlignment="Right">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Date'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
+                    <TextBlock Text="Date" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="5" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Date" Click="Header_Click" HorizontalContentAlignment="Right">
+                <TextBlock Text="Time" />
+            </Button>
+            <Button Grid.Column="6" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Attributes" Click="Header_Click">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Text="Attr" />
+                    <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Attributes'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- header line (This PC) -->
+        <Grid Grid.Row="2" Height="24" Padding="10,0,4,0"
+              Visibility="{x:Bind VisibleIf(ViewModel.IsThisPc), Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="22" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="112" />
+                <ColumnDefinition Width="84" />
+                <ColumnDefinition Width="84" />
+                <ColumnDefinition Width="150" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="1" Text="Drive" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource VibeHeaderForegroundBrush}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="Label" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource VibeHeaderForegroundBrush}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="3" Text="Type" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource VibeHeaderForegroundBrush}" VerticalAlignment="Center" Margin="6,0,0,0" />
+            <TextBlock Grid.Column="4" Text="Total Size" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource VibeHeaderForegroundBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBlock Grid.Column="5" Text="Free Space" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource VibeHeaderForegroundBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBlock Grid.Column="6" Text="Used" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource VibeHeaderForegroundBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+        </Grid>
+
+        <Border Grid.Row="2" VerticalAlignment="Bottom" Height="1" Background="{ThemeResource VibePaneBorderBrush}" />
+
+        <!-- file list -->
+        <ListView x:Name="FileList" Grid.Row="3"
+                  ItemsSource="{x:Bind ViewModel.Items, Mode=OneWay}"
+                  ItemTemplateSelector="{StaticResource RowTemplateSelector}"
+                  ItemContainerStyle="{StaticResource VibeListItemStyle}"
+                  SelectionMode="Single"
+                  IsItemClickEnabled="False"
+                  Padding="0,2,0,2"
+                  SelectionChanged="List_SelectionChanged"
+                  DoubleTapped="List_DoubleTapped"
+                  ContainerContentChanging="List_ContainerContentChanging"
+                  GotFocus="List_GotFocus"
+                  CharacterReceived="List_CharacterReceived"
+                  RightTapped="List_RightTapped">
+            <ListView.ItemContainerTransitions>
+                <TransitionCollection />
+            </ListView.ItemContainerTransitions>
+        </ListView>
+
+        <!-- information line -->
+        <Border x:Name="InfoLine" Grid.Row="4" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource VibePaneBorderBrush}"
+                Padding="10,3,10,4">
+            <TextBlock Text="{x:Bind ViewModel.InfoText, Mode=OneWay}" TextTrimming="CharacterEllipsis"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Border>
+    </Grid>
+</UserControl>

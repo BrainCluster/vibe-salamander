@@ -1,0 +1,100 @@
+# Vibe Salamander – Architecture
+
+Vibe Salamander is a spiritual successor to Altap/Open Salamander: a fast, precise, keyboard-first
+**dual-pane** file manager for Windows, rebuilt on C# / WinUI 3 with a Fluent design language in the
+spirit of the [Files](https://github.com/files-community/files) app.
+
+> Vibe Salamander is to Altap Salamander what Files is to Windows File Explorer.
+
+## Principles
+
+| Classic (keep)                                  | Modern (add)                                         |
+|-------------------------------------------------|------------------------------------------------------|
+| Dual-pane only, Salamander layout and hotkeys   | Fluent/Mica look, light/dark, rounded, accent colors  |
+| Precision: exact sizes, dates, attributes        | Density scaling: *Compact* (Salamander) ↔ *Comfortable* |
+| Speed: instant listings, no UI stalls            | Async everything, virtualized lists, per-monitor DPI |
+| Keyboard first, mouse optional                   | Flexible layout (toggle bars), customizable keys      |
+| Plugin architecture (archives, FS, viewers)      | Managed addon model (.NET assemblies, isolated load)  |
+
+Open Salamander (`C:\dev\source\repos\OpenSalamander`) is the behavioral reference: when in doubt about
+how a command should behave, check its implementation there (`src/fileswn*.cpp`, `src/menu4.cpp`, …).
+
+## Solution layout
+
+```
+VibeSalamander.sln
+├─ src/
+│  ├─ VibeSalamander.Core                  UI-free engine (net10.0-windows)
+│  │   ├─ FileSystem/   providers (local disk, This PC), entries, paths
+│  │   ├─ Panels/       sorting, navigation history
+│  │   ├─ Commands/     command ids + default Salamander key map
+│  │   ├─ Formatting/   sizes, dates, attributes (Salamander formats)
+│  │   ├─ Interop/      Win32/Shell P/Invoke (copy/move/delete, properties)
+│  │   └─ Settings/     JSON settings in %AppData%\VibeSalamander
+│  ├─ VibeSalamander.Plugins.Abstractions  contracts for future addons (no UI deps)
+│  └─ VibeSalamander.App                   WinUI 3 desktop app (unpackaged, self-contained WinAppSDK)
+│      ├─ ViewModels/   PaneViewModel, FileItemViewModel, MainViewModel
+│      ├─ Views/        FilePane (one panel), dialogs
+│      └─ Services/     IconCache (shell icons → WinUI bitmaps)
+└─ tests/
+   └─ VibeSalamander.Core.Tests            xUnit tests for the engine
+```
+
+The **Core** has no WinUI dependency so it is testable and reusable (a CLI, a future
+Avalonia/other front-end, or plugin hosts can use it).
+
+## Main window layout (mirrors Salamander)
+
+```
+┌ Title bar (Mica, custom) ──────────────────────────────────────────────┐
+│ Menu: Left  Files  Edit  Commands  Plugins  Options  Right  Help       │
+│ Top toolbar (compact Fluent icon buttons)                              │
+├──────────────── Left panel ───────────┬──────────── Right panel ───────┤
+│ Drive bar                             │ Drive bar                      │
+│ Directory line  (path · free space)   │ Directory line                 │
+│ Header line     Name Ext Size Date …  │ Header line                    │
+│ File list (virtualized)               │ File list                      │
+│ Information line (focused item)       │ Information line               │
+├───────────────────────────────────────┴────────────────────────────────┤
+│ Command line                                                           │
+│ F1 Help  F2 Rename  F3 View  F4 Edit  F5 Copy  F6 Move  F7 MakeDir …    │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+Every bar can be toggled (Options → Show), as in Salamander.
+
+## Key design decisions
+
+* **Caret vs. marks.** Salamander separates the *focused item* (caret) from *selected/marked* items
+  (Insert/Space/Num+). The ListView's single selection is used only as the caret; marks are a
+  property of `FileItemViewModel` rendered with the Salamander "selected" color.
+* **Fast listing.** `FileSystemEnumerable<T>` (NtQueryDirectoryFile under the hood) with a transform
+  that builds `FileEntry` structs directly; no `FileInfo` allocations. Listing runs off the UI thread
+  and the result replaces the collection in one assignment (no per-item change notifications).
+* **Providers.** Every panel path belongs to an `IFileSystemProvider`: `LocalFileSystemProvider` for
+  disk paths and `ThisPcProvider` for the drive list (`..` in a drive root goes there, as in the
+  Open Salamander "This PC" plugin). Archives, FTP, etc. become additional providers via addons.
+* **Commands.** All actions are `CommandId`s dispatched by `MainViewModel`. Menus, toolbar,
+  F-key bar and keyboard shortcuts all map to the same ids, so key customization and addon commands
+  plug into one place.
+* **File operations.** Phase 1 uses the Windows shell (`SHFileOperation`) for copy/move/delete with
+  the system progress and conflict UI and Recycle Bin support. Phase 2 replaces it with an own
+  queued engine (Salamander-style progress, speed limits, verify, skip/overwrite rules).
+* **Icons.** Folder/file glyphs render immediately; real shell icons load asynchronously per
+  extension (per file for `.exe/.lnk/.ico`) and are cached.
+* **Density.** One `RowHeight` setting (Compact 20 px ≈ Salamander, Comfortable 28 px ≈ Files) drives
+  list, header and bar sizes.
+
+## Addons (planned, not implemented yet)
+
+`VibeSalamander.Plugins.Abstractions` defines the contracts now so the core is shaped around them:
+
+| Salamander plugin type | Vibe contract                   | Examples to port later            |
+|------------------------|----------------------------------|-----------------------------------|
+| File system            | `IFileSystemProviderFactory`     | FTP/SFTP, This PC, Nethood, Registry |
+| Archiver               | `IArchiveProviderFactory`        | ZIP, 7-Zip, TAR, RAR (unpack), ISO   |
+| Viewer                 | `IViewerFactory`                 | Picture, PE, Database, Multimedia    |
+| Menu extension         | `ICommandContributor`            | Checksum, Renamer, File Compare, DiskMap |
+
+Addons will be .NET assemblies in `%AppData%\VibeSalamander\Addons\<name>\`, loaded in their own
+`AssemblyLoadContext` and talking to the app only through `IVibeHost`.
