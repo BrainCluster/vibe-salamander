@@ -57,6 +57,8 @@ public sealed partial class FilePane : UserControl
         InitializeComponent();
         // ListViewItems handle PointerPressed themselves; listen to handled events too for Ctrl+click marking.
         FileList.AddHandler(PointerPressedEvent, new PointerEventHandler(List_PointerPressed), handledEventsToo: true);
+        // any click inside the panel makes it the active one (also on the empty area below the items)
+        RootGrid.AddHandler(PointerPressedEvent, new PointerEventHandler(Pane_PointerPressed), handledEventsToo: true);
     }
 
     public PaneViewModel? ViewModel { get; private set; }
@@ -133,10 +135,15 @@ public sealed partial class FilePane : UserControl
         });
     }
 
+    /// <summary>Where a Shift+click range starts: the caret position last reached without Shift held.</summary>
+    private int _shiftAnchor = -1;
+
     private void List_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ViewModel != null && FileList.SelectedIndex >= 0)
         {
+            if (!KeyboardState.IsDown(KeyboardState.Shift))
+                _shiftAnchor = FileList.SelectedIndex;
             ViewModel.CaretIndex = FileList.SelectedIndex;
             if (e.AddedItems.Count > 0 && ViewModel.QuickSearch.Length > 0 && !_quickSearchMoving)
                 ViewModel.EndQuickSearch();
@@ -410,13 +417,87 @@ public sealed partial class FilePane : UserControl
 
     private void List_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (ViewModel == null)
+        if (ViewModel == null || IsRenaming || !e.GetCurrentPoint(FileList).Properties.IsLeftButtonPressed)
             return;
-        bool ctrl = Services.KeyboardState.IsDown(Services.KeyboardState.Control);
-        if (!ctrl || !e.GetCurrentPoint(FileList).Properties.IsLeftButtonPressed)
+        bool ctrl = KeyboardState.IsDown(KeyboardState.Control);
+        bool shift = KeyboardState.IsDown(KeyboardState.Shift);
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is not FileItemViewModel item)
             return;
-        if ((e.OriginalSource as FrameworkElement)?.DataContext is FileItemViewModel item)
-            ViewModel.ToggleMark(IndexOf(item));
+        int index = IndexOf(item);
+        if (index < 0)
+            return;
+        if (ctrl && !shift)
+        {
+            ViewModel.ToggleMark(index); // Ctrl+click: mark / unmark one item
+        }
+        else if (shift && !ctrl)
+        {
+            // Shift+click: mark everything from the caret (before the click) to the clicked item
+            int anchor = _shiftAnchor >= 0 ? _shiftAnchor : ViewModel.CaretIndex;
+            if (anchor >= 0)
+                ViewModel.MarkRange(anchor, index, mark: true);
+        }
+    }
+
+    /// <summary>A click anywhere in the panel activates it; a click in the list area also gives the list the keyboard.</summary>
+    private void Pane_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        _main.Activate(ViewModel);
+        // the empty area below the items isn't focusable by itself: put the focus on the caret item
+        if (e.OriginalSource is DependencyObject source && IsInside(source, FileList) && !IsRenaming &&
+            FindAncestor<TextBox>(source) == null)
+            FocusList();
+    }
+
+    private static T? FindAncestor<T>(DependencyObject? element) where T : DependencyObject
+    {
+        for (DependencyObject? d = element; d != null; d = VisualTreeHelper.GetParent(d))
+            if (d is T t)
+                return t;
+        return null;
+    }
+
+    /// <summary>
+    /// Shift+Up/Down/PgUp/PgDn/Home/End mark while moving, like Salamander: each item the caret leaves is
+    /// marked (or unmarked when it was marked, so going back undoes it).
+    /// </summary>
+    private void List_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (ViewModel == null || IsRenaming || KeyboardState.CurrentModifiers() != KeyModifiers.Shift)
+            return;
+        ViewMode view = ViewModel.EffectiveViewMode;
+        if (view is not (ViewMode.Detailed or ViewMode.Brief))
+            return; // in the grid views Up/Down jump rows; Ctrl+click / Shift+click mark there
+        int count = ViewModel.Items.Count;
+        int caret = ViewModel.CaretIndex;
+        if (count == 0 || caret < 0)
+            return;
+        int page = Math.Max(1, (int)(FileList.ActualHeight / Math.Max(1, UiState.RowHeight)) - 1);
+        int target = e.Key switch
+        {
+            VirtualKey.Up => caret - 1,
+            VirtualKey.Down => caret + 1,
+            VirtualKey.PageUp => caret - page,
+            VirtualKey.PageDown => caret + page,
+            VirtualKey.Home => 0,
+            VirtualKey.End => count - 1,
+            _ => int.MinValue,
+        };
+        if (target == int.MinValue)
+            return;
+        e.Handled = true;
+        target = Math.Clamp(target, 0, count - 1);
+        bool mark = !ViewModel.Items[caret].IsMarked;
+        bool jump = e.Key is VirtualKey.PageUp or VirtualKey.PageDown or VirtualKey.Home or VirtualKey.End;
+        if (target == caret)
+            ViewModel.MarkRange(caret, caret, mark); // at the first/last item: mark it
+        else if (jump && (target == 0 || target == count - 1))
+            ViewModel.MarkRange(caret, target, mark); // to the very start/end: including the last one
+        else
+            ViewModel.MarkRange(caret, target > caret ? target - 1 : target + 1, mark);
+        ApplyCaret(target, focus: true);
     }
 
     private int IndexOf(FileItemViewModel item)
