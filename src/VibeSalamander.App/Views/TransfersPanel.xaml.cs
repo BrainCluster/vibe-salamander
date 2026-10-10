@@ -55,8 +55,8 @@ public sealed partial class TransfersPanel : UserControl
         if (_vm == null)
             return;
         SummaryText.Text = _vm.SummaryText;
-        CancelAllButton.IsEnabled = _vm.ActiveCount > 0;
         ClearButton.IsEnabled = _vm.Items.Any(i => !i.IsActive);
+        ClearAllButton.IsEnabled = _vm.HasItems;
     }
 
     private static TransferItemViewModel? ItemOf(object sender) =>
@@ -93,9 +93,9 @@ public sealed partial class TransfersPanel : UserControl
         Interacted?.Invoke(this, EventArgs.Empty);
     }
 
-    private void CancelAll_Click(object sender, RoutedEventArgs e)
+    private void ClearAll_Click(object sender, RoutedEventArgs e)
     {
-        _vm?.CancelAll();
+        _vm?.ClearAll();
         Interacted?.Invoke(this, EventArgs.Empty);
     }
 

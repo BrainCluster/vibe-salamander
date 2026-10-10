@@ -33,7 +33,8 @@
                     <ProgressBar Maximum="100" Value="{x:Bind Percent, Mode=OneWay}" IsIndeterminate="{x:Bind IsIndeterminate, Mode=OneWay}"
                                  ShowPaused="{x:Bind IsPaused, Mode=OneWay}" ShowError="{x:Bind HasError, Mode=OneWay}" />
                     <Grid>
-                        <TextBlock Text="{x:Bind StatusText, Mode=OneWay}" FontSize="11" />
+                        <TextBlock Text="{x:Bind StatusText, Mode=OneWay}" FontSize="11" TextTrimming="CharacterEllipsis"
+                                   ToolTipService.ToolTip="{x:Bind StatusText, Mode=OneWay}" />
                         <TextBlock Text="{x:Bind DetailText, Mode=OneWay}" FontSize="11" HorizontalAlignment="Right"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </Grid>
@@ -88,11 +89,19 @@
                 <TextBlock x:Name="SummaryText" Grid.Column="2" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                            Foreground="{ThemeResource VibeHeaderForegroundBrush}" />
                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2">
-                    <Button x:Name="ClearButton" Style="{StaticResource VibeToolButtonStyle}" Click="Clear_Click" ToolTipService.ToolTip="Clear finished">
-                        <FontIcon Glyph="&#xE894;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />
+                    <Button x:Name="ClearButton" Style="{StaticResource VibeToolButtonStyle}" Click="Clear_Click"
+                            ToolTipService.ToolTip="Remove finished transfers from the list">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE73E;" FontFamily="{StaticResource VibeIconFont}" FontSize="12" />
+                            <TextBlock Text="Clear finished" FontSize="12" />
+                        </StackPanel>
                     </Button>
-                    <Button x:Name="CancelAllButton" Style="{StaticResource VibeToolButtonStyle}" Click="CancelAll_Click" ToolTipService.ToolTip="Cancel all">
-                        <FontIcon Glyph="&#xE71A;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />
+                    <Button x:Name="ClearAllButton" Style="{StaticResource VibeToolButtonStyle}" Click="ClearAll_Click"
+                            ToolTipService.ToolTip="Cancel running transfers and empty the list">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE894;" FontFamily="{StaticResource VibeIconFont}" FontSize="12" />
+                            <TextBlock Text="Clear all" FontSize="12" />
+                        </StackPanel>
                     </Button>
                     <Button x:Name="CollapseButton" Style="{StaticResource VibeToolButtonStyle}" Click="Collapse_Click" ToolTipService.ToolTip="Collapse">
                         <FontIcon x:Name="CollapseGlyph" Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />

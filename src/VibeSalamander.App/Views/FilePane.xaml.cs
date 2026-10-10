@@ -88,6 +88,9 @@ public sealed partial class FilePane : UserControl
     {
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
+            // the address bar is being edited (Shift+F7 from the F-key bar, an auto refresh while typing)
+            if (PathEditor.Visibility == Visibility.Visible && XamlRoot != null && FocusManager.GetFocusedElement(XamlRoot) == PathEditor)
+                return;
             int index = FileList.SelectedIndex;
             if (index >= 0 && FileList.ContainerFromIndex(index) is ListViewItem container)
                 container.Focus(FocusState.Programmatic);
@@ -303,6 +306,17 @@ public sealed partial class FilePane : UserControl
             return null;
         FileList.ScrollIntoView(item);
         FileList.UpdateLayout();
+        if (FileList.ContainerFromItem(item) is null)
+        {
+            // a list that was just reloaded (F7 / Shift+F4 on the new item) may realize the row a pass later
+            var layoutPass = new TaskCompletionSource();
+            if (DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => layoutPass.TrySetResult()))
+                await layoutPass.Task;
+            if (IsRenaming)
+                return null;
+            FileList.ScrollIntoView(item);
+            FileList.UpdateLayout();
+        }
         if (FileList.ContainerFromItem(item) is not ListViewItem container)
             return null;
 
@@ -595,13 +609,28 @@ public sealed partial class FilePane : UserControl
         _main.Activate(ViewModel);
         if (e.OriginalSource is DependencyObject source && IsInside(source, DriveMenuButton))
             return;
+        BeginPathEdit();
+        e.Handled = true;
+    }
+
+    /// <summary>Address bar in edit mode with the full location selected (empty-area click, Shift+F7).</summary>
+    public void BeginPathEdit()
+    {
+        if (ViewModel == null)
+            return;
         // the full location, ready to edit (Windows 11 Explorer: click the empty part of the address bar)
         PathEditor.Text = ViewModel.IsLocalDisk ? ViewModel.Path : ViewModel.IsThisPc ? "This PC" : ViewModel.DisplayPath;
         BreadcrumbHost.Visibility = Visibility.Collapsed;
         PathEditor.Visibility = Visibility.Visible;
-        PathEditor.Focus(FocusState.Programmatic);
-        PathEditor.SelectAll();
-        e.Handled = true;
+        // focus after menus/flyouts have closed and returned their focus (Shift+F7 from the menu), else the
+        // editor loses the focus at once and closes
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (PathEditor.Visibility != Visibility.Visible)
+                return;
+            PathEditor.Focus(FocusState.Programmatic);
+            PathEditor.SelectAll();
+        });
     }
 
     private static bool IsInside(DependencyObject element, DependencyObject container)
