@@ -236,6 +236,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Button x:Name="DriveMenuButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
                         Click="DriveMenuButton_Click" ToolTipService.ToolTip="Change drive (Alt+F1 / Alt+F2)">
@@ -267,6 +268,12 @@
                 <TextBlock Grid.Column="5" Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"
                            Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
                            VerticalAlignment="Center" Opacity="0.85" />
+                <!-- recent locations, like the drop-down at the end of Explorer's address bar (Alt+F12) -->
+                <Button x:Name="HistoryButton" Grid.Column="6" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2" Margin="0,0,-6,0"
+                        Click="HistoryButton_Click" ToolTipService.ToolTip="Working directories (Alt+F12)">
+                    <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                              Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                </Button>
             </Grid>
         </Grid>
 

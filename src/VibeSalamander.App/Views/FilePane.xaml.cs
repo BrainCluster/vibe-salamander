@@ -616,9 +616,9 @@ public sealed partial class FilePane : UserControl
                 ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
             });
         else
-            menu.ShowAt(DriveMenuButton, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+            menu.ShowAt(HistoryButton, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
             {
-                Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft,
+                Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight,
                 ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
             });
     }
@@ -996,6 +996,14 @@ public sealed partial class FilePane : UserControl
 
     private void DriveMenuButton_Click(object sender, RoutedEventArgs e) => ShowDriveMenu();
 
+    private async void HistoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        _main.Activate(ViewModel);
+        await _main.ExecuteAsync(CommandId.WorkingDirectoriesList);
+    }
+
     /// <summary>Alt+F1 / Alt+F2 drive menu.</summary>
     public void ShowDriveMenu()
     {
@@ -1049,7 +1057,7 @@ public sealed partial class FilePane : UserControl
         if (ViewModel == null || _main == null)
             return;
         _main.Activate(ViewModel);
-        if (e.OriginalSource is DependencyObject source && IsInside(source, DriveMenuButton))
+        if (e.OriginalSource is DependencyObject source && (IsInside(source, DriveMenuButton) || IsInside(source, HistoryButton)))
             return;
         BeginPathEdit();
         e.Handled = true;
