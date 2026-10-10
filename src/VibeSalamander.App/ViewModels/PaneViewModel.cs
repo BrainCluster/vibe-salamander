@@ -262,7 +262,36 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         }
     }
 
-    public Task RefreshAsync() => LoadAsync(_provider, _path, FocusedItem?.Entry.Name, keepCaret: true);
+    private bool _isEditing;
+    private bool _refreshPending;
+
+    /// <summary>
+    /// True while a name is edited in place: refreshes (auto refresh, finished transfers) are held back
+    /// until the edit ends, because rebuilding the rows would end the edit.
+    /// </summary>
+    public bool IsEditing
+    {
+        get => _isEditing;
+        set
+        {
+            _isEditing = value;
+            if (!value && _refreshPending)
+            {
+                _refreshPending = false;
+                _ = RefreshAsync();
+            }
+        }
+    }
+
+    public Task RefreshAsync()
+    {
+        if (_isEditing)
+        {
+            _refreshPending = true;
+            return Task.CompletedTask;
+        }
+        return LoadAsync(_provider, _path, FocusedItem?.Entry.Name, keepCaret: true);
+    }
 
     public async Task GoUpAsync()
     {

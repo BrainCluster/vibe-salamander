@@ -30,17 +30,41 @@ public sealed class Dialogs
         RequestedTheme = _theme(),
     };
 
-    private async Task<ContentDialogResult> ShowAsync(ContentDialog dialog)
+    /// <summary>
+    /// Only one ContentDialog may be open per window. Background transfers ask questions too, so every
+    /// dialog in the app waits its turn here instead of failing with "only one dialog can be open".
+    /// </summary>
+    private static readonly SemaphoreSlim Gate = new(1, 1);
+
+    /// <summary>Shows any ContentDialog through the shared gate (use this instead of ContentDialog.ShowAsync).</summary>
+    public async Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog)
     {
+        await Gate.WaitAsync();
         DialogOpenChanged?.Invoke(this, true);
         try
         {
+            dialog.XamlRoot ??= _xamlRoot();
             return await dialog.ShowAsync();
         }
         finally
         {
             DialogOpenChanged?.Invoke(this, false);
+            Gate.Release();
         }
+    }
+
+    private Task<ContentDialogResult> ShowAsync(ContentDialog dialog) => ShowDialogAsync(dialog);
+
+    /// <summary>Creates a dialog with the app's theme (for callers that build their own content).</summary>
+    public ContentDialog Create(string title, object content) => NewDialog(title, content);
+
+    /// <summary>A simple message with an OK button.</summary>
+    public async Task MessageAsync(string title, string message)
+    {
+        ContentDialog dialog = NewDialog(title, Text(message));
+        dialog.CloseButtonText = "OK";
+        dialog.DefaultButton = ContentDialogButton.Close;
+        await ShowAsync(dialog);
     }
 
     /// <summary>A dialog whose answers are buttons inside the content (more than ContentDialog's three).</summary>
@@ -91,9 +115,13 @@ public sealed class Dialogs
 
     // ---- operation prompts -------------------------------------------------------------------
 
-    public Task<ConflictChoice> ConflictAsync(ConflictInfo c)
+    /// <param name="context">Which operation asks (e.g. "Copy 3 items"); shown above the question
+    /// because several transfers may run at once.</param>
+    public Task<ConflictChoice> ConflictAsync(ConflictInfo c, string? context = null)
     {
         var body = new StackPanel { Spacing = 6 };
+        if (!string.IsNullOrEmpty(context))
+            body.Children.Add(Text(context, secondary: true));
         body.Children.Add(Text(c.IsDirectory ? "A directory with this name already exists:" : "The target file already exists:"));
         body.Children.Add(Text(c.TargetPath, bold: true));
         if (!c.IsDirectory)
@@ -113,9 +141,11 @@ public sealed class Dialogs
         }, ConflictChoice.Cancel);
     }
 
-    public Task<ErrorChoice> ErrorAsync(OperationError e)
+    public Task<ErrorChoice> ErrorAsync(OperationError e, string? context = null)
     {
         var body = new StackPanel { Spacing = 6 };
+        if (!string.IsNullOrEmpty(context))
+            body.Children.Add(Text(context, secondary: true));
         body.Children.Add(Text(e.Path, bold: true));
         body.Children.Add(Text(e.Message));
         return ChooseAsync("Error", body, new[]

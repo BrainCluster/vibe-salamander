@@ -28,10 +28,6 @@ public interface IUiHost
 
     // phase 2
     Views.Dialogs Dialogs { get; }
-    /// <summary>Shows the progress overlay; the token is cancelled by its Cancel button / Esc.</summary>
-    CancellationToken BeginOperation(string title);
-    void UpdateOperation(OperationProgress progress);
-    void EndOperation();
     void ShowFindWindow(string directory);
     Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item);
     void ShowContextMenu(PaneViewModel pane);
@@ -73,21 +69,6 @@ internal sealed class UiOperationCallbacks : IOperationCallbacks
     }
 }
 
-/// <summary>Progress reports forwarded to the overlay on the UI thread.</summary>
-internal sealed class UiProgress : IProgress<OperationProgress>
-{
-    private readonly DispatcherQueue _dispatcher;
-    private readonly IUiHost _host;
-
-    public UiProgress(DispatcherQueue dispatcher, IUiHost host)
-    {
-        _dispatcher = dispatcher;
-        _host = host;
-    }
-
-    public void Report(OperationProgress value) => _dispatcher.TryEnqueue(() => _host.UpdateOperation(value));
-}
-
 /// <summary>Owns both panels and executes every <see cref="CommandId"/>.</summary>
 public sealed class MainViewModel : BindableBase
 {
@@ -113,7 +94,23 @@ public sealed class MainViewModel : BindableBase
         Right = new PaneViewModel("Right", Registry, dispatcher, Icons, Settings.Right, () => Settings.ShowHidden);
         _active = Settings.RightPanelActive ? Right : Left;
         _active.IsActive = true;
+
+        Transfers = new TransfersViewModel(dispatcher, host.Dialogs);
+        Transfers.Finished += async (_, _) =>
+        {
+            try
+            {
+                await RefreshAllAsync();
+            }
+            catch (Exception)
+            {
+                // the watcher refreshes the panels anyway; a failed refresh is not worth a dialog
+            }
+        };
     }
+
+    /// <summary>Background copy/move/delete queue shown in the transfer panel.</summary>
+    public TransfersViewModel Transfers { get; }
 
     public AppSettings Settings { get; }
     public FileSystemRegistry Registry { get; }
@@ -375,19 +372,20 @@ public sealed class MainViewModel : BindableBase
         await TransferAsync(items.Select(i => i.Entry.FullPath).ToList(), resolved, move);
     }
 
-    /// <summary>Copies or moves with the own engine and the progress overlay (F5/F6, paste, drag &amp; drop).</summary>
-    public async Task TransferAsync(IReadOnlyList<string> sources, string target, bool move)
+    /// <summary>
+    /// Copies or moves in the background (F5/F6, paste, drag &amp; drop): the operation is added to the
+    /// transfer panel and this returns immediately, so the panels stay usable while it runs.
+    /// </summary>
+    public Task TransferAsync(IReadOnlyList<string> sources, string target, bool move)
     {
         if (sources.Count == 0)
-            return;
-        PaneViewModel source = _active;
-        source.RememberSelection();
-        OperationResult? result = await RunOperationAsync(move ? "Moving" : "Copying",
+            return Task.CompletedTask;
+        // like Salamander, the marks are cleared once the operation is started; Ctrl+W brings them back
+        _active.RememberSelection();
+        _active.MarkAll(false);
+        Transfers.Enqueue(move ? OperationKind.Move : OperationKind.Copy, sources, target,
             (engine, ct) => move ? engine.MoveAsync(sources, target, ct) : engine.CopyAsync(sources, target, ct));
-        if (result != null && !result.Cancelled && result.Failed == 0)
-            source.MarkAll(false);
-        await RefreshAllAsync();
-        await ReportProblemsAsync(result);
+        return Task.CompletedTask;
     }
 
     private async Task DeleteAsync(bool permanent)
@@ -409,16 +407,14 @@ public sealed class MainViewModel : BindableBase
         _active.RememberSelection();
         if (permanent)
         {
-            OperationResult? result = await RunOperationAsync("Deleting", (engine, ct) => engine.DeleteAsync(paths, ct));
-            await RefreshAllAsync();
-            await ReportProblemsAsync(result);
+            // runs in the transfer panel; the panels refresh when it finishes
+            _active.MarkAll(false);
+            Transfers.Enqueue(OperationKind.Delete, paths, null, (engine, ct) => engine.DeleteAsync(paths, ct));
+            return;
         }
-        else
-        {
-            // the Recycle Bin is only reachable through the shell
-            await ShellOperations.DeleteAsync(_host.WindowHandle, paths, permanent: false);
-            await RefreshAllAsync();
-        }
+        // the Recycle Bin is only reachable through the shell (it shows its own progress window)
+        await ShellOperations.DeleteAsync(_host.WindowHandle, paths, permanent: false);
+        await RefreshAllAsync();
         CaretMoveRequested?.Invoke(this, (_active, Math.Min(caret, Math.Max(0, _active.Items.Count - 1))));
     }
 
@@ -469,31 +465,6 @@ public sealed class MainViewModel : BindableBase
     }
 
     // ---- phase 2 helpers -------------------------------------------------------------------
-
-    private async Task<OperationResult?> RunOperationAsync(string title,
-        Func<FileOperationEngine, CancellationToken, Task<OperationResult>> run)
-    {
-        CancellationToken ct = _host.BeginOperation(title);
-        try
-        {
-            var engine = new FileOperationEngine(_callbacks, new UiProgress(_dispatcher, _host));
-            return await run(engine, ct);
-        }
-        catch (OperationCanceledException)
-        {
-            return new OperationResult { Cancelled = true };
-        }
-        catch (Exception ex)
-        {
-            _host.EndOperation();
-            await _host.ShowMessageAsync("Vibe Salamander", ex.Message);
-            return null;
-        }
-        finally
-        {
-            _host.EndOperation();
-        }
-    }
 
     private async Task ReportProblemsAsync(OperationResult? result)
     {

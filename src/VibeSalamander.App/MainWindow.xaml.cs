@@ -33,7 +33,12 @@ public sealed partial class MainWindow : Window, IUiHost
         }
 
         Dialogs = new Dialogs(() => Content.XamlRoot, () => RootGrid.ActualTheme);
-        Dialogs.DialogOpenChanged += (_, open) => _dialogOpen = open;
+        Dialogs.DialogOpenChanged += (_, open) =>
+        {
+            _dialogOpen = open;
+            // modifier key-ups inside a dialog never reach RootGrid
+            UpdateFunctionKeyBar(CurrentModifiers());
+        };
         _vm = new MainViewModel(this, DispatcherQueue);
         UiState.ApplyDensity(_vm.Settings.Density);
         LeftPane.Initialize(_vm.Left, _vm);
@@ -47,6 +52,19 @@ public sealed partial class MainWindow : Window, IUiHost
         _vm.Left.PropertyChanged += Pane_PropertyChanged;
         _vm.Right.PropertyChanged += Pane_PropertyChanged;
         _vm.CaretMoveRequested += (_, e) => PaneView(e.Pane).MoveCaret(e.Index);
+
+        TransfersView.Initialize(_vm.Transfers);
+        _vm.Transfers.StateChanged += (_, _) => UpdateTransfersLayout();
+        TransfersView.CollapsedChanged += (_, _) => UpdateTransfersLayout();
+        RootGrid.SizeChanged += (_, _) => UpdateTransfersLayout(); // keep the panel within 60 % of the window
+        TransfersView.Interacted += (_, _) => PaneView(_vm.Active).FocusList();
+        AppWindow.Closing += AppWindow_Closing;
+        Activated += (_, e) =>
+        {
+            // a modifier released while another window had the focus never reports its key-up here
+            if (e.WindowActivationState == WindowActivationState.Deactivated)
+                UpdateFunctionKeyBar(KeyModifiers.None);
+        };
 
         BuildFunctionKeyBar();
         RestoreWindowPlacement();
@@ -85,18 +103,27 @@ public sealed partial class MainWindow : Window, IUiHost
 
     private static KeyModifiers CurrentModifiers() => Services.KeyboardState.CurrentModifiers();
 
+    private static bool IsModifierKey(Windows.System.VirtualKey key) => key is
+        Windows.System.VirtualKey.Control or Windows.System.VirtualKey.LeftControl or Windows.System.VirtualKey.RightControl or
+        Windows.System.VirtualKey.Menu or Windows.System.VirtualKey.LeftMenu or Windows.System.VirtualKey.RightMenu or
+        Windows.System.VirtualKey.Shift or Windows.System.VirtualKey.LeftShift or Windows.System.VirtualKey.RightShift;
+
+    private void RootGrid_PreviewKeyUp(object sender, KeyRoutedEventArgs e)
+    {
+        if (IsModifierKey(e.Key))
+            UpdateFunctionKeyBar(CurrentModifiers());
+    }
+
     private async void RootGrid_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (_dialogOpen || Content?.XamlRoot == null)
-            return;
-        if (Overlay.IsActive)
+        // the bottom bar shows what the F-keys do with the modifiers held right now
+        if (IsModifierKey(e.Key))
         {
-            // a file operation is running: only Esc (cancel) is accepted
-            if (e.Key == Windows.System.VirtualKey.Escape)
-                Overlay.Cancel();
-            e.Handled = true;
+            UpdateFunctionKeyBar(CurrentModifiers());
             return;
         }
+        if (_dialogOpen || Content?.XamlRoot == null)
+            return;
         // menus, flyouts and dialogs handle their own keys
         if (VisualTreeHelper.GetOpenPopupsForXamlRoot(Content.XamlRoot).Count > 0)
             return;
@@ -181,46 +208,147 @@ public sealed partial class MainWindow : Window, IUiHost
         }
     }
 
+    // F-key bar: F1..F12 relabelled for the held modifiers (Ctrl, Alt, Shift and combinations)
+
+    private readonly Button[] _fkeyButtons = new Button[12];
+    private readonly TextBlock[] _fkeyLabels = new TextBlock[12];
+    private readonly Border[] _fkeyCaps = new Border[12];
+    private readonly Action?[] _fkeyActions = new Action?[12];
+    private KeyModifiers _fkeyModifiers = (KeyModifiers)(-1);
+
+    /// <summary>Short Salamander-style labels for the bottom bar.</summary>
+    private static string ShortLabel(CommandId command) => command switch
+    {
+        CommandId.Help => "Help",
+        CommandId.ChangeDriveLeft => "Left",
+        CommandId.ChangeDriveRight => "Right",
+        CommandId.QuickRename => "Rename",
+        CommandId.View => "View",
+        CommandId.Edit => "Edit",
+        CommandId.EditNewFile => "NewFile",
+        CommandId.Copy => "Copy",
+        CommandId.Move => "Move",
+        CommandId.CreateDirectory => "MakeDir",
+        CommandId.ChangeDirectory => "ChngDir",
+        CommandId.Delete => "Delete",
+        CommandId.DeletePermanently => "DelPerm",
+        CommandId.Refresh => "Refresh",
+        CommandId.MaximizePanel => "Maximize",
+        CommandId.SortByName => "Name",
+        CommandId.SortByExtension => "Ext",
+        CommandId.SortByDate => "Date",
+        CommandId.SortBySize => "Size",
+        CommandId.SortByAttributes => "Attrs",
+        CommandId.Filter => "Filter",
+        CommandId.OpenWith => "OpenWith",
+        CommandId.ChangeAttributes => "Attrib",
+        CommandId.ChangeCase => "Case",
+        CommandId.FindFiles => "Find",
+        CommandId.ContextMenu => "Context",
+        CommandId.OpenActiveFolder => "Explorer",
+        CommandId.Properties => "Props",
+        CommandId.Exit => "Exit",
+        _ => command.ToString(),
+    };
+
+    private static string ModifierText(KeyModifiers mods)
+    {
+        var parts = new List<string>();
+        if ((mods & KeyModifiers.Ctrl) != 0) parts.Add("Ctrl");
+        if ((mods & KeyModifiers.Alt) != 0) parts.Add("Alt");
+        if ((mods & KeyModifiers.Shift) != 0) parts.Add("Shift");
+        return string.Join("+", parts);
+    }
+
     private void BuildFunctionKeyBar()
     {
-        (string key, string label, CommandId command)[] keys =
+        for (int i = 0; i < 12; i++)
         {
-            ("F1", "Help", CommandId.Help),
-            ("F2", "Rename", CommandId.QuickRename),
-            ("F3", "View", CommandId.View),
-            ("F4", "Edit", CommandId.Edit),
-            ("F5", "Copy", CommandId.Copy),
-            ("F6", "Move", CommandId.Move),
-            ("F7", "MakeDir", CommandId.CreateDirectory),
-            ("F8", "Delete", CommandId.Delete),
-            ("F9", "UsrMenu", CommandId.None),
-            ("F10", "Menu", CommandId.None),
-        };
-        for (int i = 0; i < keys.Length; i++)
-        {
-            var (key, label, command) = keys[i];
-            var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-            panel.Children.Add(new Border
+            FKeyBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var caption = new TextBlock { Text = "F" + (i + 1), FontSize = 11, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center };
+            var cap = new Border
             {
                 Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x24, 0x80, 0x80, 0x80)),
                 CornerRadius = new CornerRadius(3),
                 Padding = new Thickness(4, 0, 4, 1),
                 MinWidth = 24,
-                Child = new TextBlock { Text = key, FontSize = 11, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center },
-            });
-            panel.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
+                Child = caption,
+            };
+            var label = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+            var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+            panel.Children.Add(cap);
+            panel.Children.Add(label);
             var button = new Button
             {
                 Content = panel,
                 Style = Application.Current.Resources.TryGetValue("VibeFKeyButtonStyle", out object? style) ? style as Style : null,
-                IsEnabled = command != CommandId.None || key == "F10",
             };
-            if (key == "F10")
-                button.Click += (_, _) => FocusMenu();
-            else
-                button.Click += async (_, _) => { await _vm.ExecuteAsync(command); PaneView(_vm.Active).FocusList(); };
+            int index = i;
+            button.Click += (_, _) => _fkeyActions[index]?.Invoke();
             Grid.SetColumn(button, i);
             FKeyBar.Children.Add(button);
+            _fkeyButtons[i] = button;
+            _fkeyLabels[i] = label;
+            _fkeyCaps[i] = cap;
+        }
+        UpdateFunctionKeyBar(KeyModifiers.None);
+    }
+
+    /// <summary>Relabels F1..F12 for the given modifiers from the key map (keys without a command are blank).</summary>
+    private void UpdateFunctionKeyBar(KeyModifiers mods)
+    {
+        if (mods == _fkeyModifiers || _fkeyButtons[0] == null)
+            return;
+        _fkeyModifiers = mods;
+        string prefix = ModifierText(mods);
+        bool held = mods != KeyModifiers.None;
+        var accent = Application.Current.Resources.TryGetValue("AccentFillColorDefaultBrush", out object? a) ? a as Brush : null;
+        var neutral = new SolidColorBrush(Windows.UI.Color.FromArgb(0x24, 0x80, 0x80, 0x80));
+
+        for (int i = 0; i < 12; i++)
+        {
+            int key = VK.F1 + i;
+            CommandId command = _vm.KeyMap.Resolve(key, mods);
+            string label;
+            Action? action = null;
+            if (command != CommandId.None)
+            {
+                label = ShortLabel(command);
+                CommandId c = command;
+                action = async () => { await _vm.ExecuteAsync(c); UpdateMenuChecks(); PaneView(_vm.Active).FocusList(); };
+            }
+            else if (mods == KeyModifiers.None && key == VK.F10)
+            {
+                label = "Menu";
+                action = FocusMenu;
+            }
+            else if (mods == KeyModifiers.Alt && key == VK.F4)
+            {
+                label = "Exit";
+                action = Exit;
+            }
+            else if (mods == KeyModifiers.None && key == VK.F9)
+            {
+                label = "UsrMenu"; // user menu: planned
+            }
+            else
+            {
+                label = string.Empty;
+            }
+
+            _fkeyLabels[i].Text = label;
+            _fkeyActions[i] = action;
+            _fkeyButtons[i].IsEnabled = action != null;
+            // with a modifier held, the active keys get accent key caps
+            bool highlight = held && action != null && accent != null;
+            var capText = (TextBlock)_fkeyCaps[i].Child;
+            _fkeyCaps[i].Background = highlight ? accent : neutral;
+            if (highlight && Application.Current.Resources.TryGetValue("TextOnAccentFillColorPrimaryBrush", out object? fg) && fg is Brush onAccent)
+                capText.Foreground = onAccent;
+            else
+                capText.ClearValue(TextBlock.ForegroundProperty);
+            string chord = held ? $"{prefix}+F{i + 1}" : $"F{i + 1}";
+            ToolTipService.SetToolTip(_fkeyButtons[i], action != null ? $"{chord}  {label}" : null);
         }
     }
 
@@ -254,6 +382,7 @@ public sealed partial class MainWindow : Window, IUiHost
         ShowInfoLineItem.IsChecked = _vm.Settings.ShowInformationLine;
         ShowCommandLineItem.IsChecked = _vm.Settings.ShowCommandLine;
         ShowFKeyBarItem.IsChecked = _vm.Settings.ShowFunctionKeyBar;
+        ShowTransfersItem.IsChecked = _vm.Settings.ShowTransfers;
     }
 
     private void Theme_Click(object sender, RoutedEventArgs e)
@@ -320,6 +449,7 @@ public sealed partial class MainWindow : Window, IUiHost
         s.ShowInformationLine = ShowInfoLineItem.IsChecked;
         s.ShowCommandLine = ShowCommandLineItem.IsChecked;
         s.ShowFunctionKeyBar = ShowFKeyBarItem.IsChecked;
+        s.ShowTransfers = ShowTransfersItem.IsChecked;
         ApplyBars();
     }
 
@@ -331,7 +461,120 @@ public sealed partial class MainWindow : Window, IUiHost
         FKeyBar.Visibility = s.ShowFunctionKeyBar ? Visibility.Visible : Visibility.Collapsed;
         LeftPane.SetBarsVisibility(s.ShowDriveBars, s.ShowInformationLine);
         RightPane.SetBarsVisibility(s.ShowDriveBars, s.ShowInformationLine);
+        UpdateTransfersLayout();
         UpdateMenuChecks();
+    }
+
+    // ---- transfer panel ------------------------------------------------------------------------
+
+    private const double TransfersSplitterHeight = 6;
+    private const double MinTransfersHeight = 80;
+
+    /// <summary>Shows the transfer panel while it has items (unless switched off in Options → Show).</summary>
+    private void UpdateTransfersLayout()
+    {
+        bool show = _vm.Settings.ShowTransfers && _vm.Transfers.HasItems;
+        TransfersView.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        TransfersSplitter.Visibility = show && !TransfersView.IsCollapsed ? Visibility.Visible : Visibility.Collapsed;
+        if (!show)
+        {
+            TransfersRow.Height = new GridLength(0);
+            TransfersSplitterRow.Height = new GridLength(0);
+            return;
+        }
+        double margin = TransfersView.Margin.Top + TransfersView.Margin.Bottom;
+        if (TransfersView.IsCollapsed)
+        {
+            TransfersRow.Height = new GridLength(TransfersPanel.HeaderHeight + margin);
+            TransfersSplitterRow.Height = new GridLength(0);
+        }
+        else
+        {
+            TransfersRow.Height = new GridLength(ClampTransfersHeight(_vm.Settings.TransfersHeight) + margin);
+            TransfersSplitterRow.Height = new GridLength(TransfersSplitterHeight);
+        }
+    }
+
+    private double ClampTransfersHeight(double height)
+    {
+        double max = RootGrid.ActualHeight > 0 ? Math.Max(MinTransfersHeight, RootGrid.ActualHeight * 0.6) : 600;
+        return Math.Clamp(height, MinTransfersHeight, max);
+    }
+
+    private bool _resizingTransfers;
+    private double _resizeStartY;
+    private double _resizeStartHeight;
+
+    private void TransfersSplitter_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _resizingTransfers = TransfersSplitter.CapturePointer(e.Pointer);
+        _resizeStartY = e.GetCurrentPoint(RootGrid).Position.Y;
+        _resizeStartHeight = ClampTransfersHeight(_vm.Settings.TransfersHeight);
+        e.Handled = true;
+    }
+
+    private void TransfersSplitter_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_resizingTransfers)
+            return;
+        double y = e.GetCurrentPoint(RootGrid).Position.Y;
+        _vm.Settings.TransfersHeight = ClampTransfersHeight(_resizeStartHeight - (y - _resizeStartY));
+        UpdateTransfersLayout();
+    }
+
+    private void TransfersSplitter_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        _resizingTransfers = false;
+        TransfersSplitter.ReleasePointerCapture(e.Pointer);
+    }
+
+    private void TransfersSplitter_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        _vm.Settings.TransfersHeight = 150;
+        UpdateTransfersLayout();
+    }
+
+    private bool _closeConfirmed;
+    private bool _closePrompting;
+
+    /// <summary>Closing while transfers run asks first, then cancels them.</summary>
+    private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
+    {
+        if (_closeConfirmed || _vm.Transfers.ActiveCount == 0)
+            return;
+        args.Cancel = true;
+        await CloseAfterConfirmAsync();
+    }
+
+    /// <summary>
+    /// Window.Close() does not raise AppWindow.Closing, so File → Exit and the F-key bar come here too:
+    /// asks while transfers are active (once, even when the close button is clicked again), then closes.
+    /// </summary>
+    private async Task CloseAfterConfirmAsync()
+    {
+        if (_closePrompting)
+            return;
+        int count = _vm.Transfers.ActiveCount;
+        if (count > 0)
+        {
+            bool close;
+            _closePrompting = true;
+            try
+            {
+                close = await ConfirmAsync("Exit Vibe Salamander",
+                    $"{count} transfer{(count == 1 ? " is" : "s are")} still running or queued.\nCancel {(count == 1 ? "it" : "them")} and exit?",
+                    "Cancel and Exit");
+            }
+            finally
+            {
+                _closePrompting = false;
+            }
+            if (!close)
+                return;
+            _vm.Transfers.CancelAll();
+        }
+        _closeConfirmed = true;
+        Close();
     }
 
     // ---- panels --------------------------------------------------------------------------------
@@ -404,16 +647,10 @@ public sealed partial class MainWindow : Window, IUiHost
         content.Children.Add(new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap });
         content.Children.Add(box);
 
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = content,
-            PrimaryButtonText = primaryButton,
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = Content.XamlRoot,
-            RequestedTheme = RootGrid.ActualTheme,
-        };
+        ContentDialog dialog = Dialogs.Create(title, content);
+        dialog.PrimaryButtonText = primaryButton;
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Primary;
         bool accepted = false;
         box.KeyDown += (_, e) =>
         {
@@ -434,15 +671,13 @@ public sealed partial class MainWindow : Window, IUiHost
                 box.SelectAll();
         };
 
-        _dialogOpen = true;
         try
         {
-            ContentDialogResult result = await dialog.ShowAsync();
+            ContentDialogResult result = await Dialogs.ShowDialogAsync(dialog);
             accepted |= result == ContentDialogResult.Primary;
         }
         finally
         {
-            _dialogOpen = false;
             PaneView(_vm.Active).FocusList();
         }
         return accepted ? box.Text : null;
@@ -450,52 +685,30 @@ public sealed partial class MainWindow : Window, IUiHost
 
     public async Task<bool> ConfirmAsync(string title, string message, string primaryButton)
     {
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap },
-            PrimaryButtonText = primaryButton,
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = Content.XamlRoot,
-            RequestedTheme = RootGrid.ActualTheme,
-        };
-        _dialogOpen = true;
+        ContentDialog dialog = Dialogs.Create(title, new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
+        dialog.PrimaryButtonText = primaryButton;
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Primary;
         try
         {
-            return await dialog.ShowAsync() == ContentDialogResult.Primary;
+            return await Dialogs.ShowDialogAsync(dialog) == ContentDialogResult.Primary;
         }
         finally
         {
-            _dialogOpen = false;
             PaneView(_vm.Active).FocusList();
         }
     }
 
     public async Task ShowMessageAsync(string title, string message)
     {
-        var dialog = new ContentDialog
+        ContentDialog dialog = Dialogs.Create(title, new ScrollViewer
         {
-            Title = title,
-            Content = new ScrollViewer
-            {
-                Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, FontFamily = new FontFamily("Cascadia Mono,Consolas") },
-                MaxHeight = 480,
-            },
-            CloseButtonText = "OK",
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = Content.XamlRoot,
-            RequestedTheme = RootGrid.ActualTheme,
-        };
-        _dialogOpen = true;
-        try
-        {
-            await dialog.ShowAsync();
-        }
-        finally
-        {
-            _dialogOpen = false;
-        }
+            Content = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, FontFamily = new FontFamily("Cascadia Mono,Consolas") },
+            MaxHeight = 480,
+        });
+        dialog.CloseButtonText = "OK";
+        dialog.DefaultButton = ContentDialogButton.Close;
+        await Dialogs.ShowDialogAsync(dialog);
     }
 
     public async void ShowAbout()
@@ -507,21 +720,11 @@ public sealed partial class MainWindow : Window, IUiHost
             "Settings: " + SettingsStore.FilePath);
     }
 
-    public void Exit() => Close();
+    public async void Exit() => await CloseAfterConfirmAsync();
 
     // ---- phase 2 host services -----------------------------------------------------------------
 
     public Dialogs Dialogs { get; }
-
-    public CancellationToken BeginOperation(string title) => Overlay.Begin(title);
-
-    public void UpdateOperation(Core.Operations.OperationProgress progress) => Overlay.Update(progress);
-
-    public void EndOperation()
-    {
-        Overlay.End();
-        PaneView(_vm.Active).FocusList();
-    }
 
     public void ShowFindWindow(string directory)
     {
@@ -579,6 +782,7 @@ public sealed partial class MainWindow : Window, IUiHost
             }
         }
         _findWindow?.Close();
+        _vm.Transfers.CancelAll();
         _vm.SaveSettings();
         _vm.Left.Dispose();
         _vm.Right.Dispose();

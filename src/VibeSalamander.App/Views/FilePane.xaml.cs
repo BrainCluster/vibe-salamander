@@ -62,7 +62,7 @@ public sealed partial class FilePane : UserControl
             FileList.SelectedIndex = index;
             FileList.ScrollIntoView(FileList.Items[index]);
         }
-        if (focus && RenameBox.Visibility != Visibility.Visible)
+        if (focus && !IsRenaming)
             FocusList();
     }
 
@@ -104,8 +104,8 @@ public sealed partial class FilePane : UserControl
     {
         if (ViewModel == null || _main == null)
             return;
-        if ((e.OriginalSource as FrameworkElement)?.DataContext is not FileItemViewModel item)
-            return;
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is not FileItemViewModel item || item.IsRenaming)
+            return; // double-clicking inside the rename box selects a word
         int index = IndexOf(item);
         if (index < 0)
             return;
@@ -148,8 +148,8 @@ public sealed partial class FilePane : UserControl
 
     private void List_CharacterReceived(UIElement sender, CharacterReceivedRoutedEventArgs args)
     {
-        if (ViewModel == null)
-            return;
+        if (ViewModel == null || IsRenaming)
+            return; // typing goes to the rename box
         char c = args.Character;
         if (char.IsControl(c))
             return;
@@ -265,66 +265,151 @@ public sealed partial class FilePane : UserControl
     // ---- in-place rename (F2) --------------------------------------------------------------
 
     private TaskCompletionSource<string?>? _renameTcs;
+    private TextBox? _renameBox;
     private bool _renameHadFocus;
 
-    /// <summary>Shows an edit box over the item's name; returns the new name or null when cancelled.</summary>
+    private bool IsRenaming => _renameBox != null;
+
+    private static T? FindDescendant<T>(DependencyObject root, Func<T, bool> match) where T : DependencyObject
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, i);
+            if (child is T t && match(t))
+                return t;
+            if (FindDescendant(child, match) is T found)
+                return found;
+        }
+        return null;
+    }
+
+    /// <summary>Turns the item's name label into an edit box; returns the new name or null when cancelled.</summary>
     public async Task<string?> EditNameInPlaceAsync(FileItemViewModel item)
     {
+        if (ViewModel == null || IsRenaming)
+            return null;
         FileList.ScrollIntoView(item);
         FileList.UpdateLayout();
         if (FileList.ContainerFromItem(item) is not ListViewItem container)
             return null;
 
-        var origin = container.TransformToVisual(RenameLayer).TransformPoint(new Windows.Foundation.Point(0, 0));
-        const double iconColumn = 22 + 6;
-        RenameBox.FontSize = UiState.FontSize;
-        RenameBox.Text = item.Entry.Name;
-        RenameBox.Width = Math.Max(160, Math.Min(container.ActualWidth - iconColumn - 8, 520));
-        RenameBox.Height = Math.Max(UiState.RowHeight + 4, 24);
-        Canvas.SetLeft(RenameBox, origin.X + iconColumn - 6);
-        Canvas.SetTop(RenameBox, origin.Y + (container.ActualHeight - RenameBox.Height) / 2);
-        RenameBox.Visibility = Visibility.Visible;
+        ViewModel.IsEditing = true; // hold back refreshes: rebuilding the rows would end the edit
+        item.IsRenaming = true;
+        container.UpdateLayout();
+        TextBox? box = FindDescendant<TextBox>(container, b => b.Tag as string == "RenameBox");
+        if (box == null)
+        {
+            item.IsRenaming = false;
+            ViewModel.IsEditing = false;
+            return null;
+        }
 
-        _renameTcs = new TaskCompletionSource<string?>();
+        _renameBox = box;
+        // asynchronous continuations: the code after the await unloads the box (x:Load), which must not
+        // happen synchronously inside the box's own KeyDown/LostFocus handler
+        _renameTcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
         _renameHadFocus = false;
+        // the row was recycled or the list rebuilt (theme, sort) under the edit: end it instead of waiting forever
+        void BoxUnloaded(object sender, RoutedEventArgs e)
+        {
+            box.Unloaded -= BoxUnloaded;
+            if (_renameBox == box && !box.IsLoaded)
+                _renameTcs?.TrySetResult(null);
+        }
+        box.Unloaded += BoxUnloaded;
+        box.FontSize = UiState.FontSize;
+        box.Text = item.Entry.Name;
         int dot = item.Entry.IsDirectory ? -1 : item.Entry.Name.LastIndexOf('.');
         // focus after menus/flyouts have closed and returned their focus
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
-            RenameBox.Focus(FocusState.Programmatic);
+            if (_renameBox != box)
+                return;
+            box.Focus(FocusState.Programmatic);
             if (dot > 0)
-                RenameBox.Select(0, dot);
+                box.Select(0, dot);
             else
-                RenameBox.SelectAll();
+                box.SelectAll();
         });
 
-        string? result = await _renameTcs.Task;
-        RenameBox.Visibility = Visibility.Collapsed;
+        string? result;
+        try
+        {
+            result = await _renameTcs.Task;
+        }
+        finally
+        {
+            _renameBox = null;
+            _renameTcs = null;
+            item.IsRenaming = false;
+        }
         FocusList();
+        // refreshes held back during the edit run now (the rename that follows reloads the panel anyway)
+        ViewModel.IsEditing = false;
         return result;
     }
 
     private void RenameBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (sender != _renameBox)
+            return;
         if (e.Key == VirtualKey.Enter)
         {
             e.Handled = true;
-            _renameTcs?.TrySetResult(RenameBox.Text);
+            _renameTcs?.TrySetResult(((TextBox)sender).Text);
         }
         else if (e.Key == VirtualKey.Escape)
         {
             e.Handled = true;
             _renameTcs?.TrySetResult(null);
         }
+        else if (e.Key is VirtualKey.Up or VirtualKey.Down or VirtualKey.PageUp or VirtualKey.PageDown)
+        {
+            e.Handled = true; // keep the caret (and the edit) on this row
+        }
     }
 
-    private void RenameBox_GotFocus(object sender, RoutedEventArgs e) => _renameHadFocus = true;
+    private void RenameBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender == _renameBox)
+            _renameHadFocus = true;
+    }
 
     // Clicking elsewhere confirms the rename, like Explorer (only after the box really had the focus).
     private void RenameBox_LostFocus(object sender, RoutedEventArgs e)
     {
-        if (_renameHadFocus)
-            _renameTcs?.TrySetResult(RenameBox.Text);
+        if (sender != _renameBox || !_renameHadFocus)
+            return;
+        var box = (TextBox)sender;
+        // Focus that moved into a popup is not "clicking elsewhere": the box's own context menu, or a
+        // question from a background transfer. The edit goes on and gets the focus back when it closes.
+        if (PopupWithFocus() is { } popup)
+        {
+            void PopupClosed(object? s, object args)
+            {
+                popup.Closed -= PopupClosed;
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+                {
+                    if (_renameBox == box && FocusManager.GetFocusedElement(XamlRoot) != box)
+                        box.Focus(FocusState.Programmatic);
+                });
+            }
+            popup.Closed += PopupClosed;
+            return;
+        }
+        _renameTcs?.TrySetResult(box.Text);
+    }
+
+    /// <summary>The open popup (flyout, dialog) that contains the focused element, if any.</summary>
+    private Microsoft.UI.Xaml.Controls.Primitives.Popup? PopupWithFocus()
+    {
+        if (XamlRoot == null || FocusManager.GetFocusedElement(XamlRoot) is not DependencyObject focused)
+            return null;
+        foreach (var popup in VisualTreeHelper.GetOpenPopupsForXamlRoot(XamlRoot))
+            if (popup.Child != null && IsInside(focused, popup.Child))
+                return popup;
+        return null;
     }
 
     // ---- drag & drop -----------------------------------------------------------------------

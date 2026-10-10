@@ -12,6 +12,9 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
    clipboard, drag & drop, Explorer context menu.
    *Decision:* no internal viewer. F3 opens files in their default Windows app, Alt+F3 / Ctrl+Shift+F3
    show the Windows "Open with" chooser.
+   *Decision:* no modal progress dialog. Copy, move and permanent delete run in a **transfer panel**
+   below the file panels (WinSCP-style queue, up to 3 at once, pause/resume/cancel per item); the
+   panels stay usable while transfers run. Conflict and error questions name the transfer they belong to.
 3. **Power features** – configuration dialog, key customization, view modes (Brief/Detailed/Icons/
    Thumbnails/Tiles), column chooser & resizing, hot paths, user menu, compare directories,
    directory sizes, drive information, command line integration, network drives.
@@ -40,7 +43,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Command | Keys | Phase | Done |
 |---|---|---|---|
 | Open / execute | Enter | 1 | [x] |
-| Quick rename (in place) | F2 | 2 | [x] |
+| Quick rename (in place, the name label itself becomes editable) | F2 | 2 | [x] |
 | Open in default app / Open with (no internal viewer) | F3 / Alt+F3, Ctrl+Shift+F3 | 2 | [x] |
 | Edit / Edit with / Edit new file | F4 / Ctrl+Shift+F4 / Shift+F4 | 1 (system editor) | [~] |
 | Copy / Move-rename | F5 / F6 | 1 (shell) / 2 (engine) | [x] |
@@ -100,7 +103,9 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Command | Phase | Done |
 |---|---|---|
 | Configuration dialog | 3 (basic settings in 1) | [ ] |
-| Show/hide bars (toolbars, drive bars, command line, F-key bar) | 1 | [x] |
+| Show/hide bars (toolbars, drive bars, command line, F-key bar, transfer panel) | 1 | [x] |
+| F-key bar follows held Ctrl / Alt / Shift (F1–F12) | 2 | [x] |
+| Transfer panel: background queue, parallel transfers, pause/resume/cancel (new, WinSCP-style) | 2 | [x] |
 | Customize toolbars | 3 | [ ] |
 | Always on top | 1 | [x] |
 | Export / import configuration | 3 | [ ] |

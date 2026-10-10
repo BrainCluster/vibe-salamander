@@ -56,8 +56,12 @@ Avalonia/other front-end, or plugin hosts can use it).
 │ File list (virtualized)               │ File list                      │
 │ Information line (focused item)       │ Information line               │
 ├───────────────────────────────────────┴────────────────────────────────┤
+│ Transfers (shown while it has items; resizable, collapsible)           │
+│  Copy 3 items  C:\a → D:\b   ███████░░░ 70 %   12 MB/s  0:14 left  ‖ ✕  │
+├────────────────────────────────────────────────────────────────────────┤
 │ Command line                                                           │
 │ F1 Help  F2 Rename  F3 View  F4 Edit  F5 Copy  F6 Move  F7 MakeDir …    │
+│ (holding Ctrl / Alt / Shift relabels F1–F12 with those shortcuts)      │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -77,9 +81,11 @@ Every bar can be toggled (Options → Show), as in Salamander.
 * **Commands.** All actions are `CommandId`s dispatched by `MainViewModel`. Menus, toolbar,
   F-key bar and keyboard shortcuts all map to the same ids, so key customization and addon commands
   plug into one place.
-* **File operations.** Phase 1 uses the Windows shell (`SHFileOperation`) for copy/move/delete with
-  the system progress and conflict UI and Recycle Bin support. Phase 2 replaces it with an own
-  queued engine (Salamander-style progress, speed limits, verify, skip/overwrite rules).
+* **File operations.** `FileOperationEngine` (CopyFileEx, plan-then-execute, pause/cancel) runs every
+  copy/move/permanent delete as an item of `TransfersViewModel`, a background queue (3 in parallel)
+  shown in the transfer panel; nothing is modal. Engine questions (overwrite, errors) are marshalled
+  to the UI thread and go through one dialog gate in `Dialogs`, so prompts from several transfers and
+  the user's own dialogs never collide. Recycle Bin deletes still use the shell (`SHFileOperation`).
 * **Icons.** Folder/file glyphs render immediately; real shell icons load asynchronously per
   extension (per file for `.exe/.lnk/.ico`) and are cached.
 * **Density.** One `RowHeight` setting (Compact 20 px ≈ Salamander, Comfortable 28 px ≈ Files) drives
