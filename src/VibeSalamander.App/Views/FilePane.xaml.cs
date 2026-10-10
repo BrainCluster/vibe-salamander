@@ -1626,7 +1626,7 @@ public sealed partial class FilePane : UserControl
     private void MarqueePressed(PointerRoutedEventArgs e)
     {
         _marqueeCandidate = false;
-        if (ViewModel == null || ViewModel.IsThisPc || e.PointerDeviceType != Microsoft.UI.Input.PointerDeviceType.Mouse ||
+        if (ViewModel == null || ViewModel.IsThisPc || e.Pointer.PointerDeviceType != Microsoft.UI.Input.PointerDeviceType.Mouse ||
             FileList.ItemsPanelRoot is not Panel panel || e.OriginalSource is not DependencyObject source)
             return;
         if (FindAncestor<Microsoft.UI.Xaml.Controls.Primitives.ScrollBar>(source) != null || FindAncestor<TextBox>(source) != null)
