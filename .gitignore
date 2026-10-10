@@ -1,0 +1,14 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+ARM64/
+AppPackages/
+BundleArtifacts/
+*.user
+*.suo
+.vs/
+TestResults/
+*.binlog

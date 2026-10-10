@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="VibeSalamander.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="using:VibeSalamander.Views"
+    Title="Vibe Salamander">
+
+    <Grid x:Name="RootGrid" Loaded="RootGrid_Loaded" PreviewKeyDown="RootGrid_PreviewKeyDown">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32" />   <!-- title bar -->
+            <RowDefinition Height="Auto" /> <!-- menu -->
+            <RowDefinition Height="Auto" /> <!-- toolbar -->
+            <RowDefinition Height="*" />    <!-- panels -->
+            <RowDefinition Height="Auto" /> <!-- command line -->
+            <RowDefinition Height="Auto" /> <!-- F-key bar -->
+        </Grid.RowDefinitions>
+
+        <!-- custom title bar (drag region) -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Padding="12,0,140,0" ColumnSpacing="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Image x:Name="TitleIcon" Width="16" Height="16" VerticalAlignment="Center" />
+            <TextBlock x:Name="TitleText" Grid.Column="1" Text="Vibe Salamander" VerticalAlignment="Center"
+                       Style="{StaticResource CaptionTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+        </Grid>
+
+        <!-- main menu (Salamander menus) -->
+        <MenuBar x:Name="MainMenu" Grid.Row="1" Padding="4,0" Height="32">
+            <MenuBarItem Title="Left">
+                <MenuFlyoutItem Text="Change Drive..." Tag="ChangeDriveLeft" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F1" />
+                <MenuFlyoutItem Text="This PC" Tag="ThisPc" Click="LeftMenu_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Back" Tag="GoBack" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Alt+Left" />
+                <MenuFlyoutItem Text="Forward" Tag="GoForward" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Alt+Right" />
+                <MenuFlyoutItem Text="Parent Directory" Tag="ParentDirectory" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Backspace" />
+                <MenuFlyoutItem Text="Root Directory" Tag="RootDirectory" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Shift+Backspace" />
+                <MenuFlyoutItem Text="Path from Other Panel" Tag="PathFromOtherPanel" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+." />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutSubItem Text="Sort By">
+                    <MenuFlyoutItem Text="Name" Tag="SortByName" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F3" />
+                    <MenuFlyoutItem Text="Extension" Tag="SortByExtension" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F4" />
+                    <MenuFlyoutItem Text="Date" Tag="SortByDate" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F5" />
+                    <MenuFlyoutItem Text="Size" Tag="SortBySize" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F6" />
+                    <MenuFlyoutItem Text="Attributes" Tag="SortByAttributes" Click="LeftMenu_Click" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Maximize/Restore" Tag="MaximizePanel" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F11" />
+                <MenuFlyoutItem Text="Swap Panels" Tag="SwapPanels" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+U" />
+                <MenuFlyoutItem Text="Filter..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F12" />
+                <MenuFlyoutItem Text="Refresh" Tag="Refresh" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+R" />
+            </MenuBarItem>
+            <MenuBarItem Title="Files">
+                <MenuFlyoutItem Text="Quick Rename..." Tag="QuickRename" Click="Menu_Click" KeyboardAcceleratorTextOverride="F2" />
+                <MenuFlyoutItem Text="View" Tag="View" Click="Menu_Click" KeyboardAcceleratorTextOverride="F3" />
+                <MenuFlyoutItem Text="Edit" Tag="Edit" Click="Menu_Click" KeyboardAcceleratorTextOverride="F4" />
+                <MenuFlyoutItem Text="Edit New File..." Tag="EditNewFile" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F4" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Copy..." Tag="Copy" Click="Menu_Click" KeyboardAcceleratorTextOverride="F5" />
+                <MenuFlyoutItem Text="Move/Rename..." Tag="Move" Click="Menu_Click" KeyboardAcceleratorTextOverride="F6" />
+                <MenuFlyoutItem Text="Delete" Tag="Delete" Click="Menu_Click" KeyboardAcceleratorTextOverride="F8" />
+                <MenuFlyoutItem Text="Delete Permanently" Tag="DeletePermanently" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+Del" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Properties" Tag="Properties" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Enter" />
+                <MenuFlyoutItem Text="Change Attributes..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F2" />
+                <MenuFlyoutItem Text="Change Case..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F7" />
+                <MenuFlyoutItem Text="Pack..." IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F5" />
+                <MenuFlyoutItem Text="Unpack..." IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F9" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Exit" Tag="Exit" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F4" />
+            </MenuBarItem>
+            <MenuBarItem Title="Edit">
+                <MenuFlyoutItem Text="Cut" IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+X" />
+                <MenuFlyoutItem Text="Copy" IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+C" />
+                <MenuFlyoutItem Text="Paste" IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+V" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Copy Path + Name as Text" Tag="CopyFullNameAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Ins" />
+                <MenuFlyoutItem Text="Copy Name as Text" Tag="CopyNameAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Shift+Ins" />
+                <MenuFlyoutItem Text="Copy Path as Text" Tag="CopyPathAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Alt+Ins" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Select All" Tag="SelectAll" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+A" />
+                <MenuFlyoutItem Text="Unselect All" Tag="UnselectAll" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+D" />
+                <MenuFlyoutItem Text="Invert Selection" Tag="InvertSelection" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num *" />
+                <MenuFlyoutItem Text="Select..." IsEnabled="False" KeyboardAcceleratorTextOverride="Num +" />
+                <MenuFlyoutItem Text="Unselect..." IsEnabled="False" KeyboardAcceleratorTextOverride="Num -" />
+                <MenuFlyoutItem Text="Restore Selection" IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+W" />
+            </MenuBarItem>
+            <MenuBarItem Title="Commands">
+                <MenuFlyoutItem Text="Create Directory..." Tag="CreateDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="F7" />
+                <MenuFlyoutItem Text="Change Directory..." Tag="ChangeDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F7" />
+                <MenuFlyoutItem Text="Compare Directories..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F10" />
+                <MenuFlyoutItem Text="Calculate Occupied Space" IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F10" />
+                <MenuFlyoutItem Text="Drive Information..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F1" />
+                <MenuFlyoutItem Text="Find Files and Directories..." IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F7" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Command Shell" Tag="CommandShell" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num /" />
+                <MenuFlyoutItem Text="Open Active Folder" Tag="OpenActiveFolder" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F3" />
+                <MenuFlyoutItem Text="User Menu..." IsEnabled="False" KeyboardAcceleratorTextOverride="F9" />
+            </MenuBarItem>
+            <MenuBarItem Title="Plugins">
+                <MenuFlyoutItem Text="Addons Manager... (planned)" IsEnabled="False" />
+            </MenuBarItem>
+            <MenuBarItem Title="Options">
+                <ToggleMenuFlyoutItem x:Name="HiddenFilesMenuItem" Text="Show Hidden and System Files" Tag="ToggleHiddenFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+H" />
+                <ToggleMenuFlyoutItem x:Name="ComfortableMenuItem" Text="Comfortable Density" Tag="ToggleDensity" Click="Menu_Click" />
+                <MenuFlyoutSubItem Text="Theme">
+                    <RadioMenuFlyoutItem x:Name="ThemeSystemItem" Text="Use System Setting" GroupName="Theme" Tag="System" Click="Theme_Click" />
+                    <RadioMenuFlyoutItem x:Name="ThemeLightItem" Text="Light" GroupName="Theme" Tag="Light" Click="Theme_Click" />
+                    <RadioMenuFlyoutItem x:Name="ThemeDarkItem" Text="Dark" GroupName="Theme" Tag="Dark" Click="Theme_Click" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSubItem Text="Show">
+                    <ToggleMenuFlyoutItem x:Name="ShowToolbarItem" Text="Top Toolbar" Click="ShowBars_Click" />
+                    <ToggleMenuFlyoutItem x:Name="ShowDriveBarsItem" Text="Drive Bars" Click="ShowBars_Click" />
+                    <ToggleMenuFlyoutItem x:Name="ShowInfoLineItem" Text="Information Line" Click="ShowBars_Click" />
+                    <ToggleMenuFlyoutItem x:Name="ShowCommandLineItem" Text="Command Line" Click="ShowBars_Click" />
+                    <ToggleMenuFlyoutItem x:Name="ShowFKeyBarItem" Text="Bottom Toolbar" Click="ShowBars_Click" />
+                </MenuFlyoutSubItem>
+                <ToggleMenuFlyoutItem x:Name="AlwaysOnTopMenuItem" Text="Always on Top" Tag="AlwaysOnTop" Click="Menu_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Configuration..." IsEnabled="False" />
+            </MenuBarItem>
+            <MenuBarItem Title="Right">
+                <MenuFlyoutItem Text="Change Drive..." Tag="ChangeDriveRight" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F2" />
+                <MenuFlyoutItem Text="This PC" Tag="ThisPc" Click="RightMenu_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Back" Tag="GoBack" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Alt+Left" />
+                <MenuFlyoutItem Text="Forward" Tag="GoForward" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Alt+Right" />
+                <MenuFlyoutItem Text="Parent Directory" Tag="ParentDirectory" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Backspace" />
+                <MenuFlyoutItem Text="Root Directory" Tag="RootDirectory" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Shift+Backspace" />
+                <MenuFlyoutItem Text="Path from Other Panel" Tag="PathFromOtherPanel" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+." />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutSubItem Text="Sort By">
+                    <MenuFlyoutItem Text="Name" Tag="SortByName" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F3" />
+                    <MenuFlyoutItem Text="Extension" Tag="SortByExtension" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F4" />
+                    <MenuFlyoutItem Text="Date" Tag="SortByDate" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F5" />
+                    <MenuFlyoutItem Text="Size" Tag="SortBySize" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F6" />
+                    <MenuFlyoutItem Text="Attributes" Tag="SortByAttributes" Click="RightMenu_Click" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Maximize/Restore" Tag="MaximizePanel" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F11" />
+                <MenuFlyoutItem Text="Swap Panels" Tag="SwapPanels" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+U" />
+                <MenuFlyoutItem Text="Filter..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F12" />
+                <MenuFlyoutItem Text="Refresh" Tag="Refresh" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+R" />
+            </MenuBarItem>
+            <MenuBarItem Title="Help">
+                <MenuFlyoutItem Text="Contents" Tag="Help" Click="Menu_Click" KeyboardAcceleratorTextOverride="F1" />
+                <MenuFlyoutItem Text="Keyboard Shortcuts" Click="Shortcuts_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="About Vibe Salamander" Tag="About" Click="Menu_Click" />
+            </MenuBarItem>
+        </MenuBar>
+
+        <!-- top toolbar -->
+        <Grid x:Name="TopToolbar" Grid.Row="2" Padding="6,0,6,4">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="GoBack" Click="Toolbar_Click" ToolTipService.ToolTip="Back (Alt+Left)">
+                    <FontIcon Glyph="&#xE72B;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="GoForward" Click="Toolbar_Click" ToolTipService.ToolTip="Forward (Alt+Right)">
+                    <FontIcon Glyph="&#xE72A;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="ParentDirectory" Click="Toolbar_Click" ToolTipService.ToolTip="Parent directory (Backspace)">
+                    <FontIcon Glyph="&#xE74A;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Refresh" Click="Toolbar_Click" ToolTipService.ToolTip="Refresh (Ctrl+R)">
+                    <FontIcon Glyph="&#xE72C;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="ThisPc" Click="Toolbar_Click" ToolTipService.ToolTip="This PC">
+                    <FontIcon Glyph="&#xE7F4;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <AppBarSeparator Padding="2,0" />
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Copy" Click="Toolbar_Click" ToolTipService.ToolTip="Copy (F5)">
+                    <FontIcon Glyph="&#xE8C8;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Move" Click="Toolbar_Click" ToolTipService.ToolTip="Move/Rename (F6)">
+                    <FontIcon Glyph="&#xE8DE;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="QuickRename" Click="Toolbar_Click" ToolTipService.ToolTip="Rename (F2)">
+                    <FontIcon Glyph="&#xE8AC;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Delete" Click="Toolbar_Click" ToolTipService.ToolTip="Delete (F8)">
+                    <FontIcon Glyph="&#xE74D;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="CreateDirectory" Click="Toolbar_Click" ToolTipService.ToolTip="Create directory (F7)">
+                    <FontIcon Glyph="&#xE8F4;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Properties" Click="Toolbar_Click" ToolTipService.ToolTip="Properties (Alt+Enter)">
+                    <FontIcon Glyph="&#xE946;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <AppBarSeparator Padding="2,0" />
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="SelectAll" Click="Toolbar_Click" ToolTipService.ToolTip="Select all (Ctrl+A)">
+                    <FontIcon Glyph="&#xE8B3;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="UnselectAll" Click="Toolbar_Click" ToolTipService.ToolTip="Unselect all (Ctrl+D)">
+                    <FontIcon Glyph="&#xE8E6;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="InvertSelection" Click="Toolbar_Click" ToolTipService.ToolTip="Invert selection (Num *)">
+                    <FontIcon Glyph="&#xE8B2;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <AppBarSeparator Padding="2,0" />
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="SwapPanels" Click="Toolbar_Click" ToolTipService.ToolTip="Swap panels (Ctrl+U)">
+                    <FontIcon Glyph="&#xE8AB;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="ToggleHiddenFiles" Click="Toolbar_Click" ToolTipService.ToolTip="Show hidden files (Ctrl+H)">
+                    <FontIcon Glyph="&#xE7B3;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="CommandShell" Click="Toolbar_Click" ToolTipService.ToolTip="Command shell (Num /)">
+                    <FontIcon Glyph="&#xE756;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="OpenActiveFolder" Click="Toolbar_Click" ToolTipService.ToolTip="Open in Explorer (Shift+F3)">
+                    <FontIcon Glyph="&#xEC50;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <AppBarSeparator Padding="2,0" />
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="ToggleDensity" Click="Toolbar_Click" ToolTipService.ToolTip="Compact / comfortable density">
+                    <FontIcon Glyph="&#xE8A9;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- panels -->
+        <Grid x:Name="PanelsGrid" Grid.Row="3" Padding="6,0,6,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="LeftColumn" Width="*" />
+                <ColumnDefinition x:Name="SplitterColumn" Width="6" />
+                <ColumnDefinition x:Name="RightColumn" Width="*" />
+            </Grid.ColumnDefinitions>
+            <views:FilePane x:Name="LeftPane" Grid.Column="0" />
+            <views:PanelSplitter x:Name="Splitter" Grid.Column="1" Background="Transparent"
+                                 PointerPressed="Splitter_PointerPressed" PointerMoved="Splitter_PointerMoved"
+                                 PointerReleased="Splitter_PointerReleased" DoubleTapped="Splitter_DoubleTapped" />
+            <views:FilePane x:Name="RightPane" Grid.Column="2" />
+        </Grid>
+
+        <!-- command line -->
+        <Grid x:Name="CommandLineBar" Grid.Row="4" Padding="8,0,8,4" ColumnSpacing="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MaxWidth="480" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="CommandPrompt" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontFamily="Cascadia Mono,Consolas" FontSize="12" />
+            <TextBox x:Name="CommandLine" Grid.Column="1" MinHeight="0" Padding="8,3" FontFamily="Cascadia Mono,Consolas" FontSize="12"
+                     PlaceholderText="Command line (Enter runs in the active panel's directory)" KeyDown="CommandLine_KeyDown" />
+        </Grid>
+
+        <!-- F-key bar -->
+        <Grid x:Name="FKeyBar" Grid.Row="5" Padding="6,0,6,6" ColumnSpacing="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+        </Grid>
+    </Grid>
+</Window>
