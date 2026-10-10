@@ -755,6 +755,16 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         OnPropertyChanged(nameof(InfoText));
     }
 
+    /// <summary>Sets the mark of one item (".." and drives can't be marked); call NotifyMarksChanged after a batch.</summary>
+    public void SetMark(int index, bool mark)
+    {
+        if (index >= 0 && index < _items.Count && !_items[index].Entry.IsUpDir && !_items[index].IsDrive)
+            _items[index].IsMarked = mark;
+    }
+
+    /// <summary>Updates the information line after SetMark calls.</summary>
+    public void NotifyMarksChanged() => OnPropertyChanged(nameof(InfoText));
+
     /// <summary>Remembers the marked names for Restore Selection (Ctrl+W).</summary>
     public void RememberSelection()
     {

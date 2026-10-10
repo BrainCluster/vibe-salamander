@@ -138,5 +138,6 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Hidden/system files toggle (Ctrl+H) | 1 | [x] |
 | Real shell icons, overlays | 1 (icons) / 3 (overlays) | [~] |
 | Drag & drop between panels and to/from Explorer | 2 | [x] |
+| Mouse rectangle selection from empty space (Ctrl toggles), with auto-scroll (new) | 3 | [x] |
 | Context menu (shell) | 2 | [x] |
 | Thumbnails | 3 | [x] |
