@@ -178,7 +178,6 @@
             </MenuBarItem>
             <MenuBarItem Title="Options">
                 <ToggleMenuFlyoutItem x:Name="HiddenFilesMenuItem" Text="Show Hidden and System Files" Tag="ToggleHiddenFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+H" />
-                <ToggleMenuFlyoutItem x:Name="ComfortableMenuItem" Text="Comfortable Density" Tag="ToggleDensity" Click="Menu_Click" />
                 <MenuFlyoutSubItem Text="Theme">
                     <RadioMenuFlyoutItem x:Name="ThemeSystemItem" Text="Use System Setting" GroupName="Theme" Tag="System" Click="Theme_Click" />
                     <RadioMenuFlyoutItem x:Name="ThemeLightItem" Text="Light" GroupName="Theme" Tag="Light" Click="Theme_Click" />

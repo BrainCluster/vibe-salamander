@@ -784,7 +784,6 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     private void UpdateMenuChecks()
     {
         HiddenFilesMenuItem.IsChecked = _vm.Settings.ShowHidden;
-        ComfortableMenuItem.IsChecked = _vm.Settings.Density == Density.Comfortable;
         AlwaysOnTopMenuItem.IsChecked = _vm.Settings.AlwaysOnTop;
         ThemeSystemItem.IsChecked = _vm.Settings.Theme == AppTheme.System;
         ThemeLightItem.IsChecked = _vm.Settings.Theme == AppTheme.Light;
