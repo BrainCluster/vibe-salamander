@@ -65,6 +65,10 @@ public static class ShellOperations
     public static void ShowProperties(IntPtr owner, string path) =>
         NativeMethods.SHObjectProperties(owner, NativeMethods.SHOP_FILEPATH, path, null);
 
+    /// <summary>Security (Ctrl+P): the Properties window opened on its Security page.</summary>
+    public static void ShowSecurity(IntPtr owner, string path) =>
+        NativeMethods.SHObjectProperties(owner, NativeMethods.SHOP_FILEPATH, path, "Security");
+
     /// <summary>Opens a file or folder with its associated program.</summary>
     public static void Open(string path, string? workingDirectory = null)
     {

@@ -251,6 +251,15 @@ public sealed partial class MainWindow : Window, IUiHost
         CommandId.DriveInformation => "DrvInfo",
         CommandId.CalculateOccupiedSpace => "DirSize",
         CommandId.CalculateDirectorySizes => "AllSizes",
+        CommandId.CompareDirectories => "Compare",
+        CommandId.UserMenu => "UsrMenu",
+        CommandId.SaveSelection => "SaveSel",
+        CommandId.LoadSelection => "LoadSel",
+        CommandId.OpenedFilesList => "Files",
+        CommandId.WorkingDirectoriesList => "Dirs",
+        CommandId.ConnectNetworkDrive => "NetCon",
+        CommandId.DisconnectNetworkDrive => "NetDis",
+        CommandId.SharedDirectories => "Shares",
         _ => command.ToString(),
     };
 
@@ -329,10 +338,6 @@ public sealed partial class MainWindow : Window, IUiHost
             {
                 label = "Exit";
                 action = Exit;
-            }
-            else if (mods == KeyModifiers.None && key == VK.F9)
-            {
-                label = "UsrMenu"; // user menu: planned
             }
             else
             {
@@ -781,6 +786,16 @@ public sealed partial class MainWindow : Window, IUiHost
     public void EditPath(PaneViewModel pane) => PaneView(pane).BeginPathEdit();
 
     public void ShowDriveInformation(PaneViewModel pane) => PaneView(pane).ShowDriveInformation();
+
+    public void ShowMenu(PaneViewModel pane, IReadOnlyList<MenuEntry> entries, bool atCaret) => PaneView(pane).ShowMenu(entries, atCaret);
+
+    public bool ShowNewMenu(PaneViewModel pane) => PaneView(pane).ShowNewMenu();
+
+    private async void OpenFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string key })
+            await _vm.OpenSpecialFolderAsync(key);
+    }
 
     public void ShowFindWindow(string directory)
     {

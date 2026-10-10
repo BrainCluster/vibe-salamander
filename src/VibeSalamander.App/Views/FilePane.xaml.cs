@@ -127,6 +127,9 @@ public sealed partial class FilePane : UserControl
             // the address bar is being edited (Shift+F7 from the F-key bar, an auto refresh while typing)
             if (PathEditor.Visibility == Visibility.Visible && XamlRoot != null && FocusManager.GetFocusedElement(XamlRoot) == PathEditor)
                 return;
+            // a menu, flyout or dialog is open (user menu, lists, the user menu editor): don't take the focus away from it
+            if (XamlRoot != null && VisualTreeHelper.GetOpenPopupsForXamlRoot(XamlRoot).Any(p => p.Child is MenuFlyoutPresenter or FlyoutPresenter or ContentDialog))
+                return;
             int index = FileList.SelectedIndex;
             if (index >= 0 && FileList.ContainerFromIndex(index) is ListViewItem container)
                 container.Focus(FocusState.Programmatic);
@@ -579,6 +582,68 @@ public sealed partial class FilePane : UserControl
         var (x, y) = ShellContextMenu.CursorPosition();
         ShowShellMenu(item, x, y);
         e.Handled = true;
+    }
+
+    /// <summary>A command menu (user menu, lists) at the caret item, or at the start of the address bar.</summary>
+    public void ShowMenu(IReadOnlyList<MenuEntry> entries, bool atCaret)
+    {
+        if (ViewModel == null)
+            return;
+        var menu = new MenuFlyout();
+        foreach (MenuEntry entry in entries)
+        {
+            if (entry.IsSeparator)
+            {
+                menu.Items.Add(new MenuFlyoutSeparator());
+                continue;
+            }
+            var item = new MenuFlyoutItem { Text = entry.Text, IsEnabled = entry.IsEnabled };
+            if (entry.Glyph != null)
+                item.Icon = new FontIcon { Glyph = entry.Glyph };
+            if (entry.Shortcut != null)
+                item.KeyboardAcceleratorTextOverride = entry.Shortcut;
+            if (entry.Invoke is { } invoke)
+                item.Click += (_, _) => invoke();
+            menu.Items.Add(item);
+        }
+        menu.Closed += (_, _) => FocusList();
+
+        FileItemViewModel? focused = ViewModel.FocusedItem;
+        if (atCaret && focused != null && FileList.ContainerFromItem(focused) is ListViewItem container)
+            menu.ShowAt(container, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+            {
+                Position = new Windows.Foundation.Point(40, container.ActualHeight),
+                ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
+            });
+        else
+            menu.ShowAt(DriveMenuButton, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+            {
+                Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft,
+                ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
+            });
+    }
+
+    /// <summary>The Explorer "New" menu for this panel's directory, at the caret (or the mouse).</summary>
+    public bool ShowNewMenu()
+    {
+        if (ViewModel == null || _main == null || !ViewModel.IsLocalDisk)
+            return false;
+        FileItemViewModel? item = ViewModel.FocusedItem;
+        int x, y;
+        if (item != null && FileList.ContainerFromItem(item) is ListViewItem container && XamlRoot != null)
+        {
+            var point = container.TransformToVisual(null).TransformPoint(new Windows.Foundation.Point(40, container.ActualHeight));
+            double scale = XamlRoot.RasterizationScale;
+            (x, y) = ShellContextMenu.ClientToScreen(_main.WindowHandle, (int)(point.X * scale), (int)(point.Y * scale));
+        }
+        else
+        {
+            (x, y) = ShellContextMenu.CursorPosition();
+        }
+        bool chosen = ShellContextMenu.ShowNewMenu(_main.WindowHandle, ViewModel.Path, x, y);
+        if (!chosen)
+            FocusList();
+        return chosen;
     }
 
     /// <summary>Shift+F10 / Menu key: the context menu for the caret item, positioned at the item.</summary>

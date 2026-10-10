@@ -17,7 +17,7 @@ public static class VK
 {
     public const int Back = 0x08, Tab = 0x09, Enter = 0x0D, Space = 0x20, PageUp = 0x21, PageDown = 0x22;
     public const int Left = 0x25, Up = 0x26, Right = 0x27, Down = 0x28, Insert = 0x2D, Delete = 0x2E;
-    public const int A = 0x41, C = 0x43, D = 0x44, H = 0x48, R = 0x52, T = 0x54, U = 0x55, V = 0x56, W = 0x57, X = 0x58;
+    public const int A = 0x41, C = 0x43, D = 0x44, E = 0x45, H = 0x48, M = 0x4D, P = 0x50, R = 0x52, S = 0x53, T = 0x54, U = 0x55, V = 0x56, W = 0x57, X = 0x58;
     public const int Apps = 0x5D;
     public const int Multiply = 0x6A, Add = 0x6B, Subtract = 0x6D, Divide = 0x6F;
     public const int F1 = 0x70, F2 = 0x71, F3 = 0x72, F4 = 0x73, F5 = 0x74, F6 = 0x75, F7 = 0x76,
@@ -118,6 +118,19 @@ public sealed class KeyMap
         m.Bind(VK.F10, A, CommandId.CalculateOccupiedSpace);
         m.Bind(VK.F10, C | S, CommandId.CalculateDirectorySizes);
         m.Bind(VK.F1, C, CommandId.DriveInformation);
+        m.Bind(VK.F10, C, CommandId.CompareDirectories);
+        m.Bind(VK.F9, N, CommandId.UserMenu);
+        m.Bind(VK.F5, C | S, CommandId.SaveSelection);
+        m.Bind(VK.F6, C | S, CommandId.LoadSelection);
+        m.Bind(VK.M, C, CommandId.MakeFileList);
+        m.Bind(VK.S, C, CommandId.PasteShortcut);
+        m.Bind(VK.P, C, CommandId.Security);
+        m.Bind(VK.E, C, CommandId.Email);
+        m.Bind(VK.F11, A, CommandId.OpenedFilesList);
+        m.Bind(VK.F12, A, CommandId.WorkingDirectoriesList);
+        m.Bind(VK.F11, N, CommandId.ConnectNetworkDrive);
+        m.Bind(VK.F12, N, CommandId.DisconnectNetworkDrive);
+        m.Bind(VK.F9, C | S, CommandId.SharedDirectories);
         for (int digit = 0; digit <= 9; digit++)
         {
             m.Bind(VK.D0 + digit, C, CommandId.GoToHotPath0 + digit);

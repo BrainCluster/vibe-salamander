@@ -186,6 +186,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
                 OnPropertyChanged(nameof(IsLocalDisk));
                 OnPropertyChanged(nameof(EffectiveViewMode));
                 _directorySizes.Clear(); // sizes belong to the directory we left
+                _hiddenNames.Clear();
             }
         }
     }
@@ -427,7 +428,10 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         else if (e.IsDirectory)
             await NavigateAsync(e.FullPath);
         else
+        {
             Core.Interop.ShellOperations.Open(e.FullPath, _path);
+            FileOpened?.Invoke(this, e.FullPath);
+        }
     }
 
     private async Task<bool> LoadAsync(IFileSystemProvider provider, string path, string? focusName, bool keepCaret)
@@ -478,7 +482,60 @@ public sealed class PaneViewModel : BindableBase, IDisposable
 
         ApplySort(focusName, marked, keepCaret ? previousCaret : 0);
         UpdateWatcher();
+        if (!keepCaret)
+            Navigated?.Invoke(this, listing.Path);
         return true;
+    }
+
+    /// <summary>Raised after the panel went to another directory (for the list of working directories, Alt+F12).</summary>
+    public event EventHandler<string>? Navigated;
+
+    /// <summary>Raised when a file is opened from the panel (for the list of opened files, Alt+F11).</summary>
+    public event EventHandler<string>? FileOpened;
+
+    // ---- hidden names (Edit → Hide Selected / Unselected Names, Show Hidden Names) ---------------
+
+    private readonly HashSet<string> _hiddenNames = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Hides the marked (or the unmarked) names from the panel until Show Hidden Names or another directory.</summary>
+    public int HideNames(bool selected)
+    {
+        var names = _items.Where(i => !i.Entry.IsUpDir && !i.IsDrive && i.IsMarked == selected).Select(i => i.Entry.Name).ToList();
+        if (selected && names.Count == 0 && FocusedItem is { Entry.IsUpDir: false, IsDrive: false } focused)
+            names.Add(focused.Entry.Name); // nothing marked: hide the focused item
+        foreach (string name in names)
+            _hiddenNames.Add(name);
+        if (names.Count > 0)
+            Rebuild();
+        return names.Count;
+    }
+
+    public int ShowHiddenNames()
+    {
+        int count = _hiddenNames.Count;
+        _hiddenNames.Clear();
+        if (count > 0)
+            Rebuild();
+        return count;
+    }
+
+    /// <summary>Marks the items whose names are in <paramref name="names"/>; returns how many were found.</summary>
+    public int MarkNames(IReadOnlyCollection<string> names)
+    {
+        RememberSelection(); // the previous marks come back with Restore Selection (Ctrl+W)
+        var set = new HashSet<string>(names, StringComparer.OrdinalIgnoreCase);
+        int found = 0;
+        foreach (FileItemViewModel item in _items)
+        {
+            if (item.Entry.IsUpDir || item.IsDrive)
+                continue;
+            bool mark = set.Contains(item.Entry.Name);
+            item.IsMarked = mark;
+            if (mark)
+                found++;
+        }
+        OnPropertyChanged(nameof(InfoText));
+        return found;
     }
 
     /// <summary>Rebuilds the item list from the current entries (after sorting, density or theme changes).</summary>
@@ -493,6 +550,12 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         {
             visible = _entries.Where(e => e.IsDirectory || _filterMask.IsMatch(e.Name)).ToList();
             _filteredCount = _entries.Count - ((List<FileEntry>)visible).Count;
+        }
+        if (_hiddenNames.Count > 0)
+        {
+            var shown = visible.Where(e => e.IsUpDir || !_hiddenNames.Contains(e.Name)).ToList();
+            _filteredCount += visible.Count() - shown.Count;
+            visible = shown;
         }
         List<FileEntry> sorted = new EntryComparer(_sortMode, _sortDescending).Sort(visible);
         var items = new List<FileItemViewModel>(sorted.Count);

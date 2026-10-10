@@ -105,6 +105,83 @@ public static class ShellContextMenu
         }
     }
 
+    /// <summary>
+    /// The Explorer "New" menu (folder, shortcut, text document, Word document, ...) for a directory, shown at
+    /// a screen position. Returns true when the user chose an item (the shell then creates it).
+    /// </summary>
+    public static bool ShowNewMenu(IntPtr hwnd, string directory, int screenX, int screenY)
+    {
+        IntPtr pidl = IntPtr.Zero, hMenu = IntPtr.Zero;
+        object? newMenu = null;
+        SubclassProc? subclass = null;
+        try
+        {
+            if (SHParseDisplayName(directory, IntPtr.Zero, out pidl, 0, out _) != 0 || pidl == IntPtr.Zero)
+                return false;
+            Type? type = Type.GetTypeFromCLSID(new Guid("D969A300-E7FF-11d0-A93B-00A0C90F2719"));
+            if (type == null)
+                return false;
+            newMenu = Activator.CreateInstance(type);
+            if (newMenu is not IShellExtInit init || newMenu is not IContextMenu menu)
+                return false;
+            if (init.Initialize(pidl, IntPtr.Zero, IntPtr.Zero) != 0)
+                return false;
+
+            hMenu = CreatePopupMenu();
+            if (menu.QueryContextMenu(hMenu, 0, FirstCommand, LastCommand, CMF_NORMAL) < 0)
+                return false;
+            // the "New" item is a submenu: show its items directly
+            IntPtr popup = GetSubMenu(hMenu, 0);
+            if (popup == IntPtr.Zero)
+                popup = hMenu;
+
+            IContextMenu2? menu2 = newMenu as IContextMenu2;
+            IContextMenu3? menu3 = newMenu as IContextMenu3;
+            subclass = (IntPtr h, uint msg, IntPtr wParam, IntPtr lParam, UIntPtr id, UIntPtr data) =>
+            {
+                if (msg is WM_INITMENUPOPUP or WM_DRAWITEM or WM_MEASUREITEM or WM_MENUCHAR)
+                {
+                    if (menu3 != null && menu3.HandleMenuMsg2(msg, wParam, lParam, out IntPtr result) == 0)
+                        return result;
+                    if (menu2 != null && menu2.HandleMenuMsg(msg, wParam, lParam) == 0)
+                        return IntPtr.Zero;
+                }
+                return DefSubclassProc(h, msg, wParam, lParam);
+            };
+            SetWindowSubclass(hwnd, subclass, SubclassId, UIntPtr.Zero);
+            SetForegroundWindow(hwnd);
+            int command = TrackPopupMenuEx(popup, TPM_RETURNCMD | TPM_RIGHTBUTTON, screenX, screenY, hwnd, IntPtr.Zero);
+            RemoveWindowSubclass(hwnd, subclass, SubclassId);
+            if (command < FirstCommand)
+                return false;
+
+            uint offset = (uint)command - FirstCommand;
+            var invoke = new CMINVOKECOMMANDINFOEX
+            {
+                cbSize = Marshal.SizeOf<CMINVOKECOMMANDINFOEX>(),
+                fMask = CMIC_MASK_UNICODE | CMIC_MASK_PTINVOKE,
+                hwnd = hwnd,
+                lpVerb = (IntPtr)offset,
+                lpVerbW = (IntPtr)offset,
+                lpDirectoryW = directory,
+                nShow = SW_SHOWNORMAL,
+                ptInvoke = new POINT { X = screenX, Y = screenY },
+            };
+            return menu.InvokeCommand(ref invoke) == 0;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidCastException or ArgumentException)
+        {
+            return false;
+        }
+        finally
+        {
+            GC.KeepAlive(subclass);
+            if (hMenu != IntPtr.Zero) DestroyMenu(hMenu);
+            if (newMenu != null && Marshal.IsComObject(newMenu)) Marshal.ReleaseComObject(newMenu);
+            if (pidl != IntPtr.Zero) Marshal.FreeCoTaskMem(pidl);
+        }
+    }
+
     /// <summary>Screen position of the mouse cursor (for menus opened by right-click).</summary>
     public static (int X, int Y) CursorPosition()
     {
@@ -237,6 +314,17 @@ public static class ShellContextMenu
         [PreserveSig] int HandleMenuMsg(uint uMsg, IntPtr wParam, IntPtr lParam);
         [PreserveSig] int HandleMenuMsg2(uint uMsg, IntPtr wParam, IntPtr lParam, out IntPtr plResult);
     }
+
+    [ComImport]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [Guid("000214E8-0000-0000-C000-000000000046")]
+    private interface IShellExtInit
+    {
+        [PreserveSig] int Initialize(IntPtr pidlFolder, IntPtr pdtobj, IntPtr hkeyProgID);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetSubMenu(IntPtr hMenu, int nPos);
 
     private delegate IntPtr SubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, UIntPtr uIdSubclass, UIntPtr dwRefData);
 
