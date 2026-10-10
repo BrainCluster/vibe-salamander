@@ -56,4 +56,20 @@ internal static class NativeMethods
     internal static extern bool SHObjectProperties(IntPtr hwnd, uint shopObjectType, string pszObjectName, string? pszPropertyPage);
 
     internal const uint SHOP_FILEPATH = 0x2;
+
+    // ---- Open With dialog ------------------------------------------------------------------
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    internal struct OPENASINFO
+    {
+        public string pcszFile;
+        public string? pcszClass;
+        public uint oaifInFlags;
+    }
+
+    internal const uint OAIF_ALLOW_REGISTRATION = 0x1;
+    internal const uint OAIF_EXEC = 0x4;
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    internal static extern int SHOpenWithDialog(IntPtr hwndParent, ref OPENASINFO poainfo);
 }

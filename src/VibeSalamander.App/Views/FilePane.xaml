@@ -79,7 +79,8 @@
                                        DriveTemplate="{StaticResource DriveRowTemplate}" />
     </UserControl.Resources>
 
-    <Grid x:Name="RootGrid" Background="{ThemeResource VibePaneBackgroundBrush}"
+    <Grid x:Name="RootGrid" Background="{ThemeResource VibePaneBackgroundBrush}" AllowDrop="True"
+          DragOver="Root_DragOver" Drop="Root_Drop"
           BorderBrush="{ThemeResource VibePaneBorderBrush}" BorderThickness="1" CornerRadius="6">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -132,6 +133,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Button x:Name="DriveMenuButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
                         Click="DriveMenuButton_Click" ToolTipService.ToolTip="Change drive (Alt+F1 / Alt+F2)">
@@ -150,9 +152,17 @@
                         <TextBlock Text="{x:Bind ViewModel.QuickSearch, Mode=OneWay}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Border>
-                <ProgressRing Grid.Column="3" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" Width="14" Height="14"
+                <Border Grid.Column="3" Visibility="{x:Bind VisibleIfText(ViewModel.FilterText), Mode=OneWay}"
+                        Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" CornerRadius="3" Padding="6,0"
+                        ToolTipService.ToolTip="Panel filter (Ctrl+F12)">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <FontIcon Glyph="&#xE71C;" FontFamily="{StaticResource VibeIconFont}" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Bind ViewModel.Filter, Mode=OneWay}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <ProgressRing Grid.Column="4" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" Width="14" Height="14"
                               Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                <TextBlock Grid.Column="4" Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"
+                <TextBlock Grid.Column="5" Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"
                            Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
                            VerticalAlignment="Center" Opacity="0.85" />
             </Grid>
@@ -240,11 +250,19 @@
                   ContainerContentChanging="List_ContainerContentChanging"
                   GotFocus="List_GotFocus"
                   CharacterReceived="List_CharacterReceived"
-                  RightTapped="List_RightTapped">
+                  RightTapped="List_RightTapped"
+                  CanDragItems="True"
+                  DragItemsStarting="List_DragItemsStarting">
             <ListView.ItemContainerTransitions>
                 <TransitionCollection />
             </ListView.ItemContainerTransitions>
         </ListView>
+
+        <!-- in-place rename (F2) -->
+        <Canvas x:Name="RenameLayer" Grid.Row="3">
+            <TextBox x:Name="RenameBox" Visibility="Collapsed" MinHeight="0" Padding="5,1"
+                     KeyDown="RenameBox_KeyDown" GotFocus="RenameBox_GotFocus" LostFocus="RenameBox_LostFocus" />
+        </Canvas>
 
         <!-- information line -->
         <Border x:Name="InfoLine" Grid.Row="4" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource VibePaneBorderBrush}"

@@ -4,6 +4,7 @@ using VibeSalamander.Core;
 using VibeSalamander.Core.Commands;
 using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Interop;
+using VibeSalamander.Core.Operations;
 using VibeSalamander.Core.Panels;
 using VibeSalamander.Core.Settings;
 using VibeSalamander.Services;
@@ -24,18 +25,85 @@ public interface IUiHost
     void ApplyAlwaysOnTop(bool onTop);
     void ShowAbout();
     void Exit();
+
+    // phase 2
+    Views.Dialogs Dialogs { get; }
+    /// <summary>Shows the progress overlay; the token is cancelled by its Cancel button / Esc.</summary>
+    CancellationToken BeginOperation(string title);
+    void UpdateOperation(OperationProgress progress);
+    void EndOperation();
+    void ShowFindWindow(string directory);
+    Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item);
+    void ShowContextMenu(PaneViewModel pane);
+}
+
+/// <summary>Engine prompts marshalled to the UI thread.</summary>
+internal sealed class UiOperationCallbacks : IOperationCallbacks
+{
+    private readonly DispatcherQueue _dispatcher;
+    private readonly Views.Dialogs _dialogs;
+
+    public UiOperationCallbacks(DispatcherQueue dispatcher, Views.Dialogs dialogs)
+    {
+        _dispatcher = dispatcher;
+        _dialogs = dialogs;
+    }
+
+    public Task<ConflictChoice> ResolveConflictAsync(ConflictInfo conflict) => OnUi(() => _dialogs.ConflictAsync(conflict));
+
+    public Task<ErrorChoice> ResolveErrorAsync(OperationError error) => OnUi(() => _dialogs.ErrorAsync(error));
+
+    private Task<T> OnUi<T>(Func<Task<T>> action)
+    {
+        var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
+        bool queued = _dispatcher.TryEnqueue(async () =>
+        {
+            try
+            {
+                tcs.SetResult(await action());
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+        if (!queued)
+            tcs.SetException(new InvalidOperationException("The window is closing."));
+        return tcs.Task;
+    }
+}
+
+/// <summary>Progress reports forwarded to the overlay on the UI thread.</summary>
+internal sealed class UiProgress : IProgress<OperationProgress>
+{
+    private readonly DispatcherQueue _dispatcher;
+    private readonly IUiHost _host;
+
+    public UiProgress(DispatcherQueue dispatcher, IUiHost host)
+    {
+        _dispatcher = dispatcher;
+        _host = host;
+    }
+
+    public void Report(OperationProgress value) => _dispatcher.TryEnqueue(() => _host.UpdateOperation(value));
 }
 
 /// <summary>Owns both panels and executes every <see cref="CommandId"/>.</summary>
 public sealed class MainViewModel : BindableBase
 {
     private readonly IUiHost _host;
+    private readonly DispatcherQueue _dispatcher;
+    private readonly UiOperationCallbacks _callbacks;
     private PaneViewModel _active;
     private PaneViewModel? _maximized;
+    private string _lastSelectMask = "*.*";
+    private bool _lastSelectDirectories;
 
     public MainViewModel(IUiHost host, DispatcherQueue dispatcher)
     {
         _host = host;
+        _dispatcher = dispatcher;
+        _callbacks = new UiOperationCallbacks(dispatcher, host.Dialogs);
         Settings = SettingsStore.Load();
         Registry = new FileSystemRegistry();
         Icons = new IconCache(dispatcher);
@@ -53,6 +121,8 @@ public sealed class MainViewModel : BindableBase
     public KeyMap KeyMap { get; }
     public PaneViewModel Left { get; }
     public PaneViewModel Right { get; }
+
+    public IntPtr WindowHandle => _host.WindowHandle;
 
     public PaneViewModel Active => _active;
     public PaneViewModel Inactive => _active == Left ? Right : Left;
@@ -103,7 +173,9 @@ public sealed class MainViewModel : BindableBase
     public bool CanExecute(CommandId command) => command switch
     {
         CommandId.Copy or CommandId.Move or CommandId.Delete or CommandId.DeletePermanently or
-        CommandId.QuickRename or CommandId.CreateDirectory or CommandId.EditNewFile => _active.IsLocalDisk,
+        CommandId.QuickRename or CommandId.CreateDirectory or CommandId.EditNewFile or
+        CommandId.ChangeAttributes or CommandId.ChangeCase or CommandId.ClipboardCut or
+        CommandId.ClipboardCopy or CommandId.ClipboardPaste => _active.IsLocalDisk,
         CommandId.GoBack => _active.CanGoBack,
         CommandId.GoForward => _active.CanGoForward,
         _ => true,
@@ -138,6 +210,26 @@ public sealed class MainViewModel : BindableBase
                     Settings.ShowHidden = !Settings.ShowHidden;
                     await Task.WhenAll(Left.RefreshAsync(), Right.RefreshAsync());
                     break;
+
+                case CommandId.Filter: await FilterAsync(); break;
+                case CommandId.OpenWith: OpenWith(); break;
+                case CommandId.ContextMenu: _host.ShowContextMenu(p); break;
+                case CommandId.ChangeAttributes: await ChangeAttributesAsync(); break;
+                case CommandId.ChangeCase: await ChangeCaseAsync(); break;
+                case CommandId.GoToShortcutTarget: await GoToShortcutTargetAsync(); break;
+                case CommandId.FindFiles: _host.ShowFindWindow(p.IsLocalDisk ? p.Path : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)); break;
+                case CommandId.SelectByMask: await MarkByMaskAsync(mark: true); break;
+                case CommandId.UnselectByMask: await MarkByMaskAsync(mark: false); break;
+                case CommandId.RestoreSelection: p.RestoreSelection(); break;
+                case CommandId.SelectSameExtension: p.MarkSame(byExtension: true, mark: true); break;
+                case CommandId.UnselectSameExtension: p.MarkSame(byExtension: true, mark: false); break;
+                case CommandId.SelectSameName: p.MarkSame(byExtension: false, mark: true); break;
+                case CommandId.UnselectSameName: p.MarkSame(byExtension: false, mark: false); break;
+                case CommandId.GoToPreviousSelected: MoveToMarked(p, -1); break;
+                case CommandId.GoToNextSelected: MoveToMarked(p, +1); break;
+                case CommandId.ClipboardCut: await ClipboardSetAsync(cut: true); break;
+                case CommandId.ClipboardCopy: await ClipboardSetAsync(cut: false); break;
+                case CommandId.ClipboardPaste: await ClipboardPasteAsync(); break;
 
                 case CommandId.Open: await p.OpenFocusedAsync(); break;
                 case CommandId.QuickRename: await RenameAsync(); break;
@@ -269,23 +361,33 @@ public sealed class MainViewModel : BindableBase
 
         string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : $"{items.Count} items";
         string defaultTarget = Inactive.IsLocalDisk ? Inactive.Path : string.Empty;
+        if (defaultTarget.Length > 0 && !defaultTarget.EndsWith('\\'))
+            defaultTarget += "\\";
         string? target = await _host.PromptAsync(move ? "Move/Rename" : "Copy",
                                                  $"{(move ? "Move" : "Copy")} {what} to:", defaultTarget,
                                                  move ? "Move" : "Copy");
         if (string.IsNullOrWhiteSpace(target))
             return;
-        target = PathUtil.Resolve(_active.Path, target);
-        var sources = items.Select(i => i.Entry.FullPath).ToList();
+        bool endsWithSeparator = target.TrimEnd().EndsWith('\\');
+        string resolved = PathUtil.Resolve(_active.Path, target);
+        if (endsWithSeparator && !resolved.EndsWith('\\'))
+            resolved += "\\"; // "target\" always means "into this directory"
+        await TransferAsync(items.Select(i => i.Entry.FullPath).ToList(), resolved, move);
+    }
 
-        // A single item to a path that is not an existing directory copies/moves it under that name
-        // (Salamander F6 = move/rename); the shell handles both cases.
-        ShellOperations.Result result = move
-            ? await ShellOperations.MoveAsync(_host.WindowHandle, sources, target)
-            : await ShellOperations.CopyAsync(_host.WindowHandle, sources, target);
-
-        if (result == ShellOperations.Result.Success)
-            _active.MarkAll(false);
-        await Task.WhenAll(Left.RefreshAsync(), Right.RefreshAsync());
+    /// <summary>Copies or moves with the own engine and the progress overlay (F5/F6, paste, drag &amp; drop).</summary>
+    public async Task TransferAsync(IReadOnlyList<string> sources, string target, bool move)
+    {
+        if (sources.Count == 0)
+            return;
+        PaneViewModel source = _active;
+        source.RememberSelection();
+        OperationResult? result = await RunOperationAsync(move ? "Moving" : "Copying",
+            (engine, ct) => move ? engine.MoveAsync(sources, target, ct) : engine.CopyAsync(sources, target, ct));
+        if (result != null && !result.Cancelled && result.Failed == 0)
+            source.MarkAll(false);
+        await RefreshAllAsync();
+        await ReportProblemsAsync(result);
     }
 
     private async Task DeleteAsync(bool permanent)
@@ -303,25 +405,206 @@ public sealed class MainViewModel : BindableBase
             return;
 
         int caret = _active.CaretIndex;
-        await ShellOperations.DeleteAsync(_host.WindowHandle, items.Select(i => i.Entry.FullPath).ToList(), permanent);
-        await _active.RefreshAsync();
-        if (Inactive.IsLocalDisk)
-            await Inactive.RefreshAsync();
+        var paths = items.Select(i => i.Entry.FullPath).ToList();
+        _active.RememberSelection();
+        if (permanent)
+        {
+            OperationResult? result = await RunOperationAsync("Deleting", (engine, ct) => engine.DeleteAsync(paths, ct));
+            await RefreshAllAsync();
+            await ReportProblemsAsync(result);
+        }
+        else
+        {
+            // the Recycle Bin is only reachable through the shell
+            await ShellOperations.DeleteAsync(_host.WindowHandle, paths, permanent: false);
+            await RefreshAllAsync();
+        }
         CaretMoveRequested?.Invoke(this, (_active, Math.Min(caret, Math.Max(0, _active.Items.Count - 1))));
     }
 
+    /// <summary>F2: rename in place (Salamander quick rename).</summary>
     private async Task RenameAsync()
     {
         FileItemViewModel? item = _active.FocusedItem;
         if (item == null || item.Entry.IsUpDir || item.IsDrive || !_active.IsLocalDisk)
             return;
-        string? newName = await _host.PromptAsync("Quick Rename", $"Rename \"{item.Entry.Name}\" to:", item.Entry.Name, "Rename",
-                                                  selectNameWithoutExtension: !item.Entry.IsDirectory);
-        if (string.IsNullOrWhiteSpace(newName) || newName == item.Entry.Name)
+        PaneViewModel pane = _active;
+        string? newName = await _host.EditNameInPlaceAsync(pane, item);
+        newName = newName?.Trim();
+        if (string.IsNullOrEmpty(newName) || newName == item.Entry.Name)
             return;
-        string target = System.IO.Path.Combine(_active.Path, newName.Trim());
-        await ShellOperations.RenameAsync(_host.WindowHandle, item.Entry.FullPath, target);
-        await _active.NavigateAsync(_active.Path, System.IO.Path.GetFileName(target), addToHistory: false);
+        if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            await _host.ShowMessageAsync("Rename", $"\"{newName}\" contains characters that are not allowed in file names.");
+            return;
+        }
+        string target = Path.Combine(pane.Path, newName);
+        try
+        {
+            bool caseOnly = string.Equals(newName, item.Entry.Name, StringComparison.OrdinalIgnoreCase);
+            if (item.Entry.IsDirectory)
+            {
+                if (caseOnly)
+                {
+                    string temp = item.Entry.FullPath + ".~rename";
+                    Directory.Move(item.Entry.FullPath, temp);
+                    Directory.Move(temp, target);
+                }
+                else
+                {
+                    Directory.Move(item.Entry.FullPath, target);
+                }
+            }
+            else
+            {
+                File.Move(item.Entry.FullPath, target);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await _host.ShowMessageAsync("Rename", ex.Message);
+            return;
+        }
+        await pane.NavigateAsync(pane.Path, newName, addToHistory: false);
+    }
+
+    // ---- phase 2 helpers -------------------------------------------------------------------
+
+    private async Task<OperationResult?> RunOperationAsync(string title,
+        Func<FileOperationEngine, CancellationToken, Task<OperationResult>> run)
+    {
+        CancellationToken ct = _host.BeginOperation(title);
+        try
+        {
+            var engine = new FileOperationEngine(_callbacks, new UiProgress(_dispatcher, _host));
+            return await run(engine, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return new OperationResult { Cancelled = true };
+        }
+        catch (Exception ex)
+        {
+            _host.EndOperation();
+            await _host.ShowMessageAsync("Vibe Salamander", ex.Message);
+            return null;
+        }
+        finally
+        {
+            _host.EndOperation();
+        }
+    }
+
+    private async Task ReportProblemsAsync(OperationResult? result)
+    {
+        if (result != null && result.Failed > 0)
+            await _host.ShowMessageAsync("Vibe Salamander", $"{result.Failed} item{(result.Failed == 1 ? "" : "s")} could not be processed.");
+    }
+
+    public Task ShowErrorAsync(string message) => _host.ShowMessageAsync("Vibe Salamander", message);
+
+    private Task RefreshAllAsync() => Task.WhenAll(Left.RefreshAsync(), Right.RefreshAsync());
+
+    private async Task FilterAsync()
+    {
+        string? mask = await _host.Dialogs.FilterAsync(_active.Filter);
+        if (mask != null)
+            _active.Filter = mask;
+    }
+
+    private void OpenWith()
+    {
+        FileItemViewModel? item = _active.FocusedItem;
+        if (item != null && !item.Entry.IsDirectory)
+            ShellOperations.OpenWith(_host.WindowHandle, item.Entry.FullPath);
+    }
+
+    private async Task ChangeAttributesAsync()
+    {
+        var items = _active.GetOperationItems();
+        if (items.Count == 0)
+            return;
+        AttributeChange? change = await _host.Dialogs.AttributesAsync(items.Select(i => i.Entry).ToList());
+        if (change == null)
+            return;
+        var result = await NameAndAttributeOperations.ChangeAttributesAsync(items.Select(i => i.Entry.FullPath).ToList(), change, _callbacks);
+        await _active.RefreshAsync();
+        await ReportProblemsAsync(result);
+    }
+
+    private async Task ChangeCaseAsync()
+    {
+        var items = _active.GetOperationItems();
+        if (items.Count == 0)
+            return;
+        var options = await _host.Dialogs.ChangeCaseAsync(items.Any(i => i.Entry.IsDirectory));
+        if (options is not { } o)
+            return;
+        var result = await NameAndAttributeOperations.ChangeCaseAsync(items.Select(i => i.Entry.FullPath).ToList(),
+            o.Mode, o.Part, o.Recursive, _callbacks);
+        await _active.RefreshAsync();
+        await ReportProblemsAsync(result);
+    }
+
+    private async Task GoToShortcutTargetAsync()
+    {
+        FileItemViewModel? item = _active.FocusedItem;
+        if (item == null || item.Entry.IsDirectory)
+            return;
+        string? target = ShellLink.GetTarget(item.Entry.FullPath);
+        if (string.IsNullOrEmpty(target))
+        {
+            await _host.ShowMessageAsync("Go to Shortcut Target", "The focused item is not a shortcut, or its target cannot be resolved.");
+            return;
+        }
+        if (Uri.TryCreate(target, UriKind.Absolute, out Uri? uri) && !uri.IsFile)
+        {
+            ShellOperations.Open(target); // Internet shortcut
+            return;
+        }
+        string? directory = Path.GetDirectoryName(target.TrimEnd('\\'));
+        if (directory == null)
+            await _active.NavigateAsync(target); // a drive root
+        else
+            await _active.NavigateAsync(directory, Path.GetFileName(target.TrimEnd('\\')));
+    }
+
+    private async Task MarkByMaskAsync(bool mark)
+    {
+        var answer = await _host.Dialogs.MaskAsync(mark ? "Select" : "Unselect", _lastSelectMask, _lastSelectDirectories);
+        if (answer is not { } a)
+            return;
+        _lastSelectMask = a.Mask;
+        _lastSelectDirectories = a.IncludeDirectories;
+        _active.MarkByMask(a.Mask, a.IncludeDirectories, mark);
+    }
+
+    private void MoveToMarked(PaneViewModel pane, int direction)
+    {
+        int index = pane.FindMarked(direction);
+        if (index >= 0)
+            CaretMoveRequested?.Invoke(this, (pane, index));
+    }
+
+    private async Task ClipboardSetAsync(bool cut)
+    {
+        var items = _active.GetOperationItems();
+        if (items.Count == 0)
+            return;
+        await FileClipboard.SetFilesAsync(items.Select(i => i.Entry.FullPath).ToList(), cut);
+    }
+
+    private async Task ClipboardPasteAsync()
+    {
+        if (!_active.IsLocalDisk)
+            return;
+        var (paths, move) = await FileClipboard.GetFilesAsync();
+        if (paths.Count == 0)
+            return;
+        string target = _active.Path.EndsWith('\\') ? _active.Path : _active.Path + "\\";
+        await TransferAsync(paths, target, move);
+        if (move)
+            Clipboard.Clear(); // cut + paste moves once, like Explorer
     }
 
     private async Task CreateDirectoryAsync()

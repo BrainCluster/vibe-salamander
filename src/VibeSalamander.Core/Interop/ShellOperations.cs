@@ -111,6 +111,18 @@ public static class ShellOperations
         });
     }
 
+    /// <summary>Windows "Open with" chooser (Alt+F3 / Ctrl+Shift+F3; Vibe Salamander has no internal viewer).</summary>
+    public static void OpenWith(IntPtr owner, string path)
+    {
+        var info = new NativeMethods.OPENASINFO
+        {
+            pcszFile = path,
+            pcszClass = null,
+            oaifInFlags = NativeMethods.OAIF_ALLOW_REGISTRATION | NativeMethods.OAIF_EXEC,
+        };
+        NativeMethods.SHOpenWithDialog(owner, ref info);
+    }
+
     public static void OpenInExplorer(string path) =>
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
 }

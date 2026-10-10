@@ -49,12 +49,13 @@
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Maximize/Restore" Tag="MaximizePanel" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F11" />
                 <MenuFlyoutItem Text="Swap Panels" Tag="SwapPanels" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+U" />
-                <MenuFlyoutItem Text="Filter..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F12" />
+                <MenuFlyoutItem Text="Filter..." Tag="Filter" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F12" />
                 <MenuFlyoutItem Text="Refresh" Tag="Refresh" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+R" />
             </MenuBarItem>
             <MenuBarItem Title="Files">
                 <MenuFlyoutItem Text="Quick Rename..." Tag="QuickRename" Click="Menu_Click" KeyboardAcceleratorTextOverride="F2" />
-                <MenuFlyoutItem Text="View" Tag="View" Click="Menu_Click" KeyboardAcceleratorTextOverride="F3" />
+                <MenuFlyoutItem Text="Open (Default App)" Tag="View" Click="Menu_Click" KeyboardAcceleratorTextOverride="F3" />
+                <MenuFlyoutItem Text="Open With..." Tag="OpenWith" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F3" />
                 <MenuFlyoutItem Text="Edit" Tag="Edit" Click="Menu_Click" KeyboardAcceleratorTextOverride="F4" />
                 <MenuFlyoutItem Text="Edit New File..." Tag="EditNewFile" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F4" />
                 <MenuFlyoutSeparator />
@@ -64,17 +65,17 @@
                 <MenuFlyoutItem Text="Delete Permanently" Tag="DeletePermanently" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+Del" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Properties" Tag="Properties" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Enter" />
-                <MenuFlyoutItem Text="Change Attributes..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F2" />
-                <MenuFlyoutItem Text="Change Case..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F7" />
+                <MenuFlyoutItem Text="Change Attributes..." Tag="ChangeAttributes" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F2" />
+                <MenuFlyoutItem Text="Change Case..." Tag="ChangeCase" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F7" />
                 <MenuFlyoutItem Text="Pack..." IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F5" />
                 <MenuFlyoutItem Text="Unpack..." IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F9" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Exit" Tag="Exit" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F4" />
             </MenuBarItem>
             <MenuBarItem Title="Edit">
-                <MenuFlyoutItem Text="Cut" IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+X" />
-                <MenuFlyoutItem Text="Copy" IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+C" />
-                <MenuFlyoutItem Text="Paste" IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+V" />
+                <MenuFlyoutItem Text="Cut" Tag="ClipboardCut" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+X" />
+                <MenuFlyoutItem Text="Copy" Tag="ClipboardCopy" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+C" />
+                <MenuFlyoutItem Text="Paste" Tag="ClipboardPaste" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+V" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Copy Path + Name as Text" Tag="CopyFullNameAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Ins" />
                 <MenuFlyoutItem Text="Copy Name as Text" Tag="CopyNameAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Shift+Ins" />
@@ -83,9 +84,19 @@
                 <MenuFlyoutItem Text="Select All" Tag="SelectAll" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+A" />
                 <MenuFlyoutItem Text="Unselect All" Tag="UnselectAll" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+D" />
                 <MenuFlyoutItem Text="Invert Selection" Tag="InvertSelection" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num *" />
-                <MenuFlyoutItem Text="Select..." IsEnabled="False" KeyboardAcceleratorTextOverride="Num +" />
-                <MenuFlyoutItem Text="Unselect..." IsEnabled="False" KeyboardAcceleratorTextOverride="Num -" />
-                <MenuFlyoutItem Text="Restore Selection" IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+W" />
+                <MenuFlyoutItem Text="Select..." Tag="SelectByMask" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num +" />
+                <MenuFlyoutItem Text="Unselect..." Tag="UnselectByMask" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num -" />
+                <MenuFlyoutItem Text="Restore Selection" Tag="RestoreSelection" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+W" />
+                <MenuFlyoutSubItem Text="Advanced">
+                    <MenuFlyoutItem Text="Select Same Extensions" Tag="SelectSameExtension" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+Num +" />
+                    <MenuFlyoutItem Text="Unselect Same Extensions" Tag="UnselectSameExtension" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+Num -" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Select Same Names" Tag="SelectSameName" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+Num +" />
+                    <MenuFlyoutItem Text="Unselect Same Names" Tag="UnselectSameName" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+Num -" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Go to Previous Selected Name" Tag="GoToPreviousSelected" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Up" />
+                    <MenuFlyoutItem Text="Go to Next Selected Name" Tag="GoToNextSelected" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Down" />
+                </MenuFlyoutSubItem>
             </MenuBarItem>
             <MenuBarItem Title="Commands">
                 <MenuFlyoutItem Text="Create Directory..." Tag="CreateDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="F7" />
@@ -93,7 +104,8 @@
                 <MenuFlyoutItem Text="Compare Directories..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F10" />
                 <MenuFlyoutItem Text="Calculate Occupied Space" IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F10" />
                 <MenuFlyoutItem Text="Drive Information..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F1" />
-                <MenuFlyoutItem Text="Find Files and Directories..." IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F7" />
+                <MenuFlyoutItem Text="Find Files and Directories..." Tag="FindFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F7" />
+                <MenuFlyoutItem Text="Go to Shortcut Target" Tag="GoToShortcutTarget" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+T" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Command Shell" Tag="CommandShell" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num /" />
                 <MenuFlyoutItem Text="Open Active Folder" Tag="OpenActiveFolder" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F3" />
@@ -141,7 +153,7 @@
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Maximize/Restore" Tag="MaximizePanel" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F11" />
                 <MenuFlyoutItem Text="Swap Panels" Tag="SwapPanels" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+U" />
-                <MenuFlyoutItem Text="Filter..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F12" />
+                <MenuFlyoutItem Text="Filter..." Tag="Filter" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F12" />
                 <MenuFlyoutItem Text="Refresh" Tag="Refresh" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+R" />
             </MenuBarItem>
             <MenuBarItem Title="Help">
@@ -188,6 +200,13 @@
                 </Button>
                 <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Properties" Click="Toolbar_Click" ToolTipService.ToolTip="Properties (Alt+Enter)">
                     <FontIcon Glyph="&#xE946;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <AppBarSeparator Padding="2,0" />
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="FindFiles" Click="Toolbar_Click" ToolTipService.ToolTip="Find files (Alt+F7)">
+                    <FontIcon Glyph="&#xE721;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Filter" Click="Toolbar_Click" ToolTipService.ToolTip="Filter (Ctrl+F12)">
+                    <FontIcon Glyph="&#xE71C;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
                 </Button>
                 <AppBarSeparator Padding="2,0" />
                 <Button Style="{StaticResource VibeToolButtonStyle}" Tag="SelectAll" Click="Toolbar_Click" ToolTipService.ToolTip="Select all (Ctrl+A)">
@@ -254,5 +273,8 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
         </Grid>
+
+        <!-- file operation progress (modal) -->
+        <views:OperationOverlay x:Name="Overlay" Grid.Row="1" Grid.RowSpan="5" />
     </Grid>
 </Window>

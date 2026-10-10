@@ -16,6 +16,7 @@ public sealed partial class MainWindow : Window, IUiHost
 {
     private readonly MainViewModel _vm;
     private bool _dialogOpen;
+    private FindWindow? _findWindow;
 
     public MainWindow()
     {
@@ -31,6 +32,8 @@ public sealed partial class MainWindow : Window, IUiHost
             TitleIcon.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(icon));
         }
 
+        Dialogs = new Dialogs(() => Content.XamlRoot, () => RootGrid.ActualTheme);
+        Dialogs.DialogOpenChanged += (_, open) => _dialogOpen = open;
         _vm = new MainViewModel(this, DispatcherQueue);
         UiState.ApplyDensity(_vm.Settings.Density);
         LeftPane.Initialize(_vm.Left, _vm);
@@ -86,6 +89,14 @@ public sealed partial class MainWindow : Window, IUiHost
     {
         if (_dialogOpen || Content?.XamlRoot == null)
             return;
+        if (Overlay.IsActive)
+        {
+            // a file operation is running: only Esc (cancel) is accepted
+            if (e.Key == Windows.System.VirtualKey.Escape)
+                Overlay.Cancel();
+            e.Handled = true;
+            return;
+        }
         // menus, flyouts and dialogs handle their own keys
         if (VisualTreeHelper.GetOpenPopupsForXamlRoot(Content.XamlRoot).Count > 0)
             return;
@@ -498,6 +509,47 @@ public sealed partial class MainWindow : Window, IUiHost
 
     public void Exit() => Close();
 
+    // ---- phase 2 host services -----------------------------------------------------------------
+
+    public Dialogs Dialogs { get; }
+
+    public CancellationToken BeginOperation(string title) => Overlay.Begin(title);
+
+    public void UpdateOperation(Core.Operations.OperationProgress progress) => Overlay.Update(progress);
+
+    public void EndOperation()
+    {
+        Overlay.End();
+        PaneView(_vm.Active).FocusList();
+    }
+
+    public void ShowFindWindow(string directory)
+    {
+        if (_findWindow == null)
+        {
+            _findWindow = new FindWindow(directory, RootGrid.ActualTheme, FocusFoundItemAsync);
+            _findWindow.Closed += (_, _) => _findWindow = null;
+        }
+        else
+        {
+            _findWindow.SetLookIn(directory);
+        }
+        _findWindow.Activate();
+    }
+
+    /// <summary>"Focus in Panel" from the Find window: show the item in the active panel.</summary>
+    private async Task FocusFoundItemAsync(string directory, string name)
+    {
+        await _vm.Active.NavigateAsync(directory, name);
+        Activate();
+        PaneView(_vm.Active).FocusList();
+    }
+
+    public Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item) =>
+        PaneView(pane).EditNameInPlaceAsync(item);
+
+    public void ShowContextMenu(PaneViewModel pane) => PaneView(pane).ShowContextMenuForCaret();
+
     // ---- window placement --------------------------------------------------------------------
 
     private void RestoreWindowPlacement()
@@ -526,6 +578,7 @@ public sealed partial class MainWindow : Window, IUiHost
                 s.WindowHeight = AppWindow.Size.Height;
             }
         }
+        _findWindow?.Close();
         _vm.SaveSettings();
         _vm.Left.Dispose();
         _vm.Right.Dispose();

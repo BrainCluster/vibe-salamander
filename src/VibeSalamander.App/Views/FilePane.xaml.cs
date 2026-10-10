@@ -6,6 +6,7 @@ using Windows.System;
 using VibeSalamander.Core.Commands;
 using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Panels;
+using VibeSalamander.Services;
 using VibeSalamander.ViewModels;
 
 namespace VibeSalamander.Views;
@@ -61,7 +62,7 @@ public sealed partial class FilePane : UserControl
             FileList.SelectedIndex = index;
             FileList.ScrollIntoView(FileList.Items[index]);
         }
-        if (focus)
+        if (focus && RenameBox.Visibility != Visibility.Visible)
             FocusList();
     }
 
@@ -198,44 +199,241 @@ public sealed partial class FilePane : UserControl
     {
         if (ViewModel == null || _main == null)
             return;
-        if ((e.OriginalSource as FrameworkElement)?.DataContext is FileItemViewModel item)
+        _main.Activate(ViewModel);
+        FileItemViewModel? item = (e.OriginalSource as FrameworkElement)?.DataContext as FileItemViewModel;
+        if (item != null)
         {
             int index = IndexOf(item);
             if (index >= 0)
                 FileList.SelectedIndex = index;
         }
-        _main.Activate(ViewModel);
-
-        var menu = new MenuFlyout();
-        void Add(string text, string glyph, CommandId command)
-        {
-            var mi = new MenuFlyoutItem
-            {
-                Text = text,
-                Icon = new FontIcon { Glyph = glyph },
-                IsEnabled = _main.CanExecute(command),
-            };
-            string? shortcut = _main.KeyMap.GetShortcutText(command);
-            if (shortcut != null)
-                mi.KeyboardAcceleratorTextOverride = shortcut;
-            mi.Click += async (_, _) => await _main.ExecuteAsync(command);
-            menu.Items.Add(mi);
-        }
-        Add("Open", "\uE8E5", CommandId.Open);
-        Add("Open in other panel", "\uE8A7", CommandId.OpenInOtherPanel);
-        menu.Items.Add(new MenuFlyoutSeparator());
-        Add("View", "\uE890", CommandId.View);
-        Add("Edit", "\uE70F", CommandId.Edit);
-        menu.Items.Add(new MenuFlyoutSeparator());
-        Add("Copy...", "\uE8C8", CommandId.Copy);
-        Add("Move/Rename...", "\uE8DE", CommandId.Move);
-        Add("Rename...", "\uE8AC", CommandId.QuickRename);
-        Add("Delete", "\uE74D", CommandId.Delete);
-        menu.Items.Add(new MenuFlyoutSeparator());
-        Add("Copy full name as text", "\uE8C8", CommandId.CopyFullNameAsText);
-        Add("Properties", "\uE946", CommandId.Properties);
-        menu.ShowAt(FileList, e.GetPosition(FileList));
+        var (x, y) = ShellContextMenu.CursorPosition();
+        ShowShellMenu(item, x, y);
         e.Handled = true;
+    }
+
+    /// <summary>Shift+F10 / Menu key: the context menu for the caret item, positioned at the item.</summary>
+    public void ShowContextMenuForCaret()
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        FileItemViewModel? item = ViewModel.FocusedItem;
+        int x = 0, y = 0;
+        if (item != null && FileList.ContainerFromItem(item) is ListViewItem container && XamlRoot != null)
+        {
+            var point = container.TransformToVisual(null).TransformPoint(new Windows.Foundation.Point(40, container.ActualHeight));
+            double scale = XamlRoot.RasterizationScale;
+            (x, y) = ShellContextMenu.ClientToScreen(_main.WindowHandle, (int)(point.X * scale), (int)(point.Y * scale));
+        }
+        else
+        {
+            (x, y) = ShellContextMenu.CursorPosition();
+        }
+        ShowShellMenu(item, x, y);
+    }
+
+    /// <summary>
+    /// Explorer context menu for the marked items (when the clicked item is marked), the item itself,
+    /// or the current directory (empty area / ".."). "Rename" starts the in-place rename.
+    /// </summary>
+    private void ShowShellMenu(FileItemViewModel? item, int x, int y)
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        List<string> paths;
+        if (item != null && item.IsMarked)
+            paths = ViewModel.MarkedItems.Select(i => i.Entry.FullPath).ToList();
+        else if (item?.Drive is { } drive)
+            paths = new List<string> { drive.Root };
+        else if (item != null && !item.Entry.IsUpDir)
+            paths = new List<string> { item.Entry.FullPath };
+        else if (ViewModel.IsLocalDisk)
+            paths = new List<string> { ViewModel.Path };
+        else
+            return;
+
+        bool shift = KeyboardState.IsDown(KeyboardState.Shift);
+        string? verb = ShellContextMenu.Show(_main.WindowHandle, paths, x, y, shift);
+        if (verb == "rename" && item != null)
+        {
+            _ = _main.ExecuteAsync(CommandId.QuickRename); // the rename box takes the focus
+            return;
+        }
+        FocusList();
+    }
+
+    // ---- in-place rename (F2) --------------------------------------------------------------
+
+    private TaskCompletionSource<string?>? _renameTcs;
+    private bool _renameHadFocus;
+
+    /// <summary>Shows an edit box over the item's name; returns the new name or null when cancelled.</summary>
+    public async Task<string?> EditNameInPlaceAsync(FileItemViewModel item)
+    {
+        FileList.ScrollIntoView(item);
+        FileList.UpdateLayout();
+        if (FileList.ContainerFromItem(item) is not ListViewItem container)
+            return null;
+
+        var origin = container.TransformToVisual(RenameLayer).TransformPoint(new Windows.Foundation.Point(0, 0));
+        const double iconColumn = 22 + 6;
+        RenameBox.FontSize = UiState.FontSize;
+        RenameBox.Text = item.Entry.Name;
+        RenameBox.Width = Math.Max(160, Math.Min(container.ActualWidth - iconColumn - 8, 520));
+        RenameBox.Height = Math.Max(UiState.RowHeight + 4, 24);
+        Canvas.SetLeft(RenameBox, origin.X + iconColumn - 6);
+        Canvas.SetTop(RenameBox, origin.Y + (container.ActualHeight - RenameBox.Height) / 2);
+        RenameBox.Visibility = Visibility.Visible;
+
+        _renameTcs = new TaskCompletionSource<string?>();
+        _renameHadFocus = false;
+        int dot = item.Entry.IsDirectory ? -1 : item.Entry.Name.LastIndexOf('.');
+        // focus after menus/flyouts have closed and returned their focus
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            RenameBox.Focus(FocusState.Programmatic);
+            if (dot > 0)
+                RenameBox.Select(0, dot);
+            else
+                RenameBox.SelectAll();
+        });
+
+        string? result = await _renameTcs.Task;
+        RenameBox.Visibility = Visibility.Collapsed;
+        FocusList();
+        return result;
+    }
+
+    private void RenameBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Enter)
+        {
+            e.Handled = true;
+            _renameTcs?.TrySetResult(RenameBox.Text);
+        }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            e.Handled = true;
+            _renameTcs?.TrySetResult(null);
+        }
+    }
+
+    private void RenameBox_GotFocus(object sender, RoutedEventArgs e) => _renameHadFocus = true;
+
+    // Clicking elsewhere confirms the rename, like Explorer (only after the box really had the focus).
+    private void RenameBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_renameHadFocus)
+            _renameTcs?.TrySetResult(RenameBox.Text);
+    }
+
+    // ---- drag & drop -----------------------------------------------------------------------
+
+    private const string InternalPathsKey = "VibeSalamanderPaths";
+
+    private void List_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
+    {
+        if (ViewModel == null || !ViewModel.IsLocalDisk)
+        {
+            e.Cancel = true;
+            return;
+        }
+        var dragged = e.Items.OfType<FileItemViewModel>().ToList();
+        // dragging a marked item drags the whole selection (Salamander)
+        if (dragged.Any(i => i.IsMarked))
+            dragged = ViewModel.MarkedItems.ToList();
+        var paths = dragged.Where(i => !i.Entry.IsUpDir && !i.IsDrive).Select(i => i.Entry.FullPath).ToList();
+        if (paths.Count == 0)
+        {
+            e.Cancel = true;
+            return;
+        }
+        e.Data.RequestedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy |
+                                    Windows.ApplicationModel.DataTransfer.DataPackageOperation.Move;
+        e.Data.Properties[InternalPathsKey] = paths.ToArray();
+        e.Data.SetDataProvider(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems, async request =>
+        {
+            var deferral = request.GetDeferral();
+            try
+            {
+                request.SetData(await FileClipboard.ToStorageItemsAsync(paths));
+            }
+            catch (Exception)
+            {
+                // the drop target gets no data; nothing else to do
+            }
+            finally
+            {
+                deferral.Complete();
+            }
+        });
+    }
+
+    /// <summary>Drop target: the directory under the pointer, or the panel's directory.</summary>
+    private string? DropTarget(DragEventArgs e)
+    {
+        if (ViewModel == null || !ViewModel.IsLocalDisk)
+            return null;
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is FileItemViewModel { Entry.IsDirectory: true, Entry.IsUpDir: false } dir)
+            return dir.Entry.FullPath;
+        return ViewModel.Path;
+    }
+
+    /// <summary>Explorer rules: Shift = move, Ctrl = copy, otherwise move within a drive and copy across drives.</summary>
+    private static bool DecideMove(DragEventArgs e, string target)
+    {
+        if (KeyboardState.IsDown(KeyboardState.Shift))
+            return true;
+        if (KeyboardState.IsDown(KeyboardState.Control))
+            return false;
+        return e.DataView.Properties.TryGetValue(InternalPathsKey, out object? value) && value is string[] { Length: > 0 } internalPaths &&
+               string.Equals(Path.GetPathRoot(internalPaths[0]), Path.GetPathRoot(target), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void Root_DragOver(object sender, DragEventArgs e)
+    {
+        string? target = DropTarget(e);
+        if (target == null || !e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+        {
+            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.None;
+            return;
+        }
+        bool move = DecideMove(e, target);
+        e.AcceptedOperation = move ? Windows.ApplicationModel.DataTransfer.DataPackageOperation.Move : Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+        e.DragUIOverride.Caption = (move ? "Move to " : "Copy to ") + target;
+        e.DragUIOverride.IsCaptionVisible = true;
+    }
+
+    private async void Root_Drop(object sender, DragEventArgs e)
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        string? target = DropTarget(e);
+        if (target == null)
+            return;
+        var deferral = e.GetDeferral();
+        try
+        {
+            IReadOnlyList<string> paths;
+            if (e.DataView.Properties.TryGetValue(InternalPathsKey, out object? value) && value is string[] internalPaths)
+                paths = internalPaths;
+            else
+                paths = (await e.DataView.GetStorageItemsAsync()).Select(i => i.Path).Where(p => !string.IsNullOrEmpty(p)).ToList();
+            bool move = DecideMove(e, target);
+            // dropping into the directory the items already are in does nothing
+            if (paths.Count == 0 || paths.All(p => string.Equals(Path.GetDirectoryName(p), target, StringComparison.OrdinalIgnoreCase)))
+                return;
+            _main.Activate(ViewModel);
+            await _main.TransferAsync(paths, target, move);
+        }
+        catch (Exception ex)
+        {
+            await _main.ShowErrorAsync(ex.Message);
+        }
+        finally
+        {
+            deferral.Complete();
+        }
     }
 
     // ---- header, drive bar, directory line --------------------------------------------------
