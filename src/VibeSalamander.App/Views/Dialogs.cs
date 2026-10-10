@@ -12,11 +12,13 @@ public sealed class Dialogs
 {
     private readonly Func<XamlRoot> _xamlRoot;
     private readonly Func<ElementTheme> _theme;
+    private readonly Func<Microsoft.UI.WindowId> _windowId;
 
-    public Dialogs(Func<XamlRoot> xamlRoot, Func<ElementTheme> theme)
+    public Dialogs(Func<XamlRoot> xamlRoot, Func<ElementTheme> theme, Func<Microsoft.UI.WindowId> windowId)
     {
         _xamlRoot = xamlRoot;
         _theme = theme;
+        _windowId = windowId;
     }
 
     /// <summary>Raised while a dialog is open (the main window suspends its key handling).</summary>
@@ -154,6 +156,87 @@ public sealed class Dialogs
             ("Skip", ErrorChoice.Skip, false),
             ("Skip All", ErrorChoice.SkipAll, false),
         }, ErrorChoice.Cancel);
+    }
+
+    // ---- copy / move target (F5 / F6) --------------------------------------------------------
+
+    /// <summary>
+    /// Asks where to copy/move: a target path (prefilled with the other panel), a Browse button and
+    /// "Don't show this dialog again". Returns null when cancelled.
+    /// </summary>
+    public async Task<(string Target, bool DontAskAgain)?> CopyMoveTargetAsync(bool move, string what, string defaultTarget)
+    {
+        string verb = move ? "Move" : "Copy";
+        var box = new TextBox { Text = defaultTarget, MinWidth = 380, IsSpellCheckEnabled = false };
+        var browse = new Button { Content = "Browse...", VerticalAlignment = VerticalAlignment.Stretch };
+        var row = new Grid { ColumnSpacing = 8 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.Children.Add(box);
+        Grid.SetColumn(browse, 1);
+        row.Children.Add(browse);
+        var dontAsk = new CheckBox
+        {
+            Content = $"Don't show this dialog again ({verb.ToLowerInvariant()} straight into the other panel)",
+        };
+        var hint = Text("Options → Ask for Copy/Move Target shows it again.", secondary: true);
+        hint.FontSize = 12;
+        hint.Visibility = Visibility.Collapsed;
+        dontAsk.Checked += (_, _) => hint.Visibility = Visibility.Visible;
+        dontAsk.Unchecked += (_, _) => hint.Visibility = Visibility.Collapsed;
+
+        var body = new StackPanel { Spacing = 8 };
+        body.Children.Add(Text($"{verb} {what} to:"));
+        body.Children.Add(row);
+        body.Children.Add(dontAsk);
+        body.Children.Add(hint);
+
+        ContentDialog dialog = NewDialog(move ? "Move/Rename" : "Copy", body);
+        dialog.PrimaryButtonText = verb;
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Primary;
+
+        browse.Click += async (_, _) =>
+        {
+            string? folder = await PickFolderAsync();
+            if (folder != null)
+            {
+                box.Text = folder.EndsWith('\\') ? folder : folder + "\\";
+                box.Focus(FocusState.Programmatic);
+                box.SelectionStart = box.Text.Length;
+            }
+        };
+        bool enter = false;
+        box.KeyDown += (_, e) =>
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                enter = true;
+                e.Handled = true;
+                dialog.Hide();
+            }
+        };
+        dialog.Opened += (_, _) => { box.Focus(FocusState.Programmatic); box.SelectAll(); };
+
+        ContentDialogResult result = await ShowAsync(dialog);
+        if ((!enter && result != ContentDialogResult.Primary) || string.IsNullOrWhiteSpace(box.Text))
+            return null;
+        return (box.Text.Trim(), dontAsk.IsChecked == true);
+    }
+
+    /// <summary>The Windows folder picker; null when cancelled or unavailable.</summary>
+    public async Task<string?> PickFolderAsync()
+    {
+        try
+        {
+            var picker = new Microsoft.Windows.Storage.Pickers.FolderPicker(_windowId());
+            var picked = await picker.PickSingleFolderAsync();
+            return string.IsNullOrEmpty(picked?.Path) ? null : picked.Path;
+        }
+        catch (Exception)
+        {
+            return null; // e.g. the picker is not available on this system
+        }
     }
 
     // ---- change attributes (Ctrl+F2) -----------------------------------------------------------

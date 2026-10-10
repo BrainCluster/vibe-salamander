@@ -132,6 +132,7 @@
                     <ToggleMenuFlyoutItem x:Name="ShowFKeyBarItem" Text="Bottom Toolbar" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowTransfersItem" Text="Transfer Panel" Click="ShowBars_Click" />
                 </MenuFlyoutSubItem>
+                <ToggleMenuFlyoutItem x:Name="AskCopyMoveItem" Text="Ask for Copy/Move Target" Click="AskCopyMove_Click" />
                 <ToggleMenuFlyoutItem x:Name="AlwaysOnTopMenuItem" Text="Always on Top" Tag="AlwaysOnTop" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Configuration..." IsEnabled="False" />

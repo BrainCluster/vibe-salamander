@@ -129,7 +129,9 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- directory line: path, quick search, free space; accent-filled when this panel is active -->
+        <!-- directory line: Windows 11 style address bar (This PC > drive > folders; click a folder to go there,
+             a chevron for its subfolders, the empty area to type a path), quick search, filter, free space;
+             accent-filled when this panel is active -->
         <Grid Grid.Row="1" Margin="4,2,4,2" MinHeight="26" CornerRadius="4" PointerPressed="DirectoryLine_PointerPressed">
             <Border Background="{ThemeResource VibeInactivePathBrush}" CornerRadius="4" />
             <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4"
@@ -145,12 +147,12 @@
                 </Grid.ColumnDefinitions>
                 <Button x:Name="DriveMenuButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
                         Click="DriveMenuButton_Click" ToolTipService.ToolTip="Change drive (Alt+F1 / Alt+F2)">
-                    <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                    <FontIcon Glyph="&#xE7F4;" FontFamily="{StaticResource VibeIconFont}" FontSize="13"
                               Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
                 </Button>
-                <TextBlock x:Name="PathText" Grid.Column="1" Text="{x:Bind ViewModel.DisplayPath, Mode=OneWay}"
-                           Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontWeight="SemiBold" />
+                <Grid x:Name="BreadcrumbHost" Grid.Column="1" SizeChanged="BreadcrumbHost_SizeChanged">
+                    <StackPanel x:Name="Breadcrumb" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                </Grid>
                 <TextBox x:Name="PathEditor" Grid.Column="1" Visibility="Collapsed" MinHeight="0" Padding="6,2"
                          VerticalAlignment="Center" KeyDown="PathEditor_KeyDown" LostFocus="PathEditor_LostFocus" />
                 <Border Grid.Column="2" Visibility="{x:Bind VisibleIfText(ViewModel.QuickSearch), Mode=OneWay}"

@@ -46,6 +46,12 @@ public sealed class AppSettings
     public bool ShowHeaderLine { get; set; } = true;
     public bool ShowInformationLine { get; set; } = true;
 
+    /// <summary>
+    /// F5/F6 ask for the target. When switched off ("Don't show this dialog again"), files go straight
+    /// into the other panel's directory. Options → Ask for Copy/Move Target turns it back on.
+    /// </summary>
+    public bool AskCopyMoveTarget { get; set; } = true;
+
     /// <summary>Transfer panel below the file panels (shown while it has items).</summary>
     public bool ShowTransfers { get; set; } = true;
 

@@ -360,11 +360,28 @@ public sealed class MainViewModel : BindableBase
         string defaultTarget = Inactive.IsLocalDisk ? Inactive.Path : string.Empty;
         if (defaultTarget.Length > 0 && !defaultTarget.EndsWith('\\'))
             defaultTarget += "\\";
-        string? target = await _host.PromptAsync(move ? "Move/Rename" : "Copy",
-                                                 $"{(move ? "Move" : "Copy")} {what} to:", defaultTarget,
-                                                 move ? "Move" : "Copy");
-        if (string.IsNullOrWhiteSpace(target))
-            return;
+
+        // "Don't show this dialog again": straight into the other panel, unless that isn't a usable
+        // target (This PC, or the same directory) - then the dialog is shown anyway
+        bool sameDirectory = string.Equals(Inactive.Path.TrimEnd('\\'), _active.Path.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
+        string target;
+        if (!Settings.AskCopyMoveTarget && Inactive.IsLocalDisk && !sameDirectory)
+        {
+            target = defaultTarget;
+        }
+        else
+        {
+            var answer = await _host.Dialogs.CopyMoveTargetAsync(move, what, defaultTarget);
+            _host.FocusPane(_active);
+            if (answer is not { } a)
+                return;
+            target = a.Target;
+            if (a.DontAskAgain)
+            {
+                Settings.AskCopyMoveTarget = false;
+                SaveSettings();
+            }
+        }
         bool endsWithSeparator = target.TrimEnd().EndsWith('\\');
         string resolved = PathUtil.Resolve(_active.Path, target);
         if (endsWithSeparator && !resolved.EndsWith('\\'))
