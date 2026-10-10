@@ -216,8 +216,12 @@ public static class UiState
         FolderBrush = new SolidColorBrush(dark ? Windows.UI.Color.FromArgb(255, 0xF2, 0xC2, 0x4E) : Windows.UI.Color.FromArgb(255, 0xE3, 0xA8, 0x2B));
     }
 
+    /// <summary>The density last applied (the settings window re-applies only when it changed).</summary>
+    public static Core.Settings.Density Density { get; private set; }
+
     public static void ApplyDensity(Core.Settings.Density density)
     {
+        Density = density;
         RowHeight = density == Core.Settings.Density.Compact ? 20 : 28;
         FontSize = density == Core.Settings.Density.Compact ? 12 : 13;
     }

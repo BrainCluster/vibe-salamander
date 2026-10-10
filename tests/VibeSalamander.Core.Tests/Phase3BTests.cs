@@ -84,3 +84,28 @@ public class DirectoryComparerTests
         }
     }
 }
+
+public class KeyMapOverrideTests
+{
+    [Fact]
+    public void OverridesRoundTrip()
+    {
+        var map = Commands.KeyMap.CreateSalamanderDefaults();
+        map.Unbind(new Commands.KeyChord(Commands.VK.F7, Commands.KeyModifiers.None));          // remove "Create directory" from F7
+        map.Bind(new Commands.KeyChord(0x4E, Commands.KeyModifiers.Ctrl | Commands.KeyModifiers.Shift), Commands.CommandId.CreateDirectory);
+        map.Bind(new Commands.KeyChord(Commands.VK.F5, Commands.KeyModifiers.None), Commands.CommandId.Move); // reassign F5
+
+        var overrides = map.GetOverrides();
+        Assert.Equal(3, overrides.Count);
+
+        var restored = Commands.KeyMap.Create(overrides);
+        Assert.Equal(Commands.CommandId.None, restored.Resolve(Commands.VK.F7, Commands.KeyModifiers.None));
+        Assert.Equal(Commands.CommandId.CreateDirectory, restored.Resolve(0x4E, Commands.KeyModifiers.Ctrl | Commands.KeyModifiers.Shift));
+        Assert.Equal(Commands.CommandId.Move, restored.Resolve(Commands.VK.F5, Commands.KeyModifiers.None));
+        Assert.Empty(Commands.KeyMap.CreateSalamanderDefaults().GetOverrides());
+    }
+
+    [Fact]
+    public void EveryCommandHasAName() =>
+        Assert.All(Enum.GetValues<Commands.CommandId>(), c => Assert.False(string.IsNullOrWhiteSpace(Commands.CommandCatalog.DisplayName(c))));
+}

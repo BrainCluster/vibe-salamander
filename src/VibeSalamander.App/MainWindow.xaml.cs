@@ -12,7 +12,7 @@ using VibeSalamander.Views;
 
 namespace VibeSalamander;
 
-public sealed partial class MainWindow : Window, IUiHost
+public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
 {
     private readonly MainViewModel _vm;
     private bool _dialogOpen;
@@ -67,6 +67,10 @@ public sealed partial class MainWindow : Window, IUiHost
         };
 
         BuildFunctionKeyBar();
+        BuildToolbar();
+        BuildQuickBars();
+        UpdateMenuShortcuts();
+        _vm.QuickBarsChanged += (_, _) => BuildQuickBars();
         RestoreWindowPlacement();
         ApplyBars();
         ApplyAlwaysOnTop(_vm.Settings.AlwaysOnTop);
@@ -196,6 +200,305 @@ public sealed partial class MainWindow : Window, IUiHost
     {
         _vm.Activate(_vm.Right);
         Menu_Click(sender, e);
+    }
+
+    // ---- top toolbar, hot path bar, user menu bar (phase 3C: built from the settings) ---------
+
+    private Style? ToolButtonStyle =>
+        Application.Current.Resources.TryGetValue("VibeToolButtonStyle", out object? style) ? style as Style : null;
+
+    private FontFamily IconFont =>
+        Application.Current.Resources.TryGetValue("VibeIconFont", out object? font) && font is FontFamily f ? f : new FontFamily("Segoe Fluent Icons");
+
+    private string WithShortcut(string text, CommandId command) =>
+        _vm.KeyMap.GetShortcutText(command) is string keys ? $"{text} ({keys})" : text;
+
+    /// <summary>The top toolbar from Settings.Toolbar (command names, "-" separators, "ViewMenu").</summary>
+    private void BuildToolbar()
+    {
+        ToolbarPanel.Children.Clear();
+        foreach (string id in _vm.Settings.Toolbar)
+        {
+            if (id == CommandCatalog.SeparatorId)
+            {
+                ToolbarPanel.Children.Add(new AppBarSeparator { Padding = new Thickness(2, 0, 2, 0) });
+                continue;
+            }
+            if (id == CommandCatalog.ViewMenuId)
+            {
+                ToolbarPanel.Children.Add(BuildViewMenuButton());
+                continue;
+            }
+            if (!Enum.TryParse(id, out CommandId command) || command == CommandId.None)
+                continue;
+            var button = new Button
+            {
+                Style = ToolButtonStyle,
+                Tag = id,
+                Content = new FontIcon { Glyph = CommandCatalog.Glyph(command), FontFamily = IconFont, FontSize = 15 },
+            };
+            ToolTipService.SetToolTip(button, WithShortcut(CommandCatalog.DisplayName(command), command));
+            button.Click += Toolbar_Click;
+            ToolbarPanel.Children.Add(button);
+        }
+    }
+
+    private Button BuildViewMenuButton()
+    {
+        var menu = new MenuFlyout { Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft };
+        foreach (var (text, command, glyph) in new[]
+                 {
+                     ("Brief", CommandId.ViewBrief, "\uE8A9"), ("Detailed", CommandId.ViewDetailed, "\uE8FD"),
+                     ("Icons", CommandId.ViewIcons, "\uE80A"), ("Thumbnails", CommandId.ViewThumbnails, "\uE91B"),
+                     ("Tiles", CommandId.ViewTiles, "\uECA5"),
+                 })
+        {
+            var item = new MenuFlyoutItem
+            {
+                Text = text,
+                Tag = command.ToString(),
+                Icon = new FontIcon { Glyph = glyph },
+                KeyboardAcceleratorTextOverride = _vm.KeyMap.GetShortcutText(command) ?? string.Empty,
+            };
+            item.Click += Toolbar_Click;
+            menu.Items.Add(item);
+        }
+        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
+        panel.Children.Add(new FontIcon { Glyph = "\uE8FD", FontFamily = IconFont, FontSize = 15 });
+        panel.Children.Add(new FontIcon { Glyph = "\uE70D", FontFamily = IconFont, FontSize = 8 });
+        var button = new Button { Style = ToolButtonStyle, Content = panel, Flyout = menu };
+        ToolTipService.SetToolTip(button, "View of the active panel (Alt+1…5)");
+        return button;
+    }
+
+    /// <summary>Hot path bar (set hot paths) and user menu bar (user menu commands).</summary>
+    private void BuildQuickBars()
+    {
+        HotPathBar.Children.Clear();
+        var hotPaths = _vm.Settings.HotPaths;
+        for (int i = 0; i < hotPaths.Count && i < 10; i++)
+        {
+            string path = hotPaths[i];
+            if (string.IsNullOrEmpty(path))
+                continue;
+            string label = path == Core.FileSystem.ThisPcProvider.RootPath ? "This PC"
+                : Path.GetFileName(path.TrimEnd('\\')) is { Length: > 0 } name ? name : path;
+            var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+            content.Children.Add(new FontIcon { Glyph = "\uE734", FontFamily = IconFont, FontSize = 12 });
+            content.Children.Add(new TextBlock { Text = $"{i} {label}", FontSize = 12 });
+            var button = new Button { Style = ToolButtonStyle, Content = content, Tag = (CommandId.GoToHotPath0 + i).ToString() };
+            ToolTipService.SetToolTip(button, $"{path}  (Ctrl+{i})");
+            button.Click += Toolbar_Click;
+            HotPathBar.Children.Add(button);
+        }
+
+        UserMenuBar.Children.Clear();
+        foreach (Core.Tools.UserMenuItem item in _vm.Settings.UserMenu)
+        {
+            if (item.IsSeparator)
+            {
+                UserMenuBar.Children.Add(new AppBarSeparator { Padding = new Thickness(2, 0, 2, 0) });
+                continue;
+            }
+            var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+            content.Children.Add(new FontIcon { Glyph = "\uE756", FontFamily = IconFont, FontSize = 12 });
+            content.Children.Add(new TextBlock { Text = item.Name, FontSize = 12 });
+            var button = new Button { Style = ToolButtonStyle, Content = content };
+            ToolTipService.SetToolTip(button, $"{item.Command} {item.Arguments}".Trim());
+            Core.Tools.UserMenuItem command = item;
+            button.Click += (_, _) =>
+            {
+                _vm.RunUserMenuItem(command);
+                PaneView(_vm.Active).FocusList();
+            };
+            UserMenuBar.Children.Add(button);
+        }
+        ApplyBars();
+    }
+
+    /// <summary>Menu shortcut texts follow the (customizable) key map.</summary>
+    private void UpdateMenuShortcuts()
+    {
+        void Walk(IList<MenuFlyoutItemBase> items)
+        {
+            foreach (MenuFlyoutItemBase item in items)
+            {
+                if (item is MenuFlyoutSubItem sub)
+                    Walk(sub.Items);
+                else if (item is MenuFlyoutItem { Tag: string tag } menuItem && Enum.TryParse(tag, out CommandId command) &&
+                         command != CommandId.None && !int.TryParse(tag, out _))
+                    menuItem.KeyboardAcceleratorTextOverride = _vm.KeyMap.GetShortcutText(command) ??
+                        (command == CommandId.Exit ? "Alt+F4" : string.Empty); // Alt+F4 is the system's, not in the key map
+            }
+        }
+        foreach (MenuBarItem top in MainMenu.Items)
+            Walk(top.Items);
+    }
+
+    // ---- configuration (phase 3C) --------------------------------------------------------------
+
+    private SettingsWindow? _settingsWindow;
+
+    public MainViewModel ViewModel => _vm;
+
+    public void ShowConfiguration() => ShowConfiguration(null);
+
+    private void ShowConfiguration(string? page)
+    {
+        if (_settingsWindow == null)
+        {
+            _settingsWindow = new SettingsWindow(this, RootGrid.ActualTheme, page);
+            _settingsWindow.Closed += (_, _) =>
+            {
+                _settingsWindow = null;
+                _vm.SaveSettings();
+            };
+        }
+        else if (page != null)
+        {
+            _settingsWindow.ShowPage(page);
+        }
+        _settingsWindow.Activate();
+    }
+
+    private void ConfigurationPage_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string page })
+            ShowConfiguration(page);
+    }
+
+    /// <summary>Everything the settings window can change, applied to the running window.</summary>
+    public void ApplySettings()
+    {
+        // theme and density rebuild both item lists: only when they changed (this runs on every settings change)
+        bool densityChanged = UiState.Density != _vm.Settings.Density;
+        if (densityChanged)
+            UiState.ApplyDensity(_vm.Settings.Density);
+        if (RootGrid.RequestedTheme != ThemeFor(_vm.Settings.Theme))
+        {
+            ApplyThemeSetting(); // rebuilds the lists
+        }
+        else if (densityChanged)
+        {
+            _vm.Left.Rebuild();
+            _vm.Right.Rebuild();
+        }
+        ApplyAlwaysOnTop(_vm.Settings.AlwaysOnTop);
+        BuildToolbar();
+        BuildQuickBars();
+        UpdateMenuShortcuts();
+        _fkeyModifiers = (KeyModifiers)(-1);
+        UpdateFunctionKeyBar(KeyModifiers.None);
+        ApplyBars();
+    }
+
+    private void SaveConfiguration_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.SaveSettings();
+        Notify("Configuration saved to " + SettingsStore.FilePath, isError: false);
+    }
+
+    private async void ExportConfiguration_Click(object sender, RoutedEventArgs e) => await ExportConfigurationAsync(AppWindow.Id);
+
+    private async void ImportConfiguration_Click(object sender, RoutedEventArgs e) => await ImportConfigurationAsync(AppWindow.Id, Dialogs);
+
+    public async Task ExportConfigurationAsync(Microsoft.UI.WindowId owner)
+    {
+        try
+        {
+            var picker = new Microsoft.Windows.Storage.Pickers.FileSavePicker(owner)
+            {
+                SuggestedFileName = "VibeSalamander-settings",
+            };
+            picker.FileTypeChoices.Add("Vibe Salamander configuration", new List<string> { ".json" });
+            var picked = await picker.PickSaveFileAsync();
+            if (string.IsNullOrEmpty(picked?.Path))
+                return;
+            bool suppressed = _vm.SuppressSettingsSave;
+            _vm.SuppressSettingsSave = false;
+            _vm.SaveSettings(); // panels' current state into the settings
+            _vm.SuppressSettingsSave = suppressed;
+            SettingsStore.Export(_vm.Settings, picked.Path);
+            Notify("Configuration exported to " + picked.Path, isError: false);
+        }
+        catch (Exception ex)
+        {
+            Notify("Export failed: " + ex.Message);
+        }
+    }
+
+    public async Task<bool> ImportConfigurationAsync(Microsoft.UI.WindowId owner, Dialogs dialogs)
+    {
+        string? path;
+        try
+        {
+            var picker = new Microsoft.Windows.Storage.Pickers.FileOpenPicker(owner);
+            picker.FileTypeFilter.Add(".json");
+            var picked = await picker.PickSingleFileAsync();
+            path = picked?.Path;
+        }
+        catch (Exception ex)
+        {
+            Notify("Import failed: " + ex.Message);
+            return false;
+        }
+        if (string.IsNullOrEmpty(path))
+            return false;
+
+        AppSettings imported;
+        try
+        {
+            imported = SettingsStore.ReadFile(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            await dialogs.MessageAsync("Import Configuration", ex.Message);
+            return false;
+        }
+        ContentDialog confirm = dialogs.Create("Import Configuration",
+            new TextBlock { Text = "All current settings are replaced and Vibe Salamander restarts. Running transfers are cancelled.", TextWrapping = TextWrapping.Wrap });
+        confirm.PrimaryButtonText = "Import and Restart";
+        confirm.CloseButtonText = "Cancel";
+        confirm.DefaultButton = ContentDialogButton.Primary;
+        if (await dialogs.ShowDialogAsync(confirm) != ContentDialogResult.Primary)
+            return false;
+        SettingsStore.Save(imported);
+        Restart();
+        return true;
+    }
+
+    public async Task ResetConfigurationAsync(Dialogs dialogs)
+    {
+        ContentDialog confirm = dialogs.Create("Reset All Settings",
+            new TextBlock { Text = "Hot paths, user menu, shortcuts, toolbar and all other settings go back to the defaults, and Vibe Salamander restarts.", TextWrapping = TextWrapping.Wrap });
+        confirm.PrimaryButtonText = "Reset and Restart";
+        confirm.CloseButtonText = "Cancel";
+        confirm.DefaultButton = ContentDialogButton.Close;
+        if (await dialogs.ShowDialogAsync(confirm) != ContentDialogResult.Primary)
+            return;
+        try
+        {
+            File.Delete(SettingsStore.FilePath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Notify("The settings file could not be deleted: " + ex.Message);
+            return;
+        }
+        Restart();
+    }
+
+    /// <summary>Starts a new instance and closes this one without saving its settings over the new ones.</summary>
+    private void Restart()
+    {
+        _vm.SuppressSettingsSave = true;
+        string? exe = Environment.ProcessPath;
+        if (exe != null)
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = true });
+        _vm.Transfers.CancelAll();
+        _closeConfirmed = true;
+        _settingsWindow?.Close();
+        Close();
     }
 
     private async void Toolbar_Click(object sender, RoutedEventArgs e)
@@ -386,6 +689,8 @@ public sealed partial class MainWindow : Window, IUiHost
         ThemeLightItem.IsChecked = _vm.Settings.Theme == AppTheme.Light;
         ThemeDarkItem.IsChecked = _vm.Settings.Theme == AppTheme.Dark;
         ShowToolbarItem.IsChecked = _vm.Settings.ShowTopToolbar;
+        ShowHotPathBarItem.IsChecked = _vm.Settings.ShowHotPathBar;
+        ShowUserMenuBarItem.IsChecked = _vm.Settings.ShowUserMenuBar;
         ShowDriveBarsItem.IsChecked = _vm.Settings.ShowDriveBars;
         ShowInfoLineItem.IsChecked = _vm.Settings.ShowInformationLine;
         ShowCommandLineItem.IsChecked = _vm.Settings.ShowCommandLine;
@@ -418,19 +723,22 @@ public sealed partial class MainWindow : Window, IUiHost
 
     private void ApplyThemeSetting()
     {
-        RootGrid.RequestedTheme = _vm.Settings.Theme switch
-        {
-            AppTheme.Light => ElementTheme.Light,
-            AppTheme.Dark => ElementTheme.Dark,
-            _ => ElementTheme.Default,
-        };
+        RootGrid.RequestedTheme = ThemeFor(_vm.Settings.Theme);
         OnThemeChanged();
     }
+
+    private static ElementTheme ThemeFor(AppTheme theme) => theme switch
+    {
+        AppTheme.Light => ElementTheme.Light,
+        AppTheme.Dark => ElementTheme.Dark,
+        _ => ElementTheme.Default,
+    };
 
     private void OnThemeChanged()
     {
         UiState.ApplyTheme(RootGrid.ActualTheme == ElementTheme.Dark);
         UpdateTitleBarButtons();
+        _settingsWindow?.SetTheme(RootGrid.ActualTheme);
         _vm.Left.Rebuild();
         _vm.Right.Rebuild();
         LeftPane.RefreshBindings();
@@ -472,13 +780,19 @@ public sealed partial class MainWindow : Window, IUiHost
         s.ShowCommandLine = ShowCommandLineItem.IsChecked;
         s.ShowFunctionKeyBar = ShowFKeyBarItem.IsChecked;
         s.ShowTransfers = ShowTransfersItem.IsChecked;
+        s.ShowHotPathBar = ShowHotPathBarItem.IsChecked;
+        s.ShowUserMenuBar = ShowUserMenuBarItem.IsChecked;
         ApplyBars();
     }
 
     private void ApplyBars()
     {
         AppSettings s = _vm.Settings;
-        TopToolbar.Visibility = s.ShowTopToolbar ? Visibility.Visible : Visibility.Collapsed;
+        ToolbarPanel.Visibility = s.ShowTopToolbar ? Visibility.Visible : Visibility.Collapsed;
+        HotPathBar.Visibility = s.ShowHotPathBar && HotPathBar.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        UserMenuBar.Visibility = s.ShowUserMenuBar && UserMenuBar.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        TopToolbar.Visibility = ToolbarPanel.Visibility == Visibility.Visible || HotPathBar.Visibility == Visibility.Visible ||
+                                UserMenuBar.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
         CommandLineBar.Visibility = s.ShowCommandLine ? Visibility.Visible : Visibility.Collapsed;
         FKeyBar.Visibility = s.ShowFunctionKeyBar ? Visibility.Visible : Visibility.Collapsed;
         LeftPane.SetBarsVisibility(s.ShowDriveBars, s.ShowInformationLine);
@@ -853,6 +1167,7 @@ public sealed partial class MainWindow : Window, IUiHost
             }
         }
         _findWindow?.Close();
+        _settingsWindow?.Close();
         _vm.Transfers.CancelAll();
         _vm.SaveSettings();
         _vm.Left.Dispose();

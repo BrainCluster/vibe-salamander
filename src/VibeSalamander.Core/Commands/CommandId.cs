@@ -117,6 +117,7 @@ public enum CommandId
     SharedDirectories,
 
     // options / app
+    Configuration,
     ToggleDensity,
     AlwaysOnTop,
     Help,
