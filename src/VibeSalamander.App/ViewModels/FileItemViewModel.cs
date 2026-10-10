@@ -277,7 +277,7 @@ public sealed class FileItemViewModel : BindableBase
 public static class UiState
 {
     public static double RowHeight { get; set; } = 20;
-    public static double FontSize { get; set; } = 12;
+    public static double FontSize { get; set; } = 13;
 
     /// <summary>Panel font (Configuration → Appearance); null = the system font.</summary>
     public static FontFamily? PanelFont { get; private set; }
@@ -525,7 +525,7 @@ public static class UiState
     public static void ApplyDensity(Core.Settings.Density density)
     {
         Density = density;
-        double baseFont = density == Core.Settings.Density.Compact ? 12 : 13;
+        double baseFont = density == Core.Settings.Density.Compact ? 13 : 14;
         double customFont = _settings?.Appearance.FontSize ?? 0;
         FontSize = customFont >= 8 ? Math.Min(customFont, 28) : baseFont;
         double baseRow = density == Core.Settings.Density.Compact ? 20 : 28;
