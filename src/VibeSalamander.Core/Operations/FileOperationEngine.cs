@@ -24,6 +24,7 @@ public sealed class FileOperationEngine
     private readonly Stopwatch _clock = new();
     private long _lastReportTicks;
     private CancellationToken _ct;
+    private volatile bool _paused;
 
     public FileOperationEngine(IOperationCallbacks callbacks, IProgress<OperationProgress>? progress = null)
     {
@@ -32,6 +33,24 @@ public sealed class FileOperationEngine
     }
 
     // ---- public API --------------------------------------------------------------------------
+
+    /// <summary>Pauses/resumes the running operation (between files and inside a file copy).</summary>
+    public bool Paused
+    {
+        get => _paused;
+        set => _paused = value;
+    }
+
+    /// <summary>Blocks while paused (the clock stops, so speed and time left stay correct).</summary>
+    private void WaitWhilePaused()
+    {
+        if (!_paused)
+            return;
+        PauseClock();
+        while (_paused && !_ct.IsCancellationRequested)
+            Thread.Sleep(100);
+        ResumeClock();
+    }
 
     /// <summary>
     /// Copies <paramref name="sources"/> to <paramref name="target"/>. Target rules (Salamander):
@@ -120,6 +139,7 @@ public sealed class FileOperationEngine
 
             foreach (Step step in steps)
             {
+                WaitWhilePaused();
                 ct.ThrowIfCancellationRequested();
                 bool proceed = step switch
                 {
@@ -387,6 +407,7 @@ public sealed class FileOperationEngine
 
             foreach (DeleteStep step in steps)
             {
+                WaitWhilePaused();
                 ct.ThrowIfCancellationRequested();
                 _currentSource = step.Source;
                 Report(force: false);
@@ -620,6 +641,7 @@ public sealed class FileOperationEngine
             _currentTotal = total;
             _currentDone = transferred;
             Report(force: false);
+            WaitWhilePaused();
             return _ct.IsCancellationRequested ? PROGRESS_CANCEL : PROGRESS_CONTINUE;
         };
         int cancel = 0;

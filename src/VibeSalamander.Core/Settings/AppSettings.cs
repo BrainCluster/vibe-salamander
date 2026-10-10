@@ -46,6 +46,12 @@ public sealed class AppSettings
     public bool ShowHeaderLine { get; set; } = true;
     public bool ShowInformationLine { get; set; } = true;
 
+    /// <summary>Transfer panel below the file panels (shown while it has items).</summary>
+    public bool ShowTransfers { get; set; } = true;
+
+    /// <summary>Height of the transfer panel in DIPs (resized with the splitter above it).</summary>
+    public double TransfersHeight { get; set; } = 150;
+
     public int WindowX { get; set; } = -1;
     public int WindowY { get; set; } = -1;
     public int WindowWidth { get; set; } = 1400;

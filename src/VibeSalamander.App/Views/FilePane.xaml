@@ -25,9 +25,17 @@
                 <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16"
                        HorizontalAlignment="Left" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Text="{x:Bind Name}" Foreground="{x:Bind NameBrush, Mode=OneWay}"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                           Visibility="{x:Bind NameVisibility, Mode=OneWay}" />
                 <TextBlock Grid.Column="2" Text="{x:Bind Ext}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="6,0,0,0" />
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="6,0,0,0"
+                           Visibility="{x:Bind NameVisibility, Mode=OneWay}" />
+                <!-- F2: the name label itself becomes editable (name + extension, like Salamander); created only while renaming -->
+                <TextBox x:Name="RenameBox" x:Load="{x:Bind IsRenaming, Mode=OneWay}" Grid.Column="1" Grid.ColumnSpan="2" Tag="RenameBox"
+                         Visibility="{x:Bind RenameVisibility, Mode=OneWay}"
+                         MinHeight="0" MinWidth="0" Padding="2,0,2,0" Margin="-3,1,4,1" BorderThickness="1"
+                         VerticalAlignment="Stretch" VerticalContentAlignment="Center" IsSpellCheckEnabled="False"
+                         KeyDown="RenameBox_KeyDown" GotFocus="RenameBox_GotFocus" LostFocus="RenameBox_LostFocus" />
                 <TextBlock Grid.Column="3" Text="{x:Bind SizeText}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Grid.Column="4" Text="{x:Bind DateText}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
@@ -257,12 +265,6 @@
                 <TransitionCollection />
             </ListView.ItemContainerTransitions>
         </ListView>
-
-        <!-- in-place rename (F2) -->
-        <Canvas x:Name="RenameLayer" Grid.Row="3">
-            <TextBox x:Name="RenameBox" Visibility="Collapsed" MinHeight="0" Padding="5,1"
-                     KeyDown="RenameBox_KeyDown" GotFocus="RenameBox_GotFocus" LostFocus="RenameBox_LostFocus" />
-        </Canvas>
 
         <!-- information line -->
         <Border x:Name="InfoLine" Grid.Row="4" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource VibePaneBorderBrush}"

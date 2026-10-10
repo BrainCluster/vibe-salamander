@@ -62,6 +62,25 @@ public sealed class FileItemViewModel : BindableBase
         }
     }
 
+    private bool _isRenaming;
+
+    /// <summary>F2: the name and extension labels are replaced by an edit box in the row itself.</summary>
+    public bool IsRenaming
+    {
+        get => _isRenaming;
+        set
+        {
+            if (SetProperty(ref _isRenaming, value))
+            {
+                OnPropertyChanged(nameof(NameVisibility));
+                OnPropertyChanged(nameof(RenameVisibility));
+            }
+        }
+    }
+
+    public Visibility NameVisibility => _isRenaming ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility RenameVisibility => _isRenaming ? Visibility.Visible : Visibility.Collapsed;
+
     /// <summary>Hidden/system items are drawn dimmed.</summary>
     public double ItemOpacity => Entry.IsHidden || Entry.IsSystem ? 0.55 : 1.0;
 

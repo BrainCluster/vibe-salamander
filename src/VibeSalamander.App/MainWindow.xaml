@@ -6,12 +6,14 @@
     xmlns:views="using:VibeSalamander.Views"
     Title="Vibe Salamander">
 
-    <Grid x:Name="RootGrid" Loaded="RootGrid_Loaded" PreviewKeyDown="RootGrid_PreviewKeyDown">
+    <Grid x:Name="RootGrid" Loaded="RootGrid_Loaded" PreviewKeyDown="RootGrid_PreviewKeyDown" PreviewKeyUp="RootGrid_PreviewKeyUp">
         <Grid.RowDefinitions>
             <RowDefinition Height="32" />   <!-- title bar -->
             <RowDefinition Height="Auto" /> <!-- menu -->
             <RowDefinition Height="Auto" /> <!-- toolbar -->
             <RowDefinition Height="*" />    <!-- panels -->
+            <RowDefinition x:Name="TransfersSplitterRow" Height="0" /> <!-- splitter above the transfer panel -->
+            <RowDefinition x:Name="TransfersRow" Height="0" />         <!-- transfer panel -->
             <RowDefinition Height="Auto" /> <!-- command line -->
             <RowDefinition Height="Auto" /> <!-- F-key bar -->
         </Grid.RowDefinitions>
@@ -128,6 +130,7 @@
                     <ToggleMenuFlyoutItem x:Name="ShowInfoLineItem" Text="Information Line" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowCommandLineItem" Text="Command Line" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowFKeyBarItem" Text="Bottom Toolbar" Click="ShowBars_Click" />
+                    <ToggleMenuFlyoutItem x:Name="ShowTransfersItem" Text="Transfer Panel" Click="ShowBars_Click" />
                 </MenuFlyoutSubItem>
                 <ToggleMenuFlyoutItem x:Name="AlwaysOnTopMenuItem" Text="Always on Top" Tag="AlwaysOnTop" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
@@ -253,7 +256,13 @@
         </Grid>
 
         <!-- command line -->
-        <Grid x:Name="CommandLineBar" Grid.Row="4" Padding="8,0,8,4" ColumnSpacing="6">
+        <!-- transfer panel (WinSCP-style queue; visible while it has items) -->
+        <views:PanelSplitter x:Name="TransfersSplitter" Grid.Row="4" Horizontal="True" Background="Transparent" Margin="6,0"
+                             PointerPressed="TransfersSplitter_PointerPressed" PointerMoved="TransfersSplitter_PointerMoved"
+                             PointerReleased="TransfersSplitter_PointerReleased" DoubleTapped="TransfersSplitter_DoubleTapped" />
+        <views:TransfersPanel x:Name="TransfersView" Grid.Row="5" Margin="6,0,6,4" />
+
+        <Grid x:Name="CommandLineBar" Grid.Row="6" Padding="8,0,8,4" ColumnSpacing="6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" MaxWidth="480" />
                 <ColumnDefinition Width="*" />
@@ -265,16 +274,8 @@
         </Grid>
 
         <!-- F-key bar -->
-        <Grid x:Name="FKeyBar" Grid.Row="5" Padding="6,0,6,6" ColumnSpacing="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+        <Grid x:Name="FKeyBar" Grid.Row="7" Padding="6,0,6,6" ColumnSpacing="2">
+            <!-- F1..F12; the columns are created in code, the labels follow the held modifier keys -->
         </Grid>
-
-        <!-- file operation progress (modal) -->
-        <views:OperationOverlay x:Name="Overlay" Grid.Row="1" Grid.RowSpan="5" />
     </Grid>
 </Window>
