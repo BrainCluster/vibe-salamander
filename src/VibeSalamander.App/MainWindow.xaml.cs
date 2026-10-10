@@ -40,9 +40,14 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             UpdateFunctionKeyBar(CurrentModifiers());
         };
         _vm = new MainViewModel(this, DispatcherQueue);
+        UiState.ApplyOptions(_vm.Settings);
         UiState.ApplyDensity(_vm.Settings.Density);
         LeftPane.Initialize(_vm.Left, _vm);
         RightPane.Initialize(_vm.Right, _vm);
+        LeftPane.TypedToCommandLine += (_, c) => TypeIntoCommandLine(c);
+        RightPane.TypedToCommandLine += (_, c) => TypeIntoCommandLine(c);
+        LeftPane.ApplyOptions();
+        RightPane.ApplyOptions();
         ApplyThemeSetting();
         _vm.PropertyChanged += (_, e) =>
         {
@@ -61,9 +66,18 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         AppWindow.Closing += AppWindow_Closing;
         Activated += (_, e) =>
         {
+            _windowActive = e.WindowActivationState != WindowActivationState.Deactivated;
             // a modifier released while another window had the focus never reports its key-up here
             if (e.WindowActivationState == WindowActivationState.Deactivated)
                 UpdateFunctionKeyBar(KeyModifiers.None);
+            else
+                RefreshOnActivation();
+        };
+        _vm.Transfers.Finished += (_, _) =>
+        {
+            // Configuration → General: a beep when work finishes while the window is in the background
+            if (!_windowActive && _vm.Settings.General.BeepWhenDoneInBackground && _vm.Transfers.ActiveCount == 0)
+                MessageBeep(0);
         };
 
         BuildFunctionKeyBar();
@@ -97,11 +111,61 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
 
     private void UpdateTitle()
     {
+        // Configuration → Main Window: directory name only, shortened path or full path, with a prefix
         string path = _vm.Active.DisplayPath;
+        if (_vm.Active.IsLocalDisk && path.Length > 3)
+        {
+            path = _vm.Settings.Window.TitleMode switch
+            {
+                TitleMode.DirectoryName => Path.GetFileName(path.TrimEnd('\\')),
+                TitleMode.Shortened => ShortenPath(path),
+                _ => path,
+            };
+        }
+        string prefix = _vm.Settings.Window.TitlePrefix.Trim();
+        if (prefix.Length > 0)
+            path = string.IsNullOrEmpty(path) ? prefix : $"{prefix} {path}";
         TitleText.Text = string.IsNullOrEmpty(path) ? "Vibe Salamander" : $"{path} - Vibe Salamander";
         Title = TitleText.Text;
         CommandPrompt.Text = _vm.Active.IsLocalDisk ? _vm.Active.Path + ">" : string.Empty;
     }
+
+    /// <summary>"C:\…\Projects\Vibe": the root and the last two directories.</summary>
+    private static string ShortenPath(string path)
+    {
+        string[] parts = path.TrimEnd('\\').Split('\\');
+        return parts.Length <= 4 ? path : $"{parts[0]}\\…\\{parts[^2]}\\{parts[^1]}";
+    }
+
+    private bool _windowActive = true;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool MessageBeep(uint type);
+
+    /// <summary>Panels without auto refresh (drive options) update when the window becomes active, like Salamander.</summary>
+    private void RefreshOnActivation()
+    {
+        foreach (PaneViewModel pane in new[] { _vm.Left, _vm.Right })
+        {
+            if (!pane.IsLocalDisk || pane.HasAutoRefresh)
+                continue;
+            if (pane.CurrentDriveType == DriveType.Network && _vm.Settings.Drives.NoRefreshOnActivation)
+                continue;
+            _ = pane.RefreshAsync();
+        }
+    }
+
+    /// <summary>Configuration → Panels: typing in a panel goes to the command line.</summary>
+    private void TypeIntoCommandLine(char c)
+    {
+        if (CommandLineBar.Visibility != Visibility.Visible)
+            return;
+        CommandLine.Text += c;
+        CommandLine.Focus(FocusState.Programmatic);
+        CommandLine.SelectionStart = CommandLine.Text.Length;
+    }
+
+    private int _historyIndex = -1;
 
     // ---- keyboard ----------------------------------------------------------------------------
 
@@ -152,6 +216,9 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         }
 
         CommandId command = _vm.KeyMap.Resolve(key, mods);
+        // Configuration → Panels: Shift+0…9 goes to the hot paths too
+        if (command == CommandId.None && mods == KeyModifiers.Shift && key >= VK.D0 && key <= VK.D0 + 9 && _vm.Settings.Panels.ShiftDigitGoesToHotPath)
+            command = CommandId.GoToHotPath0 + (key - VK.D0);
         if (command == CommandId.None && key == VK.Tab && mods == KeyModifiers.Shift)
             command = CommandId.SwitchPanel;
         if (command == CommandId.None)
@@ -170,8 +237,22 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             e.Handled = true;
             string text = CommandLine.Text;
             CommandLine.Text = string.Empty;
+            _historyIndex = -1;
             await _vm.RunCommandLineAsync(text);
             PaneView(_vm.Active).FocusList();
+        }
+        else if (e.Key is Windows.System.VirtualKey.Up or Windows.System.VirtualKey.Down && _vm.Settings.History.CommandLineHistory)
+        {
+            // Configuration → History: Up / Down recall earlier commands
+            List<string> history = _vm.Settings.CommandLineHistory;
+            if (history.Count == 0)
+                return;
+            e.Handled = true;
+            _historyIndex = e.Key == Windows.System.VirtualKey.Up
+                ? Math.Min(_historyIndex + 1, history.Count - 1)
+                : Math.Max(_historyIndex - 1, -1);
+            CommandLine.Text = _historyIndex >= 0 ? history[_historyIndex] : string.Empty;
+            CommandLine.SelectionStart = CommandLine.Text.Length;
         }
         else if (e.Key == Windows.System.VirtualKey.Escape)
         {
@@ -281,7 +362,9 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             string path = hotPaths[i];
             if (string.IsNullOrEmpty(path))
                 continue;
-            string label = path == Core.FileSystem.ThisPcProvider.RootPath ? "This PC"
+            string custom = i < _vm.Settings.HotPathNames.Count ? _vm.Settings.HotPathNames[i] : string.Empty;
+            string label = !string.IsNullOrWhiteSpace(custom) ? custom
+                : path == Core.FileSystem.ThisPcProvider.RootPath ? "This PC"
                 : Path.GetFileName(path.TrimEnd('\\')) is { Length: > 0 } name ? name : path;
             var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
             content.Children.Add(new FontIcon { Glyph = "\uE734", FontFamily = IconFont, FontSize = 12 });
@@ -368,21 +451,38 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     }
 
     /// <summary>Everything the settings window can change, applied to the running window.</summary>
-    public void ApplySettings()
+    public void ApplySettings() => ApplySettings(displayChanged: false);
+
+    /// <param name="displayChanged">Options that change how items look (names, sizes, colors, sorting, font) changed: rebuild the lists.</param>
+    public void ApplySettings(bool displayChanged)
     {
         // theme and density rebuild both item lists: only when they changed (this runs on every settings change)
         bool densityChanged = UiState.Density != _vm.Settings.Density;
-        if (densityChanged)
+        if (displayChanged)
+        {
+            UiState.ApplyOptions(_vm.Settings);
+            UiState.ApplyTheme(RootGrid.ActualTheme == ElementTheme.Dark);
+        }
+        if (densityChanged || displayChanged)
             UiState.ApplyDensity(_vm.Settings.Density);
         if (RootGrid.RequestedTheme != ThemeFor(_vm.Settings.Theme))
         {
             ApplyThemeSetting(); // rebuilds the lists
         }
-        else if (densityChanged)
+        else if (densityChanged || displayChanged)
         {
             _vm.Left.Rebuild();
             _vm.Right.Rebuild();
         }
+        if (displayChanged)
+        {
+            LeftPane.ApplyOptions();
+            RightPane.ApplyOptions();
+            LeftPane.RefreshBindings();
+            RightPane.RefreshBindings();
+        }
+        _vm.Transfers.StartWaiting(); // the number of parallel transfers may have changed
+        UpdateTitle();
         ApplyAlwaysOnTop(_vm.Settings.AlwaysOnTop);
         BuildToolbar();
         BuildQuickBars();
@@ -741,6 +841,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         _settingsWindow?.SetTheme(RootGrid.ActualTheme);
         _vm.Left.Rebuild();
         _vm.Right.Rebuild();
+        LeftPane.ApplyOptions();
+        RightPane.ApplyOptions();
         LeftPane.RefreshBindings();
         RightPane.RefreshBindings();
         UpdateMenuChecks();
@@ -876,7 +978,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     /// <summary>Closing while transfers run asks first, then cancels them.</summary>
     private async void AppWindow_Closing(AppWindow sender, AppWindowClosingEventArgs args)
     {
-        if (_closeConfirmed || _vm.Transfers.ActiveCount == 0)
+        if (_closeConfirmed || (_vm.Transfers.ActiveCount == 0 && !_vm.Settings.Confirm.CloseApplication))
             return;
         args.Cancel = true;
         await CloseAfterConfirmAsync();
@@ -891,7 +993,25 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         if (_closePrompting)
             return;
         int count = _vm.Transfers.ActiveCount;
-        if (count > 0)
+        if (count == 0 && _vm.Settings.Confirm.CloseApplication)
+        {
+            // Configuration → Confirmations → "Do you want to close Vibe Salamander?"
+            _closePrompting = true;
+            try
+            {
+                if (!await ConfirmAsync("Exit Vibe Salamander", "Do you want to close Vibe Salamander?", "Close"))
+                    return;
+            }
+            finally
+            {
+                _closePrompting = false;
+            }
+        }
+        if (count > 0 && !_vm.Settings.Confirm.ExitWithRunningTransfers)
+        {
+            _vm.Transfers.CancelAll();
+        }
+        else if (count > 0)
         {
             bool close;
             _closePrompting = true;
@@ -1056,6 +1176,19 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             "Settings: " + SettingsStore.FilePath);
     }
 
+    /// <summary>Another start of Vibe Salamander (single instance): show this window.</summary>
+    public void BringToFront()
+    {
+        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+            presenter.Restore();
+        Activate();
+        SetForegroundWindow(WindowHandle);
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr hwnd);
+
     public async void Exit() => await CloseAfterConfirmAsync();
 
     // ---- phase 2 host services -----------------------------------------------------------------
@@ -1115,7 +1248,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     {
         if (_findWindow == null)
         {
-            _findWindow = new FindWindow(directory, RootGrid.ActualTheme, FocusFoundItemAsync);
+            _findWindow = new FindWindow(directory, RootGrid.ActualTheme, FocusFoundItemAsync, () => _vm.Settings.Confirm);
             _findWindow.Closed += (_, _) => _findWindow = null;
         }
         else
@@ -1133,8 +1266,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         PaneView(_vm.Active).FocusList();
     }
 
-    public Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item) =>
-        PaneView(pane).EditNameInPlaceAsync(item);
+    public Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item, bool selectWholeName = false) =>
+        PaneView(pane).EditNameInPlaceAsync(item, selectWholeName);
 
     public void ShowContextMenu(PaneViewModel pane) => PaneView(pane).ShowContextMenuForCaret();
 
@@ -1169,7 +1302,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         _findWindow?.Close();
         _settingsWindow?.Close();
         _vm.Transfers.CancelAll();
-        _vm.SaveSettings();
+        _vm.SaveSettings(onExit: true);
         _vm.Left.Dispose();
         _vm.Right.Dispose();
     }

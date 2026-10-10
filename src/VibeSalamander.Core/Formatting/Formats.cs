@@ -26,6 +26,50 @@ public static class Formats
         return number + " " + units[unit];
     }
 
+    /// <summary>A file size in the chosen format (Configuration → Panels → Show sizes).</summary>
+    public static string Size(long bytes, Settings.SizeFormat format) => format switch
+    {
+        Settings.SizeFormat.KiloBytes => ((bytes + 1023) / 1024).ToString("N0", CultureInfo.CurrentCulture) + " KB",
+        Settings.SizeFormat.Short => ShortSize(bytes),
+        _ => ExactSize(bytes),
+    };
+
+    /// <summary>A name in the chosen case (Configuration → Panels → Show names); display only.</summary>
+    public static string ApplyCasing(string name, bool isDirectory, Settings.NameCasing casing)
+    {
+        if (name.Length == 0 || name == "..")
+            return name;
+        CultureInfo culture = CultureInfo.CurrentCulture;
+        string Mixed(string text)
+        {
+            int dot = isDirectory ? -1 : text.LastIndexOf('.');
+            string body = dot > 0 ? text[..dot] : text;
+            string ext = dot > 0 ? text[dot..] : string.Empty;
+            body = body.ToLower(culture);
+            return char.ToUpper(body[0], culture) + body[1..] + ext.ToLower(culture);
+        }
+        return casing switch
+        {
+            Settings.NameCasing.MixedIfDos => IsDosName(name) ? Mixed(name) : name,
+            Settings.NameCasing.LowerFilesUpperDirectories => isDirectory ? name.ToUpper(culture) : name.ToLower(culture),
+            Settings.NameCasing.PartiallyMixed => Mixed(name),
+            Settings.NameCasing.Lower => name.ToLower(culture),
+            Settings.NameCasing.Upper => name.ToUpper(culture),
+            _ => name,
+        };
+    }
+
+    /// <summary>"README.TXT": all upper case and 8.3.</summary>
+    private static bool IsDosName(string name)
+    {
+        if (name != name.ToUpperInvariant())
+            return false;
+        int dot = name.LastIndexOf('.');
+        string body = dot >= 0 ? name[..dot] : name;
+        string ext = dot >= 0 ? name[(dot + 1)..] : string.Empty;
+        return body.Length is > 0 and <= 8 && ext.Length <= 3 && name.Count(c => c == '.') <= 1;
+    }
+
     public static string Date(DateTime value) =>
         value == DateTime.MinValue ? string.Empty : value.ToString("d", CultureInfo.CurrentCulture);
 

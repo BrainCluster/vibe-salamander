@@ -231,18 +231,65 @@ public sealed class TransferItemViewModel : BindableBase
 /// </summary>
 public sealed class TransfersViewModel : BindableBase
 {
-    /// <summary>How many operations run at the same time; the rest wait as "Queued".</summary>
-    public const int MaxParallel = 3;
-
     private readonly DispatcherQueue _dispatcher;
     private readonly Views.Dialogs _dialogs;
-    private readonly SemaphoreSlim _slots = new(MaxParallel, MaxParallel);
+    private readonly Func<EngineOptions> _engineOptions;
+    private readonly Func<int> _maxParallel;
 
-    public TransfersViewModel(DispatcherQueue dispatcher, Views.Dialogs dialogs)
+    // slots: how many run at once comes from the configuration (General → parallel transfers) and may change
+    private int _running;
+    private readonly LinkedList<TaskCompletionSource<bool>> _waiting = new();
+
+    /// <param name="engineOptions">Confirmations the engine follows (read when an operation starts).</param>
+    /// <param name="maxParallel">How many operations run at the same time; the rest wait as "Queued".</param>
+    public TransfersViewModel(DispatcherQueue dispatcher, Views.Dialogs dialogs, Func<EngineOptions> engineOptions, Func<int> maxParallel)
     {
         _dispatcher = dispatcher;
         _dialogs = dialogs;
+        _engineOptions = engineOptions;
+        _maxParallel = maxParallel;
         Items.CollectionChanged += (_, _) => Changed();
+    }
+
+    /// <summary>Waits for a free slot (on the UI thread). Throws OperationCanceledException when cancelled while queued.</summary>
+    private async Task AcquireSlotAsync(CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (_running < Math.Max(1, _maxParallel()))
+        {
+            _running++;
+            return;
+        }
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        LinkedListNode<TaskCompletionSource<bool>> node = _waiting.AddLast(tcs);
+        using (ct.Register(() => _dispatcher.TryEnqueue(() =>
+               {
+                   if (node.List != null)
+                   {
+                       _waiting.Remove(node);
+                       tcs.TrySetCanceled();
+                   }
+               })))
+        {
+            await tcs.Task;
+        }
+    }
+
+    private void ReleaseSlot()
+    {
+        _running = Math.Max(0, _running - 1);
+        StartWaiting();
+    }
+
+    /// <summary>Starts queued operations while slots are free (also after the limit was raised).</summary>
+    public void StartWaiting()
+    {
+        while (_running < Math.Max(1, _maxParallel()) && _waiting.First is { } first)
+        {
+            _waiting.RemoveFirst();
+            _running++;
+            first.Value.TrySetResult(true);
+        }
     }
 
     public ObservableCollection<TransferItemViewModel> Items { get; } = new();
@@ -301,7 +348,7 @@ public sealed class TransfersViewModel : BindableBase
     {
         try
         {
-            await _slots.WaitAsync(item.Cancellation.Token);
+            await AcquireSlotAsync(item.Cancellation.Token);
         }
         catch (OperationCanceledException)
         {
@@ -316,7 +363,10 @@ public sealed class TransfersViewModel : BindableBase
         {
             // cancelled between getting the slot and this continuation (it already shows "Cancelled")
             item.Cancellation.Token.ThrowIfCancellationRequested();
-            var engine = new FileOperationEngine(new ItemCallbacks(item, _dispatcher, _dialogs), new ItemProgress(item, _dispatcher));
+            var engine = new FileOperationEngine(new ItemCallbacks(item, _dispatcher, _dialogs), new ItemProgress(item, _dispatcher))
+            {
+                Options = _engineOptions(),
+            };
             item.Engine = engine;
             item.State = TransferState.Preparing;
             OperationResult result = await run(engine, item.Cancellation.Token);
@@ -337,7 +387,7 @@ public sealed class TransfersViewModel : BindableBase
         }
         finally
         {
-            _slots.Release();
+            ReleaseSlot();
         }
         Finished?.Invoke(this, item);
         if (item.RemoveWhenDone)

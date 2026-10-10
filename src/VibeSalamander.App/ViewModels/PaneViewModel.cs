@@ -21,6 +21,21 @@ public sealed class DriveButtonViewModel : BindableBase
 
     public DriveEntryInfo Drive { get; }
     public string Letter => Drive.Root[..1];
+
+    private bool _separatorAfter;
+
+    /// <summary>A separator follows this drive in the drive bar (Configuration → Change Drive Menu and Drive Bar).</summary>
+    public bool SeparatorAfter
+    {
+        get => _separatorAfter;
+        set
+        {
+            if (SetProperty(ref _separatorAfter, value))
+                OnPropertyChanged(nameof(SeparatorVisibility));
+        }
+    }
+
+    public Microsoft.UI.Xaml.Visibility SeparatorVisibility => _separatorAfter ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
     public string ToolTip => Drive.HasSize
         ? $"{Drive.Caption}\n{Formats.ShortSize(Drive.FreeSpace)} free of {Formats.ShortSize(Drive.TotalSize)}"
         : Drive.Caption;
@@ -311,9 +326,48 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             FileEntry e = item.Entry;
             if (e.IsUpDir)
                 return ".. (parent directory)";
-            string size = e.IsDirectory ? "DIR" : Formats.ExactSize(e.Size);
-            return $"{e.Name}: {size}, {Formats.Date(e.LastWrite)}, {Formats.Time(e.LastWrite)}, {Formats.Attributes(e.Attributes)}";
+            return FormatInfoLine(item);
         }
+    }
+
+    /// <summary>The information line for an item, from Configuration → Appearance → Content of Information Line.</summary>
+    private static string FormatInfoLine(FileItemViewModel item)
+    {
+        FileEntry e = item.Entry;
+        string size = e.IsDirectory
+            ? (item.DirectorySize is long d ? Formats.Size(d, UiState.SizeFormat) : "DIR")
+            : Formats.Size(e.Size, UiState.SizeFormat);
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Name"] = item.FullName,
+            ["NamePart"] = item.Name,
+            ["Ext"] = item.Ext,
+            ["Size"] = size,
+            ["Date"] = Formats.Date(e.LastWrite),
+            ["Time"] = Formats.Time(e.LastWrite),
+            ["Attributes"] = Formats.Attributes(e.Attributes),
+            ["Type"] = item.TileType,
+            ["Path"] = System.IO.Path.GetDirectoryName(e.FullPath) ?? string.Empty,
+            ["FullName"] = e.FullPath,
+        };
+        string format = UiState.InfoLineFormat;
+        var sb = new System.Text.StringBuilder(format.Length + 32);
+        int i = 0;
+        while (i < format.Length)
+        {
+            int start = format.IndexOf("$(", i, StringComparison.Ordinal);
+            int end = start < 0 ? -1 : format.IndexOf(')', start + 2);
+            if (start < 0 || end < 0)
+            {
+                sb.Append(format, i, format.Length - i);
+                break;
+            }
+            sb.Append(format, i, start - i);
+            string key = format[(start + 2)..end];
+            sb.Append(values.TryGetValue(key, out string? value) ? value : format[start..(end + 1)]);
+            i = end + 1;
+        }
+        return sb.ToString();
     }
 
     // ---- navigation --------------------------------------------------------------------------
@@ -369,7 +423,39 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             _refreshPending = true;
             return Task.CompletedTask;
         }
+        if (IsLocalDisk && _path.Length > 0 && !Directory.Exists(_path))
+            return GoToAccessibleAsync(); // the directory was deleted or the drive removed
         return LoadAsync(_provider, _path, FocusedItem?.Entry.Name, keepCaret: true);
+    }
+
+    /// <summary>
+    /// The directory is gone: go to the nearest existing parent, or to the configured fallback
+    /// (Configuration → Drives → "If path in panel is inaccessible, go to"), or This PC.
+    /// </summary>
+    private async Task GoToAccessibleAsync()
+    {
+        string? fallback = UiState.Drives?.InaccessibleFallback;
+        string? parent = _path;
+        while (!string.IsNullOrEmpty(parent))
+        {
+            parent = System.IO.Path.GetDirectoryName(parent.TrimEnd('\\'));
+            if (string.IsNullOrEmpty(parent))
+                break;
+            if (Directory.Exists(parent))
+            {
+                // a parent on the same drive is only used when no fallback is configured
+                if (string.IsNullOrWhiteSpace(fallback))
+                {
+                    await NavigateAsync(parent, addToHistory: false);
+                    return;
+                }
+                break;
+            }
+        }
+        if (!string.IsNullOrWhiteSpace(fallback) && (Directory.Exists(fallback) || fallback.StartsWith(ThisPcProvider.RootPath, StringComparison.OrdinalIgnoreCase)))
+            await NavigateAsync(fallback, addToHistory: false);
+        else
+            await NavigateAsync(ThisPcProvider.RootPath, addToHistory: false);
     }
 
     public async Task GoUpAsync()
@@ -557,7 +643,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             _filteredCount += visible.Count() - shown.Count;
             visible = shown;
         }
-        List<FileEntry> sorted = new EntryComparer(_sortMode, _sortDescending).Sort(visible);
+        List<FileEntry> sorted = new EntryComparer(_sortMode, _sortDescending, UiState.SortOptions).Sort(visible);
         var items = new List<FileItemViewModel>(sorted.Count);
         foreach (FileEntry entry in sorted)
         {
@@ -614,7 +700,25 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             _icons.Request(entry, icon => b.Icon = icon);
         }
         Drives = buttons;
+        OnPropertyChanged(nameof(VisibleDrives));
     }
+
+    /// <summary>Drives for the drive bar and the Change Drive menu (Configuration → Change Drive Menu and Drive Bar).</summary>
+    public IReadOnlyList<DriveButtonViewModel> VisibleDrives
+    {
+        get
+        {
+            DriveOptions? options = UiState.Drives;
+            if (options == null)
+                return _drives;
+            foreach (DriveButtonViewModel d in _drives)
+                d.SeparatorAfter = options.SeparatorAfter.Contains(d.Letter, StringComparer.OrdinalIgnoreCase);
+            return _drives.Where(d => !options.HiddenDrives.Contains(d.Letter, StringComparer.OrdinalIgnoreCase)).ToList();
+        }
+    }
+
+    /// <summary>The drive options changed: the drive bar is rebuilt.</summary>
+    public void RefreshVisibleDrives() => OnPropertyChanged(nameof(VisibleDrives));
 
     // ---- marks (Salamander selection) ----------------------------------------------------------
 
@@ -727,7 +831,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     public void InvertMarks()
     {
         foreach (var item in _items)
-            if (!item.Entry.IsUpDir && !item.IsDrive && !item.Entry.IsDirectory) // Salamander inverts files only
+            if (!item.Entry.IsUpDir && !item.IsDrive && (UiState.SelectIncludesDirectories || !item.Entry.IsDirectory)) // files only, unless Configuration → Panels includes directories
                 item.IsMarked = !item.IsMarked;
         OnPropertyChanged(nameof(InfoText));
     }
@@ -768,9 +872,51 @@ public sealed class PaneViewModel : BindableBase, IDisposable
 
     // ---- auto refresh --------------------------------------------------------------------------
 
+    /// <summary>The drive type of the current directory (UNC paths count as network).</summary>
+    public DriveType CurrentDriveType
+    {
+        get
+        {
+            if (!IsLocalDisk || _path.Length < 2)
+                return DriveType.Unknown;
+            if (_path.StartsWith(@"\\", StringComparison.Ordinal))
+                return DriveType.Network;
+            try
+            {
+                return new DriveInfo(_path[..1]).DriveType;
+            }
+            catch (ArgumentException)
+            {
+                return DriveType.Unknown;
+            }
+        }
+    }
+
+    /// <summary>Configuration → Drives settings for the current drive type.</summary>
+    public DriveTypeOptions? CurrentDriveOptions => UiState.Drives is not { } d ? null : CurrentDriveType switch
+    {
+        DriveType.Removable => d.Removable,
+        DriveType.CDRom => d.CdRom,
+        DriveType.Network => d.Network,
+        DriveType.Fixed or DriveType.Ram => d.Fixed,
+        _ => null,
+    };
+
+    /// <summary>True when the panel refreshes by itself (a watcher is running).</summary>
+    public bool HasAutoRefresh => _watcher != null;
+
+    /// <summary>Applies changed drive options (auto refresh on/off) to the running watcher.</summary>
+    public void ApplyDriveOptions()
+    {
+        _watcher?.Dispose();
+        _watcher = null;
+        UpdateWatcher();
+    }
+
     private void UpdateWatcher()
     {
-        string? watchPath = _provider.IsLocalDisk ? _path : null;
+        bool autoRefresh = CurrentDriveOptions?.AutoRefresh ?? true;
+        string? watchPath = _provider.IsLocalDisk && autoRefresh ? _path : null;
         if (_watcher != null && watchPath != null && string.Equals(_watcher.Path, watchPath, StringComparison.OrdinalIgnoreCase))
             return;
 

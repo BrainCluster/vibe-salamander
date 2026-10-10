@@ -106,9 +106,9 @@ public static class ShellOperations
     }
 
     /// <summary>Runs a command-line string in a directory (Salamander command line).</summary>
-    public static void RunCommandLine(string directory, string commandLine)
+    public static void RunCommandLine(string directory, string commandLine, bool closeWhenDone = false)
     {
-        Process.Start(new ProcessStartInfo("cmd.exe", "/k " + commandLine)
+        Process.Start(new ProcessStartInfo("cmd.exe", (closeWhenDone ? "/c " : "/k ") + commandLine)
         {
             UseShellExecute = true,
             WorkingDirectory = directory,

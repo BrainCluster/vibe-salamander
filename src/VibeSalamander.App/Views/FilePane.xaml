@@ -125,7 +125,7 @@
         <DataTemplate x:Key="ThumbnailTemplate" x:DataType="vm:FileItemViewModel">
             <Grid Opacity="{x:Bind ItemOpacity}" Padding="4,6,4,2" RowSpacing="4">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="112" />
+                    <RowDefinition Height="{x:Bind ThumbnailRowHeight}" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Border CornerRadius="4" Background="{ThemeResource VibeInactivePathBrush}">
@@ -197,7 +197,7 @@
                 <Button Style="{StaticResource VibeDriveButtonStyle}" Click="ThisPcButton_Click" ToolTipService.ToolTip="This PC">
                     <FontIcon Glyph="&#xE7F4;" FontFamily="{StaticResource VibeIconFont}" FontSize="14" />
                 </Button>
-                <ItemsControl ItemsSource="{x:Bind ViewModel.Drives, Mode=OneWay}">
+                <ItemsControl ItemsSource="{x:Bind ViewModel.VisibleDrives, Mode=OneWay}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Orientation="Horizontal" Spacing="1" />
@@ -205,16 +205,21 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:DriveButtonViewModel">
-                            <Button Style="{StaticResource VibeDriveButtonStyle}" Click="DriveButton_Click"
-                                    ToolTipService.ToolTip="{x:Bind ToolTip}">
-                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <Grid Width="16" Height="16">
-                                        <FontIcon Glyph="&#xEDA2;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />
-                                        <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16" />
-                                    </Grid>
-                                    <TextBlock Text="{x:Bind Letter}" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
+                            <StackPanel Orientation="Horizontal" Spacing="1">
+                                <Button Style="{StaticResource VibeDriveButtonStyle}" Click="DriveButton_Click"
+                                        ToolTipService.ToolTip="{x:Bind ToolTip}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <Grid Width="16" Height="16">
+                                            <FontIcon Glyph="&#xEDA2;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />
+                                            <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16" />
+                                        </Grid>
+                                        <TextBlock Text="{x:Bind Letter}" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <!-- Configuration → Change Drive Menu and Drive Bar: separator after this drive -->
+                                <Border Width="1" Margin="3,4" Background="{ThemeResource VibePaneBorderBrush}"
+                                        Visibility="{x:Bind SeparatorVisibility, Mode=OneWay}" />
+                            </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -268,12 +273,20 @@
                 <TextBlock Grid.Column="5" Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"
                            Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
                            VerticalAlignment="Center" Opacity="0.85" />
-                <!-- recent locations, like the drop-down at the end of Explorer's address bar (Alt+F12) -->
-                <Button x:Name="HistoryButton" Grid.Column="6" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2" Margin="0,0,-6,0"
-                        Click="HistoryButton_Click" ToolTipService.ToolTip="Working directories (Alt+F12)">
-                    <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
-                              Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                </Button>
+                <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="0" Margin="0,0,-6,0">
+                    <!-- maximize / restore this panel (Configuration → Appearance) -->
+                    <Button x:Name="MaximizeButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                            Click="MaximizeButton_Click" ToolTipService.ToolTip="Maximize / restore panel (Ctrl+F11)">
+                        <FontIcon Glyph="&#xE740;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                    </Button>
+                    <!-- recent locations, like the drop-down at the end of Explorer's address bar (Alt+F12) -->
+                    <Button x:Name="HistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                            Click="HistoryButton_Click" ToolTipService.ToolTip="Working directories (Alt+F12)">
+                        <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                    </Button>
+                </StackPanel>
             </Grid>
         </Grid>
 

@@ -37,10 +37,25 @@ public sealed partial class FindWindow : Window
 
     /// <param name="startDirectory">Initial "Look in" directory (the active panel's path).</param>
     /// <param name="focusInPanel">Navigates the active panel to (directory, name).</param>
-    public FindWindow(string startDirectory, ElementTheme theme, Func<string, string, Task> focusInPanel)
+    private readonly Func<Core.Settings.ConfirmationOptions> _confirm;
+    private readonly Dialogs _dialogs;
+    private bool _closeConfirmed;
+
+    public FindWindow(string startDirectory, ElementTheme theme, Func<string, string, Task> focusInPanel,
+                      Func<Core.Settings.ConfirmationOptions> confirm)
     {
         InitializeComponent();
         _focusInPanel = focusInPanel;
+        _confirm = confirm;
+        _dialogs = new Dialogs(() => Content.XamlRoot, () => RootGrid.ActualTheme, () => AppWindow.Id);
+        AppWindow.Closing += async (_, args) =>
+        {
+            // Configuration → Confirmations → "Do you want to close Find?"
+            if (_closeConfirmed || !_confirm().CloseFind || (_results.Count == 0 && _cts == null))
+                return;
+            args.Cancel = true;
+            await CloseWithConfirmationAsync();
+        };
         SystemBackdrop = new MicaBackdrop();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarText);
@@ -65,10 +80,38 @@ public sealed partial class FindWindow : Window
     {
         if (_cts != null)
         {
-            _cts.Cancel(); // "Stop"
+            await StopWithConfirmationAsync(); // "Stop"
             return;
         }
         await RunSearchAsync();
+    }
+
+    private async Task<bool> ConfirmAsync(string message, string button)
+    {
+        ContentDialog dialog = _dialogs.Create("Find", new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
+        dialog.PrimaryButtonText = button;
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Primary;
+        return await _dialogs.ShowDialogAsync(dialog) == ContentDialogResult.Primary;
+    }
+
+    /// <summary>Confirmations → "Do you want to stop searching?"</summary>
+    private async Task StopWithConfirmationAsync()
+    {
+        if (_cts == null)
+            return;
+        if (_confirm().StopFind && !await ConfirmAsync("Do you want to stop searching?", "Stop"))
+            return;
+        _cts?.Cancel();
+    }
+
+    private async Task CloseWithConfirmationAsync()
+    {
+        if (!await ConfirmAsync("Do you want to close Find?", "Close"))
+            return;
+        _closeConfirmed = true;
+        _cts?.Cancel();
+        Close();
     }
 
     private async Task RunSearchAsync()
@@ -166,7 +209,9 @@ public sealed partial class FindWindow : Window
         {
             e.Handled = true;
             if (_cts != null)
-                _cts.Cancel();
+                await StopWithConfirmationAsync();
+            else if (_confirm().CloseFind && _results.Count > 0)
+                await CloseWithConfirmationAsync(); // Window.Close() doesn't raise AppWindow.Closing: ask here
             else
                 Close();
         }
