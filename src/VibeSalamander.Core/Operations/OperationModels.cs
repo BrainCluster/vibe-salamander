@@ -34,7 +34,23 @@ public enum ErrorChoice
 public sealed record ConflictInfo(
     string SourcePath, long SourceSize, DateTime SourceTime,
     string TargetPath, long TargetSize, DateTime TargetTime,
-    bool IsDirectory);
+    bool IsDirectory, FileAttributes TargetAttributes = 0, bool IsMerge = false);
+
+/// <summary>Confirmations and options the engine follows (Configuration → Confirmations, General).</summary>
+public sealed class EngineOptions
+{
+    /// <summary>Ask before overwriting a file (off: overwrite without asking).</summary>
+    public bool ConfirmFileOverwrite { get; init; } = true;
+
+    /// <summary>Ask before overwriting a hidden or system file, even when overwrites don't ask.</summary>
+    public bool ConfirmHiddenSystemOverwrite { get; init; } = true;
+
+    /// <summary>Ask before copying a directory into an existing directory of the same name.</summary>
+    public bool ConfirmDirectoryMerge { get; init; }
+
+    /// <summary>Copies from CD/DVD drop the read-only attribute.</summary>
+    public bool ClearReadOnlyFromCd { get; init; } = true;
+}
 
 public sealed record OperationError(string Path, string Message);
 

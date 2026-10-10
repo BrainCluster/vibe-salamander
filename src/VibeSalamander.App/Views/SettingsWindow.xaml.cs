@@ -1,3 +1,4 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -18,6 +19,9 @@ public interface ISettingsHost
 
     /// <summary>Re-applies theme, density, bars, toolbar, shortcuts and menus after a change.</summary>
     void ApplySettings();
+
+    /// <summary>Like ApplySettings; displayChanged = how items look changed (names, sizes, colors, sorting, font).</summary>
+    void ApplySettings(bool displayChanged);
 
     Task ExportConfigurationAsync(Microsoft.UI.WindowId owner);
 
@@ -58,7 +62,7 @@ public sealed partial class SettingsWindow : Window
 
     public void SetTheme(ElementTheme theme) => RootGrid.RequestedTheme = theme;
 
-    /// <summary>Selects a page ("General", "Panels", "Keyboard", "Toolbar", "HotPaths", "UserMenu", "Backup").</summary>
+    /// <summary>Selects a page by its tag (see SettingsWindow.xaml, e.g. "General", "Confirmations", "Keyboard").</summary>
     public void ShowPage(string tag)
     {
         foreach (object item in Nav.MenuItems)
@@ -84,7 +88,18 @@ public sealed partial class SettingsWindow : Window
         {
             PageHost.Content = tag switch
             {
-                "Panels" => BuildPanelsPage(),
+                "RecycleBin" => BuildRecycleBinPage(),
+                "Confirmations" => BuildConfirmationsPage(),
+                "Panels" => BuildPanelOptionsPage(),
+                "Views" => BuildViewsPage(),
+                "Appearance" => BuildAppearancePage(),
+                "Colors" => BuildColorsPage(),
+                "MainWindow" => BuildMainWindowPage(),
+                "Drives" => BuildDrivesPage(),
+                "ChangeDrive" => BuildChangeDrivePage(),
+                "Viewers" => BuildProgramsPage(viewers: true),
+                "Editors" => BuildProgramsPage(viewers: false),
+                "History" => BuildHistoryPage(),
                 "Keyboard" => BuildKeyboardPage(),
                 "Toolbar" => BuildToolbarPage(),
                 "HotPaths" => BuildHotPathsPage(),
@@ -100,12 +115,31 @@ public sealed partial class SettingsWindow : Window
         PageScroller.ChangeView(null, 0, null, disableAnimation: true);
     }
 
-    private void Changed()
+    /// <param name="display">The change affects how the panels look (rebuilds the lists).</param>
+    private void Changed(bool display = false)
     {
         if (_loading)
             return;
-        _host.ApplySettings();
+        _host.ApplySettings(display);
         _vm.SaveSettings();
+    }
+
+    private DispatcherQueueTimer? _debounce;
+
+    /// <summary>Changed(display: true) once the user stops dragging (color pickers fire on every move).</summary>
+    private void ChangedDebounced()
+    {
+        if (_loading)
+            return;
+        if (_debounce == null)
+        {
+            _debounce = DispatcherQueue.CreateTimer();
+            _debounce.Interval = TimeSpan.FromMilliseconds(250);
+            _debounce.IsRepeating = false;
+            _debounce.Tick += (_, _) => Changed(display: true);
+        }
+        _debounce.Stop();
+        _debounce.Start();
     }
 
     // ---- building blocks ---------------------------------------------------------------------
@@ -147,18 +181,89 @@ public sealed partial class SettingsWindow : Window
         return new Border { Child = grid, Style = ThemedStyle("SettingsCardStyle") };
     }
 
-    private Border Toggle(string label, string? description, bool value, Action<bool> set)
+    private Border Toggle(string label, string? description, bool value, Action<bool> set, bool display = false)
     {
         var toggle = new ToggleSwitch { IsOn = value, OnContent = string.Empty, OffContent = string.Empty, MinWidth = 0 };
         toggle.Toggled += (_, _) =>
         {
             set(toggle.IsOn);
-            Changed();
+            Changed(display);
         };
         return Card(label, description, toggle);
     }
 
-    private Border Choice<T>(string label, string? description, (string Text, T Value)[] options, T value, Action<T> set)
+    /// <summary>A whole number setting.</summary>
+    private Border Number(string label, string? description, double value, double min, double max, Action<int> set, bool display = false)
+    {
+        var box = new NumberBox
+        {
+            Value = value,
+            Minimum = min,
+            Maximum = max,
+            SpinButtonPlacementMode = NumberBoxSpinButtonPlacementMode.Inline,
+            SmallChange = 1,
+            MinWidth = 140,
+        };
+        box.ValueChanged += (_, args) =>
+        {
+            if (double.IsNaN(args.NewValue))
+                return;
+            set((int)Math.Round(Math.Clamp(args.NewValue, min, max)));
+            Changed(display);
+        };
+        return Card(label, description, box);
+    }
+
+    /// <summary>A text setting (saved as you type).</summary>
+    private Border TextSetting(string label, string? description, string value, Action<string> set, double width = 320,
+        string? placeholder = null, bool display = false)
+    {
+        var box = new TextBox { Text = value, Width = width, PlaceholderText = placeholder ?? string.Empty, IsSpellCheckEnabled = false };
+        box.TextChanged += (_, _) =>
+        {
+            set(box.Text);
+            Changed(display);
+        };
+        return Card(label, description, box);
+    }
+
+    /// <summary>A color swatch that opens a color picker; "" = the scheme's color (Reset).</summary>
+    private FrameworkElement ColorButton(string value, Windows.UI.Color fallback, Action<string> set)
+    {
+        var swatch = new Border { Width = 36, Height = 18, CornerRadius = new CornerRadius(3), BorderThickness = new Thickness(1) };
+        swatch.BorderBrush = ThemedStyle("SettingsFrameStyle") is { } ? (Application.Current.Resources["CardStrokeColorDefaultBrush"] as Brush) : null;
+        void Show(string hex) => swatch.Background = new SolidColorBrush(UiState.ParseColor(hex) ?? fallback);
+        Show(value);
+        var picker = new ColorPicker
+        {
+            Color = UiState.ParseColor(value) ?? fallback,
+            IsAlphaEnabled = false,
+            IsMoreButtonVisible = false,
+            IsColorChannelTextInputVisible = true,
+        };
+        var reset = new Button { Content = "Use the scheme color", HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 8, 0, 0) };
+        var flyoutContent = new StackPanel();
+        flyoutContent.Children.Add(picker);
+        flyoutContent.Children.Add(reset);
+        var button = new Button { Content = swatch, Padding = new Thickness(6), Flyout = new Flyout { Content = flyoutContent } };
+        picker.ColorChanged += (_, args) =>
+        {
+            string hex = UiState.ToHex(args.NewColor);
+            Show(hex);
+            set(hex);
+            ChangedDebounced();
+        };
+        reset.Click += (_, _) =>
+        {
+            set(string.Empty);
+            Show(string.Empty);
+            button.Flyout?.Hide();
+            Changed(display: true);
+        };
+        return button;
+    }
+
+    private Border Choice<T>(string label, string? description, (string Text, T Value)[] options, T value, Action<T> set, bool display = false)
     {
         var combo = new ComboBox { MinWidth = 180 };
         foreach (var (text, _) in options)
@@ -169,7 +274,7 @@ public sealed partial class SettingsWindow : Window
             if (combo.SelectedIndex >= 0)
             {
                 set(options[combo.SelectedIndex].Value);
-                Changed();
+                Changed(display);
             }
         };
         return Card(label, description, combo);
@@ -190,50 +295,11 @@ public sealed partial class SettingsWindow : Window
         return button;
     }
 
-    // ---- General -----------------------------------------------------------------------------
+    // ---- Views (per panel: view mode and Detailed columns) ------------------------------------------------------------------------------
 
-    private UIElement BuildGeneralPage()
+    private UIElement BuildViewsPage()
     {
-        AppSettings s = _vm.Settings;
-        StackPanel page = Page("General");
-
-        page.Children.Add(Section("Appearance"));
-        page.Children.Add(Choice("Theme", null,
-            new[] { ("Use system setting", AppTheme.System), ("Light", AppTheme.Light), ("Dark", AppTheme.Dark) },
-            s.Theme, v => s.Theme = v));
-        page.Children.Add(Choice("Density", "Compact is Salamander-like; comfortable gives rows more room, like Files.",
-            new[] { ("Compact", Density.Compact), ("Comfortable", Density.Comfortable) },
-            s.Density, v => s.Density = v));
-        page.Children.Add(Toggle("Show hidden and system files", "Ctrl+H", s.ShowHidden, v =>
-        {
-            s.ShowHidden = v;
-            _ = Task.WhenAll(_vm.Left.RefreshAsync(), _vm.Right.RefreshAsync());
-        }));
-        page.Children.Add(Toggle("Always on top", null, s.AlwaysOnTop, v => s.AlwaysOnTop = v));
-
-        page.Children.Add(Section("Confirmations"));
-        page.Children.Add(Toggle("Ask for the copy / move target (F5 / F6)",
-            "Off: files go straight into the other panel's directory.", s.AskCopyMoveTarget, v => s.AskCopyMoveTarget = v));
-        page.Children.Add(Toggle("Confirm delete to the Recycle Bin (F8)",
-            "Permanent delete (Shift+Del) always asks.", s.ConfirmRecycle, v => s.ConfirmRecycle = v));
-
-        page.Children.Add(Section("Show"));
-        page.Children.Add(Toggle("Top toolbar", null, s.ShowTopToolbar, v => s.ShowTopToolbar = v));
-        page.Children.Add(Toggle("Hot path bar", "Buttons for the hot paths (Ctrl+0…9).", s.ShowHotPathBar, v => s.ShowHotPathBar = v));
-        page.Children.Add(Toggle("User menu bar", "Buttons for the user menu commands (F9).", s.ShowUserMenuBar, v => s.ShowUserMenuBar = v));
-        page.Children.Add(Toggle("Drive bars", null, s.ShowDriveBars, v => s.ShowDriveBars = v));
-        page.Children.Add(Toggle("Information line", null, s.ShowInformationLine, v => s.ShowInformationLine = v));
-        page.Children.Add(Toggle("Command line", null, s.ShowCommandLine, v => s.ShowCommandLine = v));
-        page.Children.Add(Toggle("Bottom toolbar (F1–F12)", null, s.ShowFunctionKeyBar, v => s.ShowFunctionKeyBar = v));
-        page.Children.Add(Toggle("Transfer panel", "Shown while it has transfers.", s.ShowTransfers, v => s.ShowTransfers = v));
-        return page;
-    }
-
-    // ---- Panels ------------------------------------------------------------------------------
-
-    private UIElement BuildPanelsPage()
-    {
-        StackPanel page = Page("Panels", "View and Detailed view columns of each panel. Column widths are changed by dragging the column header grips.");
+        StackPanel page = Page("Views", "View and Detailed view columns of each panel. Column widths are changed by dragging the column header grips.");
         var views = new[]
         {
             ("Brief", ViewMode.Brief), ("Detailed", ViewMode.Detailed), ("Icons", ViewMode.Icons),
@@ -588,12 +654,12 @@ public sealed partial class SettingsWindow : Window
     {
         AppSettings s = _vm.Settings;
         StackPanel page = Page("Hot Paths",
-            "Ctrl+0…9 goes to a hot path; Ctrl+Shift+0…9 makes the active panel's directory that hot path. " +
+            "Ctrl+0…9 goes to a hot path; Ctrl+Shift+0…9 makes the active panel's directory that hot path. The optional name is shown in menus and on the hot path bar. " +
             "They are also listed in the drive menu (Alt+F1 / Alt+F2) and on the hot path bar.");
         for (int i = 0; i < 10; i++)
         {
             int n = i;
-            var box = new TextBox { Text = s.HotPaths[n], PlaceholderText = "not set", Width = 440 };
+            var box = new TextBox { Text = s.HotPaths[n], PlaceholderText = "not set", Width = 360 };
             box.TextChanged += (_, _) =>
             {
                 // also raised (asynchronously, after _loading) for the initial text
@@ -619,6 +685,7 @@ public sealed partial class SettingsWindow : Window
             var clear = IconButton("", "Clear");
             clear.Click += (_, _) => box.Text = string.Empty;
             var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+            row.Children.Add(HotPathNameBox(n));
             row.Children.Add(box);
             row.Children.Add(browse);
             row.Children.Add(current);

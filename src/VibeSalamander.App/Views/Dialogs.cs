@@ -125,6 +125,20 @@ public sealed class Dialogs
         var body = new StackPanel { Spacing = 6 };
         if (!string.IsNullOrEmpty(context))
             body.Children.Add(Text(context, secondary: true));
+        if (c.IsMerge)
+        {
+            body.Children.Add(Text("The target directory already exists. Merge the copied directory into it?"));
+            body.Children.Add(Text(c.TargetPath, bold: true));
+            return ChooseAsync("Confirm Directory Merge", body, new[]
+            {
+                ("Merge", ConflictChoice.Overwrite, true),
+                ("Merge All", ConflictChoice.OverwriteAll, false),
+                ("Skip", ConflictChoice.Skip, false),
+                ("Skip All", ConflictChoice.SkipAll, false),
+            }, ConflictChoice.Cancel);
+        }
+        if ((c.TargetAttributes & (FileAttributes.Hidden | FileAttributes.System)) != 0)
+            body.Children.Add(Text("The target is a hidden or system file.", secondary: true));
         body.Children.Add(Text(c.IsDirectory ? "A directory with this name already exists:" : "The target file already exists:"));
         body.Children.Add(Text(c.TargetPath, bold: true));
         if (!c.IsDirectory)

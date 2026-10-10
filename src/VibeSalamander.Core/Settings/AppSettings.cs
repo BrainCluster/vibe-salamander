@@ -57,6 +57,30 @@ public sealed class AppSettings
     /// <summary>List of Working Directories (Alt+F12), most recent first.</summary>
     public List<string> WorkingDirectories { get; set; } = new();
 
+    // ---- Configuration pages (as in Open Salamander) ----------------------------------------
+
+    public GeneralOptions General { get; set; } = new();
+    public RecycleOptions Recycle { get; set; } = new();
+    public ConfirmationOptions Confirm { get; set; } = new();
+    public PanelOptions Panels { get; set; } = new();
+    public AppearanceOptions Appearance { get; set; } = new();
+    public ColorOptions Colors { get; set; } = new();
+    public MainWindowOptions Window { get; set; } = new();
+    public DriveOptions Drives { get; set; } = new();
+    public HistoryOptions History { get; set; } = new();
+
+    /// <summary>Viewers (F3) by file mask, first match wins; no match = the default Windows app.</summary>
+    public List<ProgramRule> Viewers { get; set; } = new();
+
+    /// <summary>Editors (F4) by file mask, first match wins; no match = the Windows "edit" verb.</summary>
+    public List<ProgramRule> Editors { get; set; } = new();
+
+    /// <summary>Command line history (Up / Down), most recent first.</summary>
+    public List<string> CommandLineHistory { get; set; } = new();
+
+    /// <summary>Names of the hot paths (shown in menus and on the hot path bar; "" = the directory name).</summary>
+    public List<string> HotPathNames { get; set; } = Enumerable.Repeat(string.Empty, 10).ToList();
+
     /// <summary>Changes to the default keyboard shortcuts (Configuration → Keyboard).</summary>
     public List<KeyBindingOverride> KeyBindings { get; set; } = new();
 

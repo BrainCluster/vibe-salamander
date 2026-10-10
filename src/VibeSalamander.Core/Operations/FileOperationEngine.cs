@@ -17,6 +17,11 @@ public sealed class FileOperationEngine
 
     private OperationKind _kind;
     private ConflictChoice? _conflictForAll;
+    private ConflictChoice? _mergeForAll;
+    private readonly List<string> _skippedDirectories = new();
+
+    /// <summary>Confirmations and options from the configuration (set before starting an operation).</summary>
+    public EngineOptions Options { get; set; } = new();
     private bool _skipAllErrors;
     private long _totalBytes, _doneBytes, _currentDone, _currentTotal;
     private int _itemsTotal, _itemsDone;
@@ -141,6 +146,8 @@ public sealed class FileOperationEngine
             {
                 WaitWhilePaused();
                 ct.ThrowIfCancellationRequested();
+                if (IsInSkippedDirectory(step))
+                    continue; // the user skipped merging this directory
                 bool proceed = step switch
                 {
                     CopyFileStep s => await CopyFileAsync(s, result),
@@ -273,6 +280,8 @@ public sealed class FileOperationEngine
                 if (overwrite)
                     ClearReadOnly(target);
                 CopyOneFile(step.Source, target, overwrite);
+                if (Options.ClearReadOnlyFromCd && IsOnCdRom(step.Source))
+                    ClearReadOnly(target);
                 if (step.DeleteSource)
                 {
                     ClearReadOnly(step.Source);
@@ -306,7 +315,17 @@ public sealed class FileOperationEngine
         Report(force: false);
         if (Directory.Exists(step.Target))
         {
-            _itemsDone++; // merge into the existing directory (Salamander does this without asking)
+            _itemsDone++;
+            if (!Options.ConfirmDirectoryMerge)
+                return true; // merge into the existing directory without asking
+            ConflictChoice choice = await AskMergeAsync(step.Source, step.Target);
+            if (choice == ConflictChoice.Cancel)
+                return false;
+            if (choice == ConflictChoice.Skip)
+            {
+                _skippedDirectories.Add(step.Target.TrimEnd('\\') + "\\");
+                result.Skipped++;
+            }
             return true;
         }
         while (true)
@@ -469,6 +488,43 @@ public sealed class FileOperationEngine
 
     // ---- prompts -----------------------------------------------------------------------------
 
+    private bool IsInSkippedDirectory(Step step)
+    {
+        if (_skippedDirectories.Count == 0)
+            return false;
+        string target = step switch
+        {
+            CopyFileStep s => s.Target,
+            CreateDirStep s => s.Target,
+            FinishDirStep s => s.Target,
+            RenameStep s => s.Target,
+            _ => string.Empty,
+        };
+        string withSlash = target.TrimEnd('\\') + "\\";
+        foreach (string skipped in _skippedDirectories)
+            if (withSlash.StartsWith(skipped, StringComparison.OrdinalIgnoreCase))
+                return !(step is CreateDirStep && string.Equals(withSlash, skipped, StringComparison.OrdinalIgnoreCase));
+        return false;
+    }
+
+    /// <summary>"The directory already exists: merge?" (Overwrite = merge, Skip = leave it out).</summary>
+    private async Task<ConflictChoice> AskMergeAsync(string source, string target)
+    {
+        if (_mergeForAll is ConflictChoice all)
+            return all == ConflictChoice.SkipAll ? ConflictChoice.Skip : ConflictChoice.Overwrite;
+        var info = new ConflictInfo(source, 0, Directory.GetLastWriteTime(source), target, 0, Directory.GetLastWriteTime(target),
+            IsDirectory: true, TargetAttributes: File.GetAttributes(target), IsMerge: true);
+        PauseClock();
+        ConflictChoice choice = await _callbacks.ResolveConflictAsync(info).ConfigureAwait(false);
+        ResumeClock();
+        if (choice is ConflictChoice.OverwriteAll or ConflictChoice.SkipAll)
+        {
+            _mergeForAll = choice;
+            return choice == ConflictChoice.SkipAll ? ConflictChoice.Skip : ConflictChoice.Overwrite;
+        }
+        return choice is ConflictChoice.Skip or ConflictChoice.Cancel ? choice : ConflictChoice.Overwrite;
+    }
+
     private async Task<ConflictChoice> ResolveConflictAsync(string source, string target, bool isDirectory)
     {
         var srcInfo = new FileInfo(source);
@@ -486,10 +542,23 @@ public sealed class FileOperationEngine
             };
         }
 
+        FileAttributes targetAttributes = 0;
+        try
+        {
+            targetAttributes = File.GetAttributes(target);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+        // Configuration → Confirmations: overwrite without asking, except hidden/system files when that still asks
+        bool hiddenOrSystem = (targetAttributes & (FileAttributes.Hidden | FileAttributes.System)) != 0;
+        if (!isDirectory && !Options.ConfirmFileOverwrite && !(hiddenOrSystem && Options.ConfirmHiddenSystemOverwrite))
+            return ConflictChoice.Overwrite;
+
         var info = new ConflictInfo(
             source, srcInfo.Exists ? srcInfo.Length : 0, srcInfo.Exists ? srcInfo.LastWriteTime : DateTime.MinValue,
             target, dstInfo.Exists ? dstInfo.Length : 0, dstInfo.Exists ? dstInfo.LastWriteTime : DateTime.MinValue,
-            isDirectory);
+            isDirectory, targetAttributes);
         PauseClock();
         ConflictChoice choice = await _callbacks.ResolveConflictAsync(info).ConfigureAwait(false);
         ResumeClock();
@@ -533,6 +602,8 @@ public sealed class FileOperationEngine
         _kind = kind;
         _ct = ct;
         _conflictForAll = null;
+        _mergeForAll = null;
+        _skippedDirectories.Clear();
         _skipAllErrors = false;
         _totalBytes = _doneBytes = _currentDone = _currentTotal = 0;
         _itemsTotal = _itemsDone = 0;
@@ -589,6 +660,30 @@ public sealed class FileOperationEngine
 
     private static bool SameVolume(string a, string b) =>
         string.Equals(Path.GetPathRoot(a), Path.GetPathRoot(b), StringComparison.OrdinalIgnoreCase);
+
+    private string? _cdRoot;
+    private bool _cdRootIsCd;
+
+    /// <summary>True when the file is on a CD/DVD drive (cached per drive root).</summary>
+    private bool IsOnCdRom(string path)
+    {
+        string? root = Path.GetPathRoot(path);
+        if (string.IsNullOrEmpty(root))
+            return false;
+        if (!string.Equals(root, _cdRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            _cdRoot = root;
+            try
+            {
+                _cdRootIsCd = root.Length <= 3 && new DriveInfo(root).DriveType == DriveType.CDRom;
+            }
+            catch (ArgumentException)
+            {
+                _cdRootIsCd = false;
+            }
+        }
+        return _cdRootIsCd;
+    }
 
     private static void ClearReadOnly(string path)
     {

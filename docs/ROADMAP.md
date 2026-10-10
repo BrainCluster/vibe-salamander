@@ -103,7 +103,16 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 ## Options menu
 | Command | Phase | Done |
 |---|---|---|
-| Configuration window (General, Panels, Keyboard, Toolbar, Hot Paths, User Menu, Backup) | 3 | [x] |
+| Configuration window (General, Recycle Bin, Confirmations, Panels, Views, Appearance, Colors, Main Window, Drives, Change Drive Menu, Viewers, Editors, History, Keyboard, Toolbar, Hot Paths, User Menu, Backup — as in Open Salamander) | 3 | [x] |
+| Confirmations: permanent delete, non-empty directory delete, overwrite, hidden/system delete and overwrite, directory merge, NTFS compress/encrypt, drag & drop; messages for Find close/stop, create target path, Always on Top, exit, exit with running transfers, email, create missing directory | 3 | [x] |
+| Recycle Bin: never / always / by file masks | 3 | [x] |
+| Panel options: select includes directories, name casing, size format, typing to command line, Shift+digit hot paths, right-click marks, slow-click rename, drag threshold, regional / numerical / newest-first sorting, directories with extensions | 3 | [x] |
+| Appearance: single-click open, dim hidden items, panel font and size, information line format, thumbnail size, maximize button in address bar | 3 | [x] |
+| Colors: schemes (Vibe, Salamander, Explorer, Norton, Navigator, Custom) and file highlighting by mask and attributes | 3 | [x] |
+| Main window title (full path / directory / custom prefix); single instance; beep when background transfers finish | 3 | [x] |
+| Drives: auto-refresh and simple icons per drive type, refresh on activation, fallback for inaccessible directories; Change Drive menu (hidden drives, separators, extra items) | 3 | [x] |
+| Viewers / editors by file mask (default Windows app otherwise); history options and command line history | 3 | [x] |
+| Language, archivers, security / master password, icon overlays (plugins phase) | 4 | [ ] |
 | Show/hide bars (toolbars, drive bars, command line, F-key bar, transfer panel) | 1 | [x] |
 | F-key bar follows held Ctrl / Alt / Shift (F1–F12) | 2 | [x] |
 | Ask for copy/move target (on/off) | 2 | [x] |

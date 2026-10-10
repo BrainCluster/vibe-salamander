@@ -57,6 +57,8 @@ public sealed partial class FilePane : UserControl
         InitializeComponent();
         // ListViewItems handle PointerPressed themselves; listen to handled events too for Ctrl+click marking.
         FileList.AddHandler(PointerPressedEvent, new PointerEventHandler(List_PointerPressed), handledEventsToo: true);
+        // the list items handle Tapped themselves (selection): listen to handled taps too
+        FileList.AddHandler(TappedEvent, new TappedEventHandler(List_Tapped), handledEventsToo: true);
         // any click inside the panel makes it the active one (also on the empty area below the items)
         RootGrid.AddHandler(PointerPressedEvent, new PointerEventHandler(Pane_PointerPressed), handledEventsToo: true);
     }
@@ -71,7 +73,7 @@ public sealed partial class FilePane : UserControl
         viewModel.ListingChanged += (_, e) => ApplyCaret(e.CaretIndex, focus: viewModel.IsActive);
         viewModel.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName is nameof(PaneViewModel.DisplayPath) or nameof(PaneViewModel.Path) or nameof(PaneViewModel.Drives))
+            if (e.PropertyName is nameof(PaneViewModel.DisplayPath) or nameof(PaneViewModel.Path) or nameof(PaneViewModel.Drives) or nameof(PaneViewModel.VisibleDrives))
                 RebuildBreadcrumb();
             else if (e.PropertyName == nameof(PaneViewModel.IsActive))
                 UpdateBreadcrumbForeground(); // not a rebuild: a chevron click activates the panel, and its menu needs the button
@@ -141,12 +143,18 @@ public sealed partial class FilePane : UserControl
     /// <summary>Where a Shift+click range starts: the caret position last reached without Shift held.</summary>
     private int _shiftAnchor = -1;
 
+    /// <summary>The caret before the last selection change (a click on the focused item doesn't change it).</summary>
+    private int _previousCaret = -1;
+    private DateTime _caretChangedAt;
+
     private void List_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ViewModel != null && FileList.SelectedIndex >= 0)
         {
             if (!KeyboardState.IsDown(KeyboardState.Shift))
                 _shiftAnchor = FileList.SelectedIndex;
+            _previousCaret = ViewModel.CaretIndex;
+            _caretChangedAt = DateTime.UtcNow;
             ViewModel.CaretIndex = FileList.SelectedIndex;
             if (e.AddedItems.Count > 0 && ViewModel.QuickSearch.Length > 0 && !_quickSearchMoving)
                 ViewModel.EndQuickSearch();
@@ -163,8 +171,11 @@ public sealed partial class FilePane : UserControl
     {
         if (ViewModel == null || _main == null)
             return;
+        _slowClickTimer?.Stop();
         if ((e.OriginalSource as FrameworkElement)?.DataContext is not FileItemViewModel item || item.IsRenaming)
             return; // double-clicking inside the rename box selects a word
+        if (_main.Settings.Appearance.SingleClickOpens)
+            return; // the first click already opened it
         int index = IndexOf(item);
         if (index < 0)
             return;
@@ -173,16 +184,66 @@ public sealed partial class FilePane : UserControl
         await _main.ExecuteAsync(CommandId.Open);
     }
 
+    // ---- mouse options (Configuration → Panels / Appearance) -------------------------------
+
+    private int _caretAtPress = -1;
+    private DateTime _pressTime;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _slowClickTimer;
+
+    /// <summary>Single click opens (Appearance) or a slow second click on the focused item renames (Panels).</summary>
+    private async void List_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (ViewModel == null || _main == null || IsRenaming || e.PointerDeviceType != Microsoft.UI.Input.PointerDeviceType.Mouse)
+            return;
+        if (KeyboardState.CurrentModifiers() != KeyModifiers.None)
+            return;
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is not FileItemViewModel item)
+            return;
+        int index = IndexOf(item);
+        if (index < 0)
+            return;
+        if (_main.Settings.Appearance.SingleClickOpens)
+        {
+            ViewModel.CaretIndex = index;
+            await _main.ExecuteAsync(CommandId.Open);
+            return;
+        }
+        if (!_main.Settings.Panels.SlowClickRename || index != _caretAtPress || item.Entry.IsUpDir || item.IsDrive)
+            return;
+        // like Explorer: wait out the double-click time; a double-click cancels the rename
+        if (_slowClickTimer == null)
+        {
+            _slowClickTimer = DispatcherQueue.CreateTimer();
+            _slowClickTimer.IsRepeating = false;
+            _slowClickTimer.Tick += async (_, _) =>
+            {
+                if (ViewModel != null && _main != null && !IsRenaming && ViewModel.CaretIndex == _slowClickIndex)
+                    await _main.ExecuteAsync(CommandId.QuickRename);
+            };
+        }
+        _slowClickIndex = index;
+        _slowClickTimer.Interval = TimeSpan.FromMilliseconds(Math.Max(300, GetDoubleClickTime()) + 50);
+        _slowClickTimer.Stop();
+        _slowClickTimer.Start();
+    }
+
+    private int _slowClickIndex = -1;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetDoubleClickTime();
+
     private void List_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
         if (args.InRecycleQueue || args.Item is not FileItemViewModel item || _main == null)
             return;
+        if (ViewModel?.CurrentDriveOptions?.SimpleIcons == true)
+            return; // Configuration → Drives: generic icons on this kind of drive
         item.EnsureIcon(_main.Icons);
         double dips = _appliedView switch
         {
             ViewMode.Icons => 48,
             ViewMode.Tiles => 48,
-            ViewMode.Thumbnails => 112,
+            ViewMode.Thumbnails => UiState.ThumbnailSize,
             _ => 0,
         };
         if (dips > 0)
@@ -243,7 +304,7 @@ public sealed partial class FilePane : UserControl
         {
             ViewMode.Brief => PanelTemplate($"<ItemsWrapGrid Orientation='Vertical' ItemWidth='{Num(briefWidth)}' ItemHeight='{Num(rowHeight)}' />"),
             ViewMode.Icons => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='96' ItemHeight='104' />"),
-            ViewMode.Thumbnails => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='140' ItemHeight='152' />"),
+            ViewMode.Thumbnails => PanelTemplate($"<ItemsWrapGrid Orientation='Horizontal' ItemWidth='{Num(UiState.ThumbnailSize + 28)}' ItemHeight='{Num(UiState.ThumbnailSize + 40)}' />"),
             ViewMode.Tiles => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='264' ItemHeight='64' />"),
             _ => PanelTemplate("<ItemsStackPanel />"),
         };
@@ -422,6 +483,7 @@ public sealed partial class FilePane : UserControl
     {
         if (ViewModel == null || IsRenaming || !e.GetCurrentPoint(FileList).Properties.IsLeftButtonPressed)
             return;
+        _pressTime = DateTime.UtcNow;
         bool ctrl = KeyboardState.IsDown(KeyboardState.Control);
         bool shift = KeyboardState.IsDown(KeyboardState.Shift);
         if ((e.OriginalSource as FrameworkElement)?.DataContext is not FileItemViewModel item)
@@ -429,6 +491,9 @@ public sealed partial class FilePane : UserControl
         int index = IndexOf(item);
         if (index < 0)
             return;
+        // was the clicked item focused before this click? (the list may already have moved the caret)
+        bool movedByThisClick = (DateTime.UtcNow - _caretChangedAt).TotalMilliseconds < 200 && ViewModel.CaretIndex == index;
+        _caretAtPress = movedByThisClick ? _previousCaret : ViewModel.CaretIndex;
         if (ctrl && !shift)
         {
             ViewModel.ToggleMark(index); // Ctrl+click: mark / unmark one item
@@ -527,19 +592,29 @@ public sealed partial class FilePane : UserControl
             return;
         if (c == ' ' && ViewModel.QuickSearch.Length == 0)
             return; // Space marks the item
-        bool ctrlOrAlt =
-            Services.KeyboardState.IsDown(Services.KeyboardState.Control) ||
-            Services.KeyboardState.IsDown(Services.KeyboardState.Alt);
-        if (ctrlOrAlt)
+        bool ctrl = Services.KeyboardState.IsDown(Services.KeyboardState.Control);
+        bool alt = Services.KeyboardState.IsDown(Services.KeyboardState.Alt);
+        bool toCommandLine = _main?.Settings.Panels.TypingToCommandLine == true;
+        if (ctrl || (alt && !toCommandLine))
             return;
         if (c is '+' or '-' or '*' or '/' && ViewModel.QuickSearch.Length == 0)
             return; // numeric keypad commands
+        if (toCommandLine && !alt && ViewModel.QuickSearch.Length == 0)
+        {
+            // Configuration → Panels: typing goes to the command line (Alt+letter quick-searches)
+            TypedToCommandLine?.Invoke(this, c);
+            args.Handled = true;
+            return;
+        }
 
         int index = ViewModel.QuickSearchType(c);
         if (index >= 0)
             MoveCaretForQuickSearch(index);
         args.Handled = true;
     }
+
+    /// <summary>A character typed in the panel that belongs to the command line (Configuration → Panels).</summary>
+    public event EventHandler<char>? TypedToCommandLine;
 
     /// <summary>Backspace while quick searching; returns false when no quick search is active.</summary>
     public bool QuickSearchBackspace()
@@ -577,7 +652,17 @@ public sealed partial class FilePane : UserControl
         {
             int index = IndexOf(item);
             if (index >= 0)
+            {
                 FileList.SelectedIndex = index;
+                // Configuration → Panels: right-click marks (Norton style), Ctrl+right-click opens the menu
+                bool ctrl = KeyboardState.IsDown(KeyboardState.Control);
+                if (!_main.Settings.Panels.RightClickOpensMenu ? !ctrl : ctrl)
+                {
+                    ViewModel.ToggleMark(index);
+                    e.Handled = true;
+                    return;
+                }
+            }
         }
         var (x, y) = ShellContextMenu.CursorPosition();
         ShowShellMenu(item, x, y);
@@ -719,7 +804,7 @@ public sealed partial class FilePane : UserControl
     }
 
     /// <summary>Turns the item's name label into an edit box; returns the new name or null when cancelled.</summary>
-    public async Task<string?> EditNameInPlaceAsync(FileItemViewModel item)
+    public async Task<string?> EditNameInPlaceAsync(FileItemViewModel item, bool selectWholeName = false)
     {
         if (ViewModel == null || IsRenaming)
             return null;
@@ -765,7 +850,7 @@ public sealed partial class FilePane : UserControl
         box.Unloaded += BoxUnloaded;
         box.FontSize = UiState.FontSize;
         box.Text = item.Entry.Name;
-        int dot = item.Entry.IsDirectory ? -1 : item.Entry.Name.LastIndexOf('.');
+        int dot = item.Entry.IsDirectory || selectWholeName ? -1 : item.Entry.Name.LastIndexOf('.');
         // focus after menus/flyouts have closed and returned their focus
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
@@ -863,11 +948,19 @@ public sealed partial class FilePane : UserControl
 
     private void List_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
-        if (ViewModel == null || !ViewModel.IsLocalDisk)
+        if (ViewModel == null || !ViewModel.IsLocalDisk || IsRenaming)
         {
             e.Cancel = true;
             return;
         }
+        // Configuration → Panels: very short drags are accidental
+        int minimum = _main?.Settings.Panels.DragCancelMilliseconds ?? 0;
+        if (minimum > 0 && (DateTime.UtcNow - _pressTime).TotalMilliseconds < minimum)
+        {
+            e.Cancel = true;
+            return;
+        }
+        _slowClickTimer?.Stop();
         var dragged = e.Items.OfType<FileItemViewModel>().ToList();
         // dragging a marked item drags the whole selection (Salamander)
         if (dragged.Any(i => i.IsMarked))
@@ -954,6 +1047,8 @@ public sealed partial class FilePane : UserControl
             if (paths.Count == 0 || paths.All(p => string.Equals(Path.GetDirectoryName(p), target, StringComparison.OrdinalIgnoreCase)))
                 return;
             _main.Activate(ViewModel);
+            if (!await _main.ConfirmDropAsync(paths, target, move))
+                return;
             await _main.TransferAsync(paths, target, move);
         }
         catch (Exception ex)
@@ -996,6 +1091,46 @@ public sealed partial class FilePane : UserControl
 
     private void DriveMenuButton_Click(object sender, RoutedEventArgs e) => ShowDriveMenu();
 
+    private async void MaximizeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        _main.Activate(ViewModel);
+        await _main.ExecuteAsync(CommandId.MaximizePanel);
+        FocusList();
+    }
+
+    /// <summary>Applies Appearance / Colors / Drives options: font, colors, address bar buttons, drive bar.</summary>
+    public void ApplyOptions()
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        FileList.FontSize = UiState.FontSize;
+        if (UiState.PanelFont is { } font)
+            FileList.FontFamily = font;
+        else
+            FileList.ClearValue(Control.FontFamilyProperty);
+        MaximizeButton.Visibility = _main.Settings.Appearance.MaximizeButtonInAddressBar ? Visibility.Visible : Visibility.Collapsed;
+
+        // color scheme: panel background and the focused row (lightweight styling of the list items)
+        if (UiState.PanelBackground is { } background)
+            FileList.Background = background;
+        else
+            FileList.ClearValue(Control.BackgroundProperty);
+        foreach (string key in new[] { "ListViewItemBackgroundSelected", "ListViewItemBackgroundSelectedPointerOver", "ListViewItemBackgroundSelectedPressed" })
+        {
+            if (UiState.FocusBackground is { } focus)
+                FileList.Resources[key] = focus;
+            else if (FileList.Resources.ContainsKey(key))
+                FileList.Resources.Remove(key);
+        }
+        // re-template the rows so the new resources and the thumbnail size are used
+        _appliedView = (ViewMode)(-1);
+        ApplyViewMode();
+        ViewModel.RefreshVisibleDrives();
+        ViewModel.ApplyDriveOptions();
+    }
+
     private async void HistoryButton_Click(object sender, RoutedEventArgs e)
     {
         if (ViewModel == null || _main == null)
@@ -1010,7 +1145,8 @@ public sealed partial class FilePane : UserControl
         if (ViewModel == null || _main == null)
             return;
         var menu = new MenuFlyout();
-        foreach (DriveButtonViewModel drive in ViewModel.Drives)
+        Core.Settings.DriveOptions driveOptions = _main.Settings.Drives;
+        foreach (DriveButtonViewModel drive in ViewModel.VisibleDrives)
         {
             string free = drive.Drive.HasSize ? $"   {Core.Formatting.Formats.ShortSize(drive.Drive.FreeSpace)} free" : string.Empty;
             var item = new MenuFlyoutItem
@@ -1021,16 +1157,39 @@ public sealed partial class FilePane : UserControl
             string root = drive.Drive.Root;
             item.Click += async (_, _) => await ViewModel.ChangeDriveAsync(root);
             menu.Items.Add(item);
+            if (drive.SeparatorAfter)
+                menu.Items.Add(new MenuFlyoutSeparator());
         }
         menu.Items.Add(new MenuFlyoutSeparator());
         var thisPc = new MenuFlyoutItem { Text = "This PC", Icon = new FontIcon { Glyph = "\uE7F4" } };
         thisPc.Click += async (_, _) => await ViewModel.NavigateAsync(ThisPcProvider.RootPath);
         menu.Items.Add(thisPc);
+        if (driveOptions.MenuShowDocuments)
+        {
+            string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            var docs = new MenuFlyoutItem { Text = "Documents", Icon = new FontIcon { Glyph = "\uE8A5" } };
+            docs.Click += async (_, _) => await ViewModel.NavigateAsync(documents);
+            menu.Items.Add(docs);
+        }
+        if (driveOptions.MenuShowNetwork)
+        {
+            var network = new MenuFlyoutItem { Text = "Network", Icon = new FontIcon { Glyph = "\uE968" } };
+            network.Click += (_, _) => Core.Interop.ShellOperations.OpenInExplorer("shell:NetworkPlacesFolder");
+            menu.Items.Add(network);
+        }
+        if (driveOptions.MenuShowOtherPanelPath)
+        {
+            PaneViewModel other = _main.Left == ViewModel ? _main.Right : _main.Left;
+            string otherPath = other.IsThisPc ? ThisPcProvider.RootPath : other.Path;
+            var asOther = new MenuFlyoutItem { Text = "As Other Panel", Icon = new FontIcon { Glyph = "\uE8AB" }, KeyboardAcceleratorTextOverride = "Ctrl+." };
+            asOther.Click += async (_, _) => await ViewModel.NavigateAsync(otherPath);
+            menu.Items.Add(asOther);
+        }
 
         // hot paths (Ctrl+Shift+digit sets one, Ctrl+digit goes there)
         IList<string> hotPaths = _main.Settings.HotPaths;
         bool header = false;
-        for (int i = 0; i < hotPaths.Count && i < 10; i++)
+        for (int i = 0; i < hotPaths.Count && i < 10 && driveOptions.MenuShowHotPaths; i++)
         {
             string hot = hotPaths[i];
             if (string.IsNullOrEmpty(hot))
@@ -1040,9 +1199,10 @@ public sealed partial class FilePane : UserControl
                 menu.Items.Add(new MenuFlyoutSeparator());
                 header = true;
             }
+            string hotName = i < _main.Settings.HotPathNames.Count ? _main.Settings.HotPathNames[i] : string.Empty;
             var item = new MenuFlyoutItem
             {
-                Text = hot == ThisPcProvider.RootPath ? "This PC" : hot,
+                Text = hotName.Length > 0 ? hotName : hot == ThisPcProvider.RootPath ? "This PC" : hot,
                 Icon = new FontIcon { Glyph = "\uE734" },
                 KeyboardAcceleratorTextOverride = "Ctrl+" + i,
             };
@@ -1057,7 +1217,7 @@ public sealed partial class FilePane : UserControl
         if (ViewModel == null || _main == null)
             return;
         _main.Activate(ViewModel);
-        if (e.OriginalSource is DependencyObject source && (IsInside(source, DriveMenuButton) || IsInside(source, HistoryButton)))
+        if (e.OriginalSource is DependencyObject source && (IsInside(source, DriveMenuButton) || IsInside(source, HistoryButton) || IsInside(source, MaximizeButton)))
             return;
         BeginPathEdit();
         e.Handled = true;
@@ -1103,7 +1263,13 @@ public sealed partial class FilePane : UserControl
             if (text.Trim().Equals("this pc", StringComparison.OrdinalIgnoreCase))
                 await ViewModel.NavigateAsync(ThisPcProvider.RootPath);
             else if (!string.IsNullOrWhiteSpace(text))
-                await ViewModel.NavigateAsync(PathUtil.Resolve(ViewModel.IsLocalDisk ? ViewModel.Path : @"C:\", text));
+            {
+                string target = PathUtil.Resolve(ViewModel.IsLocalDisk ? ViewModel.Path : @"C:\", text);
+                // Confirmations → "The directory doesn't exist. Do you want to create it?"
+                if (_main != null && !Directory.Exists(target) && !File.Exists(target) && !await _main.CreateMissingDirectoryAsync(target))
+                    return;
+                await ViewModel.NavigateAsync(target);
+            }
             FocusList();
         }
         else if (e.Key == VirtualKey.Escape)

@@ -37,7 +37,7 @@ public interface IUiHost
     /// <summary>Ctrl+F1: volume details in a flyout at the pane's address bar.</summary>
     void ShowDriveInformation(PaneViewModel pane);
     void ShowFindWindow(string directory);
-    Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item);
+    Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item, bool selectWholeName = false);
     void ShowContextMenu(PaneViewModel pane);
 
     // phase 3C
@@ -128,7 +128,40 @@ public sealed class MainViewModel : BindableBase
             pane.FileOpened += (_, path) => RememberRecent(Settings.OpenedFiles, path);
         }
 
-        Transfers = new TransfersViewModel(dispatcher, host.Dialogs);
+        Settings.General ??= new GeneralOptions();
+        Settings.Recycle ??= new RecycleOptions();
+        Settings.Confirm ??= new ConfirmationOptions();
+        Settings.Panels ??= new PanelOptions();
+        Settings.Appearance ??= new AppearanceOptions();
+        Settings.Colors ??= new ColorOptions();
+        Settings.Colors.Rules ??= HighlightRule.Defaults();
+        Settings.Window ??= new MainWindowOptions();
+        Settings.Window.TitlePrefix ??= string.Empty;
+        Settings.Drives ??= new DriveOptions();
+        Settings.Drives.Removable ??= new DriveTypeOptions();
+        Settings.Drives.Fixed ??= new DriveTypeOptions();
+        Settings.Drives.CdRom ??= new DriveTypeOptions();
+        Settings.Drives.Network ??= new DriveTypeOptions();
+        Settings.Drives.HiddenDrives ??= new List<string>();
+        Settings.Drives.SeparatorAfter ??= new List<string>();
+        Settings.History ??= new HistoryOptions();
+        Settings.Viewers ??= new List<ProgramRule>();
+        Settings.Editors ??= new List<ProgramRule>();
+        Settings.CommandLineHistory ??= new List<string>();
+        Settings.HotPathNames ??= new List<string>();
+        while (Settings.HotPathNames.Count < 10)
+            Settings.HotPathNames.Add(string.Empty);
+        _lastSelectDirectories = Settings.Panels.SelectIncludesDirectories;
+
+        Transfers = new TransfersViewModel(dispatcher, host.Dialogs,
+            () => new EngineOptions
+            {
+                ConfirmFileOverwrite = Settings.Confirm.FileOverwrite,
+                ConfirmHiddenSystemOverwrite = Settings.Confirm.HiddenSystemFileOverwrite,
+                ConfirmDirectoryMerge = Settings.Confirm.DirectoryMerge,
+                ClearReadOnlyFromCd = Settings.General.ClearReadOnlyFromCd,
+            },
+            () => Math.Clamp(Settings.General.ParallelTransfers, 1, 8));
         Transfers.Finished += async (_, _) =>
         {
             try
@@ -203,14 +236,45 @@ public sealed class MainViewModel : BindableBase
 
     public string WindowTitle => $"{_active.DisplayPath} - Vibe Salamander";
 
-    public void SaveSettings()
+    public void SaveSettings() => SaveSettings(onExit: false);
+
+    /// <summary>Writes the settings; on exit only when General → Save configuration on exit is on.</summary>
+    public void SaveSettings(bool onExit)
     {
-        if (SuppressSettingsSave)
+        if (SuppressSettingsSave || (onExit && !Settings.General.SaveOnExit))
             return;
         Left.StoreSettings(Settings.Left);
         Right.StoreSettings(Settings.Right);
         Settings.RightPanelActive = _active == Right;
-        SettingsStore.Save(Settings);
+
+        // Configuration → History: lists that should not be kept are left out of the file (they stay in memory)
+        List<string> opened = Settings.OpenedFiles, working = Settings.WorkingDirectories, commands = Settings.CommandLineHistory;
+        try
+        {
+            if (!Settings.History.SaveHistory)
+                Settings.OpenedFiles = new List<string>();
+            if (!Settings.History.SaveWorkingDirectories)
+                Settings.WorkingDirectories = new List<string>();
+            if (!Settings.History.SaveCommandLineHistory)
+                Settings.CommandLineHistory = new List<string>();
+            SettingsStore.Save(Settings);
+        }
+        finally
+        {
+            Settings.OpenedFiles = opened;
+            Settings.WorkingDirectories = working;
+            Settings.CommandLineHistory = commands;
+        }
+    }
+
+    /// <summary>Configuration → History → Clear History.</summary>
+    public void ClearHistory()
+    {
+        Settings.OpenedFiles.Clear();
+        Settings.WorkingDirectories.Clear();
+        Settings.CommandLineHistory.Clear();
+        _savedSelection.Clear();
+        SaveSettings();
     }
 
     // ---- command dispatch --------------------------------------------------------------------
@@ -351,6 +415,9 @@ public sealed class MainViewModel : BindableBase
                     _host.ApplyDensity();
                     break;
                 case CommandId.AlwaysOnTop:
+                    if (!Settings.AlwaysOnTop && Settings.Confirm.AlwaysOnTop &&
+                        !await _host.ConfirmAsync("Always on Top", "Do you want to keep the Vibe Salamander window on top of all other windows?", "Turn On"))
+                        break;
                     Settings.AlwaysOnTop = !Settings.AlwaysOnTop;
                     _host.ApplyAlwaysOnTop(Settings.AlwaysOnTop);
                     break;
@@ -416,11 +483,12 @@ public sealed class MainViewModel : BindableBase
 
     private void ViewFile()
     {
-        // no internal viewer: F3 opens the file with its associated program
+        // no internal viewer: F3 uses a configured viewer for the file's mask, else the associated program
         FileItemViewModel? item = _active.FocusedItem;
         if (item != null && !item.Entry.IsDirectory)
         {
-            ShellOperations.Open(item.Entry.FullPath, _active.Path);
+            if (!RunProgramRule(Settings.Viewers, item))
+                ShellOperations.Open(item.Entry.FullPath, _active.Path);
             RememberRecent(Settings.OpenedFiles, item.Entry.FullPath);
         }
     }
@@ -430,9 +498,37 @@ public sealed class MainViewModel : BindableBase
         FileItemViewModel? item = _active.FocusedItem;
         if (item != null && !item.Entry.IsDirectory)
         {
-            ShellOperations.Edit(item.Entry.FullPath);
+            if (!RunProgramRule(Settings.Editors, item))
+                ShellOperations.Edit(item.Entry.FullPath);
             RememberRecent(Settings.OpenedFiles, item.Entry.FullPath);
         }
+    }
+
+    /// <summary>Configuration → Viewers / Editors: the first rule whose masks match starts its program.</summary>
+    private bool RunProgramRule(IEnumerable<ProgramRule> rules, FileItemViewModel item)
+    {
+        foreach (ProgramRule rule in rules)
+        {
+            if (string.IsNullOrWhiteSpace(rule.Command) || !new WildcardMask(rule.Masks).IsMatch(item.Entry.Name))
+                continue;
+            UserMenuContext context = UserMenuContextFor(_active);
+            string directory = UserMenu.Expand(string.IsNullOrWhiteSpace(rule.InitialDirectory) ? "$(Path)" : rule.InitialDirectory, context);
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                    UserMenu.Expand(rule.Command, context).Trim(), UserMenu.Expand(rule.Arguments, context))
+                {
+                    UseShellExecute = true,
+                    WorkingDirectory = Directory.Exists(directory) ? directory : string.Empty,
+                });
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or FileNotFoundException)
+            {
+                _host.Notify($"{rule.Command}: {ex.Message}");
+            }
+            return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -473,7 +569,8 @@ public sealed class MainViewModel : BindableBase
             FileItemViewModel? item = pane.FocusedItem;
             if (item == null || !string.Equals(item.Entry.Name, name, StringComparison.OrdinalIgnoreCase))
                 return path; // created, but not visible (e.g. filtered out)
-            string? final = await RenameItemAsync(pane, item, allowSubdirectories);
+            string? final = await RenameItemAsync(pane, item, allowSubdirectories,
+                selectWholeName: !item.Entry.IsDirectory && Settings.General.EditNewSelectsExtension);
             if (final != null)
                 return final;
             await pane.NavigateAsync(pane.Path, name, addToHistory: false);
@@ -517,6 +614,11 @@ public sealed class MainViewModel : BindableBase
         string resolved = PathUtil.Resolve(_active.Path, target);
         if (endsWithSeparator && !resolved.EndsWith('\\'))
             resolved += "\\"; // "target\" always means "into this directory"
+        // Confirmations → "Do you want to create target path?"
+        bool intoNewDirectory = (resolved.EndsWith('\\') || items.Count > 1) && !Directory.Exists(resolved);
+        if (intoNewDirectory && Settings.Confirm.CreateTargetPath &&
+            !await _host.ConfirmAsync(move ? "Move" : "Copy", $"The target directory \"{resolved.TrimEnd('\\')}\" doesn't exist. Do you want to create it?", "Create"))
+            return;
         await TransferAsync(items.Select(i => i.Entry.FullPath).ToList(), resolved, move);
     }
 
@@ -541,34 +643,113 @@ public sealed class MainViewModel : BindableBase
         var items = _active.GetOperationItems();
         if (items.Count == 0 || !_active.IsLocalDisk)
             return;
-        string what = items.Count == 1
-            ? $"{(items[0].Entry.IsDirectory ? "directory" : "file")} \"{items[0].Entry.Name}\""
-            : $"{items.Count} selected items";
-        // the Recycle Bin can be undone, so (like Explorer) it only asks when switched on in Options;
-        // a permanent delete always asks
-        if (permanent || Settings.ConfirmRecycle)
+
+        // Configuration → Recycle Bin: what F8 does with each item (Shift+Del is always permanent)
+        var recycle = new List<FileItemViewModel>();
+        var remove = new List<FileItemViewModel>();
+        if (permanent || Settings.Recycle.Mode == DeleteMode.DeletePermanently)
         {
-            string message = permanent
-                ? $"Do you want to permanently delete the {what}?\nThis cannot be undone."
-                : $"Do you want to move the {what} to the Recycle Bin?";
-            if (!await _host.ConfirmAsync("Delete", message, "Delete"))
+            remove.AddRange(items);
+        }
+        else if (Settings.Recycle.Mode == DeleteMode.RecycleMatching)
+        {
+            var mask = new WildcardMask(Settings.Recycle.Masks);
+            foreach (FileItemViewModel item in items)
+                (item.Entry.IsDirectory || mask.IsMatch(item.Entry.Name) ? recycle : remove).Add(item);
+        }
+        else
+        {
+            recycle.AddRange(items);
+        }
+
+        string Describe(IReadOnlyList<FileItemViewModel> list) => list.Count == 1
+            ? $"{(list[0].Entry.IsDirectory ? "directory" : "file")} \"{list[0].Entry.Name}\""
+            : $"{list.Count} selected items";
+
+        // Configuration → Confirmations
+        if (recycle.Count > 0 && Settings.ConfirmRecycle &&
+            !await _host.ConfirmAsync("Delete", $"Do you want to move the {Describe(recycle)} to the Recycle Bin?", "Delete"))
+            return;
+        if (remove.Count > 0)
+        {
+            if (Settings.Confirm.PermanentDelete &&
+                !await _host.ConfirmAsync("Delete", $"Do you want to permanently delete the {Describe(remove)}?\nThis cannot be undone.", "Delete"))
                 return;
+            var hiddenFiles = remove.Where(i => !i.Entry.IsDirectory && (i.Entry.IsHidden || i.Entry.IsSystem)).ToList();
+            if (hiddenFiles.Count > 0 && Settings.Confirm.HiddenSystemFileDelete &&
+                !await _host.ConfirmAsync("Delete", $"{Describe(hiddenFiles)} {(hiddenFiles.Count == 1 ? "is a" : "include")} hidden or system file{(hiddenFiles.Count == 1 ? "" : "s")}. Delete anyway?", "Delete"))
+                return;
+            var hiddenDirs = remove.Where(i => i.Entry.IsDirectory && (i.Entry.IsHidden || i.Entry.IsSystem)).ToList();
+            if (hiddenDirs.Count > 0 && Settings.Confirm.HiddenSystemDirectoryDelete &&
+                !await _host.ConfirmAsync("Delete", $"{Describe(hiddenDirs)} {(hiddenDirs.Count == 1 ? "is a" : "include")} hidden or system director{(hiddenDirs.Count == 1 ? "y" : "ies")}. Delete anyway?", "Delete"))
+                return;
+            if (Settings.Confirm.NonEmptyDirectoryDelete)
+            {
+                var nonEmpty = remove.Where(i => i.Entry.IsDirectory && HasContent(i.Entry.FullPath)).ToList();
+                if (nonEmpty.Count > 0 &&
+                    !await _host.ConfirmAsync("Delete", nonEmpty.Count == 1
+                        ? $"The directory \"{nonEmpty[0].Entry.Name}\" is not empty. Delete it with all its content?"
+                        : $"{nonEmpty.Count} directories are not empty. Delete them with all their content?", "Delete All"))
+                    return;
+            }
         }
 
         int caret = _active.CaretIndex;
-        var paths = items.Select(i => i.Entry.FullPath).ToList();
         _active.RememberSelection();
-        if (permanent)
+        if (remove.Count > 0)
         {
             // runs in the transfer panel; the panels refresh when it finishes
             _active.MarkAll(false);
+            var paths = remove.Select(i => i.Entry.FullPath).ToList();
             Transfers.Enqueue(OperationKind.Delete, paths, null, (engine, ct) => engine.DeleteAsync(paths, ct));
-            return;
         }
-        // the Recycle Bin is only reachable through the shell (it shows its own progress window)
-        await ShellOperations.DeleteAsync(_host.WindowHandle, paths, permanent: false);
-        await RefreshAllAsync();
-        CaretMoveRequested?.Invoke(this, (_active, Math.Min(caret, Math.Max(0, _active.Items.Count - 1))));
+        if (recycle.Count > 0)
+        {
+            // the Recycle Bin is only reachable through the shell (it shows its own progress window)
+            await ShellOperations.DeleteAsync(_host.WindowHandle, recycle.Select(i => i.Entry.FullPath).ToList(), permanent: false);
+            await RefreshAllAsync();
+            CaretMoveRequested?.Invoke(this, (_active, Math.Min(caret, Math.Max(0, _active.Items.Count - 1))));
+        }
+    }
+
+    private static bool HasContent(string directory)
+    {
+        try
+        {
+            return Directory.EnumerateFileSystemEntries(directory).Any();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true;
+        }
+    }
+
+    /// <summary>Confirmations → Drag and Drop operations.</summary>
+    public async Task<bool> ConfirmDropAsync(IReadOnlyList<string> paths, string target, bool move)
+    {
+        if (!Settings.Confirm.DragAndDrop)
+            return true;
+        string what = paths.Count == 1 ? $"\"{Path.GetFileName(paths[0].TrimEnd('\\'))}\"" : $"{paths.Count} items";
+        return await _host.ConfirmAsync(move ? "Move" : "Copy", $"Do you want to {(move ? "move" : "copy")} {what} to {target}?", move ? "Move" : "Copy");
+    }
+
+    /// <summary>Confirmations → "The directory doesn't exist. Do you want to create it?" Creates it when confirmed.</summary>
+    public async Task<bool> CreateMissingDirectoryAsync(string path)
+    {
+        if (!Settings.Confirm.CreateMissingDirectory)
+            return true; // navigating there shows the error
+        if (!await _host.ConfirmAsync("Change Directory", $"The directory \"{path}\" doesn't exist. Do you want to create it?", "Create"))
+            return false;
+        try
+        {
+            Directory.CreateDirectory(path);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            _host.Notify(ex.Message);
+            return false;
+        }
     }
 
     /// <summary>F2: rename in place (Salamander quick rename).</summary>
@@ -577,7 +758,7 @@ public sealed class MainViewModel : BindableBase
         FileItemViewModel? item = _active.FocusedItem;
         if (item == null || item.Entry.IsUpDir || item.IsDrive || !_active.IsLocalDisk)
             return;
-        await RenameItemAsync(_active, item, allowSubdirectories: false);
+        await RenameItemAsync(_active, item, allowSubdirectories: false, selectWholeName: Settings.General.RenameSelectsExtension);
     }
 
     /// <summary>
@@ -585,10 +766,10 @@ public sealed class MainViewModel : BindableBase
     /// dialog. With <paramref name="allowSubdirectories"/> (a new folder) a typed "a\b" creates the path.
     /// Returns the item's path afterwards (unchanged when cancelled), or null when the rename failed.
     /// </summary>
-    private async Task<string?> RenameItemAsync(PaneViewModel pane, FileItemViewModel item, bool allowSubdirectories)
+    private async Task<string?> RenameItemAsync(PaneViewModel pane, FileItemViewModel item, bool allowSubdirectories, bool selectWholeName = false)
     {
         string oldPath = item.Entry.FullPath;
-        string? newName = await _host.EditNameInPlaceAsync(pane, item);
+        string? newName = await _host.EditNameInPlaceAsync(pane, item, selectWholeName);
         newName = newName?.Trim().TrimEnd('.', ' ');
         if (string.IsNullOrEmpty(newName) || newName == item.Entry.Name)
             return oldPath;
@@ -678,6 +859,8 @@ public sealed class MainViewModel : BindableBase
         CompareOptions? options = await _host.Dialogs.CompareOptionsAsync(Settings.Compare);
         if (options == null)
             return;
+        options.ToleranceSeconds = Settings.General.CompareTimeTolerance;
+        options.IgnoreDstHours = Settings.General.CompareIgnoreDstHours;
         Settings.Compare = options;
 
         var left = Left.Items.Where(i => !i.Entry.IsUpDir).Select(ToCompareItem).ToList();
@@ -900,6 +1083,17 @@ public sealed class MainViewModel : BindableBase
         var items = pane.GetOperationItems();
         if (items.Count == 0 || !pane.IsLocalDisk)
             return;
+        bool compress = action is NtfsAction.Compress or NtfsAction.Uncompress;
+        if (compress ? Settings.Confirm.NtfsCompress : Settings.Confirm.NtfsEncrypt)
+        {
+            string askVerb = action.ToString().ToLowerInvariant();
+            string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : $"{items.Count} selected items";
+            bool hasDirectories = items.Any(i => i.Entry.IsDirectory);
+            if (!await _host.ConfirmAsync("NTFS " + action,
+                    $"Do you want to {askVerb} {what}{(hasDirectories ? " including the content of directories" : string.Empty)}?",
+                    char.ToUpperInvariant(askVerb[0]) + askVerb[1..]))
+                return;
+        }
         var (ok, failed, firstError) = await NtfsOperations.ApplyAsync(items.Select(i => i.Entry.FullPath).ToList(), action);
         await pane.RefreshAsync();
         string verb = action switch
@@ -931,6 +1125,13 @@ public sealed class MainViewModel : BindableBase
         {
             _host.Notify("Select the files to send (directories can't be attached).", isError: false);
             return;
+        }
+        if (Settings.Confirm.Email)
+        {
+            long total = pane.GetOperationItems().Where(i => !i.Entry.IsDirectory).Sum(i => i.Entry.Size);
+            string what = files.Count == 1 ? $"\"{Path.GetFileName(files[0])}\"" : $"{files.Count} files";
+            if (!await _host.ConfirmAsync("Email", $"Do you want to email {what}?\nTotal size: {Formats.ShortSize(total)}", "Email"))
+                return;
         }
         MapiMail.Result result = await MapiMail.SendFilesAsync(_host.WindowHandle, files);
         if (result is MapiMail.Result.NoMailProgram or MapiMail.Result.Failed)
@@ -1220,6 +1421,8 @@ public sealed class MainViewModel : BindableBase
         text = text.Trim();
         if (text.Length == 0)
             return;
+        if (Settings.History.CommandLineHistory)
+            RememberRecent(Settings.CommandLineHistory, text);
         // "cd <path>" navigates, like Salamander's command line
         if (text.StartsWith("cd ", StringComparison.OrdinalIgnoreCase) || (text.Length == 2 && text[1] == ':'))
         {
@@ -1229,6 +1432,6 @@ public sealed class MainViewModel : BindableBase
             return;
         }
         if (_active.IsLocalDisk)
-            ShellOperations.RunCommandLine(_active.Path, text);
+            ShellOperations.RunCommandLine(_active.Path, text, Settings.General.CloseShellAfterCommand);
     }
 }

@@ -15,8 +15,21 @@ public sealed class CompareOptions
     /// <summary>Also compare what is inside directories present on both sides (marks the directory when anything differs).</summary>
     public bool Subdirectories { get; set; }
 
-    /// <summary>Times that differ by at most this are equal (FAT stores 2 s steps, copies may round).</summary>
-    public static readonly TimeSpan TimeTolerance = TimeSpan.FromSeconds(2);
+    /// <summary>Times that differ by at most this many seconds are equal (FAT stores 2 s steps, copies may round).</summary>
+    public int ToleranceSeconds { get; set; } = 2;
+
+    /// <summary>Differences of exactly one or two hours (± the tolerance) count as equal (daylight saving time, FAT vs NTFS).</summary>
+    public bool IgnoreDstHours { get; set; }
+
+    /// <summary>True when two modification times are the same for the comparison.</summary>
+    public bool SameTime(DateTime a, DateTime b)
+    {
+        double seconds = Math.Abs((a - b).TotalSeconds);
+        double tolerance = Math.Max(0, ToleranceSeconds);
+        if (seconds <= tolerance)
+            return true;
+        return IgnoreDstHours && (Math.Abs(seconds - 3600) <= tolerance || Math.Abs(seconds - 7200) <= tolerance);
+    }
 }
 
 /// <summary>Result of a comparison: the names to mark in each panel.</summary>
@@ -84,14 +97,8 @@ public static class DirectoryComparer
         bool sizeDiffers = l.Size != r.Size;
         if (options.BySize && sizeDiffers)
             return Difference.Both;
-        if (options.ByDate)
-        {
-            TimeSpan delta = l.LastWrite - r.LastWrite;
-            if (delta > CompareOptions.TimeTolerance)
-                return Difference.LeftNewer;
-            if (-delta > CompareOptions.TimeTolerance)
-                return Difference.RightNewer;
-        }
+        if (options.ByDate && !options.SameTime(l.LastWrite, r.LastWrite))
+            return l.LastWrite > r.LastWrite ? Difference.LeftNewer : Difference.RightNewer;
         if (options.ByContent && (sizeDiffers || !ContentEqual(leftPath, rightPath, ct)))
             return Difference.Both;
         return Difference.None;
