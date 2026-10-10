@@ -184,6 +184,61 @@ public sealed partial class SettingsWindow
         "Courier New", "Calibri", "Arial", "Tahoma", "Verdana",
     };
 
+    private static string[]? _installedFonts;
+
+    /// <summary>Font families from the registered font files (machine and user), e.g. "Consolas", "JetBrains Mono".</summary>
+    private static string[] InstalledFontFamilies()
+    {
+        if (_installedFonts != null)
+            return _installedFonts;
+        var families = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        string[] styles =
+        {
+            "Bold", "Italic", "Oblique", "Light", "ExtraLight", "Extra Light", "UltraLight", "Semilight", "SemiLight",
+            "Semibold", "SemiBold", "Demibold", "DemiBold", "ExtraBold", "Extra Bold", "UltraBold", "Black", "Heavy",
+            "Medium", "Thin", "Regular", "Normal", "Condensed", "SemiCondensed", "Narrow", "Book", "Retina",
+        };
+        foreach (Microsoft.Win32.RegistryKey root in new[] { Microsoft.Win32.Registry.LocalMachine, Microsoft.Win32.Registry.CurrentUser })
+        {
+            try
+            {
+                using Microsoft.Win32.RegistryKey? key = root.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts");
+                if (key == null)
+                    continue;
+                foreach (string entry in key.GetValueNames())
+                {
+                    // "Cascadia Mono Bold (TrueType)", "Cambria & Cambria Math (TrueType)"
+                    int paren = entry.IndexOf(" (", StringComparison.Ordinal);
+                    string names = paren > 0 ? entry[..paren] : entry;
+                    foreach (string part in names.Split(" & ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    {
+                        string name = part;
+                        bool trimmed = true;
+                        while (trimmed)
+                        {
+                            trimmed = false;
+                            foreach (string style in styles)
+                            {
+                                if (name.Length > style.Length + 1 && name.EndsWith(" " + style, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    name = name[..^(style.Length + 1)].TrimEnd();
+                                    trimmed = true;
+                                }
+                            }
+                        }
+                        if (name.Length > 1 && !name.Contains('.'))
+                            families.Add(name);
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+            {
+                // fonts we can't list can still be typed
+            }
+        }
+        return _installedFonts = families.ToArray();
+    }
+
     private UIElement BuildAppearancePage()
     {
         AppSettings s = _vm.Settings;
@@ -201,9 +256,12 @@ public sealed partial class SettingsWindow
 
         page.Children.Add(Section("Panel font"));
         var font = new ComboBox { MinWidth = 220, IsEditable = true, Text = a.FontFamily };
-        foreach (string f in FontChoices)
+        string[] fonts = FontChoices.Concat(InstalledFontFamilies().Except(FontChoices, StringComparer.OrdinalIgnoreCase)).ToArray();
+        foreach (string f in fonts)
             font.Items.Add(f.Length == 0 ? "(system font)" : f);
-        font.SelectedIndex = Array.IndexOf(FontChoices, a.FontFamily);
+        font.SelectedIndex = Array.FindIndex(fonts, f => string.Equals(f, a.FontFamily ?? string.Empty, StringComparison.OrdinalIgnoreCase));
+        if (font.SelectedIndex < 0)
+            font.Text = a.FontFamily ?? string.Empty;
         void SetFont(string text)
         {
             string value = text == "(system font)" ? string.Empty : text.Trim();

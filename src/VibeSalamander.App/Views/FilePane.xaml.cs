@@ -855,6 +855,10 @@ public sealed partial class FilePane : UserControl
         }
         box.Unloaded += BoxUnloaded;
         box.FontSize = UiState.FontSize;
+        if (UiState.PanelFont is { } renameFont)
+            box.FontFamily = renameFont;
+        else
+            box.ClearValue(Control.FontFamilyProperty);
         box.Text = item.Entry.Name;
         int dot = item.Entry.IsDirectory || selectWholeName ? -1 : item.Entry.Name.LastIndexOf('.');
         // focus after menus/flyouts have closed and returned their focus
@@ -1107,15 +1111,32 @@ public sealed partial class FilePane : UserControl
     }
 
     /// <summary>Applies Appearance / Colors / Drives options: font, colors, address bar buttons, drive bar.</summary>
+    private string? _appliedFontKey;
+
     public void ApplyOptions()
     {
         if (ViewModel == null || _main == null)
             return;
+        // the default ListViewItem style sets its own font, so the list's font isn't inherited by the rows:
+        // the panel font goes into the item container style (a new style re-creates the rows)
         FileList.FontSize = UiState.FontSize;
         if (UiState.PanelFont is { } font)
             FileList.FontFamily = font;
         else
             FileList.ClearValue(Control.FontFamilyProperty);
+        string fontKey = $"{UiState.PanelFont?.Source}|{UiState.FontSize}";
+        if (fontKey != _appliedFontKey)
+        {
+            _appliedFontKey = fontKey;
+            var rowStyle = new Style(typeof(ListViewItem))
+            {
+                BasedOn = (Style)Application.Current.Resources["VibeListItemStyle"],
+            };
+            rowStyle.Setters.Add(new Setter(Control.FontSizeProperty, UiState.FontSize));
+            if (UiState.PanelFont is { } rowFont)
+                rowStyle.Setters.Add(new Setter(Control.FontFamilyProperty, rowFont));
+            FileList.ItemContainerStyle = rowStyle;
+        }
         MaximizeButton.Visibility = _main.Settings.Appearance.MaximizeButtonInAddressBar ? Visibility.Visible : Visibility.Collapsed;
 
         // dark schemes (terminal styles) make the whole panel dark: address bar, header, drive bar
