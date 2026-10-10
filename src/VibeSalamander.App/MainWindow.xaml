@@ -186,6 +186,8 @@
                 </MenuFlyoutSubItem>
                 <MenuFlyoutSubItem Text="Show">
                     <ToggleMenuFlyoutItem x:Name="ShowToolbarItem" Text="Top Toolbar" Click="ShowBars_Click" />
+                    <ToggleMenuFlyoutItem x:Name="ShowHotPathBarItem" Text="Hot Path Bar" Click="ShowBars_Click" />
+                    <ToggleMenuFlyoutItem x:Name="ShowUserMenuBarItem" Text="User Menu Bar" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowDriveBarsItem" Text="Drive Bars" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowInfoLineItem" Text="Information Line" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowCommandLineItem" Text="Command Line" Click="ShowBars_Click" />
@@ -196,7 +198,13 @@
                 <ToggleMenuFlyoutItem x:Name="ConfirmRecycleItem" Text="Confirm Delete to Recycle Bin" Click="ConfirmRecycle_Click" />
                 <ToggleMenuFlyoutItem x:Name="AlwaysOnTopMenuItem" Text="Always on Top" Tag="AlwaysOnTop" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Configuration..." IsEnabled="False" />
+                <MenuFlyoutItem Text="Configuration..." Tag="Configuration" Click="Menu_Click" />
+                <MenuFlyoutItem Text="Customize Toolbar..." Tag="Toolbar" Click="ConfigurationPage_Click" />
+                <MenuFlyoutItem Text="Keyboard Shortcuts..." Tag="Keyboard" Click="ConfigurationPage_Click" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Save Configuration" Click="SaveConfiguration_Click" />
+                <MenuFlyoutItem Text="Export Configuration..." Click="ExportConfiguration_Click" />
+                <MenuFlyoutItem Text="Import Configuration..." Click="ImportConfiguration_Click" />
             </MenuBarItem>
             <MenuBarItem Title="Right">
                 <MenuFlyoutItem Text="Change Drive..." Tag="ChangeDriveRight" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F2" />
@@ -236,104 +244,12 @@
             </MenuBarItem>
         </MenuBar>
 
-        <!-- top toolbar -->
-        <Grid x:Name="TopToolbar" Grid.Row="2" Padding="6,0,6,4">
-            <StackPanel Orientation="Horizontal" Spacing="2">
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="GoBack" Click="Toolbar_Click" ToolTipService.ToolTip="Back (Alt+Left)">
-                    <FontIcon Glyph="&#xE72B;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="GoForward" Click="Toolbar_Click" ToolTipService.ToolTip="Forward (Alt+Right)">
-                    <FontIcon Glyph="&#xE72A;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="ParentDirectory" Click="Toolbar_Click" ToolTipService.ToolTip="Parent directory (Backspace)">
-                    <FontIcon Glyph="&#xE74A;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Refresh" Click="Toolbar_Click" ToolTipService.ToolTip="Refresh (Ctrl+R)">
-                    <FontIcon Glyph="&#xE72C;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="ThisPc" Click="Toolbar_Click" ToolTipService.ToolTip="This PC">
-                    <FontIcon Glyph="&#xE7F4;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <AppBarSeparator Padding="2,0" />
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Copy" Click="Toolbar_Click" ToolTipService.ToolTip="Copy (F5)">
-                    <FontIcon Glyph="&#xE8C8;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Move" Click="Toolbar_Click" ToolTipService.ToolTip="Move/Rename (F6)">
-                    <FontIcon Glyph="&#xE8DE;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="QuickRename" Click="Toolbar_Click" ToolTipService.ToolTip="Rename (F2)">
-                    <FontIcon Glyph="&#xE8AC;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Delete" Click="Toolbar_Click" ToolTipService.ToolTip="Delete (F8)">
-                    <FontIcon Glyph="&#xE74D;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="CreateDirectory" Click="Toolbar_Click" ToolTipService.ToolTip="Create directory (F7)">
-                    <FontIcon Glyph="&#xE8F4;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Properties" Click="Toolbar_Click" ToolTipService.ToolTip="Properties (Alt+Enter)">
-                    <FontIcon Glyph="&#xE946;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <AppBarSeparator Padding="2,0" />
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="FindFiles" Click="Toolbar_Click" ToolTipService.ToolTip="Find files (Alt+F7)">
-                    <FontIcon Glyph="&#xE721;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="Filter" Click="Toolbar_Click" ToolTipService.ToolTip="Filter (Ctrl+F12)">
-                    <FontIcon Glyph="&#xE71C;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <AppBarSeparator Padding="2,0" />
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="SelectAll" Click="Toolbar_Click" ToolTipService.ToolTip="Select all (Ctrl+A)">
-                    <FontIcon Glyph="&#xE8B3;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="UnselectAll" Click="Toolbar_Click" ToolTipService.ToolTip="Unselect all (Ctrl+D)">
-                    <FontIcon Glyph="&#xE8E6;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="InvertSelection" Click="Toolbar_Click" ToolTipService.ToolTip="Invert selection (Num *)">
-                    <FontIcon Glyph="&#xE8B2;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <AppBarSeparator Padding="2,0" />
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="SwapPanels" Click="Toolbar_Click" ToolTipService.ToolTip="Swap panels (Ctrl+U)">
-                    <FontIcon Glyph="&#xE8AB;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="ToggleHiddenFiles" Click="Toolbar_Click" ToolTipService.ToolTip="Show hidden files (Ctrl+H)">
-                    <FontIcon Glyph="&#xE7B3;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="CommandShell" Click="Toolbar_Click" ToolTipService.ToolTip="Command shell (Num /)">
-                    <FontIcon Glyph="&#xE756;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="OpenActiveFolder" Click="Toolbar_Click" ToolTipService.ToolTip="Open in Explorer (Shift+F3)">
-                    <FontIcon Glyph="&#xEC50;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-                <AppBarSeparator Padding="2,0" />
-                <Button Style="{StaticResource VibeToolButtonStyle}" ToolTipService.ToolTip="View of the active panel (Alt+1…5)">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <FontIcon Glyph="&#xE8FD;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                        <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="8" />
-                    </StackPanel>
-                    <Button.Flyout>
-                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
-                            <MenuFlyoutItem Text="Brief" Tag="ViewBrief" Click="Toolbar_Click" KeyboardAcceleratorTextOverride="Alt+1">
-                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8A9;" /></MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="Detailed" Tag="ViewDetailed" Click="Toolbar_Click" KeyboardAcceleratorTextOverride="Alt+2">
-                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8FD;" /></MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="Icons" Tag="ViewIcons" Click="Toolbar_Click" KeyboardAcceleratorTextOverride="Alt+3">
-                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE80A;" /></MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="Thumbnails" Tag="ViewThumbnails" Click="Toolbar_Click" KeyboardAcceleratorTextOverride="Alt+4">
-                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE91B;" /></MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="Tiles" Tag="ViewTiles" Click="Toolbar_Click" KeyboardAcceleratorTextOverride="Alt+5">
-                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xECA5;" /></MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
-                <Button Style="{StaticResource VibeToolButtonStyle}" Tag="ToggleDensity" Click="Toolbar_Click" ToolTipService.ToolTip="Compact / comfortable density">
-                    <FontIcon Glyph="&#xE8A9;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
-                </Button>
-            </StackPanel>
-        </Grid>
+        <!-- top toolbar (built from the settings: Configuration → Toolbar), hot path bar, user menu bar -->
+        <StackPanel x:Name="TopToolbar" Grid.Row="2" Padding="6,0,6,4" Spacing="2">
+            <StackPanel x:Name="ToolbarPanel" Orientation="Horizontal" Spacing="2" />
+            <StackPanel x:Name="HotPathBar" Orientation="Horizontal" Spacing="2" />
+            <StackPanel x:Name="UserMenuBar" Orientation="Horizontal" Spacing="2" />
+        </StackPanel>
 
         <!-- panels -->
         <Grid x:Name="PanelsGrid" Grid.Row="3" Padding="6,0,6,4">

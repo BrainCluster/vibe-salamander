@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using VibeSalamander.Core.Commands;
 using VibeSalamander.Core.Panels;
 using VibeSalamander.Core.Tools;
 
@@ -55,6 +56,16 @@ public sealed class AppSettings
 
     /// <summary>List of Working Directories (Alt+F12), most recent first.</summary>
     public List<string> WorkingDirectories { get; set; } = new();
+
+    /// <summary>Changes to the default keyboard shortcuts (Configuration → Keyboard).</summary>
+    public List<KeyBindingOverride> KeyBindings { get; set; } = new();
+
+    /// <summary>Top toolbar items: command names, "-" separators and "ViewMenu" (Configuration → Toolbar).</summary>
+    public List<string> Toolbar { get; set; } = CommandCatalog.DefaultToolbar();
+
+    /// <summary>Hot path bar and user menu bar below the top toolbar (Options → Show).</summary>
+    public bool ShowHotPathBar { get; set; }
+    public bool ShowUserMenuBar { get; set; }
 
     // bars (Options → Show)
     public bool ShowTopToolbar { get; set; } = true;
@@ -114,6 +125,24 @@ public static class SettingsStore
             // corrupt or locked settings: start with defaults
         }
         return new AppSettings();
+    }
+
+    /// <summary>Export Configuration: writes the settings to a file of the user's choice.</summary>
+    public static void Export(AppSettings settings, string path) =>
+        File.WriteAllText(path, JsonSerializer.Serialize(settings, Options));
+
+    /// <summary>Import Configuration: reads and validates a settings file (throws when it isn't one).</summary>
+    public static AppSettings ReadFile(string path)
+    {
+        string json = File.ReadAllText(path);
+        try
+        {
+            return JsonSerializer.Deserialize<AppSettings>(json, Options) ?? throw new InvalidDataException("The file is empty.");
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidDataException("This is not a Vibe Salamander configuration file: " + ex.Message, ex);
+        }
     }
 
     public static void Save(AppSettings settings)

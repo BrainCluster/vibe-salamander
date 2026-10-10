@@ -40,6 +40,10 @@ public interface IUiHost
     Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item);
     void ShowContextMenu(PaneViewModel pane);
 
+    // phase 3C
+    /// <summary>Options → Configuration: the settings window.</summary>
+    void ShowConfiguration();
+
     // phase 3B
     /// <summary>Shows a command menu at the pane's caret item (atCaret) or at its address bar.</summary>
     void ShowMenu(PaneViewModel pane, IReadOnlyList<MenuEntry> entries, bool atCaret);
@@ -106,7 +110,9 @@ public sealed class MainViewModel : BindableBase
         Settings.HotPaths ??= new List<string>(); // "HotPaths": null in a hand-edited settings file
         while (Settings.HotPaths.Count < 10)
             Settings.HotPaths.Add(string.Empty);
-        KeyMap = KeyMap.CreateSalamanderDefaults();
+        Settings.KeyBindings ??= new List<KeyBindingOverride>();
+        Settings.Toolbar ??= CommandCatalog.DefaultToolbar();
+        KeyMap = KeyMap.Create(Settings.KeyBindings);
 
         Left = new PaneViewModel("Left", Registry, dispatcher, Icons, Settings.Left, () => Settings.ShowHidden);
         Right = new PaneViewModel("Right", Registry, dispatcher, Icons, Settings.Right, () => Settings.ShowHidden);
@@ -143,7 +149,19 @@ public sealed class MainViewModel : BindableBase
     public FileSystemRegistry Registry { get; }
     public IconCache Icons { get; }
     public ThumbnailCache Thumbnails { get; }
-    public KeyMap KeyMap { get; }
+    /// <summary>Shortcuts: the Salamander defaults plus the user's changes (Configuration → Keyboard).</summary>
+    public KeyMap KeyMap { get; private set; }
+
+    /// <summary>Replaces the key map (after the keyboard settings changed) and stores the differences.</summary>
+    public void SetKeyMap(KeyMap map)
+    {
+        KeyMap = map;
+        Settings.KeyBindings = map.GetOverrides();
+        OnPropertyChanged(nameof(KeyMap));
+    }
+
+    /// <summary>Set after Import Configuration / Reset: the imported file must not be overwritten on exit.</summary>
+    public bool SuppressSettingsSave { get; set; }
     public PaneViewModel Left { get; }
     public PaneViewModel Right { get; }
 
@@ -187,6 +205,8 @@ public sealed class MainViewModel : BindableBase
 
     public void SaveSettings()
     {
+        if (SuppressSettingsSave)
+            return;
         Left.StoreSettings(Settings.Left);
         Right.StoreSettings(Settings.Right);
         Settings.RightPanelActive = _active == Right;
@@ -275,6 +295,7 @@ public sealed class MainViewModel : BindableBase
                         await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
                     break;
                 case CommandId.SharedDirectories: await ShowSharesAsync(p); break;
+                case CommandId.Configuration: _host.ShowConfiguration(); break;
                 case CommandId.CalculateDirectorySizes:
                     await CalculateOccupiedSpaceAsync(p, p.Items.Where(i => i.Entry.IsDirectory && !i.Entry.IsUpDir && !i.IsDrive).ToList());
                     break;
@@ -702,6 +723,12 @@ public sealed class MainViewModel : BindableBase
         _host.ShowMenu(pane, entries, atCaret: true);
     }
 
+    /// <summary>Runs a user menu command for the active panel (user menu bar).</summary>
+    public void RunUserMenuItem(UserMenuItem item) => RunUserMenuItem(_active, item);
+
+    /// <summary>Raised when hot paths or the user menu changed (the window rebuilds its bars).</summary>
+    public event EventHandler? QuickBarsChanged;
+
     private void RunUserMenuItem(PaneViewModel pane, UserMenuItem item)
     {
         UserMenuContext context = UserMenuContextFor(pane);
@@ -731,6 +758,7 @@ public sealed class MainViewModel : BindableBase
             return;
         Settings.UserMenu = edited;
         SaveSettings();
+        QuickBarsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private List<string> _savedSelection = new();
@@ -1037,6 +1065,7 @@ public sealed class MainViewModel : BindableBase
         string path = _active.IsThisPc ? ThisPcProvider.RootPath : _active.Path;
         Settings.HotPaths[number] = path;
         SaveSettings();
+        QuickBarsChanged?.Invoke(this, EventArgs.Empty);
         _host.Notify($"Hot path {number}: {(_active.IsThisPc ? "This PC" : path)}  (Ctrl+{number} goes there)", isError: false);
     }
 

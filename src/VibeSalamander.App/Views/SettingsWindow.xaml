@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="VibeSalamander.Views.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Configuration - Vibe Salamander">
+
+    <Grid x:Name="RootGrid">
+        <!-- ThemeResource: follow this window's theme (RootGrid.RequestedTheme), set from code-built pages -->
+        <Grid.Resources>
+            <Style x:Key="SettingsCardStyle" TargetType="Border">
+                <Setter Property="Padding" Value="16,10,16,10" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            </Style>
+            <Style x:Key="SettingsFrameStyle" TargetType="Border">
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
+            </Style>
+            <Style x:Key="SettingsDividerStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource DividerStrokeColorDefaultBrush}" />
+            </Style>
+        </Grid.Resources>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="TitleBarText" Grid.Row="0" Margin="16,0,0,0" Text="Configuration" VerticalAlignment="Center"
+                   Style="{StaticResource CaptionTextBlockStyle}" />
+
+        <NavigationView x:Name="Nav" Grid.Row="1" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
+                        IsSettingsVisible="False" IsPaneToggleButtonVisible="False" OpenPaneLength="200"
+                        SelectionChanged="Nav_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="General" Tag="General" Icon="Setting" />
+                <NavigationViewItem Content="Panels" Tag="Panels">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE8A9;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Keyboard" Tag="Keyboard">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE765;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Toolbar" Tag="Toolbar">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE90C;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Hot Paths" Tag="HotPaths">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE734;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="User Menu" Tag="UserMenu">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE712;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="Backup" Tag="Backup">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE78C;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+            <ScrollViewer x:Name="PageScroller" Padding="28,16,28,24" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
+                <ContentPresenter x:Name="PageHost" MaxWidth="880" HorizontalAlignment="Left" />
+            </ScrollViewer>
+        </NavigationView>
+    </Grid>
+</Window>

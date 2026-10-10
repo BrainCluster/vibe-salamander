@@ -103,7 +103,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 ## Options menu
 | Command | Phase | Done |
 |---|---|---|
-| Configuration dialog | 3 (basic settings in 1) | [ ] |
+| Configuration window (General, Panels, Keyboard, Toolbar, Hot Paths, User Menu, Backup) | 3 | [x] |
 | Show/hide bars (toolbars, drive bars, command line, F-key bar, transfer panel) | 1 | [x] |
 | F-key bar follows held Ctrl / Alt / Shift (F1–F12) | 2 | [x] |
 | Ask for copy/move target (on/off) | 2 | [x] |
@@ -111,9 +111,10 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Transfer panel: Clear finished / Clear all | 2 | [x] |
 | Address bar in Windows 11 style: This PC › drive › folders, clickable segments, subfolder chevrons, click empty area to type (new) | 2 | [x] |
 | Transfer panel: background queue, parallel transfers, pause/resume/cancel (new, WinSCP-style) | 2 | [x] |
-| Customize toolbars | 3 | [ ] |
+| Customize toolbar; hot path bar and user menu bar | 3 | [x] |
 | Always on top | 1 | [x] |
-| Export / import configuration | 3 | [ ] |
+| Export / import / save / reset configuration | 3 | [x] |
+| Key customization (any command, conflicts moved, reset to Salamander defaults) | 3 | [x] |
 | Density: Compact / Comfortable (new) | 1 | [x] |
 | Theme: system / light / dark (new) | 1 | [x] |
 
