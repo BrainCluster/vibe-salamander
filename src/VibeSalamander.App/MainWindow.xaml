@@ -41,6 +41,13 @@
                 <MenuFlyoutItem Text="Root Directory" Tag="RootDirectory" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Shift+Backspace" />
                 <MenuFlyoutItem Text="Path from Other Panel" Tag="PathFromOtherPanel" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+." />
                 <MenuFlyoutSeparator />
+                <MenuFlyoutSubItem Text="View">
+                    <MenuFlyoutItem Text="Brief" Tag="ViewBrief" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Alt+1" />
+                    <MenuFlyoutItem Text="Detailed" Tag="ViewDetailed" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Alt+2" />
+                    <MenuFlyoutItem Text="Icons" Tag="ViewIcons" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Alt+3" />
+                    <MenuFlyoutItem Text="Thumbnails" Tag="ViewThumbnails" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Alt+4" />
+                    <MenuFlyoutItem Text="Tiles" Tag="ViewTiles" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Alt+5" />
+                </MenuFlyoutSubItem>
                 <MenuFlyoutSubItem Text="Sort By">
                     <MenuFlyoutItem Text="Name" Tag="SortByName" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F3" />
                     <MenuFlyoutItem Text="Extension" Tag="SortByExtension" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F4" />
@@ -104,8 +111,9 @@
                 <MenuFlyoutItem Text="Create Directory" Tag="CreateDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="F7" />
                 <MenuFlyoutItem Text="Change Directory" Tag="ChangeDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F7" />
                 <MenuFlyoutItem Text="Compare Directories..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F10" />
-                <MenuFlyoutItem Text="Calculate Occupied Space" IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F10" />
-                <MenuFlyoutItem Text="Drive Information..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F1" />
+                <MenuFlyoutItem Text="Calculate Occupied Space" Tag="CalculateOccupiedSpace" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F10" />
+                <MenuFlyoutItem Text="Calculate Directory Sizes" Tag="CalculateDirectorySizes" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F10" />
+                <MenuFlyoutItem Text="Drive Information" Tag="DriveInformation" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F1" />
                 <MenuFlyoutItem Text="Find Files and Directories..." Tag="FindFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F7" />
                 <MenuFlyoutItem Text="Go to Shortcut Target" Tag="GoToShortcutTarget" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+T" />
                 <MenuFlyoutSeparator />
@@ -148,6 +156,13 @@
                 <MenuFlyoutItem Text="Root Directory" Tag="RootDirectory" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Shift+Backspace" />
                 <MenuFlyoutItem Text="Path from Other Panel" Tag="PathFromOtherPanel" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+." />
                 <MenuFlyoutSeparator />
+                <MenuFlyoutSubItem Text="View">
+                    <MenuFlyoutItem Text="Brief" Tag="ViewBrief" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Alt+1" />
+                    <MenuFlyoutItem Text="Detailed" Tag="ViewDetailed" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Alt+2" />
+                    <MenuFlyoutItem Text="Icons" Tag="ViewIcons" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Alt+3" />
+                    <MenuFlyoutItem Text="Thumbnails" Tag="ViewThumbnails" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Alt+4" />
+                    <MenuFlyoutItem Text="Tiles" Tag="ViewTiles" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Alt+5" />
+                </MenuFlyoutSubItem>
                 <MenuFlyoutSubItem Text="Sort By">
                     <MenuFlyoutItem Text="Name" Tag="SortByName" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F3" />
                     <MenuFlyoutItem Text="Extension" Tag="SortByExtension" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F4" />
@@ -237,6 +252,31 @@
                     <FontIcon Glyph="&#xEC50;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
                 </Button>
                 <AppBarSeparator Padding="2,0" />
+                <Button Style="{StaticResource VibeToolButtonStyle}" ToolTipService.ToolTip="View of the active panel (Alt+1…5)">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <FontIcon Glyph="&#xE8FD;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
+                        <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="8" />
+                    </StackPanel>
+                    <Button.Flyout>
+                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                            <MenuFlyoutItem Text="Brief" Tag="ViewBrief" Click="Toolbar_Click" KeyboardAcceleratorTextOverride="Alt+1">
+                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8A9;" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Detailed" Tag="ViewDetailed" Click="Toolbar_Click" KeyboardAcceleratorTextOverride="Alt+2">
+                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE8FD;" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Icons" Tag="ViewIcons" Click="Toolbar_Click" KeyboardAcceleratorTextOverride="Alt+3">
+                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE80A;" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Thumbnails" Tag="ViewThumbnails" Click="Toolbar_Click" KeyboardAcceleratorTextOverride="Alt+4">
+                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE91B;" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Tiles" Tag="ViewTiles" Click="Toolbar_Click" KeyboardAcceleratorTextOverride="Alt+5">
+                                <MenuFlyoutItem.Icon><FontIcon Glyph="&#xECA5;" /></MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
                 <Button Style="{StaticResource VibeToolButtonStyle}" Tag="ToggleDensity" Click="Toolbar_Click" ToolTipService.ToolTip="Compact / comfortable density">
                     <FontIcon Glyph="&#xE8A9;" FontFamily="{StaticResource VibeIconFont}" FontSize="15" />
                 </Button>

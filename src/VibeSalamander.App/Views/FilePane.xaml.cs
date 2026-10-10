@@ -16,9 +16,35 @@ public sealed partial class FileRowTemplateSelector : DataTemplateSelector
 {
     public DataTemplate? FileTemplate { get; set; }
     public DataTemplate? DriveTemplate { get; set; }
+    public DataTemplate? BriefTemplate { get; set; }
+    public DataTemplate? IconTemplate { get; set; }
+    public DataTemplate? ThumbnailTemplate { get; set; }
+    public DataTemplate? TileTemplate { get; set; }
+
+    /// <summary>The panel's view; drives (This PC) always use their own row template.</summary>
+    public ViewMode Mode { get; set; } = ViewMode.Detailed;
+
+    /// <summary>A copy for another view (assigning a new selector makes the list re-template its items).</summary>
+    public FileRowTemplateSelector WithMode(ViewMode mode) => new()
+    {
+        FileTemplate = FileTemplate,
+        DriveTemplate = DriveTemplate,
+        BriefTemplate = BriefTemplate,
+        IconTemplate = IconTemplate,
+        ThumbnailTemplate = ThumbnailTemplate,
+        TileTemplate = TileTemplate,
+        Mode = mode,
+    };
 
     protected override DataTemplate? SelectTemplateCore(object item) =>
-        item is FileItemViewModel { IsDrive: true } ? DriveTemplate : FileTemplate;
+        item is FileItemViewModel { IsDrive: true } ? DriveTemplate : Mode switch
+        {
+            ViewMode.Brief => BriefTemplate,
+            ViewMode.Icons => IconTemplate,
+            ViewMode.Thumbnails => ThumbnailTemplate,
+            ViewMode.Tiles => TileTemplate,
+            _ => FileTemplate,
+        };
 
     protected override DataTemplate? SelectTemplateCore(object item, DependencyObject container) => SelectTemplateCore(item);
 }
@@ -47,7 +73,15 @@ public sealed partial class FilePane : UserControl
                 RebuildBreadcrumb();
             else if (e.PropertyName == nameof(PaneViewModel.IsActive))
                 UpdateBreadcrumbForeground(); // not a rebuild: a chevron click activates the panel, and its menu needs the button
+            if (e.PropertyName is nameof(PaneViewModel.EffectiveViewMode))
+                ApplyViewMode();
         };
+        viewModel.ListingChanged += (_, _) =>
+        {
+            if (viewModel.EffectiveViewMode == ViewMode.Brief)
+                ApplyViewMode(); // column width follows the longest name
+        };
+        ApplyViewMode();
         Bindings.Update();
         RebuildBreadcrumb();
     }
@@ -131,8 +165,247 @@ public sealed partial class FilePane : UserControl
 
     private void List_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
-        if (!args.InRecycleQueue && args.Item is FileItemViewModel item && _main != null)
-            item.EnsureIcon(_main.Icons);
+        if (args.InRecycleQueue || args.Item is not FileItemViewModel item || _main == null)
+            return;
+        item.EnsureIcon(_main.Icons);
+        double dips = _appliedView switch
+        {
+            ViewMode.Icons => 48,
+            ViewMode.Tiles => 48,
+            ViewMode.Thumbnails => 112,
+            _ => 0,
+        };
+        if (dips > 0)
+        {
+            double scale = XamlRoot?.RasterizationScale ?? 1;
+            item.EnsureLargeIcon(_main.Thumbnails, (uint)Math.Ceiling(dips * scale));
+        }
+    }
+
+    // ---- views (Alt+1…5) -------------------------------------------------------------------
+
+    private ViewMode _appliedView = (ViewMode)(-1);
+    private double _appliedBriefWidth;
+    private double _appliedRowHeight;
+
+    private static ItemsPanelTemplate PanelTemplate(string panel) =>
+        (ItemsPanelTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
+            "<ItemsPanelTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" + panel + "</ItemsPanelTemplate>");
+
+    private static string Num(double value) => value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Brief view column width: enough for the longest name, within limits (like Salamander).</summary>
+    private double BriefColumnWidth()
+    {
+        int longest = 8;
+        if (ViewModel != null)
+            foreach (FileItemViewModel item in ViewModel.Items)
+                longest = Math.Max(longest, item.FullName.Length);
+        double charWidth = 6.6 * UiState.FontSize / 12;
+        return Math.Round(Math.Clamp(longest * charWidth + 40, 120, 380));
+    }
+
+    /// <summary>Switches the list's layout and item templates to the panel's view.</summary>
+    private void ApplyViewMode()
+    {
+        if (ViewModel == null)
+            return;
+        PaneViewModel vm = ViewModel;
+        ViewMode mode = vm.EffectiveViewMode;
+        double briefWidth = mode == ViewMode.Brief ? BriefColumnWidth() : 0;
+        double rowHeight = UiState.RowHeight; // density changes the Brief item height
+        if (mode == _appliedView && briefWidth == _appliedBriefWidth && rowHeight == _appliedRowHeight)
+            return;
+        bool modeChanged = mode != _appliedView;
+        _appliedView = mode;
+        _appliedBriefWidth = briefWidth;
+        _appliedRowHeight = rowHeight;
+
+        // Brief after a reload: resize the existing panel instead of swapping it (no re-realization, no flicker)
+        if (!modeChanged && mode == ViewMode.Brief && FileList.ItemsPanelRoot is ItemsWrapGrid wrap)
+        {
+            wrap.ItemWidth = briefWidth;
+            wrap.ItemHeight = rowHeight;
+            return;
+        }
+
+        FileList.ItemsPanel = mode switch
+        {
+            ViewMode.Brief => PanelTemplate($"<ItemsWrapGrid Orientation='Vertical' ItemWidth='{Num(briefWidth)}' ItemHeight='{Num(rowHeight)}' />"),
+            ViewMode.Icons => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='96' ItemHeight='104' />"),
+            ViewMode.Thumbnails => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='140' ItemHeight='152' />"),
+            ViewMode.Tiles => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='264' ItemHeight='64' />"),
+            _ => PanelTemplate("<ItemsStackPanel />"),
+        };
+        bool sideways = mode == ViewMode.Brief;
+        ScrollViewer.SetHorizontalScrollMode(FileList, sideways ? ScrollMode.Enabled : ScrollMode.Disabled);
+        ScrollViewer.SetHorizontalScrollBarVisibility(FileList, sideways ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled);
+        ScrollViewer.SetVerticalScrollMode(FileList, sideways ? ScrollMode.Disabled : ScrollMode.Enabled);
+        ScrollViewer.SetVerticalScrollBarVisibility(FileList, sideways ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto);
+        if (modeChanged && Resources["RowTemplateSelector"] is FileRowTemplateSelector selector)
+            FileList.ItemTemplateSelector = selector.WithMode(mode);
+
+        // keep the caret visible in the new layout; read it when this runs: a view change raised by navigation
+        // (This PC <-> a folder) comes before the new listing sets its caret, and the old index would win
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => ApplyCaret(vm.CaretIndex, focus: vm.IsActive));
+    }
+
+    public Visibility HeaderVisibility(ViewMode mode, bool thisPc) =>
+        mode == ViewMode.Detailed && !thisPc ? Visibility.Visible : Visibility.Collapsed;
+
+    // ---- Detailed view columns: resize (header grips) and choose (header right-click) -----------
+
+    private DetailColumn? _resizingColumn;
+    private double _resizeStartX;
+    private double _resizeStartWidth;
+
+    private void ColumnGrip_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (ViewModel == null || sender is not UIElement grip || (sender as FrameworkElement)?.Tag is not string tag ||
+            !Enum.TryParse(tag, out DetailColumn column))
+            return;
+        _resizingColumn = column;
+        _resizeStartX = e.GetCurrentPoint(FileHeader).Position.X;
+        _resizeStartWidth = ViewModel.Columns.GetWidth(column);
+        grip.CapturePointer(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void ColumnGrip_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (_resizingColumn is not DetailColumn column || ViewModel == null)
+            return;
+        if (!e.Pointer.IsInContact)
+        {
+            _resizingColumn = null; // capture lost without a release (Alt+Tab, a popup): hovering must not resize
+            return;
+        }
+        // the grip is on the column's left edge: dragging left makes the column wider
+        double dx = e.GetCurrentPoint(FileHeader).Position.X - _resizeStartX;
+        ViewModel.Columns.SetWidth(column, _resizeStartWidth - dx);
+        e.Handled = true;
+    }
+
+    private void ColumnGrip_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        _resizingColumn = null;
+        (sender as UIElement)?.ReleasePointerCapture(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void ColumnGrip_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (ViewModel != null && (sender as FrameworkElement)?.Tag is string tag && Enum.TryParse(tag, out DetailColumn column))
+            ViewModel.Columns.SetWidth(column, ColumnLayout.DefaultWidth(column));
+        e.Handled = true;
+    }
+
+    private void Header_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (ViewModel == null)
+            return;
+        ColumnLayout columns = ViewModel.Columns;
+        var menu = new MenuFlyout();
+        menu.Items.Add(new MenuFlyoutItem { Text = "Name", IsEnabled = false });
+        foreach (DetailColumn column in Enum.GetValues<DetailColumn>())
+        {
+            string label = column switch
+            {
+                DetailColumn.Ext => "Extension",
+                DetailColumn.Attr => "Attributes",
+                _ => column.ToString(),
+            };
+            var toggle = new ToggleMenuFlyoutItem { Text = label, IsChecked = columns.IsVisible(column) };
+            DetailColumn c = column;
+            toggle.Click += (_, _) => columns.SetVisible(c, toggle.IsChecked);
+            menu.Items.Add(toggle);
+        }
+        menu.Items.Add(new MenuFlyoutSeparator());
+        var reset = new MenuFlyoutItem { Text = "Reset Columns" };
+        reset.Click += (_, _) => columns.Reset();
+        menu.Items.Add(reset);
+        menu.Closed += (_, _) => FocusList();
+        menu.ShowAt(FileHeader, e.GetPosition(FileHeader));
+        e.Handled = true;
+    }
+
+    // ---- drive information (Ctrl+F1) ---------------------------------------------------------
+
+    private static string DriveTypeName(DriveType type) => type switch
+    {
+        DriveType.Fixed => "Local disk",
+        DriveType.Removable => "Removable disk",
+        DriveType.CDRom => "CD/DVD drive",
+        DriveType.Network => "Network drive",
+        DriveType.Ram => "RAM disk",
+        _ => "Drive",
+    };
+
+    /// <summary>Volume details of the panel's drive (or the focused drive in This PC) in a flyout at the address bar.</summary>
+    public async void ShowDriveInformation()
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        string? path = ViewModel.IsThisPc ? ViewModel.FocusedItem?.Drive?.Root : ViewModel.IsLocalDisk ? ViewModel.Path : null;
+        if (path == null)
+        {
+            await _main.ShowErrorAsync("Focus a drive (or open a folder on it) to see its information.");
+            return;
+        }
+        DriveInformation? info = await DriveInformation.QueryAsync(path);
+        if (info == null)
+        {
+            await _main.ShowErrorAsync($"No information is available for {DriveInformation.RootOf(path) ?? path} (is the drive ready?).");
+            return;
+        }
+
+        string title = info.Root.Length <= 3
+            ? $"{(info.Label.Length > 0 ? info.Label : DriveTypeName(info.Type))} ({info.Root.TrimEnd('\\')})"
+            : info.Root.TrimEnd('\\');
+        var panel = new StackPanel { Spacing = 10, MinWidth = 320 };
+        panel.Children.Add(new TextBlock { Text = title, Style = Application.Current.Resources["SubtitleTextBlockStyle"] as Style });
+        if (info.TotalBytes > 0)
+        {
+            panel.Children.Add(new ProgressBar { Maximum = 100, Value = info.UsedPercent, Height = 6, MinHeight = 6, CornerRadius = new CornerRadius(3) });
+        }
+        var grid = new Grid { ColumnSpacing = 16, RowSpacing = 3 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        void Row(string label, string value)
+        {
+            int r = grid.RowDefinitions.Count;
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var l = new TextBlock { Text = label, Opacity = 0.7 };
+            var v = new TextBlock { Text = value, IsTextSelectionEnabled = true, TextWrapping = TextWrapping.Wrap };
+            Grid.SetRow(l, r);
+            Grid.SetRow(v, r);
+            Grid.SetColumn(v, 1);
+            grid.Children.Add(l);
+            grid.Children.Add(v);
+        }
+        string Size(long bytes) => $"{Core.Formatting.Formats.ShortSize(bytes)}  ({Core.Formatting.Formats.ExactSize(bytes)} bytes)";
+        Row("Type", DriveTypeName(info.Type));
+        Row("File system", info.FileSystem.Length > 0 ? info.FileSystem : "-");
+        if (info.SerialNumber != 0)
+            Row("Serial number", info.SerialText);
+        if (info.TotalBytes > 0)
+        {
+            Row("Capacity", Size(info.TotalBytes));
+            Row("Used", $"{Size(info.TotalBytes - info.FreeBytes)},  {info.UsedPercent} %");
+            Row("Free", Size(info.FreeBytes));
+            if (info.AvailableBytes != info.FreeBytes)
+                Row("Free for you", Size(info.AvailableBytes));
+        }
+        if (info.BytesPerCluster > 0)
+            Row("Cluster size", Core.Formatting.Formats.ExactSize(info.BytesPerCluster) + " bytes");
+        if (info.MaxComponentLength > 0)
+            Row("Max name length", info.MaxComponentLength + " characters");
+        Row("Supports", info.Features);
+        panel.Children.Add(grid);
+
+        var flyout = new Flyout { Content = panel, Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft };
+        flyout.Closed += (_, _) => FocusList();
+        flyout.ShowAt(DriveMenuButton);
     }
 
     private void List_PointerPressed(object sender, PointerRoutedEventArgs e)
@@ -599,6 +872,29 @@ public sealed partial class FilePane : UserControl
         var thisPc = new MenuFlyoutItem { Text = "This PC", Icon = new FontIcon { Glyph = "\uE7F4" } };
         thisPc.Click += async (_, _) => await ViewModel.NavigateAsync(ThisPcProvider.RootPath);
         menu.Items.Add(thisPc);
+
+        // hot paths (Ctrl+Shift+digit sets one, Ctrl+digit goes there)
+        IList<string> hotPaths = _main.Settings.HotPaths;
+        bool header = false;
+        for (int i = 0; i < hotPaths.Count && i < 10; i++)
+        {
+            string hot = hotPaths[i];
+            if (string.IsNullOrEmpty(hot))
+                continue;
+            if (!header)
+            {
+                menu.Items.Add(new MenuFlyoutSeparator());
+                header = true;
+            }
+            var item = new MenuFlyoutItem
+            {
+                Text = hot == ThisPcProvider.RootPath ? "This PC" : hot,
+                Icon = new FontIcon { Glyph = "\uE734" },
+                KeyboardAcceleratorTextOverride = "Ctrl+" + i,
+            };
+            item.Click += async (_, _) => await ViewModel.NavigateAsync(hot);
+            menu.Items.Add(item);
+        }
         menu.ShowAt(DriveMenuButton);
     }
 

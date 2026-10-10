@@ -248,6 +248,9 @@ public sealed partial class MainWindow : Window, IUiHost
         CommandId.OpenActiveFolder => "Explorer",
         CommandId.Properties => "Props",
         CommandId.Exit => "Exit",
+        CommandId.DriveInformation => "DrvInfo",
+        CommandId.CalculateOccupiedSpace => "DirSize",
+        CommandId.CalculateDirectorySizes => "AllSizes",
         _ => command.ToString(),
     };
 
@@ -776,6 +779,8 @@ public sealed partial class MainWindow : Window, IUiHost
     }
 
     public void EditPath(PaneViewModel pane) => PaneView(pane).BeginPathEdit();
+
+    public void ShowDriveInformation(PaneViewModel pane) => PaneView(pane).ShowDriveInformation();
 
     public void ShowFindWindow(string directory)
     {

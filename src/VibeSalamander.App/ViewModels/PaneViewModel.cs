@@ -81,7 +81,79 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         _showHidden = showHidden;
         _sortMode = settings.SortMode;
         _sortDescending = settings.SortDescending;
+        _viewMode = Enum.IsDefined(settings.ViewMode) ? settings.ViewMode : ViewMode.Detailed;
+        settings.Columns ??= new ColumnSettings();
+        Columns = new ColumnLayout(settings.Columns);
         _provider = registry.Find(ThisPcProvider.RootPath)!;
+    }
+
+    // ---- view ----------------------------------------------------------------------------------
+
+    private ViewMode _viewMode;
+
+    /// <summary>Brief / Detailed / Icons / Thumbnails / Tiles (Alt+1…5).</summary>
+    public ViewMode ViewMode
+    {
+        get => _viewMode;
+        set
+        {
+            if (SetProperty(ref _viewMode, value))
+                OnPropertyChanged(nameof(EffectiveViewMode));
+        }
+    }
+
+    /// <summary>The view actually shown: This PC always uses its drive list.</summary>
+    public ViewMode EffectiveViewMode => IsThisPc ? ViewMode.Detailed : _viewMode;
+
+    /// <summary>Detailed view column widths/visibility of this panel.</summary>
+    public ColumnLayout Columns { get; }
+
+    // ---- directory sizes -------------------------------------------------------------------------
+
+    /// <summary>Calculated directory sizes of the current directory (kept across refreshes, dropped when leaving it).</summary>
+    private readonly Dictionary<string, long> _directorySizes = new(StringComparer.OrdinalIgnoreCase);
+    private int _busyCount;
+
+    /// <summary>Loading or calculating (the directory line shows a progress ring).</summary>
+    public bool IsBusy => _isLoading || _busyCount > 0;
+
+    /// <summary>
+    /// Calculates the size of each directory in <paramref name="items"/> (shown in the Size column) and returns
+    /// the total occupied space of the items, files included.
+    /// </summary>
+    public async Task<OccupiedSpace> CalculateSizesAsync(IReadOnlyList<FileItemViewModel> items, CancellationToken ct = default)
+    {
+        _busyCount++;
+        OnPropertyChanged(nameof(IsBusy));
+        try
+        {
+            var total = new OccupiedSpace(0, 0, 0);
+            foreach (FileItemViewModel item in items)
+            {
+                if (item.Entry.IsUpDir || item.IsDrive)
+                    continue;
+                if (!item.Entry.IsDirectory)
+                {
+                    total += new OccupiedSpace(item.Entry.Size, 1, 0);
+                    continue;
+                }
+                OccupiedSpace space = await DirectorySize.CalculateAsync(item.Entry.FullPath, ct);
+                _directorySizes[item.Entry.FullPath] = space.Bytes;
+                item.DirectorySize = space.Bytes;
+                // an automatic refresh during the calculation rebuilt the rows: update the new one too
+                foreach (FileItemViewModel current in _items)
+                    if (current != item && string.Equals(current.Entry.FullPath, item.Entry.FullPath, StringComparison.OrdinalIgnoreCase))
+                        current.DirectorySize = space.Bytes;
+                total += space + new OccupiedSpace(0, 0, 1);
+            }
+            OnPropertyChanged(nameof(InfoText));
+            return total;
+        }
+        finally
+        {
+            _busyCount--;
+            OnPropertyChanged(nameof(IsBusy));
+        }
     }
 
     /// <summary>"Left" or "Right".</summary>
@@ -112,6 +184,8 @@ public sealed class PaneViewModel : BindableBase, IDisposable
                 OnPropertyChanged(nameof(DisplayPath));
                 OnPropertyChanged(nameof(IsThisPc));
                 OnPropertyChanged(nameof(IsLocalDisk));
+                OnPropertyChanged(nameof(EffectiveViewMode));
+                _directorySizes.Clear(); // sizes belong to the directory we left
             }
         }
     }
@@ -145,7 +219,11 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     public bool IsLoading
     {
         get => _isLoading;
-        private set => SetProperty(ref _isLoading, value);
+        private set
+        {
+            if (SetProperty(ref _isLoading, value))
+                OnPropertyChanged(nameof(IsBusy));
+        }
     }
 
     public SortMode SortMode
@@ -216,7 +294,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             {
                 int dirs = marked.Count(i => i.Entry.IsDirectory);
                 int files = marked.Count - dirs;
-                long bytes = marked.Where(i => !i.Entry.IsDirectory).Sum(i => i.Entry.Size);
+                long bytes = marked.Sum(i => i.Entry.IsDirectory ? i.DirectorySize ?? 0 : i.Entry.Size); // calculated directory sizes count too
                 return $"Selected: {Formats.ExactSize(bytes)} bytes in {files} file{(files == 1 ? "" : "s")} and {dirs} director{(dirs == 1 ? "y" : "ies")}";
             }
 
@@ -420,9 +498,11 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         var items = new List<FileItemViewModel>(sorted.Count);
         foreach (FileEntry entry in sorted)
         {
-            var vm = new FileItemViewModel(entry);
+            var vm = new FileItemViewModel(entry, Columns);
             if (marked != null && !entry.IsUpDir && marked.Contains(entry.Name))
                 vm.IsMarked = true;
+            if (entry.IsDirectory && _directorySizes.TryGetValue(entry.FullPath, out long size))
+                vm.DirectorySize = size;
             items.Add(vm);
         }
 
@@ -456,6 +536,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         settings.Path = IsThisPc ? ThisPcProvider.RootPath : _path;
         settings.SortMode = _sortMode;
         settings.SortDescending = _sortDescending;
+        settings.ViewMode = _viewMode;
     }
 
     // ---- drives ------------------------------------------------------------------------------

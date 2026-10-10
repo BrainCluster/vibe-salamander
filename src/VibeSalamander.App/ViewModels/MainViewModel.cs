@@ -3,6 +3,7 @@ using Windows.ApplicationModel.DataTransfer;
 using VibeSalamander.Core;
 using VibeSalamander.Core.Commands;
 using VibeSalamander.Core.FileSystem;
+using VibeSalamander.Core.Formatting;
 using VibeSalamander.Core.Interop;
 using VibeSalamander.Core.Operations;
 using VibeSalamander.Core.Panels;
@@ -32,6 +33,8 @@ public interface IUiHost
     void Notify(string message, bool isError = true);
     /// <summary>Shift+F7: puts the pane's address bar into edit mode (no dialog).</summary>
     void EditPath(PaneViewModel pane);
+    /// <summary>Ctrl+F1: volume details in a flyout at the pane's address bar.</summary>
+    void ShowDriveInformation(PaneViewModel pane);
     void ShowFindWindow(string directory);
     Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item);
     void ShowContextMenu(PaneViewModel pane);
@@ -92,6 +95,10 @@ public sealed class MainViewModel : BindableBase
         Settings = SettingsStore.Load();
         Registry = new FileSystemRegistry();
         Icons = new IconCache(dispatcher);
+        Thumbnails = new ThumbnailCache(dispatcher);
+        Settings.HotPaths ??= new List<string>(); // "HotPaths": null in a hand-edited settings file
+        while (Settings.HotPaths.Count < 10)
+            Settings.HotPaths.Add(string.Empty);
         KeyMap = KeyMap.CreateSalamanderDefaults();
 
         Left = new PaneViewModel("Left", Registry, dispatcher, Icons, Settings.Left, () => Settings.ShowHidden);
@@ -119,6 +126,7 @@ public sealed class MainViewModel : BindableBase
     public AppSettings Settings { get; }
     public FileSystemRegistry Registry { get; }
     public IconCache Icons { get; }
+    public ThumbnailCache Thumbnails { get; }
     public KeyMap KeyMap { get; }
     public PaneViewModel Left { get; }
     public PaneViewModel Right { get; }
@@ -213,6 +221,20 @@ public sealed class MainViewModel : BindableBase
                     break;
 
                 case CommandId.Filter: await FilterAsync(); break;
+
+                // phase 3
+                case CommandId.ViewBrief: p.ViewMode = ViewMode.Brief; break;
+                case CommandId.ViewDetailed: p.ViewMode = ViewMode.Detailed; break;
+                case CommandId.ViewIcons: p.ViewMode = ViewMode.Icons; break;
+                case CommandId.ViewThumbnails: p.ViewMode = ViewMode.Thumbnails; break;
+                case CommandId.ViewTiles: p.ViewMode = ViewMode.Tiles; break;
+                case CommandId.CalculateOccupiedSpace: await CalculateOccupiedSpaceAsync(p, p.GetOperationItems()); break;
+                case CommandId.CalculateDirectorySizes:
+                    await CalculateOccupiedSpaceAsync(p, p.Items.Where(i => i.Entry.IsDirectory && !i.Entry.IsUpDir && !i.IsDrive).ToList());
+                    break;
+                case CommandId.DriveInformation: _host.ShowDriveInformation(p); break;
+                case >= CommandId.GoToHotPath0 and <= CommandId.GoToHotPath9: await GoToHotPathAsync(command - CommandId.GoToHotPath0); break;
+                case >= CommandId.SetHotPath0 and <= CommandId.SetHotPath9: SetHotPath(command - CommandId.SetHotPath0); break;
                 case CommandId.OpenWith: OpenWith(); break;
                 case CommandId.ContextMenu: _host.ShowContextMenu(p); break;
                 case CommandId.ChangeAttributes: await ChangeAttributesAsync(); break;
@@ -548,6 +570,38 @@ public sealed class MainViewModel : BindableBase
         string focus = relative.Split(Path.DirectorySeparatorChar)[0];
         await pane.NavigateAsync(pane.Path, focus, addToHistory: false);
         return target;
+    }
+
+    // ---- phase 3 helpers -------------------------------------------------------------------
+
+    /// <summary>Alt+F10 (selection) / Ctrl+Shift+F10 (all directories): sizes go into the Size column, the total into a notification.</summary>
+    private async Task CalculateOccupiedSpaceAsync(PaneViewModel pane, IReadOnlyList<FileItemViewModel> items)
+    {
+        if (!pane.IsLocalDisk || items.Count == 0)
+            return;
+        OccupiedSpace total = await pane.CalculateSizesAsync(items);
+        _host.Notify($"Occupied space: {Formats.ShortSize(total.Bytes)} ({Formats.ExactSize(total.Bytes)} bytes) in " +
+                     $"{total.Files:N0} file{(total.Files == 1 ? "" : "s")} and {total.Directories:N0} director{(total.Directories == 1 ? "y" : "ies")}",
+                     isError: false);
+    }
+
+    private async Task GoToHotPathAsync(int number)
+    {
+        string path = Settings.HotPaths[number];
+        if (string.IsNullOrEmpty(path))
+        {
+            _host.Notify($"Hot path {number} isn't set. Ctrl+Shift+{number} makes the current folder hot path {number}.", isError: false);
+            return;
+        }
+        await _active.NavigateAsync(path);
+    }
+
+    private void SetHotPath(int number)
+    {
+        string path = _active.IsThisPc ? ThisPcProvider.RootPath : _active.Path;
+        Settings.HotPaths[number] = path;
+        SaveSettings();
+        _host.Notify($"Hot path {number}: {(_active.IsThisPc ? "This PC" : path)}  (Ctrl+{number} goes there)", isError: false);
     }
 
     // ---- phase 2 helpers -------------------------------------------------------------------

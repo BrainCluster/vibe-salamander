@@ -78,6 +78,20 @@ public enum CommandId
     CopyNameAsText,
     CopyPathAsText,
 
+    // phase 3: views, hot paths, sizes, drive information
+    ViewBrief,
+    ViewDetailed,
+    ViewIcons,
+    ViewThumbnails,
+    ViewTiles,
+    CalculateOccupiedSpace,
+    CalculateDirectorySizes,
+    DriveInformation,
+    GoToHotPath0, GoToHotPath1, GoToHotPath2, GoToHotPath3, GoToHotPath4,
+    GoToHotPath5, GoToHotPath6, GoToHotPath7, GoToHotPath8, GoToHotPath9,
+    SetHotPath0, SetHotPath1, SetHotPath2, SetHotPath3, SetHotPath4,
+    SetHotPath5, SetHotPath6, SetHotPath7, SetHotPath8, SetHotPath9,
+
     // options / app
     ToggleDensity,
     AlwaysOnTop,

@@ -14,12 +14,18 @@ public sealed class FileItemViewModel : BindableBase
     private ImageSource? _icon;
     private bool _iconRequested;
 
-    public FileItemViewModel(FileEntry entry)
+    private static readonly ColumnLayout DefaultColumns = new(new Core.Panels.ColumnSettings());
+
+    public FileItemViewModel(FileEntry entry, ColumnLayout? columns = null)
     {
         Entry = entry;
+        Columns = columns ?? DefaultColumns;
     }
 
     public FileEntry Entry { get; }
+
+    /// <summary>The panel's Detailed view column widths (shared by all rows of the panel).</summary>
+    public ColumnLayout Columns { get; }
 
     public DriveEntryInfo? Drive => Entry.Tag as DriveEntryInfo;
     public bool IsDrive => Entry.Tag is DriveEntryInfo;
@@ -31,7 +37,40 @@ public sealed class FileItemViewModel : BindableBase
     /// <summary>Name column: without extension for files (the Ext column shows it), like Salamander.</summary>
     public string Name => Entry.IsUpDir ? ".." : Entry.IsDirectory ? Entry.Name : Entry.BaseName;
     public string Ext => Entry.Extension;
-    public string SizeText => Entry.IsDirectory ? (Entry.IsUpDir ? "UP-DIR" : "DIR") : Formats.ExactSize(Entry.Size);
+    public string SizeText =>
+        Entry.IsUpDir ? "UP-DIR" :
+        Entry.IsDirectory ? (_directorySize is long d ? Formats.ExactSize(d) : "DIR") :
+        Formats.ExactSize(Entry.Size);
+
+    private long? _directorySize;
+
+    /// <summary>Calculated size of a directory's content (Alt+F10 / Ctrl+Shift+F10); null = not calculated.</summary>
+    public long? DirectorySize
+    {
+        get => _directorySize;
+        set
+        {
+            if (SetProperty(ref _directorySize, value))
+            {
+                OnPropertyChanged(nameof(SizeText));
+                OnPropertyChanged(nameof(TileDetail));
+            }
+        }
+    }
+
+    /// <summary>Name with extension (Brief, Icons, Thumbnails, Tiles views).</summary>
+    public string FullName => Entry.IsUpDir ? ".." : Entry.Name;
+
+    /// <summary>Second line of a tile: the kind of item.</summary>
+    public string TileType => Entry.IsUpDir ? "Parent directory" :
+        Entry.IsDirectory ? "File folder" :
+        Entry.Extension.Length > 0 ? Entry.Extension.ToUpperInvariant() + " file" : "File";
+
+    /// <summary>Third line of a tile: size and date.</summary>
+    public string TileDetail => Entry.IsUpDir ? string.Empty :
+        (Entry.IsDirectory
+            ? (_directorySize is long d ? Formats.ShortSize(d) + "  ·  " : string.Empty)
+            : Formats.ShortSize(Entry.Size) + "  ·  ") + Formats.Date(Entry.LastWrite);
     public string DateText => Entry.IsUpDir ? string.Empty : Formats.Date(Entry.LastWrite);
     public string TimeText => Entry.IsUpDir ? string.Empty : Formats.Time(Entry.LastWrite);
     public string AttrText => Entry.IsUpDir ? string.Empty : Formats.Attributes(Entry.Attributes);
@@ -106,6 +145,42 @@ public sealed class FileItemViewModel : BindableBase
     }
 
     public Visibility GlyphVisibility => _icon == null ? Visibility.Visible : Visibility.Collapsed;
+
+    // ---- large icons / thumbnails (Icons, Thumbnails, Tiles views) -----------------------------
+
+    private ImageSource? _largeIcon;
+    private uint _largeIconSize;
+    private uint _largeIconLoadedSize;
+
+    public ImageSource? LargeIcon
+    {
+        get => _largeIcon;
+        private set
+        {
+            if (SetProperty(ref _largeIcon, value))
+                OnPropertyChanged(nameof(LargeGlyphVisibility));
+        }
+    }
+
+    /// <summary>The big folder/file glyph shown until (or instead of) the thumbnail.</summary>
+    public Visibility LargeGlyphVisibility => _largeIcon == null ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>Called when the item becomes visible in a large view; loads the thumbnail once per size.</summary>
+    public void EnsureLargeIcon(Services.ThumbnailCache cache, uint size)
+    {
+        if (_largeIconSize >= size || Entry.IsUpDir || IsDrive)
+            return;
+        _largeIconSize = size;
+        cache.Request(Entry, size, image =>
+        {
+            // requests of two sizes (Icons, then Thumbnails) may finish in either order: keep the larger image
+            if (image != null && size > _largeIconLoadedSize)
+            {
+                _largeIconLoadedSize = size;
+                LargeIcon = image;
+            }
+        });
+    }
 
     /// <summary>Called when the row becomes visible; loads the shell icon once.</summary>
     public void EnsureIcon(Services.IconCache cache)
