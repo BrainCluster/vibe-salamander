@@ -194,7 +194,7 @@ public sealed class Dialogs
         {
             Content = $"Don't show this dialog again ({verb.ToLowerInvariant()} straight into the other panel)",
         };
-        var hint = Text("Options → Ask for Copy/Move Target shows it again.", secondary: true);
+        var hint = Text("Configuration → Confirmations → Copy / move target shows it again.", secondary: true);
         hint.FontSize = 12;
         hint.Visibility = Visibility.Collapsed;
         dontAsk.Checked += (_, _) => hint.Visibility = Visibility.Visible;

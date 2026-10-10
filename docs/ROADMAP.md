@@ -115,7 +115,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Language, archivers, security / master password, icon overlays (plugins phase) | 4 | [ ] |
 | Show/hide bars (toolbars, drive bars, command line, F-key bar, transfer panel) | 1 | [x] |
 | F-key bar follows held Ctrl / Alt / Shift (F1–F12) | 2 | [x] |
-| Ask for copy/move target (on/off) | 2 | [x] |
+| Ask for copy/move target (on/off, Configuration → Confirmations) | 2 | [x] |
 | Fewer dialogs: F7 / Shift+F4 create "New Folder" / "New Text Document.txt" and rename in place; Shift+F7 edits the address bar; Recycle Bin delete without confirmation (Options toggle); errors as self-closing notifications; transfer failures shown in the transfer row (new) | 2 | [x] |
 | Transfer panel: Clear finished / Clear all | 2 | [x] |
 | Address bar in Windows 11 style: This PC › drive › folders, clickable segments, subfolder chevrons, click empty area to type (new) | 2 | [x] |

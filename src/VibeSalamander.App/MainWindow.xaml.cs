@@ -796,20 +796,6 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         ShowCommandLineItem.IsChecked = _vm.Settings.ShowCommandLine;
         ShowFKeyBarItem.IsChecked = _vm.Settings.ShowFunctionKeyBar;
         ShowTransfersItem.IsChecked = _vm.Settings.ShowTransfers;
-        AskCopyMoveItem.IsChecked = _vm.Settings.AskCopyMoveTarget;
-        ConfirmRecycleItem.IsChecked = _vm.Settings.ConfirmRecycle;
-    }
-
-    private void ConfirmRecycle_Click(object sender, RoutedEventArgs e)
-    {
-        _vm.Settings.ConfirmRecycle = ConfirmRecycleItem.IsChecked;
-        _vm.SaveSettings();
-    }
-
-    private void AskCopyMove_Click(object sender, RoutedEventArgs e)
-    {
-        _vm.Settings.AskCopyMoveTarget = AskCopyMoveItem.IsChecked;
-        _vm.SaveSettings();
     }
 
     private void Theme_Click(object sender, RoutedEventArgs e)
