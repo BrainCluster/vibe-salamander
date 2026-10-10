@@ -29,11 +29,11 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Parent directory | Backspace | 1 | [x] |
 | Root directory | Shift+Backspace | 1 | [x] |
 | Path from other panel | Ctrl+. | 1 | [x] |
-| Hot paths | Ctrl+Shift+0-9 / Ctrl+0-9 | 3 | [ ] |
+| Hot paths (set / go; listed in the drive menu) | Ctrl+Shift+0-9 / Ctrl+0-9 | 3 | [x] |
 | Sort by Name/Ext/Size/Date/Attr | Ctrl+F3…F6 | 1 | [x] |
-| Views (Brief, Detailed, Icons, Thumbnails, Tiles) | Alt+1…9 | 3 | [ ] |
+| Views (Brief, Detailed, Icons, Thumbnails, Tiles) | Alt+1…5 | 3 | [x] |
 | Show directory/header/information line | | 1 | [~] |
-| Choose columns | | 3 | [ ] |
+| Choose columns (header right-click), resize columns (header grips) | | 3 | [x] |
 | Maximize/restore panel | Ctrl+F11 | 1 | [x] |
 | Swap panels | Ctrl+U | 1 | [x] |
 | Filter | Ctrl+F12 | 2 | [x] |
@@ -82,8 +82,8 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Create directory | F7 | 1 | [x] |
 | Change directory | Shift+F7 | 1 | [x] |
 | Compare directories | Ctrl+F10 | 3 | [ ] |
-| Calculate occupied space / directory sizes | Alt+F10 / Ctrl+Shift+F10 | 3 | [ ] |
-| Drive information | Ctrl+F1 | 3 | [ ] |
+| Calculate occupied space / directory sizes | Alt+F10 / Ctrl+Shift+F10 | 3 | [x] |
+| Drive information (flyout) | Ctrl+F1 | 3 | [x] |
 | Find files and directories | Alt+F7 | 2 | [x] |
 | Make file list | Ctrl+M | 3 | [ ] |
 | Go to shortcut target | Ctrl+T | 2 | [x] |
@@ -129,4 +129,4 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Real shell icons, overlays | 1 (icons) / 3 (overlays) | [~] |
 | Drag & drop between panels and to/from Explorer | 2 | [x] |
 | Context menu (shell) | 2 | [x] |
-| Thumbnails | 3 | [ ] |
+| Thumbnails | 3 | [x] |

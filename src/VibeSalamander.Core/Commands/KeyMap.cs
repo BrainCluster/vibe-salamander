@@ -23,6 +23,7 @@ public static class VK
     public const int F1 = 0x70, F2 = 0x71, F3 = 0x72, F4 = 0x73, F5 = 0x74, F6 = 0x75, F7 = 0x76,
                      F8 = 0x77, F9 = 0x78, F10 = 0x79, F11 = 0x7A, F12 = 0x7B;
     public const int Period = 0xBE;
+    public const int D0 = 0x30, D1 = 0x31, D2 = 0x32, D3 = 0x33, D4 = 0x34, D5 = 0x35;
 }
 
 /// <summary>Keyboard shortcuts → commands. Defaults match Altap/Open Salamander.</summary>
@@ -107,6 +108,21 @@ public sealed class KeyMap
         m.Bind(VK.Insert, C | A, CommandId.CopyPathAsText);
 
         m.Bind(VK.F1, N, CommandId.Help);
+
+        // phase 3
+        m.Bind(VK.D1, A, CommandId.ViewBrief);
+        m.Bind(VK.D2, A, CommandId.ViewDetailed);
+        m.Bind(VK.D3, A, CommandId.ViewIcons);
+        m.Bind(VK.D4, A, CommandId.ViewThumbnails);
+        m.Bind(VK.D5, A, CommandId.ViewTiles);
+        m.Bind(VK.F10, A, CommandId.CalculateOccupiedSpace);
+        m.Bind(VK.F10, C | S, CommandId.CalculateDirectorySizes);
+        m.Bind(VK.F1, C, CommandId.DriveInformation);
+        for (int digit = 0; digit <= 9; digit++)
+        {
+            m.Bind(VK.D0 + digit, C, CommandId.GoToHotPath0 + digit);
+            m.Bind(VK.D0 + digit, C | S, CommandId.SetHotPath0 + digit);
+        }
         return m;
     }
 
@@ -148,6 +164,7 @@ public sealed class KeyMap
             VK.Add => "Num +",
             VK.Subtract => "Num -",
             VK.Divide => "Num /",
+            >= VK.D0 and <= VK.D0 + 9 => ((char)chord.Key).ToString(),
             VK.Period => ".",
             VK.Apps => "Menu",
             _ => ((char)chord.Key).ToString(),

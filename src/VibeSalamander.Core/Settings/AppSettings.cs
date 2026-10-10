@@ -24,6 +24,8 @@ public sealed class PanelSettings
     public string Path { get; set; } = "C:\\";
     public SortMode SortMode { get; set; } = SortMode.Name;
     public bool SortDescending { get; set; }
+    public ViewMode ViewMode { get; set; } = ViewMode.Detailed;
+    public ColumnSettings Columns { get; set; } = new();
 }
 
 /// <summary>User configuration, stored as JSON in %AppData%\VibeSalamander\settings.json.</summary>
@@ -37,6 +39,9 @@ public sealed class AppSettings
     public Density Density { get; set; } = Density.Compact;
     public AppTheme Theme { get; set; } = AppTheme.System;
     public bool AlwaysOnTop { get; set; }
+
+    /// <summary>Hot paths 0-9: Ctrl+Shift+digit stores the panel's path, Ctrl+digit goes there ("" = not set).</summary>
+    public List<string> HotPaths { get; set; } = Enumerable.Repeat(string.Empty, 10).ToList();
 
     // bars (Options → Show)
     public bool ShowTopToolbar { get; set; } = true;

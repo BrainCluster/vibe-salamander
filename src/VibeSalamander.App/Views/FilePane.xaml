@@ -13,11 +13,11 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="22" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="56" />
-                    <ColumnDefinition Width="112" />
-                    <ColumnDefinition Width="84" />
-                    <ColumnDefinition Width="70" />
-                    <ColumnDefinition Width="52" />
+                    <ColumnDefinition Width="{x:Bind Columns.ExtColumn, Mode=OneWay}" />
+                    <ColumnDefinition Width="{x:Bind Columns.SizeColumn, Mode=OneWay}" />
+                    <ColumnDefinition Width="{x:Bind Columns.DateColumn, Mode=OneWay}" />
+                    <ColumnDefinition Width="{x:Bind Columns.TimeColumn, Mode=OneWay}" />
+                    <ColumnDefinition Width="{x:Bind Columns.AttrColumn, Mode=OneWay}" />
                 </Grid.ColumnDefinitions>
                 <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
                           Foreground="{x:Bind GlyphBrush}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}"
@@ -36,7 +36,7 @@
                          MinHeight="0" MinWidth="0" Padding="2,0,2,0" Margin="-3,1,4,1" BorderThickness="1"
                          VerticalAlignment="Stretch" VerticalContentAlignment="Center" IsSpellCheckEnabled="False"
                          KeyDown="RenameBox_KeyDown" GotFocus="RenameBox_GotFocus" LostFocus="RenameBox_LostFocus" />
-                <TextBlock Grid.Column="3" Text="{x:Bind SizeText}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
+                <TextBlock Grid.Column="3" Text="{x:Bind SizeText, Mode=OneWay}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Grid.Column="4" Text="{x:Bind DateText}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -82,9 +82,101 @@
             </Grid>
         </DataTemplate>
 
+        <!-- Brief view: names only, in columns that scroll sideways (Alt+1) -->
+        <DataTemplate x:Key="BriefTemplate" x:DataType="vm:FileItemViewModel">
+            <Grid Height="{x:Bind RowHeight}" Opacity="{x:Bind ItemOpacity}" ColumnSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
+                          Foreground="{x:Bind GlyphBrush}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}" VerticalAlignment="Center" />
+                <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{x:Bind FullName}" Foreground="{x:Bind NameBrush, Mode=OneWay}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Visibility="{x:Bind NameVisibility, Mode=OneWay}" />
+                <TextBox x:Name="RenameBox" x:Load="{x:Bind IsRenaming, Mode=OneWay}" Grid.Column="1" Tag="RenameBox"
+                         MinHeight="0" MinWidth="0" Padding="2,0,2,0" Margin="-3,1,0,1" BorderThickness="1"
+                         VerticalContentAlignment="Center" IsSpellCheckEnabled="False"
+                         KeyDown="RenameBox_KeyDown" GotFocus="RenameBox_GotFocus" LostFocus="RenameBox_LostFocus" />
+            </Grid>
+        </DataTemplate>
+
+        <!-- Icons view: large icon, name below (Alt+3) -->
+        <DataTemplate x:Key="IconTemplate" x:DataType="vm:FileItemViewModel">
+            <Grid Opacity="{x:Bind ItemOpacity}" Padding="2,6,2,2" RowSpacing="4">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="48" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="38"
+                          Foreground="{x:Bind GlyphBrush}" Visibility="{x:Bind LargeGlyphVisibility, Mode=OneWay}" />
+                <Image Source="{x:Bind LargeIcon, Mode=OneWay}" Width="48" Height="48" Stretch="Uniform" />
+                <TextBlock Grid.Row="1" Text="{x:Bind FullName}" Foreground="{x:Bind NameBrush, Mode=OneWay}"
+                           TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxLines="2" TextAlignment="Center"
+                           HorizontalAlignment="Center" Visibility="{x:Bind NameVisibility, Mode=OneWay}" />
+                <TextBox x:Name="RenameBox" x:Load="{x:Bind IsRenaming, Mode=OneWay}" Grid.Row="1" Tag="RenameBox"
+                         MinHeight="0" MinWidth="0" Padding="2,0,2,0" BorderThickness="1" VerticalAlignment="Top"
+                         TextAlignment="Center" IsSpellCheckEnabled="False"
+                         KeyDown="RenameBox_KeyDown" GotFocus="RenameBox_GotFocus" LostFocus="RenameBox_LostFocus" />
+            </Grid>
+        </DataTemplate>
+
+        <!-- Thumbnails view: picture previews (Alt+4) -->
+        <DataTemplate x:Key="ThumbnailTemplate" x:DataType="vm:FileItemViewModel">
+            <Grid Opacity="{x:Bind ItemOpacity}" Padding="4,6,4,2" RowSpacing="4">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="112" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Border CornerRadius="4" Background="{ThemeResource VibeInactivePathBrush}">
+                    <Grid>
+                        <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="48"
+                                  Foreground="{x:Bind GlyphBrush}" Visibility="{x:Bind LargeGlyphVisibility, Mode=OneWay}" />
+                        <Image Source="{x:Bind LargeIcon, Mode=OneWay}" Stretch="Uniform" Margin="4" />
+                    </Grid>
+                </Border>
+                <TextBlock Grid.Row="1" Text="{x:Bind FullName}" Foreground="{x:Bind NameBrush, Mode=OneWay}"
+                           TextTrimming="CharacterEllipsis" TextAlignment="Center" HorizontalAlignment="Center"
+                           Visibility="{x:Bind NameVisibility, Mode=OneWay}" />
+                <TextBox x:Name="RenameBox" x:Load="{x:Bind IsRenaming, Mode=OneWay}" Grid.Row="1" Tag="RenameBox"
+                         MinHeight="0" MinWidth="0" Padding="2,0,2,0" BorderThickness="1" VerticalAlignment="Top"
+                         TextAlignment="Center" IsSpellCheckEnabled="False"
+                         KeyDown="RenameBox_KeyDown" GotFocus="RenameBox_GotFocus" LostFocus="RenameBox_LostFocus" />
+            </Grid>
+        </DataTemplate>
+
+        <!-- Tiles view: icon with name, type and size beside it (Alt+5) -->
+        <DataTemplate x:Key="TileTemplate" x:DataType="vm:FileItemViewModel">
+            <Grid Opacity="{x:Bind ItemOpacity}" ColumnSpacing="10" Padding="4,4,6,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="48" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="36"
+                          Foreground="{x:Bind GlyphBrush}" Visibility="{x:Bind LargeGlyphVisibility, Mode=OneWay}" />
+                <Image Source="{x:Bind LargeIcon, Mode=OneWay}" Width="48" Height="48" Stretch="Uniform" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                    <Grid>
+                        <TextBlock Text="{x:Bind FullName}" Foreground="{x:Bind NameBrush, Mode=OneWay}" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" Visibility="{x:Bind NameVisibility, Mode=OneWay}" />
+                        <TextBox x:Name="RenameBox" x:Load="{x:Bind IsRenaming, Mode=OneWay}" Tag="RenameBox"
+                                 MinHeight="0" MinWidth="0" Padding="2,0,2,0" Margin="-3,0,0,0" BorderThickness="1"
+                                 IsSpellCheckEnabled="False"
+                                 KeyDown="RenameBox_KeyDown" GotFocus="RenameBox_GotFocus" LostFocus="RenameBox_LostFocus" />
+                    </Grid>
+                    <TextBlock Text="{x:Bind TileType}" Foreground="{x:Bind TextBrush, Mode=OneWay}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{x:Bind TileDetail, Mode=OneWay}" Foreground="{x:Bind TextBrush, Mode=OneWay}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
         <views:FileRowTemplateSelector x:Key="RowTemplateSelector"
                                        FileTemplate="{StaticResource FileRowTemplate}"
-                                       DriveTemplate="{StaticResource DriveRowTemplate}" />
+                                       DriveTemplate="{StaticResource DriveRowTemplate}"
+                                       BriefTemplate="{StaticResource BriefTemplate}"
+                                       IconTemplate="{StaticResource IconTemplate}"
+                                       ThumbnailTemplate="{StaticResource ThumbnailTemplate}"
+                                       TileTemplate="{StaticResource TileTemplate}" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" Background="{ThemeResource VibePaneBackgroundBrush}" AllowDrop="True"
@@ -170,7 +262,7 @@
                         <TextBlock Text="{x:Bind ViewModel.Filter, Mode=OneWay}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Border>
-                <ProgressRing Grid.Column="4" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" Width="14" Height="14"
+                <ProgressRing Grid.Column="4" IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" Width="14" Height="14"
                               Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
                 <TextBlock Grid.Column="5" Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"
                            Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
@@ -178,17 +270,18 @@
             </Grid>
         </Grid>
 
-        <!-- header line (files) -->
-        <Grid x:Name="FileHeader" Grid.Row="2" Height="24" Padding="10,0,4,0"
-              Visibility="{x:Bind VisibleIfNot(ViewModel.IsThisPc), Mode=OneWay}">
+        <!-- header line (files, Detailed view): click to sort, drag the grips to resize, right-click to choose columns -->
+        <Grid x:Name="FileHeader" Grid.Row="2" Height="24" Padding="10,0,4,0" Background="Transparent"
+              Visibility="{x:Bind HeaderVisibility(ViewModel.EffectiveViewMode, ViewModel.IsThisPc), Mode=OneWay}"
+              RightTapped="Header_RightTapped">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="22" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="56" />
-                <ColumnDefinition Width="112" />
-                <ColumnDefinition Width="84" />
-                <ColumnDefinition Width="70" />
-                <ColumnDefinition Width="52" />
+                <ColumnDefinition Width="{x:Bind ViewModel.Columns.ExtColumn, Mode=OneWay}" />
+                <ColumnDefinition Width="{x:Bind ViewModel.Columns.SizeColumn, Mode=OneWay}" />
+                <ColumnDefinition Width="{x:Bind ViewModel.Columns.DateColumn, Mode=OneWay}" />
+                <ColumnDefinition Width="{x:Bind ViewModel.Columns.TimeColumn, Mode=OneWay}" />
+                <ColumnDefinition Width="{x:Bind ViewModel.Columns.AttrColumn, Mode=OneWay}" />
             </Grid.ColumnDefinitions>
             <Button Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Name" Click="Header_Click" Padding="22,0,6,0">
                 <StackPanel Orientation="Horizontal" Spacing="4">
@@ -196,33 +289,59 @@
                     <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Name'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
                 </StackPanel>
             </Button>
-            <Button Grid.Column="2" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Extension" Click="Header_Click">
+            <Button Grid.Column="2" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Extension" Click="Header_Click"
+                    Visibility="{x:Bind ViewModel.Columns.ExtVisibility, Mode=OneWay}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <TextBlock Text="Ext" />
                     <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Extension'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
                 </StackPanel>
             </Button>
-            <Button Grid.Column="3" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Size" Click="Header_Click" HorizontalContentAlignment="Right">
+            <Button Grid.Column="3" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Size" Click="Header_Click" HorizontalContentAlignment="Right"
+                    Visibility="{x:Bind ViewModel.Columns.SizeVisibility, Mode=OneWay}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Size'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
                     <TextBlock Text="Size" />
                 </StackPanel>
             </Button>
-            <Button Grid.Column="4" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Date" Click="Header_Click" HorizontalContentAlignment="Right">
+            <Button Grid.Column="4" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Date" Click="Header_Click" HorizontalContentAlignment="Right"
+                    Visibility="{x:Bind ViewModel.Columns.DateVisibility, Mode=OneWay}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Date'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
                     <TextBlock Text="Date" />
                 </StackPanel>
             </Button>
-            <Button Grid.Column="5" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Date" Click="Header_Click" HorizontalContentAlignment="Right">
+            <Button Grid.Column="5" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Date" Click="Header_Click" HorizontalContentAlignment="Right"
+                    Visibility="{x:Bind ViewModel.Columns.TimeVisibility, Mode=OneWay}">
                 <TextBlock Text="Time" />
             </Button>
-            <Button Grid.Column="6" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Attributes" Click="Header_Click">
+            <Button Grid.Column="6" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Attributes" Click="Header_Click"
+                    Visibility="{x:Bind ViewModel.Columns.AttrVisibility, Mode=OneWay}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <TextBlock Text="Attr" />
                     <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Attributes'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
                 </StackPanel>
             </Button>
+            <!-- resize grips on the left edge of each column (drag; double-click resets the width) -->
+            <views:PanelSplitter Grid.Column="2" Tag="Ext" Width="7" Margin="-4,3,0,3" HorizontalAlignment="Left" Background="Transparent"
+                                 Visibility="{x:Bind ViewModel.Columns.ExtVisibility, Mode=OneWay}"
+                                 PointerPressed="ColumnGrip_PointerPressed" PointerMoved="ColumnGrip_PointerMoved"
+                                 PointerReleased="ColumnGrip_PointerReleased" DoubleTapped="ColumnGrip_DoubleTapped" />
+            <views:PanelSplitter Grid.Column="3" Tag="Size" Width="7" Margin="-4,3,0,3" HorizontalAlignment="Left" Background="Transparent"
+                                 Visibility="{x:Bind ViewModel.Columns.SizeVisibility, Mode=OneWay}"
+                                 PointerPressed="ColumnGrip_PointerPressed" PointerMoved="ColumnGrip_PointerMoved"
+                                 PointerReleased="ColumnGrip_PointerReleased" DoubleTapped="ColumnGrip_DoubleTapped" />
+            <views:PanelSplitter Grid.Column="4" Tag="Date" Width="7" Margin="-4,3,0,3" HorizontalAlignment="Left" Background="Transparent"
+                                 Visibility="{x:Bind ViewModel.Columns.DateVisibility, Mode=OneWay}"
+                                 PointerPressed="ColumnGrip_PointerPressed" PointerMoved="ColumnGrip_PointerMoved"
+                                 PointerReleased="ColumnGrip_PointerReleased" DoubleTapped="ColumnGrip_DoubleTapped" />
+            <views:PanelSplitter Grid.Column="5" Tag="Time" Width="7" Margin="-4,3,0,3" HorizontalAlignment="Left" Background="Transparent"
+                                 Visibility="{x:Bind ViewModel.Columns.TimeVisibility, Mode=OneWay}"
+                                 PointerPressed="ColumnGrip_PointerPressed" PointerMoved="ColumnGrip_PointerMoved"
+                                 PointerReleased="ColumnGrip_PointerReleased" DoubleTapped="ColumnGrip_DoubleTapped" />
+            <views:PanelSplitter Grid.Column="6" Tag="Attr" Width="7" Margin="-4,3,0,3" HorizontalAlignment="Left" Background="Transparent"
+                                 Visibility="{x:Bind ViewModel.Columns.AttrVisibility, Mode=OneWay}"
+                                 PointerPressed="ColumnGrip_PointerPressed" PointerMoved="ColumnGrip_PointerMoved"
+                                 PointerReleased="ColumnGrip_PointerReleased" DoubleTapped="ColumnGrip_DoubleTapped" />
         </Grid>
 
         <!-- header line (This PC) -->
