@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using VibeSalamander.Core.Panels;
+using VibeSalamander.Core.Tools;
 
 namespace VibeSalamander.Core.Settings;
 
@@ -42,6 +43,18 @@ public sealed class AppSettings
 
     /// <summary>Hot paths 0-9: Ctrl+Shift+digit stores the panel's path, Ctrl+digit goes there ("" = not set).</summary>
     public List<string> HotPaths { get; set; } = Enumerable.Repeat(string.Empty, 10).ToList();
+
+    /// <summary>User menu (F9), edited in Commands → User Menu → Edit.</summary>
+    public List<UserMenuItem> UserMenu { get; set; } = Tools.UserMenu.CreateDefaults();
+
+    /// <summary>Last options of Compare Directories (Ctrl+F10).</summary>
+    public CompareOptions Compare { get; set; } = new();
+
+    /// <summary>List of Opened Files (Alt+F11), most recent first.</summary>
+    public List<string> OpenedFiles { get; set; } = new();
+
+    /// <summary>List of Working Directories (Alt+F12), most recent first.</summary>
+    public List<string> WorkingDirectories { get; set; } = new();
 
     // bars (Options → Show)
     public bool ShowTopToolbar { get; set; } = true;

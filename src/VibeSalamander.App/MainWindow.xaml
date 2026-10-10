@@ -76,6 +76,17 @@
                 <MenuFlyoutItem Text="Properties" Tag="Properties" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Enter" />
                 <MenuFlyoutItem Text="Change Attributes..." Tag="ChangeAttributes" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F2" />
                 <MenuFlyoutItem Text="Change Case..." Tag="ChangeCase" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F7" />
+                <MenuFlyoutItem Text="Security" Tag="Security" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+P" />
+                <MenuFlyoutSubItem Text="NTFS">
+                    <MenuFlyoutItem Text="Compress" Tag="NtfsCompress" Click="Menu_Click" />
+                    <MenuFlyoutItem Text="Uncompress" Tag="NtfsUncompress" Click="Menu_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Encrypt" Tag="NtfsEncrypt" Click="Menu_Click" />
+                    <MenuFlyoutItem Text="Decrypt" Tag="NtfsDecrypt" Click="Menu_Click" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="New (Explorer)..." Tag="NewMenu" Click="Menu_Click" />
+                <MenuFlyoutItem Text="Email..." Tag="Email" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+E" />
                 <MenuFlyoutItem Text="Pack..." IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F5" />
                 <MenuFlyoutItem Text="Unpack..." IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F9" />
                 <MenuFlyoutSeparator />
@@ -85,6 +96,7 @@
                 <MenuFlyoutItem Text="Cut" Tag="ClipboardCut" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+X" />
                 <MenuFlyoutItem Text="Copy" Tag="ClipboardCopy" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+C" />
                 <MenuFlyoutItem Text="Paste" Tag="ClipboardPaste" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+V" />
+                <MenuFlyoutItem Text="Paste Shortcut" Tag="PasteShortcut" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+S" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Copy Path + Name as Text" Tag="CopyFullNameAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Ins" />
                 <MenuFlyoutItem Text="Copy Name as Text" Tag="CopyNameAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Shift+Ins" />
@@ -96,12 +108,18 @@
                 <MenuFlyoutItem Text="Select..." Tag="SelectByMask" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num +" />
                 <MenuFlyoutItem Text="Unselect..." Tag="UnselectByMask" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num -" />
                 <MenuFlyoutItem Text="Restore Selection" Tag="RestoreSelection" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+W" />
+                <MenuFlyoutItem Text="Save Selection" Tag="SaveSelection" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F5" />
+                <MenuFlyoutItem Text="Load Selection" Tag="LoadSelection" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F6" />
                 <MenuFlyoutSubItem Text="Advanced">
                     <MenuFlyoutItem Text="Select Same Extensions" Tag="SelectSameExtension" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+Num +" />
                     <MenuFlyoutItem Text="Unselect Same Extensions" Tag="UnselectSameExtension" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+Num -" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Select Same Names" Tag="SelectSameName" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+Num +" />
                     <MenuFlyoutItem Text="Unselect Same Names" Tag="UnselectSameName" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+Num -" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Hide Selected Names" Tag="HideSelectedNames" Click="Menu_Click" />
+                    <MenuFlyoutItem Text="Hide Unselected Names" Tag="HideUnselectedNames" Click="Menu_Click" />
+                    <MenuFlyoutItem Text="Show Hidden Names" Tag="ShowHiddenNames" Click="Menu_Click" />
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Go to Previous Selected Name" Tag="GoToPreviousSelected" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Up" />
                     <MenuFlyoutItem Text="Go to Next Selected Name" Tag="GoToNextSelected" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Down" />
@@ -110,16 +128,50 @@
             <MenuBarItem Title="Commands">
                 <MenuFlyoutItem Text="Create Directory" Tag="CreateDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="F7" />
                 <MenuFlyoutItem Text="Change Directory" Tag="ChangeDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F7" />
-                <MenuFlyoutItem Text="Compare Directories..." IsEnabled="False" KeyboardAcceleratorTextOverride="Ctrl+F10" />
+                <MenuFlyoutItem Text="Compare Directories..." Tag="CompareDirectories" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F10" />
                 <MenuFlyoutItem Text="Calculate Occupied Space" Tag="CalculateOccupiedSpace" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F10" />
                 <MenuFlyoutItem Text="Calculate Directory Sizes" Tag="CalculateDirectorySizes" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F10" />
                 <MenuFlyoutItem Text="Drive Information" Tag="DriveInformation" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F1" />
                 <MenuFlyoutItem Text="Find Files and Directories..." Tag="FindFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F7" />
+                <MenuFlyoutItem Text="Make File List" Tag="MakeFileList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+M" />
                 <MenuFlyoutItem Text="Go to Shortcut Target" Tag="GoToShortcutTarget" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+T" />
+                <MenuFlyoutItem Text="List of Opened Files" Tag="OpenedFilesList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F11" />
+                <MenuFlyoutItem Text="List of Working Directories" Tag="WorkingDirectoriesList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F12" />
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="Connect Network Drive..." Tag="ConnectNetworkDrive" Click="Menu_Click" KeyboardAcceleratorTextOverride="F11" />
+                <MenuFlyoutItem Text="Disconnect..." Tag="DisconnectNetworkDrive" Click="Menu_Click" KeyboardAcceleratorTextOverride="F12" />
+                <MenuFlyoutItem Text="Shared Directories" Tag="SharedDirectories" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F9" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Command Shell" Tag="CommandShell" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num /" />
                 <MenuFlyoutItem Text="Open Active Folder" Tag="OpenActiveFolder" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F3" />
-                <MenuFlyoutItem Text="User Menu..." IsEnabled="False" KeyboardAcceleratorTextOverride="F9" />
+                <MenuFlyoutItem Text="User Menu" Tag="UserMenu" Click="Menu_Click" KeyboardAcceleratorTextOverride="F9" />
+                <MenuFlyoutItem Text="Edit User Menu..." Tag="EditUserMenu" Click="Menu_Click" />
+                <MenuFlyoutSubItem Text="Open Folder">
+                    <MenuFlyoutItem Text="Active Folder in Explorer" Tag="OpenActiveFolder" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F3" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Desktop" Tag="Desktop" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Documents" Tag="Documents" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Downloads" Tag="Downloads" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Pictures" Tag="Pictures" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Music" Tag="Music" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Videos" Tag="Videos" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="User Profile" Tag="UserProfile" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Computer (This PC)" Tag="Computer" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Temporary Files" Tag="Temp" Click="OpenFolder_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Recently Used Documents" Tag="Recent" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Document Templates" Tag="Templates" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Send To Directory" Tag="SendTo" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Start Menu" Tag="StartMenu" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Program Groups" Tag="Programs" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Startup Group" Tag="Startup" Click="OpenFolder_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Control Panel" Tag="ControlPanel" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Network" Tag="Network" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Recycle Bin" Tag="RecycleBin" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Fonts" Tag="Fonts" Click="OpenFolder_Click" />
+                    <MenuFlyoutItem Text="Printers" Tag="Printers" Click="OpenFolder_Click" />
+                </MenuFlyoutSubItem>
             </MenuBarItem>
             <MenuBarItem Title="Plugins">
                 <MenuFlyoutItem Text="Addons Manager... (planned)" IsEnabled="False" />

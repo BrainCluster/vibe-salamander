@@ -49,31 +49,31 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Copy / Move-rename | F5 / F6 | 1 (shell) / 2 (engine) | [x] |
 | Copy/move target dialog with Browse and "don't show again" (then straight into the other panel) | F5 / F6 | 2 | [x] |
 | Delete (Recycle Bin / permanent) | F8, Del / Shift+Del | 1 | [x] |
-| Email | Ctrl+E | 3 | [ ] |
+| Email (Simple MAPI) | Ctrl+E | 3 | [x] |
 | Properties | Alt+Enter | 1 | [x] |
-| Security | Ctrl+P | 3 | [ ] |
+| Security | Ctrl+P | 3 | [x] |
 | Change attributes | Ctrl+F2 | 2 | [x] |
-| NTFS compress/uncompress/encrypt/decrypt | | 3 | [ ] |
+| NTFS compress/uncompress/encrypt/decrypt | | 3 | [x] |
 | Change case | Ctrl+F7 | 2 | [x] |
 | Convert | Ctrl+K | 4 | [ ] |
 | Pack / Unpack | Alt+F5 / Alt+F9 | 4 | [ ] |
-| New (shell "New" menu) | | 3 | [ ] |
+| New (shell "New" menu; the new item is renamed in place) | | 3 | [x] |
 | Exit | Alt+F4 | 1 | [x] |
 
 ## Edit menu
 | Command | Keys | Phase | Done |
 |---|---|---|---|
 | Cut / Copy / Paste (clipboard) | Ctrl+X / Ctrl+C / Ctrl+V | 2 | [x] |
-| Paste shortcut | Ctrl+S | 3 | [ ] |
+| Paste shortcut | Ctrl+S | 3 | [x] |
 | Copy full name / name / path / UNC path as text | Alt+Ins, Alt+Shift+Ins, Ctrl+Alt+Ins, Ctrl+Shift+Ins | 1 | [~] |
 | Mark / unmark item | Insert, Space | 1 | [x] |
 | Select… / Unselect… (mask) | Num + / Num − | 2 | [x] |
 | Invert selection | Num * | 1 | [x] |
 | Select all / Unselect all | Ctrl+A / Ctrl+D | 1 | [x] |
 | Restore selection | Ctrl+W | 2 | [x] |
-| Save / load selection | Ctrl+Shift+F5 / F6 | 3 | [ ] |
+| Save / load selection | Ctrl+Shift+F5 / F6 | 3 | [x] |
 | Select/unselect same extension / name | Shift+Num± / Ctrl+Shift+Num± | 2 | [x] |
-| Hide selected / unselected names, show hidden names | | 3 | [ ] |
+| Hide selected / unselected names, show hidden names | | 3 | [x] |
 | Go to previous / next selected | Alt+Up / Alt+Down | 2 | [x] |
 
 ## Commands menu
@@ -81,17 +81,17 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 |---|---|---|---|
 | Create directory | F7 | 1 | [x] |
 | Change directory | Shift+F7 | 1 | [x] |
-| Compare directories | Ctrl+F10 | 3 | [ ] |
+| Compare directories | Ctrl+F10 | 3 | [x] |
 | Calculate occupied space / directory sizes | Alt+F10 / Ctrl+Shift+F10 | 3 | [x] |
 | Drive information (flyout) | Ctrl+F1 | 3 | [x] |
 | Find files and directories | Alt+F7 | 2 | [x] |
-| Make file list | Ctrl+M | 3 | [ ] |
+| Make file list (to the clipboard) | Ctrl+M | 3 | [x] |
 | Go to shortcut target | Ctrl+T | 2 | [x] |
-| Opened files / working directories lists | Alt+F11 / Alt+F12 | 3 | [ ] |
-| Connect / disconnect network drive, shares | F11 / F12 / Ctrl+Shift+F9 | 3 | [ ] |
+| Opened files / working directories lists | Alt+F11 / Alt+F12 | 3 | [x] |
+| Connect / disconnect network drive, shares | F11 / F12 / Ctrl+Shift+F9 | 3 | [x] |
 | Command shell | Num / | 1 | [x] |
-| User menu | F9 | 3 | [ ] |
-| Open folder (Desktop, Computer, Control Panel, Recycle Bin …) | | 3 | [ ] |
+| User menu (with editor and $(variables)) | F9 | 3 | [x] |
+| Open folder (Desktop, Computer, Control Panel, Recycle Bin …) | | 3 | [x] |
 | Open active folder in Explorer | Shift+F3 | 1 | [x] |
 
 ## Plugins menu → Addons
