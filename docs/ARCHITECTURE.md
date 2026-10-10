@@ -51,7 +51,7 @@ Avalonia/other front-end, or plugin hosts can use it).
 │ Top toolbar (compact Fluent icon buttons)                              │
 ├──────────────── Left panel ───────────┬──────────── Right panel ───────┤
 │ Drive bar                             │ Drive bar                      │
-│ Directory line  (path · free space)   │ Directory line                 │
+│ Address bar  ⌂ This PC › C: › Users › │ Address bar                    │
 │ Header line     Name Ext Size Date …  │ Header line                    │
 │ File list (virtualized)               │ File list                      │
 │ Information line (focused item)       │ Information line               │

@@ -47,6 +47,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Open in default app / Open with (no internal viewer) | F3 / Alt+F3, Ctrl+Shift+F3 | 2 | [x] |
 | Edit / Edit with / Edit new file | F4 / Ctrl+Shift+F4 / Shift+F4 | 1 (system editor) | [~] |
 | Copy / Move-rename | F5 / F6 | 1 (shell) / 2 (engine) | [x] |
+| Copy/move target dialog with Browse and "don't show again" (then straight into the other panel) | F5 / F6 | 2 | [x] |
 | Delete (Recycle Bin / permanent) | F8, Del / Shift+Del | 1 | [x] |
 | Email | Ctrl+E | 3 | [ ] |
 | Properties | Alt+Enter | 1 | [x] |
@@ -105,6 +106,8 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Configuration dialog | 3 (basic settings in 1) | [ ] |
 | Show/hide bars (toolbars, drive bars, command line, F-key bar, transfer panel) | 1 | [x] |
 | F-key bar follows held Ctrl / Alt / Shift (F1–F12) | 2 | [x] |
+| Ask for copy/move target (on/off) | 2 | [x] |
+| Address bar in Windows 11 style: This PC › drive › folders, clickable segments, subfolder chevrons, click empty area to type (new) | 2 | [x] |
 | Transfer panel: background queue, parallel transfers, pause/resume/cancel (new, WinSCP-style) | 2 | [x] |
 | Customize toolbars | 3 | [ ] |
 | Always on top | 1 | [x] |

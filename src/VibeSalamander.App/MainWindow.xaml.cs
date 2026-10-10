@@ -32,7 +32,7 @@ public sealed partial class MainWindow : Window, IUiHost
             TitleIcon.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(icon));
         }
 
-        Dialogs = new Dialogs(() => Content.XamlRoot, () => RootGrid.ActualTheme);
+        Dialogs = new Dialogs(() => Content.XamlRoot, () => RootGrid.ActualTheme, () => AppWindow.Id);
         Dialogs.DialogOpenChanged += (_, open) =>
         {
             _dialogOpen = open;
@@ -383,6 +383,13 @@ public sealed partial class MainWindow : Window, IUiHost
         ShowCommandLineItem.IsChecked = _vm.Settings.ShowCommandLine;
         ShowFKeyBarItem.IsChecked = _vm.Settings.ShowFunctionKeyBar;
         ShowTransfersItem.IsChecked = _vm.Settings.ShowTransfers;
+        AskCopyMoveItem.IsChecked = _vm.Settings.AskCopyMoveTarget;
+    }
+
+    private void AskCopyMove_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.Settings.AskCopyMoveTarget = AskCopyMoveItem.IsChecked;
+        _vm.SaveSettings();
     }
 
     private void Theme_Click(object sender, RoutedEventArgs e)
