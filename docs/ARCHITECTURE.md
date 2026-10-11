@@ -112,6 +112,6 @@ class implementing `IVibePlugin`; in `Initialize(IPluginHost)` it registers what
   the UI). `ProgressTracker` turns byte counts into speed and remaining time.
 * **Archive plugin** (`VibeSalamander.Plugins.Archive`): packs with .NET (`ZipArchive`, `TarWriter`
   + `GZipStream`) into a temporary file that replaces the target when complete; unpacks ZIP/7z/RAR
-  with SharpCompress 0.38 (MIT; solid archives in one pass), TAR variants with .NET's `TarReader`
+  with SharpCompress 0.49.1 (MIT; solid archives in one pass), TAR variants with .NET's `TarReader`
   (pax/GNU/ustar) over gzip / bzip2 / xz / lzip streams. Entry names that would leave the target
   directory are skipped; a wrong password is asked again.
