@@ -40,3 +40,12 @@ Settings are stored in `%AppData%\VibeSalamander\settings.json`.
 * [docs/ROADMAP.md](docs/ROADMAP.md) – phases and the Salamander feature-parity checklist
 
 Open Salamander's source (`C:\dev\source\repos\OpenSalamander`) is the behavioral reference.
+
+## License and credits
+
+Copyright © 2026 Vibe Salamander Authors.
+
+Vibe Salamander is free software, licensed under the **GNU General Public License v3.0 or later**
+([LICENSE](LICENSE)). It is a spiritual successor to Open Salamander, and its application icon is
+based on the Open Salamander icon (GPL-2.0-or-later); see [CREDITS.md](CREDITS.md) for the full
+credits to the Servant / Altap / Open Salamander authors and the third-party components.

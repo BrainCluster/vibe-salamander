@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 namespace VibeSalamander.Core.FileSystem;
 
 /// <summary>Drive data attached to the This PC entries (<see cref="FileEntry.Tag"/>).</summary>

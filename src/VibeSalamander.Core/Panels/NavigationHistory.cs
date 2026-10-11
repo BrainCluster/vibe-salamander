@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 namespace VibeSalamander.Core.Panels;
 
 /// <summary>Back/forward history of one panel (Alt+Left / Alt+Right).</summary>

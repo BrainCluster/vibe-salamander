@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
