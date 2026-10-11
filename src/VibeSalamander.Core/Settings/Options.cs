@@ -17,6 +17,9 @@ public sealed class GeneralOptions
     /// <summary>A beep when transfers finish while the window is in the background.</summary>
     public bool BeepWhenDoneInBackground { get; set; } = true;
 
+    /// <summary>Enter on .iso / .img / .vhd(x) mounts the image and opens its drive in the other panel (off: the default app).</summary>
+    public bool MountDiskImages { get; set; } = true;
+
     /// <summary>Command line: close the console window when the command ends (cmd /c instead of /k).</summary>
     public bool CloseShellAfterCommand { get; set; }
 

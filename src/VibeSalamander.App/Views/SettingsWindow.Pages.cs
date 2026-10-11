@@ -40,6 +40,9 @@ public sealed partial class SettingsWindow
         page.Children.Add(Section("Rename"));
         page.Children.Add(Toggle("Select the extension too in Quick Rename (F2)", null, g.RenameSelectsExtension, v => g.RenameSelectsExtension = v));
         page.Children.Add(Toggle("Select the extension too in Edit New File (Shift+F4)", null, g.EditNewSelectsExtension, v => g.EditNewSelectsExtension = v));
+        page.Children.Add(Toggle("Mount disk images (.iso, .img, .vhd, .vhdx) on Enter",
+            "The drive opens in the other panel; unmount it from its context menu. Open With (Alt+F3) still offers other programs. Off: Enter opens the image with its default app.",
+            g.MountDiskImages, v => g.MountDiskImages = v));
 
         page.Children.Add(Section("Transfers"));
         page.Children.Add(Number("Transfers at the same time",

@@ -435,6 +435,16 @@ public sealed class MainViewModel : BindableBase
                 case CommandId.Copy: await CopyOrMoveAsync(move: false); break;
                 case CommandId.Move: await CopyOrMoveAsync(move: true); break;
                 case CommandId.Pack: await PackAsync(); break;
+                case CommandId.MountImage:
+                    if (p.FocusedItem is { Entry.IsDirectory: false } diskImage && p.IsLocalDisk && DiskImages.IsDiskImage(diskImage.Entry.FullPath))
+                        await MountImageAsync(p, diskImage.Entry.FullPath);
+                    break;
+                case CommandId.UnmountImage:
+                    if (ImageDriveOf(p) is { } imageRoot)
+                        await UnmountImageAsync(imageRoot);
+                    else
+                        _host.Notify("Focus a mounted disk image (a drive in This PC, or a panel on it) to unmount it.", isError: false);
+                    break;
                 case CommandId.Unpack: await UnpackAsync(); break;
                 case CommandId.Delete: await DeleteAsync(permanent: false); break;
                 case CommandId.DeletePermanently: await DeleteAsync(permanent: true); break;
@@ -684,13 +694,14 @@ public sealed class MainViewModel : BindableBase
 
     // ---- disk images ------------------------------------------------------------------------
 
-    /// <summary>
-    /// Enter on an .iso / .img / .vhd(x) that Explorer mounts: opens it (Explorer mounts it as a new
-    /// drive), waits for the drive and shows it in the other panel.
-    /// </summary>
+    /// <summary>Enter on an .iso / .img / .vhd(x): mounts it (Configuration → General), else opens it with its default app.</summary>
     private async Task OpenDiskImageAsync(PaneViewModel pane, string path)
     {
-        HashSet<string> before = await Task.Run(DiskImages.DriveRoots);
+        if (Settings.General.MountDiskImages)
+        {
+            await MountImageAsync(pane, path);
+            return;
+        }
         try
         {
             ShellOperations.Open(path, pane.Path);
@@ -698,27 +709,61 @@ public sealed class MainViewModel : BindableBase
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
             _host.Notify(ex.Message);
-            return;
         }
-        // mounting takes a moment; give up after about 15 seconds (e.g. the image was mounted already)
-        for (int attempt = 0; attempt < 60; attempt++)
+    }
+
+    /// <summary>Mounts the image as a drive and opens the drive in the other panel.</summary>
+    private async Task MountImageAsync(PaneViewModel pane, string path)
+    {
+        string name = Path.GetFileName(path);
+        _host.Notify($"Mounting \"{name}\"...", isError: false);
+        string root;
+        try
         {
-            await Task.Delay(250);
-            HashSet<string> now = await Task.Run(DiskImages.DriveRoots);
-            string? added = now.Except(before, StringComparer.OrdinalIgnoreCase).OrderBy(r => r).FirstOrDefault();
-            if (added == null)
-                continue;
-            for (int wait = 0; wait < 20 && !await Task.Run(() => IsReady(added)); wait++)
-                await Task.Delay(250);
-            PaneViewModel other = pane == Left ? Right : Left;
-            await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
-            await other.NavigateAsync(added);
-            _host.BringToFront(); // Explorer opened its own window for the drive
-            Activate(other);
-            _host.FocusPane(other);
-            _host.Notify($"\"{Path.GetFileName(path)}\" is mounted as {added.TrimEnd('\\')}.", isError: false);
+            root = await DiskImages.MountAsync(path);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or OperationCanceledException)
+        {
+            _host.Notify($"\"{name}\" could not be mounted: {ex.Message}");
             return;
         }
+        for (int wait = 0; wait < 20 && !await Task.Run(() => IsReady(root)); wait++)
+            await Task.Delay(250);
+        PaneViewModel other = pane == Left ? Right : Left;
+        await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
+        await other.NavigateAsync(root);
+        _host.BringToFront(); // the shell's fallback may have opened an Explorer window
+        Activate(other);
+        _host.FocusPane(other);
+        _host.Notify($"\"{name}\" is mounted as {root.TrimEnd('\\')}. Unmount it from the drive's context menu.", isError: false);
+    }
+
+    /// <summary>The drive to unmount: the focused drive (This PC), else the panel's own drive, when it is a mounted image.</summary>
+    private static string? ImageDriveOf(PaneViewModel p)
+    {
+        string? root = p.FocusedItem?.Drive?.Root ?? (p.IsLocalDisk && p.Path.Length >= 2 && p.Path[1] == ':' ? p.Path[..2] + "\\" : null);
+        return root != null && DiskImages.IsMountedImage(root) ? root : null;
+    }
+
+    /// <summary>Unmounts a mounted image; panels showing it go to This PC first (they would keep it busy).</summary>
+    public async Task UnmountImageAsync(string root)
+    {
+        foreach (PaneViewModel pane in new[] { Left, Right })
+            if (pane.IsLocalDisk && pane.Path.StartsWith(root[..2], StringComparison.OrdinalIgnoreCase))
+                await pane.NavigateAsync(ThisPcProvider.RootPath, root[..2]);
+        try
+        {
+            await DiskImages.UnmountAsync(root);
+            _host.Notify($"{root.TrimEnd('\\')} is unmounted.", isError: false);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or OperationCanceledException)
+        {
+            _host.Notify($"{root.TrimEnd('\\')} could not be unmounted: {ex.Message}");
+        }
+        await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
+        foreach (PaneViewModel pane in new[] { Left, Right })
+            if (pane.IsThisPc)
+                await pane.RefreshAsync();
     }
 
     private static bool IsReady(string root)

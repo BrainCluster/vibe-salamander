@@ -128,4 +128,8 @@ public enum CommandId
     Pack,
     Unpack,
     PluginsManager,
+
+    // disk images
+    MountImage,
+    UnmountImage,
 }
