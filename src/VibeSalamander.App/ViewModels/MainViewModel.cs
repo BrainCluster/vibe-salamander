@@ -49,6 +49,9 @@ public interface IUiHost
     /// <summary>The configuration window at a page ("Plugins").</summary>
     void ShowConfigurationPage(string page);
 
+    /// <summary>Brings the main window back in front (e.g. after Explorer opened a window).</summary>
+    void BringToFront();
+
     // phase 3B
     /// <summary>Shows a command menu at the pane's caret item (atCaret) or at its address bar.</summary>
     void ShowMenu(PaneViewModel pane, IReadOnlyList<MenuEntry> entries, bool atCaret);
@@ -137,6 +140,7 @@ public sealed class MainViewModel : BindableBase
             pane.FileOpened += (_, path) => RememberRecent(Settings.OpenedFiles, path);
             PaneViewModel p = pane;
             pane.ArchiveFileOpenRequested += async (_, item) => await OpenFromArchiveAsync(p, item);
+            pane.DiskImageOpenRequested += async (_, path) => await OpenDiskImageAsync(p, path);
         }
 
         Settings.General ??= new GeneralOptions();
@@ -676,6 +680,57 @@ public sealed class MainViewModel : BindableBase
         Transfers.Enqueue(move ? OperationKind.Move : OperationKind.Copy, sources, target,
             (engine, ct) => move ? engine.MoveAsync(sources, target, ct) : engine.CopyAsync(sources, target, ct));
         return Task.CompletedTask;
+    }
+
+    // ---- disk images ------------------------------------------------------------------------
+
+    /// <summary>
+    /// Enter on an .iso / .img / .vhd(x) that Explorer mounts: opens it (Explorer mounts it as a new
+    /// drive), waits for the drive and shows it in the other panel.
+    /// </summary>
+    private async Task OpenDiskImageAsync(PaneViewModel pane, string path)
+    {
+        HashSet<string> before = await Task.Run(DiskImages.DriveRoots);
+        try
+        {
+            ShellOperations.Open(path, pane.Path);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            _host.Notify(ex.Message);
+            return;
+        }
+        // mounting takes a moment; give up after about 15 seconds (e.g. the image was mounted already)
+        for (int attempt = 0; attempt < 60; attempt++)
+        {
+            await Task.Delay(250);
+            HashSet<string> now = await Task.Run(DiskImages.DriveRoots);
+            string? added = now.Except(before, StringComparer.OrdinalIgnoreCase).OrderBy(r => r).FirstOrDefault();
+            if (added == null)
+                continue;
+            for (int wait = 0; wait < 20 && !await Task.Run(() => IsReady(added)); wait++)
+                await Task.Delay(250);
+            PaneViewModel other = pane == Left ? Right : Left;
+            await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
+            await other.NavigateAsync(added);
+            _host.BringToFront(); // Explorer opened its own window for the drive
+            Activate(other);
+            _host.FocusPane(other);
+            _host.Notify($"\"{Path.GetFileName(path)}\" is mounted as {added.TrimEnd('\\')}.", isError: false);
+            return;
+        }
+    }
+
+    private static bool IsReady(string root)
+    {
+        try
+        {
+            return new DriveInfo(root).IsReady;
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     // ---- inside archives (the panel shows an archive's content) --------------------------------

@@ -149,4 +149,5 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Mouse rectangle selection from empty space (Ctrl toggles), with auto-scroll (new) | 3 | [x] |
 | Context menu (shell) | 2 | [x] |
 | Vibe Salamander context menu (common commands, View / Sort by, Windows menu at the bottom; Shift+right-click = Windows menu) | 4 | [x] |
+| Enter on an .iso / .img / .vhd(x) that Explorer mounts: the new drive opens in the other panel | 4 | [x] |
 | Thumbnails | 3 | [x] |
