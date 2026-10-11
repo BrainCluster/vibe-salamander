@@ -110,13 +110,13 @@ public sealed class FileOperationEngine : IPausable
                 string dest = intoDirectory ? Path.Combine(target, Path.GetFileName(source)) : target;
                 if (string.Equals(source, dest, StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!await HandleErrorAsync(source, $"Cannot {(move ? "move" : "copy")} an item onto itself.", result))
+                    if (!await HandleErrorAsync(source, move ? "Cannot move an item onto itself." : "Cannot copy an item onto itself.", result))
                         return Cancelled(result);
                     continue;
                 }
                 if (isDir && dest.StartsWith(source + "\\", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!await HandleErrorAsync(source, $"Cannot {(move ? "move" : "copy")} a directory into itself.", result))
+                    if (!await HandleErrorAsync(source, move ? "Cannot move a directory into itself." : "Cannot copy a directory into itself.", result))
                         return Cancelled(result);
                     continue;
                 }

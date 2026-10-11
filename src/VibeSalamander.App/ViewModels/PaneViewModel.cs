@@ -37,7 +37,7 @@ public sealed class DriveButtonViewModel : BindableBase
 
     public Microsoft.UI.Xaml.Visibility SeparatorVisibility => _separatorAfter ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
     public string ToolTip => Drive.HasSize
-        ? $"{Drive.Caption}\n{Formats.ShortSize(Drive.FreeSpace)} free of {Formats.ShortSize(Drive.TotalSize)}"
+        ? Drive.Caption + "\n" + Loc.F("{0} free of {1}", Formats.ShortSize(Drive.FreeSpace), Formats.ShortSize(Drive.TotalSize))
         : Drive.Caption;
 
     public ImageSource? Icon
@@ -298,7 +298,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     }
 
     /// <summary>Indicator text for the directory line ("Filter: *.txt").</summary>
-    public string FilterText => _filter.Length == 0 ? string.Empty : "Filter: " + _filter;
+    public string FilterText => _filter.Length == 0 ? string.Empty : Loc.F("Filter: {0}", _filter);
 
     /// <summary>Index of the focused item (the ListView's selected index).</summary>
     public int CaretIndex
@@ -331,21 +331,28 @@ public sealed class PaneViewModel : BindableBase, IDisposable
                 int dirs = marked.Count(i => i.Entry.IsDirectory);
                 int files = marked.Count - dirs;
                 long bytes = marked.Sum(i => i.Entry.IsDirectory ? i.DirectorySize ?? 0 : i.Entry.Size); // calculated directory sizes count too
-                return $"Selected: {Formats.ExactSize(bytes)} bytes in {files} file{(files == 1 ? "" : "s")} and {dirs} director{(dirs == 1 ? "y" : "ies")}";
+                string format = (files == 1, dirs == 1) switch
+                {
+                    (true, true) => "Selected: {0} bytes in {1} file and {2} directory",
+                    (true, false) => "Selected: {0} bytes in {1} file and {2} directories",
+                    (false, true) => "Selected: {0} bytes in {1} files and {2} directory",
+                    _ => "Selected: {0} bytes in {1} files and {2} directories",
+                };
+                return Loc.F(format, Formats.ExactSize(bytes), files, dirs);
             }
 
             FileItemViewModel? item = FocusedItem;
             if (item == null)
-                return _hiddenCount + _filteredCount > 0 ? $"No visible items ({_hiddenCount + _filteredCount} hidden or filtered)" : "No items";
+                return _hiddenCount + _filteredCount > 0 ? Loc.F("No visible items ({0} hidden or filtered)", _hiddenCount + _filteredCount) : Loc.T("No items");
             if (item.Drive is { } d)
             {
                 return d.HasSize
-                    ? $"{d.Caption}: {Formats.ShortSize(d.FreeSpace)} free of {Formats.ShortSize(d.TotalSize)}, {d.FileSystem}"
-                    : $"{d.Caption}: not ready";
+                    ? Loc.F("{0}: {1} free of {2}, {3}", d.Caption, Formats.ShortSize(d.FreeSpace), Formats.ShortSize(d.TotalSize), d.FileSystem)
+                    : Loc.F("{0}: not ready", d.Caption);
             }
             FileEntry e = item.Entry;
             if (e.IsUpDir)
-                return ".. (parent directory)";
+                return Loc.T(".. (parent directory)");
             return FormatInfoLine(item);
         }
     }
@@ -399,7 +406,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         IFileSystemProvider? provider = _registry.Find(path);
         if (provider == null)
         {
-            Error = $"Unknown path: {path}";
+            Error = Loc.F("Unknown path: {0}", path);
             return;
         }
         if (provider is LocalFileSystemProvider)
@@ -580,7 +587,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         // A missing/inaccessible directory: keep the current listing, show the error.
         if (listing.Error != null && listing.Entries.Count <= 1 && !string.Equals(path, _path, StringComparison.OrdinalIgnoreCase) && _path.Length > 0)
         {
-            Error = $"{path}: {listing.Error}";
+            Error = $"{path}: {Loc.T(listing.Error)}";
             return false;
         }
 
@@ -589,8 +596,8 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         OnPropertyChanged(nameof(DisplayPath));
         _entries = listing.Entries;
         _hiddenCount = listing.HiddenCount;
-        FreeSpaceText = listing.FreeSpace is long free ? Formats.ShortSize(free) + " free" : string.Empty;
-        Error = listing.Error;
+        FreeSpaceText = listing.FreeSpace is long free ? Loc.F("{0} free", Formats.ShortSize(free)) : string.Empty;
+        Error = listing.Error == null ? null : Loc.T(listing.Error);
         QuickSearch = string.Empty;
         if (provider.IsLocalDisk && listing.Path.Length >= 2 && listing.Path[1] == ':')
             _lastPathOnDrive[char.ToUpperInvariant(listing.Path[0])] = listing.Path;

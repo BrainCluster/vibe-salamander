@@ -1,8 +1,10 @@
+using System.Globalization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Settings;
+using VibeSalamander.Services;
 using VibeSalamander.ViewModels;
 
 namespace VibeSalamander.Views;
@@ -17,6 +19,28 @@ public sealed partial class SettingsWindow
         AppSettings s = _vm.Settings;
         GeneralOptions g = s.General;
         StackPanel page = Page("General");
+
+        // language: like Salamander, the new one is used after a restart
+        string windowsLanguage = CultureInfo.CurrentUICulture.NativeName;
+        var languages = new List<(string Text, string Value)> { (Loc.T("Windows language") + $" ({windowsLanguage})", string.Empty) };
+        languages.AddRange(Loc.Languages.Select(l => (l.Name, l.Code)));
+        var restart = new InfoBar
+        {
+            Severity = InfoBarSeverity.Informational,
+            Title = "The new language is used after a restart.",
+            IsOpen = false,
+            IsClosable = false,
+        };
+        var restartNow = new Button { Content = "Restart now" };
+        restartNow.Click += (_, _) => _host.RestartApp();
+        restart.ActionButton = restartNow;
+        page.Children.Add(Choice("Language", "The language of menus, dialogs and messages.",
+            languages.ToArray(), g.Language ?? string.Empty, v =>
+            {
+                g.Language = v;
+                restart.IsOpen = true;
+            }));
+        page.Children.Add(restart);
 
         page.Children.Add(Toggle("Save configuration on exit",
             "Off: changes are kept only when you choose Options → Save Configuration (or change them here).",
@@ -61,9 +85,9 @@ public sealed partial class SettingsWindow
             "Shift+Del always deletes permanently.");
 
         var modes = new RadioButtons();
-        modes.Items.Add("Move all deleted files and directories to the Recycle Bin");
-        modes.Items.Add("Remove files and directories immediately (permanently) when deleted");
-        modes.Items.Add("Move the following files to the Recycle Bin, delete the others permanently:");
+        modes.Items.Add(Loc.T("Move all deleted files and directories to the Recycle Bin"));
+        modes.Items.Add(Loc.T("Remove files and directories immediately (permanently) when deleted"));
+        modes.Items.Add(Loc.T("Move the following files to the Recycle Bin, delete the others permanently:"));
         modes.SelectedIndex = (int)r.Mode;
         var masks = new TextBox { Text = r.Masks, Width = 520, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(28, 0, 0, 0), IsEnabled = r.Mode == DeleteMode.RecycleMatching };
         modes.SelectionChanged += (_, _) =>
@@ -264,13 +288,13 @@ public sealed partial class SettingsWindow
         var font = new ComboBox { MinWidth = 220, IsEditable = true, Text = a.FontFamily };
         string[] fonts = FontChoices.Concat(InstalledFontFamilies().Except(FontChoices, StringComparer.OrdinalIgnoreCase)).ToArray();
         foreach (string f in fonts)
-            font.Items.Add(f.Length == 0 ? "(system font)" : f);
+            font.Items.Add(f.Length == 0 ? Loc.T("(system font)") : f);
         font.SelectedIndex = Array.FindIndex(fonts, f => string.Equals(f, a.FontFamily ?? string.Empty, StringComparison.OrdinalIgnoreCase));
         if (font.SelectedIndex < 0)
             font.Text = a.FontFamily ?? string.Empty;
         void SetFont(string text)
         {
-            string value = text == "(system font)" ? string.Empty : text.Trim();
+            string value = text == "(system font)" || text == Loc.T("(system font)") ? string.Empty : text.Trim();
             if (value == a.FontFamily)
                 return;
             a.FontFamily = value;

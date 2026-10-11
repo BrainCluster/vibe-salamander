@@ -8,6 +8,7 @@ using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Panels;
 using VibeSalamander.Core.Settings;
 using VibeSalamander.Core.Tools;
+using VibeSalamander.Services;
 using VibeSalamander.ViewModels;
 
 namespace VibeSalamander.Views;
@@ -16,6 +17,9 @@ namespace VibeSalamander.Views;
 public interface ISettingsHost
 {
     MainViewModel ViewModel { get; }
+
+    /// <summary>Saves the settings and starts Vibe Salamander again (a new language).</summary>
+    void RestartApp();
 
     /// <summary>Re-applies theme, density, bars, toolbar, shortcuts and menus after a change.</summary>
     void ApplySettings();
@@ -57,6 +61,9 @@ public sealed partial class SettingsWindow : Window
         if (File.Exists(icon))
             AppWindow.SetIcon(icon);
         _dialogs = new Dialogs(() => Content.XamlRoot, () => RootGrid.ActualTheme, () => AppWindow.Id);
+        Loc.Translate(Nav);
+        TitleBarText.Text = Loc.T(TitleBarText.Text);
+        Title = Loc.T(Title);
         ShowPage(page ?? "General");
     }
 
@@ -128,6 +135,7 @@ public sealed partial class SettingsWindow : Window
         {
             _loading = false;
         }
+        Loc.Translate(PageHost.Content);
         PageScroller.ChangeView(null, 0, null, disableAnimation: true);
     }
 
@@ -283,7 +291,7 @@ public sealed partial class SettingsWindow : Window
     {
         var combo = new ComboBox { MinWidth = 180 };
         foreach (var (text, _) in options)
-            combo.Items.Add(text);
+            combo.Items.Add(Loc.T(text));
         combo.SelectedIndex = Math.Max(0, Array.FindIndex(options, o => EqualityComparer<T>.Default.Equals(o.Value, value)));
         combo.SelectionChanged += (_, _) =>
         {

@@ -29,7 +29,7 @@ public sealed class DriveEntryInfo
         }
     }
 
-    public string TypeName => Type switch
+    public string TypeName => Localization.L.T(Type switch
     {
         DriveType.Fixed => "Local Disk",
         DriveType.Removable => "Removable Disk",
@@ -37,7 +37,7 @@ public sealed class DriveEntryInfo
         DriveType.Network => "Network Drive",
         DriveType.Ram => "RAM Disk",
         _ => "Drive",
-    };
+    });
 }
 
 /// <summary>
@@ -57,7 +57,7 @@ public sealed class ThisPcProvider : IFileSystemProvider
 
     public bool CanHandle(string path) => path.StartsWith(RootPath, StringComparison.OrdinalIgnoreCase);
 
-    public string GetDisplayPath(string path) => "This PC";
+    public string GetDisplayPath(string path) => Localization.L.T("This PC");
 
     public ParentLocation? GetParent(string path) => null;
 

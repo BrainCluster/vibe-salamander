@@ -115,7 +115,7 @@ public sealed class ArchiveFileSystemProvider : IFileSystemProvider
         {
             string message = ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase)
                 ? "The file names in this archive are encrypted. Unpack it with Alt+F6 to enter the password."
-                : "The archive can't be read: " + ex.Message;
+                : $"The archive can't be read: {ex.Message}";
             return new DirectoryListing(path, entries, message);
         }
 

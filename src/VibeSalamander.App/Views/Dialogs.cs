@@ -47,6 +47,7 @@ public sealed class Dialogs
         try
         {
             dialog.XamlRoot ??= _xamlRoot();
+            Services.Loc.Translate(dialog); // fixed texts and texts made from them ("Copy {0} to:")
             return await dialog.ShowAsync();
         }
         finally
@@ -108,8 +109,10 @@ public sealed class Dialogs
         return result;
     }
 
+    /// <param name="bold">Bold texts are names and paths: data, never translated.</param>
     private static TextBlock Text(string text, bool bold = false, bool secondary = false) => new()
     {
+        Tag = bold ? "NoLoc" : null,
         Text = text,
         TextWrapping = TextWrapping.Wrap,
         FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
@@ -192,7 +195,7 @@ public sealed class Dialogs
         row.Children.Add(browse);
         var dontAsk = new CheckBox
         {
-            Content = $"Don't show this dialog again ({verb.ToLowerInvariant()} straight into the other panel)",
+            Content = move ? "Don't show this dialog again (move straight into the other panel)" : "Don't show this dialog again (copy straight into the other panel)",
         };
         var hint = Text("Configuration → Confirmations → Copy / move target shows it again.", secondary: true);
         hint.FontSize = 12;
@@ -201,7 +204,7 @@ public sealed class Dialogs
         dontAsk.Unchecked += (_, _) => hint.Visibility = Visibility.Collapsed;
 
         var body = new StackPanel { Spacing = 8 };
-        body.Children.Add(Text($"{verb} {what} to:"));
+        body.Children.Add(Text(move ? $"Move {what} to:" : $"Copy {what} to:"));
         body.Children.Add(row);
         body.Children.Add(dontAsk);
         body.Children.Add(hint);
@@ -486,7 +489,7 @@ public sealed class Dialogs
         var subdirs = new CheckBox { Content = "Include contents of subdirectories", Visibility = items.Any(i => i.IsDirectory) ? Visibility.Visible : Visibility.Collapsed };
 
         var body = new StackPanel { Spacing = 4, MinWidth = 380 };
-        body.Children.Add(Text(items.Count == 1 ? items[0].Name : $"{items.Count} selected items", bold: true));
+        body.Children.Add(Text(items.Count == 1 ? items[0].Name : Services.Loc.F("{0} selected items", items.Count), bold: true));
         foreach (var b in boxes)
             body.Children.Add(b);
         body.Children.Add(changeTime);
@@ -527,15 +530,15 @@ public sealed class Dialogs
     public async Task<(CaseMode Mode, CasePart Part, bool Recursive)?> ChangeCaseAsync(bool hasDirectories)
     {
         var mode = new RadioButtons { Header = "Change to" };
-        mode.Items.Add("lower case");
-        mode.Items.Add("UPPER CASE");
-        mode.Items.Add("Capitalize first letter");
-        mode.Items.Add("Capitalize Each Word");
+        mode.Items.Add(Services.Loc.T("lower case"));
+        mode.Items.Add(Services.Loc.T("UPPER CASE"));
+        mode.Items.Add(Services.Loc.T("Capitalize first letter"));
+        mode.Items.Add(Services.Loc.T("Capitalize Each Word"));
         mode.SelectedIndex = 0;
         var part = new RadioButtons { Header = "Apply to" };
-        part.Items.Add("Whole name");
-        part.Items.Add("Name only");
-        part.Items.Add("Extension only");
+        part.Items.Add(Services.Loc.T("Whole name"));
+        part.Items.Add(Services.Loc.T("Name only"));
+        part.Items.Add(Services.Loc.T("Extension only"));
         part.SelectedIndex = 0;
         var subdirs = new CheckBox { Content = "Include contents of subdirectories", Visibility = hasDirectories ? Visibility.Visible : Visibility.Collapsed };
 
@@ -665,13 +668,13 @@ public sealed class Dialogs
         var (row, box) = PathRow(defaultPath, keepFileName: true);
         var format = new ComboBox { MinWidth = 200, Header = "Format" };
         foreach (Plugins.ArchiveFormat f in formats)
-            format.Items.Add(f.DisplayName);
+            format.Items.Add(Services.Loc.T(f.DisplayName));
         int selected = Math.Max(0, formats.ToList().FindIndex(f => string.Equals(f.Id, formatId, StringComparison.OrdinalIgnoreCase)));
         format.SelectedIndex = selected;
         string[] levels = { "Store", "Fastest", "Normal", "Maximum" };
         var level = new ComboBox { MinWidth = 160, Header = "Compression" };
         foreach (string l in new[] { "Store (no compression)", "Fastest", "Normal", "Maximum (slowest)" })
-            level.Items.Add(l);
+            level.Items.Add(Services.Loc.T(l));
         level.SelectedIndex = Math.Max(0, Array.IndexOf(levels, compression));
         level.IsEnabled = formats[selected].HasCompressionLevels;
         var move = new CheckBox { Content = "Delete the files after packing (move to archive)", IsChecked = deleteSources };
