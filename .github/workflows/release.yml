@@ -1,17 +1,39 @@
-# Builds Vibe Salamander for x64 and ARM64 and publishes a GitHub release with the zips.
-# Runs when a version tag ("v0.1.0") is pushed; can also be started by hand (then it only builds).
-name: Release
+# Builds Vibe Salamander for x64 and ARM64 on every push to main (a check that it still builds).
+# When the version in Directory.Build.props has no release yet, it also publishes the GitHub release
+# "v<version>" with both zips and the notes from docs/releases/<version>.md.
+# To release: raise <Version> in Directory.Build.props, add docs/releases/<version>.md, push.
+name: Build and release
 
 on:
   push:
-    tags: [ "v*" ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      release: ${{ steps.v.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: version
     runs-on: windows-latest
     strategy:
       matrix:
@@ -26,13 +48,6 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-
-      - name: Version
-        id: version
-        shell: pwsh
-        run: |
-          $v = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { '0.0.0-dev' }
-          "version=$v" >> $env:GITHUB_OUTPUT
 
       - name: Test
         if: matrix.platform == 'x64'
@@ -49,7 +64,7 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item publish/VibeSalamander/*.pdb -ErrorAction SilentlyContinue
-          $zip = "VibeSalamander-${{ steps.version.outputs.version }}-${{ matrix.rid }}.zip"
+          $zip = "VibeSalamander-${{ needs.version.outputs.version }}-${{ matrix.rid }}.zip"
           Compress-Archive -Path publish/VibeSalamander -DestinationPath $zip
           "ZIP=$zip" >> $env:GITHUB_ENV
 
@@ -59,8 +74,8 @@ jobs:
           path: ${{ env.ZIP }}
 
   release:
-    needs: build
-    if: github.ref_type == 'tag'
+    needs: [ version, build ]
+    if: needs.version.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -73,10 +88,11 @@ jobs:
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          notes="docs/releases/${version}.md"
+          notes="docs/releases/${VERSION}.md"
           [ -f "$notes" ] || notes=/dev/null
-          gh release create "$GITHUB_REF_NAME" dist/*.zip \
-            --title "Vibe Salamander $version" \
+          gh release create "v${VERSION}" dist/*.zip \
+            --target "$GITHUB_SHA" \
+            --title "Vibe Salamander ${VERSION}" \
             --notes-file "$notes"
