@@ -286,7 +286,7 @@ public sealed partial class FilePane : UserControl
             foreach (FileItemViewModel item in ViewModel.Items)
                 longest = Math.Max(longest, item.FullName.Length);
         double charWidth = 6.6 * UiState.FontSize / 12;
-        return Math.Round(Math.Clamp(longest * charWidth + 40, 120, 380));
+        return Math.Round(Math.Clamp(longest * charWidth + 46, 126, 386)); // + icon and the row padding
     }
 
     /// <summary>Switches the list's layout and item templates to the panel's view.</summary>
