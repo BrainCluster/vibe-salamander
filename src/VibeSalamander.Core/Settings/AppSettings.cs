@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using VibeSalamander.Core.Commands;

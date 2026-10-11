@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 namespace VibeSalamander.ViewModels;
 
 /// <summary>An item of a command menu shown by the window (user menu, lists of opened files / directories, shares).</summary>

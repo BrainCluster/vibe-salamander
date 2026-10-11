@@ -6,5 +6,7 @@
     <Company>Vibe Salamander</Company>
     <Product>Vibe Salamander</Product>
     <Version>0.1.0</Version>
+    <Copyright>Copyright © 2026 Vibe Salamander Authors. Licensed under GPL-3.0-or-later.</Copyright>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
   </PropertyGroup>
 </Project>

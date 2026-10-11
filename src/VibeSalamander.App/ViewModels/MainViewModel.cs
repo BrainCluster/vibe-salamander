@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 using Microsoft.UI.Dispatching;
 using Windows.ApplicationModel.DataTransfer;
 using VibeSalamander.Core;
