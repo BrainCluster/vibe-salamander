@@ -1,10 +1,56 @@
-# Vibe Salamander
+<p align="center">
+  <img src="docs/images/icon.png" width="96" height="96" alt="Vibe Salamander icon">
+</p>
 
-A modern spiritual successor to [Altap / Open Salamander](https://github.com/OpenSalamander/salamander):
-a fast, precise, keyboard-first **dual-pane** file manager for Windows, built with **C# and WinUI 3**
-and a Fluent look in the spirit of the [Files](https://github.com/files-community/files) app.
+<h1 align="center">Vibe Salamander</h1>
+
+<p align="center">
+  A fast, keyboard-first <b>dual-pane file manager</b> for Windows.<br>
+  A modern spiritual successor to <a href="https://github.com/OpenSalamander/salamander">Altap / Open Salamander</a>, built with C# and WinUI 3.
+</p>
+
+<p align="center">
+  <img src="docs/images/screenshot.png" alt="Vibe Salamander: two panels, toolbar, drive bars, command line and F-key bar">
+</p>
+
+Vibe Salamander keeps what made Salamander great (two panels, the classic keyboard
+shortcuts, the menus, speed and precision) and gives it a modern Fluent look in the spirit of the
+[Files](https://github.com/files-community/files) app, with fewer dialogs and more flexibility.
 
 > Vibe Salamander is to Altap Salamander what Files is to Windows File Explorer.
+
+## Features
+
+**Panels**
+- Two panels with Salamander's keyboard model: Tab to switch, quick search by typing, Insert / Space to mark, Num + / − / * selections
+- Five views: Brief, Detailed, Icons, Thumbnails, Tiles (Alt+1…5); choose and resize columns; sort by name, extension, date, size or attributes
+- Windows 11 style address bar with a drive menu, clickable path segments and subfolder chevrons; drive bars; This PC with fullness bars
+- Hot paths 1–9, back / forward history, filter (Ctrl+F12), hidden and system files toggle, maximize or swap panels
+- Mouse rectangle selection, drag & drop between panels and to or from Explorer, auto-refresh that keeps the cursor and marks
+
+**Files**
+- Copy, move, delete, rename in place (F2), change attributes and case, NTFS compression and encryption, properties and security
+- A background transfer panel: queued and parallel transfers with pause, resume and cancel, so copying never blocks you
+- Files open in their default Windows apps (no internal viewer); Open with, per-mask viewers and editors
+- A Vibe context menu with the most useful commands, plus the full Windows context menu one click away
+- Fewer dialogs: new folders and files are created and renamed in place, errors appear as notifications that close themselves
+
+**Archives and disk images**
+- Archive plugin: pack ZIP / TAR / TAR.GZ (Alt+F5), unpack ZIP, 7z, RAR, TAR, gz, bz2, xz and lz (Alt+F6), with passwords
+- Browse archives like folders and copy single files out of them
+- Mount .iso, .img, .vhd and .vhdx images: the mounted drive opens in the other panel, unmount from the menu
+
+**Tools**
+- Find files (Alt+F7), compare directories, directory sizes, drive information, file lists
+- Command line and command shell, user menu with variables, network drives and shares
+- Plugins with their own menus (Plugins Manager)
+
+**Make it yours**
+- A full Configuration window with the Open Salamander pages: confirmations, panels, views, colors, drives, keyboard, toolbar, hot paths, user menu and more
+- Color schemes: Vibe, Explorer, terminal-inspired Yazi, Superfile, Tokyo Night, Gruvbox, Dracula, Nord and Phosphor, Norton Commander, DOS Navigator, or your own; highlighting by file mask
+- Light / dark / system theme, Compact or Comfortable density, panel font and size
+- Every shortcut can be changed; the toolbar can be customized; settings can be exported and imported
+- 12 languages: English, Hrvatski, Čeština, Deutsch, Español, Français, Italiano, Nederlands, Polski, Português (Brasil), Русский, Українська
 
 ## Build and run
 
@@ -24,7 +70,7 @@ Settings are stored in `%AppData%\VibeSalamander\settings.json`.
 | Tab | Switch panel | Enter | Open |
 | Backspace / Ctrl+PgUp | Parent directory (drive root → This PC) | Shift+Backspace | Root |
 | Alt+F1 / Alt+F2 | Change drive left / right | Alt+Left / Alt+Right | Back / Forward |
-| F2 | Rename | F3 / F4 | View / Edit |
+| F2 | Rename | F3 / F4 | Open / Edit (default apps) |
 | F5 / F6 | Copy / Move | F7 | Create directory |
 | F8, Del / Shift+Del | Delete (Recycle Bin / permanent) | Alt+Enter | Properties |
 | Insert / Space | Mark item | Ctrl+A / Ctrl+D / Num * | Select all / none / invert |
@@ -33,13 +79,15 @@ Settings are stored in `%AppData%\VibeSalamander\settings.json`.
 | Ctrl+H | Hidden files | Ctrl+. | Path from other panel |
 | Shift+F7 | Change directory | Shift+F3 | Open in Explorer |
 | Num / | Command shell | typing | Quick search |
+| Alt+F5 / Alt+F6 | Pack / Unpack | Alt+F7 | Find files |
+| Ctrl+1…9 / Ctrl+Shift+1…9 | Go to / set hot path | Ctrl+F12 | Filter |
 
 ## Docs
 
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) – structure, design decisions, addon model
 * [docs/ROADMAP.md](docs/ROADMAP.md) – phases and the Salamander feature-parity checklist
 
-Open Salamander's source (`C:\dev\source\repos\OpenSalamander`) is the behavioral reference.
+[Open Salamander's source](https://github.com/OpenSalamander/salamander) is the behavioral reference.
 
 ## License and credits
 
