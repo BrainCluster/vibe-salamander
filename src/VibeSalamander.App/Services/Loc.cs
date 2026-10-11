@@ -140,6 +140,9 @@ public static class Loc
             return text ?? string.Empty;
         if (_exact.TryGetValue(text, out string? exact))
             return exact;
+        // "Configuration..." with only "Configuration" in the table: the same text with the dots
+        if (text.EndsWith("...", StringComparison.Ordinal) && text.Length > 3 && _exact.TryGetValue(text[..^3], out string? baseText))
+            return baseText + "...";
         if (depth > 1 || _patterns.Count == 0 || text.Length > 2000)
             return text;
         lock (CacheLock)
