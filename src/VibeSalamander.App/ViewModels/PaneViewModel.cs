@@ -537,9 +537,9 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             ArchiveFileOpenRequested?.Invoke(this, item);
         else if (_registry.Find(e.FullPath) is ArchiveFileSystemProvider)
             await NavigateAsync(e.FullPath); // into the archive, like a directory
-        else if (DiskImageOpenRequested != null && Core.Interop.DiskImages.MountsInExplorer(e.FullPath))
+        else if (DiskImageOpenRequested != null && Core.Interop.DiskImages.IsDiskImage(e.FullPath))
         {
-            DiskImageOpenRequested(this, e.FullPath); // Explorer mounts it; the other panel shows the new drive
+            DiskImageOpenRequested(this, e.FullPath); // mounted (or opened, by the configuration) by the main view model
             FileOpened?.Invoke(this, e.FullPath);
         }
         else
@@ -608,7 +608,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     /// <summary>Raised when a file is opened from the panel (for the list of opened files, Alt+F11).</summary>
     public event EventHandler<string>? FileOpened;
 
-    /// <summary>Enter on a disk image Explorer mounts (.iso, .vhdx): opened by the main view model, which then shows the drive.</summary>
+    /// <summary>Enter on a disk image (.iso, .img, .vhd, .vhdx): the main view model mounts it and shows the drive.</summary>
     public event EventHandler<string>? DiskImageOpenRequested;
 
     // ---- hidden names (Edit → Hide Selected / Unselected Names, Show Hidden Names) ---------------

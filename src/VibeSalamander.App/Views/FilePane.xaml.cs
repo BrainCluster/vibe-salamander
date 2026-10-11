@@ -820,6 +820,8 @@ public sealed partial class FilePane : UserControl
             // This PC: a drive
             Add("Open", "\uE8DA", CommandId.Open, bold: true);
             Add("Open in other panel", "\uE8A7", CommandId.OpenInOtherPanel);
+            if (Core.Interop.DiskImages.IsMountedImage(item!.Drive!.Root))
+                Add("Unmount", "\uE711", CommandId.UnmountImage);
             Separator();
             Add("Drive information", "\uE946", CommandId.DriveInformation);
             Add("Properties", "\uE90F", CommandId.Properties);
@@ -839,7 +841,13 @@ public sealed partial class FilePane : UserControl
             bool several = count > 1;
             bool directory = item!.Entry.IsDirectory;
             bool archive = !directory && _main.ArchiveProvider.CanHandle(item.Entry.FullPath);
-            Add(archive ? "Open archive" : "Open", directory || archive ? "\uE8DA" : "\uE8E5", CommandId.Open, bold: true);
+            bool image = !directory && !archive && Core.Interop.DiskImages.IsDiskImage(item.Entry.FullPath);
+            if (image && _main.Settings.General.MountDiskImages)
+                Add("Mount", "\uE958", CommandId.MountImage, bold: true);
+            else
+                Add(archive ? "Open archive" : "Open", directory || archive ? "\uE8DA" : "\uE8E5", CommandId.Open, bold: true);
+            if (image && !_main.Settings.General.MountDiskImages)
+                Add("Mount", "\uE958", CommandId.MountImage);
             if (directory || archive)
                 Add("Open in other panel", "\uE8A7", CommandId.OpenInOtherPanel);
             if (!directory && !several)
@@ -882,6 +890,11 @@ public sealed partial class FilePane : UserControl
             Separator();
             Add("Open in Explorer", "\uEC50", CommandId.OpenActiveFolder);
             Add("Command prompt here", "\uE756", CommandId.CommandShell);
+            if (pane.Path.Length >= 2 && pane.Path[1] == ':' && Core.Interop.DiskImages.IsMountedImage(pane.Path[..2] + "\\"))
+            {
+                Separator();
+                Add($"Unmount {pane.Path[..2].ToUpperInvariant()}", "\uE711", CommandId.UnmountImage);
+            }
         }
         else
         {

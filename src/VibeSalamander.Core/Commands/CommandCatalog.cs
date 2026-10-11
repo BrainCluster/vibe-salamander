@@ -77,6 +77,8 @@ public static class CommandCatalog
         [CommandId.Pack] = "Pack...",
         [CommandId.Unpack] = "Unpack...",
         [CommandId.PluginsManager] = "Plugins manager...",
+        [CommandId.MountImage] = "Mount disk image",
+        [CommandId.UnmountImage] = "Unmount disk image",
     };
 
     /// <summary>A readable name ("Compare directories..."); others are derived from the id ("Sort by name").</summary>
@@ -105,7 +107,7 @@ public static class CommandCatalog
     /// <summary>Group for the keyboard settings page.</summary>
     public static string Category(CommandId command) => command switch
     {
-        CommandId.Pack or CommandId.Unpack => "Files",
+        CommandId.Pack or CommandId.Unpack or CommandId.MountImage or CommandId.UnmountImage => "Files",
         CommandId.PluginsManager => "Options",
         <= CommandId.Filter => "Panels",
         <= CommandId.CommandShell => "Files",
@@ -177,6 +179,8 @@ public static class CommandCatalog
         CommandId.Pack => "\uE7B8",
         CommandId.Unpack => "\uE896",
         CommandId.PluginsManager => "\uEA86",
+        CommandId.MountImage => "\uE958",
+        CommandId.UnmountImage => "\uE711",
         CommandId.Configuration => "",
         CommandId.Help => "",
         _ => "",
