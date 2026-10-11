@@ -19,6 +19,12 @@ shortcuts, the menus, speed and precision) and gives it a modern Fluent look in 
 
 > Vibe Salamander is to Altap Salamander what Files is to Windows File Explorer.
 
+## Download
+
+Get the latest zip from **[Releases](https://github.com/BrainCluster/vibe-salamander/releases/latest)**
+(`win-x64` for most PCs, `win-arm64` for ARM PCs), unzip it anywhere and run `VibeSalamander.exe`.
+No installation needed. Windows 10 (2004) or later.
+
 ## Features
 
 **Panels**
