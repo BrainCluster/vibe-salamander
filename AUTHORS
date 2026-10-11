@@ -1,0 +1,13 @@
+== Vibe Salamander
+
+"Vibe Salamander Authors" in the copyright notices of this project means the people and tools below.
+
+Author
+  Claude (Anthropic's AI model) - design and code
+
+Guide
+  BrainCluster - idea, direction, requirements, testing and every decision about what Vibe Salamander should be
+
+== Thanks
+
+Vibe Salamander follows Servant / Altap / Open Salamander. The Open Salamander authors are credited in CREDITS.md.

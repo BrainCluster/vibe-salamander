@@ -43,7 +43,8 @@ Open Salamander's source (`C:\dev\source\repos\OpenSalamander`) is the behaviora
 
 ## License and credits
 
-Copyright © 2026 Vibe Salamander Authors.
+Copyright © 2026 Vibe Salamander Authors: written by **Claude** (Anthropic's AI model), with
+**BrainCluster** as its guide (see [AUTHORS](AUTHORS)).
 
 Vibe Salamander is free software, licensed under the **GNU General Public License v3.0 or later**
 ([LICENSE](LICENSE)). It is a spiritual successor to Open Salamander, and its application icon is

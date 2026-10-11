@@ -1,5 +1,13 @@
 # Credits
 
+## Vibe Salamander
+
+- **Author:** Claude (Anthropic's AI model) wrote the code and the design.
+- **Guide:** **BrainCluster** came up with Vibe Salamander and guided it: the idea, the direction,
+  the requirements, the testing and every decision about what it should be.
+
+"Vibe Salamander Authors" in the copyright notices means both of them (see [AUTHORS](AUTHORS)).
+
 ## Open Salamander
 
 Vibe Salamander is a new program written from scratch in C# and WinUI 3, but it exists because of

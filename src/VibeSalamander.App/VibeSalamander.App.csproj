@@ -37,6 +37,7 @@
     <!-- GPL: the license and the credits go with every copy of the program -->
     <Content Include="..\..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\CREDITS.md" Link="CREDITS.md" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\AUTHORS" Link="AUTHORS.txt" CopyToOutputDirectory="PreserveNewest" />
     <!-- translations (Configuration → General → Language) -->
     <Content Include="Strings\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
