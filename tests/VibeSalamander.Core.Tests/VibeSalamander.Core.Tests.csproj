@@ -11,6 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\VibeSalamander.Core\VibeSalamander.Core.csproj" />
+    <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Archive\VibeSalamander.Plugins.Archive.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

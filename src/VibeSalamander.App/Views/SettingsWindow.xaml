@@ -91,6 +91,9 @@
                 <NavigationViewItem Content="User Menu" Tag="UserMenu">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE712;" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem Content="Plugins" Tag="Plugins">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xEA86;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <NavigationViewItem Content="Backup" Tag="Backup">
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE78C;" /></NavigationViewItem.Icon>
                 </NavigationViewItem>

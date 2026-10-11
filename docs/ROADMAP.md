@@ -18,8 +18,9 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 3. **Power features** – configuration dialog, key customization, view modes (Brief/Detailed/Icons/
    Thumbnails/Tiles), column chooser & resizing, hot paths, user menu, compare directories,
    directory sizes, drive information, command line integration, network drives.
-4. **Addons** – addon loader, archives (ZIP/7z/TAR/RAR), FTP/SFTP, picture viewer, checksum,
-   renamer, file compare, disk map … (ports of Salamander plugins).
+4. **Plugins** – plugin loader and Plugins Manager (done), archives: pack ZIP/TAR/TAR.GZ, unpack
+   ZIP/7z/RAR/TAR/gz/bz2/xz/lz (done); later: browsing archives like directories, FTP/SFTP,
+   picture viewer, checksum, renamer, file compare, disk map … (ports of Salamander plugins).
 
 ## Left / Right panel menu
 | Command | Keys | Phase | Done |
@@ -56,7 +57,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | NTFS compress/uncompress/encrypt/decrypt | | 3 | [x] |
 | Change case | Ctrl+F7 | 2 | [x] |
 | Convert | Ctrl+K | 4 | [ ] |
-| Pack / Unpack | Alt+F5 / Alt+F9 | 4 | [ ] |
+| Pack / Unpack (archive plugin; in the transfer panel, with passwords for ZIP/7z/RAR) | Alt+F5 / Alt+F6 | 4 | [x] |
 | New (shell "New" menu; the new item is renamed in place) | | 3 | [x] |
 | Exit | Alt+F4 | 1 | [x] |
 
@@ -94,10 +95,13 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Open folder (Desktop, Computer, Control Panel, Recycle Bin …) | | 3 | [x] |
 | Open active folder in Explorer | Shift+F3 | 1 | [x] |
 
-## Plugins menu → Addons
+## Plugins menu
 | Command | Phase | Done |
 |---|---|---|
-| Addons manager | 4 | [ ] |
+| Plugins manager (Configuration → Plugins: list, turn on/off, plugins folder) | 4 | [x] |
+| One submenu per plugin with its commands | 4 | [x] |
+| Archive plugin: pack ZIP / TAR / TAR.GZ, unpack ZIP, 7z, RAR, TAR (+gz/bz2/xz/lz), gz, bz2, xz, lz | 4 | [x] |
+| Browse archives like directories (Enter on an archive) | 4 | [ ] |
 | Last command (Ctrl+I) | 4 | [ ] |
 
 ## Options menu

@@ -141,6 +141,9 @@ public sealed class KeyMap
         m.Bind(VK.F11, N, CommandId.ConnectNetworkDrive);
         m.Bind(VK.F12, N, CommandId.DisconnectNetworkDrive);
         m.Bind(VK.F9, C | S, CommandId.SharedDirectories);
+        // phase 4: archives
+        m.Bind(VK.F5, A, CommandId.Pack);
+        m.Bind(VK.F6, A, CommandId.Unpack);
         for (int digit = 0; digit <= 9; digit++)
         {
             m.Bind(VK.D0 + digit, C, CommandId.GoToHotPath0 + digit);

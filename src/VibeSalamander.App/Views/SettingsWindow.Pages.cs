@@ -871,4 +871,97 @@ public sealed partial class SettingsWindow
         };
         return name;
     }
+
+    // ---- Plugins (Plugins → Plugins Manager) ----------------------------------------------------
+
+    private UIElement BuildPluginsPage()
+    {
+        AppSettings s = _vm.Settings;
+        StackPanel page = Page("Plugins",
+            "Plugins add features: archives (pack and unpack), file systems, viewers and commands. " +
+            "Turning a plugin on or off takes effect when Vibe Salamander starts the next time.");
+        var restartNote = new InfoBar
+        {
+            Severity = InfoBarSeverity.Informational,
+            Title = "Restart Vibe Salamander to apply the change.",
+            IsOpen = false,
+            IsClosable = false,
+        };
+        page.Children.Add(restartNote);
+
+        if (_vm.Plugins.Plugins.Count == 0)
+            page.Children.Add(Hint("No plugins are installed."));
+        foreach (Services.PluginInfo plugin in _vm.Plugins.Plugins)
+        {
+            var text = new StackPanel { Spacing = 2 };
+            text.Children.Add(new TextBlock
+            {
+                Text = $"{plugin.Name}  {plugin.Version.ToString(2)}",
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            });
+            if (plugin.Description.Length > 0)
+                text.Children.Add(new TextBlock { Text = plugin.Description, TextWrapping = TextWrapping.Wrap });
+            string origin = plugin.IsBuiltIn ? "Built-in" : plugin.Source;
+            text.Children.Add(Hint(plugin.Author.Length > 0 ? $"{plugin.Author}  ·  {origin}" : origin));
+            if (plugin.Error == null && plugin.Enabled && plugin.FeaturesText.Length > 0)
+                text.Children.Add(Hint(plugin.FeaturesText));
+            if (plugin.Error != null)
+            {
+                text.Children.Add(new TextBlock
+                {
+                    Text = "Couldn't be loaded: " + plugin.Error,
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"],
+                });
+            }
+            else if (!plugin.Enabled)
+            {
+                text.Children.Add(Hint("Turned off."));
+            }
+
+            var toggle = new ToggleSwitch
+            {
+                IsOn = !s.Plugins.Disabled.Contains(plugin.Id, StringComparer.OrdinalIgnoreCase),
+                OnContent = string.Empty,
+                OffContent = string.Empty,
+                MinWidth = 0,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            string id = plugin.Id;
+            toggle.Toggled += (_, _) =>
+            {
+                s.Plugins.Disabled.RemoveAll(x => string.Equals(x, id, StringComparison.OrdinalIgnoreCase));
+                if (!toggle.IsOn)
+                    s.Plugins.Disabled.Add(id);
+                restartNote.IsOpen = true;
+                Changed();
+            };
+
+            var grid = new Grid { ColumnSpacing = 16 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.Children.Add(text);
+            Grid.SetColumn(toggle, 1);
+            grid.Children.Add(toggle);
+            page.Children.Add(new Border { Child = grid, Style = ThemedStyle("SettingsCardStyle") });
+        }
+
+        page.Children.Add(Section("Install plugins"));
+        page.Children.Add(Hint("Copy a plugin into its own folder in the plugins folder (\"Plugins\\Name\\Name.dll\") and restart Vibe Salamander."));
+        var open = IconButton("", "Open the plugins folder in Explorer", "Open plugins folder");
+        open.Click += (_, _) =>
+        {
+            try
+            {
+                Directory.CreateDirectory(Services.PluginManager.UserPluginDirectory);
+                Core.Interop.ShellOperations.OpenInExplorer(Services.PluginManager.UserPluginDirectory);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // nothing to open
+            }
+        };
+        page.Children.Add(Card("Plugins folder", Services.PluginManager.UserPluginDirectory, open));
+        return page;
+    }
 }

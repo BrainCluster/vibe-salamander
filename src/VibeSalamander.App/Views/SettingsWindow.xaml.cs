@@ -120,6 +120,7 @@ public sealed partial class SettingsWindow : Window
                 "HotPaths" => BuildHotPathsPage(),
                 "UserMenu" => BuildUserMenuPage(),
                 "Backup" => BuildBackupPage(),
+                "Plugins" => BuildPluginsPage(),
                 _ => BuildGeneralPage(),
             };
         }
