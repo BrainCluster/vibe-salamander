@@ -1146,6 +1146,8 @@ public sealed partial class FilePane : UserControl
                 BasedOn = (Style)Application.Current.Resources["VibeListItemStyle"],
             };
             rowStyle.Setters.Add(new Setter(Control.FontSizeProperty, UiState.FontSize));
+            // room on the left for the selection indicator (the accent bar of the focused row) before the icon
+            rowStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(12, 0, 4, 0)));
             if (UiState.PanelFont is { } rowFont)
                 rowStyle.Setters.Add(new Setter(Control.FontFamilyProperty, rowFont));
             FileList.ItemContainerStyle = rowStyle;
