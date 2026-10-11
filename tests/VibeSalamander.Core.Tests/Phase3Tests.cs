@@ -36,7 +36,8 @@ public class Phase3KeyMapTests
     {
         KeyMap map = KeyMap.CreateSalamanderDefaults();
         Assert.Equal(CommandId.GoToHotPath3, map.Resolve(VK.D0 + 3, KeyModifiers.Ctrl));
-        Assert.Equal(CommandId.SetHotPath0, map.Resolve(VK.D0, KeyModifiers.Ctrl | KeyModifiers.Shift));
+        Assert.Equal(CommandId.SetHotPath1, map.Resolve(VK.D0 + 1, KeyModifiers.Ctrl | KeyModifiers.Shift));
+        Assert.Equal(CommandId.None, map.Resolve(VK.D0, KeyModifiers.Ctrl)); // Windows takes Ctrl+Shift+0: no hot path 0
         Assert.Equal(CommandId.ViewThumbnails, map.Resolve(VK.D4, KeyModifiers.Alt));
         Assert.Equal(CommandId.DriveInformation, map.Resolve(VK.F1, KeyModifiers.Ctrl));
         Assert.Equal("Ctrl+7", map.GetShortcutText(CommandId.GoToHotPath7));

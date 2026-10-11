@@ -31,7 +31,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Parent directory | Backspace | 1 | [x] |
 | Root directory | Shift+Backspace | 1 | [x] |
 | Path from other panel | Ctrl+. | 1 | [x] |
-| Hot paths (set / go; listed in the drive menu) | Ctrl+Shift+0-9 / Ctrl+0-9 | 3 | [x] |
+| Hot paths 1-9 (set / go; listed in the drive menu; no 0: Windows uses Ctrl+Shift+0) | Ctrl+Shift+1-9 / Ctrl+1-9 | 3 | [x] |
 | Sort by Name/Ext/Size/Date/Attr | Ctrl+F3…F6 | 1 | [x] |
 | Views (Brief, Detailed, Icons, Thumbnails, Tiles) | Alt+1…5 | 3 | [x] |
 | Show directory/header/information line | | 1 | [~] |

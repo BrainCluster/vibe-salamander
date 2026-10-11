@@ -42,7 +42,7 @@ public sealed class AppSettings
     public AppTheme Theme { get; set; } = AppTheme.System;
     public bool AlwaysOnTop { get; set; }
 
-    /// <summary>Hot paths 0-9: Ctrl+Shift+digit stores the panel's path, Ctrl+digit goes there ("" = not set).</summary>
+    /// <summary>Hot paths 1-9 (index 0 is unused): Ctrl+Shift+digit stores the panel's path, Ctrl+digit goes there ("" = not set).</summary>
     public List<string> HotPaths { get; set; } = Enumerable.Repeat(string.Empty, 10).ToList();
 
     /// <summary>User menu (F9), edited in Commands → User Menu → Edit.</summary>

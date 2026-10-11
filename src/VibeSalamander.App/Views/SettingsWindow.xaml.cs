@@ -371,7 +371,7 @@ public sealed partial class SettingsWindow : Window
             string q = search.Text.Trim();
             list.Items.Clear();
             string? lastCategory = null;
-            foreach (CommandId command in Enum.GetValues<CommandId>().Where(c => c != CommandId.None))
+            foreach (CommandId command in Enum.GetValues<CommandId>().Where(c => c is not (CommandId.None or CommandId.GoToHotPath0 or CommandId.SetHotPath0)))
             {
                 string name = CommandCatalog.DisplayName(command);
                 string shortcuts = string.Join(",  ", _keys!.GetShortcuts(command).Select(KeyMap.Describe));
@@ -670,9 +670,9 @@ public sealed partial class SettingsWindow : Window
     {
         AppSettings s = _vm.Settings;
         StackPanel page = Page("Hot Paths",
-            "Ctrl+0…9 goes to a hot path; Ctrl+Shift+0…9 makes the active panel's directory that hot path. The optional name is shown in menus and on the hot path bar. " +
+            "Ctrl+1…9 goes to a hot path; Ctrl+Shift+1…9 makes the active panel's directory that hot path. The optional name is shown in menus and on the hot path bar. " +
             "They are also listed in the drive menu (Alt+F1 / Alt+F2) and on the hot path bar.");
-        for (int i = 0; i < 10; i++)
+        for (int i = 1; i < 10; i++) // no hot path 0: Windows takes Ctrl+Shift+0 for the keyboard layout
         {
             int n = i;
             var box = new TextBox { Text = s.HotPaths[n], PlaceholderText = "not set", Width = 360 };
