@@ -218,8 +218,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         }
 
         CommandId command = _vm.KeyMap.Resolve(key, mods);
-        // Configuration → Panels: Shift+0…9 goes to the hot paths too
-        if (command == CommandId.None && mods == KeyModifiers.Shift && key >= VK.D0 && key <= VK.D0 + 9 && _vm.Settings.Panels.ShiftDigitGoesToHotPath)
+        // Configuration → Panels: Shift+1…9 goes to the hot paths too
+        if (command == CommandId.None && mods == KeyModifiers.Shift && key >= VK.D0 + 1 && key <= VK.D0 + 9 && _vm.Settings.Panels.ShiftDigitGoesToHotPath)
             command = CommandId.GoToHotPath0 + (key - VK.D0);
         if (command == CommandId.None && key == VK.Tab && mods == KeyModifiers.Shift)
             command = CommandId.SwitchPanel;
@@ -359,7 +359,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     {
         HotPathBar.Children.Clear();
         var hotPaths = _vm.Settings.HotPaths;
-        for (int i = 0; i < hotPaths.Count && i < 10; i++)
+        for (int i = 1; i < hotPaths.Count && i < 10; i++)
         {
             string path = hotPaths[i];
             if (string.IsNullOrEmpty(path))

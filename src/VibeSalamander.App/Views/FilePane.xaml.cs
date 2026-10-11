@@ -1459,7 +1459,7 @@ public sealed partial class FilePane : UserControl
         // hot paths (Ctrl+Shift+digit sets one, Ctrl+digit goes there)
         IList<string> hotPaths = _main.Settings.HotPaths;
         bool header = false;
-        for (int i = 0; i < hotPaths.Count && i < 10 && driveOptions.MenuShowHotPaths; i++)
+        for (int i = 1; i < hotPaths.Count && i < 10 && driveOptions.MenuShowHotPaths; i++)
         {
             string hot = hotPaths[i];
             if (string.IsNullOrEmpty(hot))

@@ -118,7 +118,7 @@ public sealed class PanelOptions
     /// <summary>Typing in a panel goes to the command line (hold Alt for quick search).</summary>
     public bool TypingToCommandLine { get; set; }
 
-    /// <summary>Shift+0…9 also goes to the hot paths.</summary>
+    /// <summary>Shift+1…9 also goes to the hot paths.</summary>
     public bool ShiftDigitGoesToHotPath { get; set; }
 
     /// <summary>Right-click opens the context menu (off: right-click marks, Ctrl+right-click opens the menu).</summary>

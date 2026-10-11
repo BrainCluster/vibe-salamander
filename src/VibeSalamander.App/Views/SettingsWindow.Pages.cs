@@ -592,7 +592,7 @@ public sealed partial class SettingsWindow
 
         page.Children.Add(Section("Show"));
         page.Children.Add(Toggle("Top toolbar", null, s.ShowTopToolbar, v => s.ShowTopToolbar = v));
-        page.Children.Add(Toggle("Hot path bar", "Buttons for the hot paths (Ctrl+0…9).", s.ShowHotPathBar, v => s.ShowHotPathBar = v));
+        page.Children.Add(Toggle("Hot path bar", "Buttons for the hot paths (Ctrl+1…9).", s.ShowHotPathBar, v => s.ShowHotPathBar = v));
         page.Children.Add(Toggle("User menu bar", "Buttons for the user menu commands (F9).", s.ShowUserMenuBar, v => s.ShowUserMenuBar = v));
         page.Children.Add(Toggle("Drive bars", null, s.ShowDriveBars, v => s.ShowDriveBars = v));
         page.Children.Add(Toggle("Information line", null, s.ShowInformationLine, v => s.ShowInformationLine = v));
