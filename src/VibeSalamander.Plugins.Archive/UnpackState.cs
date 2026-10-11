@@ -22,6 +22,34 @@ internal sealed class UnpackState
         _targetPrefix = TargetDirectory.TrimEnd('\\') + "\\";
         _mask = new WildcardMask(string.IsNullOrWhiteSpace(request.Mask) ? "*.*" : request.Mask);
         Tracker = new ProgressTracker(OperationKind.Unpack, 0, 0);
+        _base = Normalize(request.BasePath) ?? string.Empty;
+        _items = request.Items?.Select(Normalize).Where(i => i != null).Select(i => i!).ToList();
+    }
+
+    private readonly string _base;
+    private readonly List<string>? _items;
+
+    /// <summary>"./docs\a.txt/" → "docs/a.txt"; null when nothing is left.</summary>
+    public static string? Normalize(string? key)
+    {
+        if (string.IsNullOrEmpty(key))
+            return null;
+        var parts = key.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries).Where(p => p != ".");
+        string joined = string.Join('/', parts);
+        return joined.Length == 0 ? null : joined;
+    }
+
+    /// <summary>Part of the selection (UnpackRequest.Items), and inside the base directory.</summary>
+    private bool Selected(string key)
+    {
+        if (_base.Length > 0 && !key.StartsWith(_base + "/", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (_items == null)
+            return true;
+        foreach (string item in _items)
+            if (key.Equals(item, StringComparison.OrdinalIgnoreCase) || key.StartsWith(item + "/", StringComparison.OrdinalIgnoreCase))
+                return true;
+        return false;
     }
 
     public UnpackRequest Request { get; }
@@ -45,6 +73,9 @@ internal sealed class UnpackState
 
     public bool Matches(string? key)
     {
+        string? normalized = Normalize(key);
+        if (normalized == null || !Selected(normalized))
+            return false;
         if (_mask.MatchesEverything)
             return true;
         string name = Path.GetFileName((key ?? string.Empty).Replace('/', '\\').TrimEnd('\\'));
@@ -57,8 +88,16 @@ internal sealed class UnpackState
     /// </summary>
     public string? TargetPathOf(string? key)
     {
-        if (string.IsNullOrEmpty(key))
+        key = Normalize(key);
+        if (key == null)
             return null;
+        if (_base.Length > 0)
+        {
+            // "docs/images/a.png" with base "docs" → "images/a.png"
+            if (!key.StartsWith(_base + "/", StringComparison.OrdinalIgnoreCase))
+                return null;
+            key = key[(_base.Length + 1)..];
+        }
         var parts = new List<string>();
         foreach (string raw in key.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries))
         {
@@ -108,6 +147,9 @@ internal sealed class UnpackState
     public void CreateDirectoryEntry(string? key)
     {
         if (!_mask.MatchesEverything)
+            return;
+        string? normalized = Normalize(key);
+        if (normalized == null || !Selected(normalized))
             return;
         string? path = TargetPathOf(key);
         if (path == null)

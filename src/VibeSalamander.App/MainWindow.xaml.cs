@@ -1349,6 +1349,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         _vm.Transfers.CancelAll();
         _vm.SaveSettings(onExit: true);
         _vm.Plugins.ShutdownAll();
+        MainViewModel.CleanArchiveTemp();
         _vm.Left.Dispose();
         _vm.Right.Dispose();
     }

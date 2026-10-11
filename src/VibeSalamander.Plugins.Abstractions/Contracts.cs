@@ -117,7 +117,24 @@ public sealed class UnpackRequest
 
     /// <summary>File masks of the files to unpack ("*.*", "*.txt;*.md"), matched against the file names.</summary>
     public string Mask { get; init; } = "*.*";
+
+    /// <summary>
+    /// Only these items ("docs/readme.txt", "docs/images" - a directory with its content); null = all.
+    /// Paths inside the archive use '/'.
+    /// </summary>
+    public IReadOnlyList<string>? Items { get; init; }
+
+    /// <summary>
+    /// The directory inside the archive the items are taken from ("docs"): it is left out of the target
+    /// paths, so "docs/images/a.png" goes to "&lt;target&gt;\images\a.png". Null or "" = the archive's root.
+    /// </summary>
+    public string? BasePath { get; init; }
 }
+
+/// <summary>One file or directory inside an archive (for browsing archives in a panel).</summary>
+/// <param name="Path">"docs/readme.txt" ('/' separated, no leading or trailing '/').</param>
+/// <param name="Size">Unpacked size; 0 when unknown.</param>
+public sealed record ArchiveItem(string Path, bool IsDirectory, long Size, DateTime LastWrite);
 
 /// <summary>Archive support: packing into some formats and/or unpacking some formats.</summary>
 public interface IArchiver
@@ -132,6 +149,15 @@ public interface IArchiver
 
     /// <summary>True when the file looks like an archive this archiver unpacks (normally by its name).</summary>
     bool CanUnpack(string archivePath);
+
+    /// <summary>True when Enter opens the archive in the panel like a directory (by its name).</summary>
+    bool CanBrowse(string archivePath);
+
+    /// <summary>
+    /// Everything in the archive (directories may be missing; the panel adds them from the paths).
+    /// Runs on a background thread. Throws when the archive can't be read.
+    /// </summary>
+    Task<IReadOnlyList<ArchiveItem>> ListAsync(string archivePath, CancellationToken cancellationToken);
 
     /// <summary>Runs on a background thread; reports through the job and honors its cancellation and pause.</summary>
     Task<OperationResult> PackAsync(PackRequest request, IArchiveJob job);

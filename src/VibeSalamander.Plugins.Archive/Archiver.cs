@@ -38,6 +38,68 @@ internal sealed class Archiver : IArchiver
 
     public bool CanUnpack(string archivePath) => KindOf(archivePath) != null;
 
+    /// <summary>Comic books and e-books open in their own apps on Enter; the rest is browsed like a directory.</summary>
+    private static readonly HashSet<string> NotBrowsed = new(StringComparer.OrdinalIgnoreCase) { "cbz", "cbr", "cb7", "epub" };
+
+    public bool CanBrowse(string archivePath) => KindOf(archivePath) is string kind && !NotBrowsed.Contains(kind);
+
+    // ---- list (browsing in a panel) -----------------------------------------------------------
+
+    public Task<IReadOnlyList<ArchiveItem>> ListAsync(string archivePath, CancellationToken cancellationToken) =>
+        Task.Run(() => List(archivePath, cancellationToken), cancellationToken);
+
+    private IReadOnlyList<ArchiveItem> List(string archivePath, CancellationToken ct)
+    {
+        string kind = KindOf(archivePath) ?? Path.GetExtension(archivePath).TrimStart('.');
+        DateTime archiveTime = File.GetLastWriteTime(archivePath);
+        var items = new List<ArchiveItem>();
+        if (RandomAccess.Contains(kind))
+        {
+            using var file = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+            using IArchive archive = ArchiveFactory.OpenArchive(file, new ReaderOptions { LeaveStreamOpen = true });
+            foreach (IArchiveEntry entry in archive.Entries)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (UnpackState.Normalize(entry.Key) is string key)
+                    items.Add(new ArchiveItem(key, entry.IsDirectory, Math.Max(0, entry.Size), entry.LastModifiedTime ?? archiveTime));
+            }
+        }
+        else if (kind is "gz" or "bz2" or "xz" or "lz")
+        {
+            string name = Path.GetFileName(archivePath)[..^(kind.Length + 1)];
+            items.Add(new ArchiveItem(name.Length > 0 ? name : "unpacked", false, 0, archiveTime));
+        }
+        else
+        {
+            using var file = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+            using Stream data = OpenTarData(kind, file);
+            using var reader = new TarReader(data, leaveOpen: true);
+            while (reader.GetNextEntry(copyData: false) is TarEntry entry)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (UnpackState.Normalize(entry.Name) is not string key)
+                    continue;
+                if (entry.EntryType == TarEntryType.Directory)
+                    items.Add(new ArchiveItem(key, true, 0, entry.ModificationTime.LocalDateTime));
+                else if (entry.EntryType is TarEntryType.RegularFile or TarEntryType.V7RegularFile or TarEntryType.ContiguousFile)
+                    items.Add(new ArchiveItem(key, false, entry.Length, entry.ModificationTime.LocalDateTime));
+            }
+        }
+        return items;
+    }
+
+    /// <summary>The TAR data of a .tar / .tar.gz / .tar.bz2 / .tar.xz / .tar.lz file (the file itself stays open).</summary>
+    private static Stream OpenTarData(string kind, FileStream file) => kind switch
+    {
+        "tar.gz" or "tgz" => new GZipStream(file, CompressionMode.Decompress, leaveOpen: true),
+        "tar.bz2" or "tbz" or "tbz2" => SharpCompress.Compressors.BZip2.BZip2Stream.Create(
+            new KeepOpenStream(file), SharpCompress.Compressors.CompressionMode.Decompress, decompressConcatenated: true),
+        "tar.xz" or "txz" => new SharpCompress.Compressors.Xz.XZStream(new KeepOpenStream(file)),
+        "tar.lz" => SharpCompress.Compressors.LZMA.LZipStream.Create(
+            new KeepOpenStream(file), SharpCompress.Compressors.CompressionMode.Decompress),
+        _ => new KeepOpenStream(file),
+    };
+
     /// <summary>The matching extension of UnpackExtensions ("tar.gz"), or null.</summary>
     internal string? KindOf(string path)
     {
@@ -361,10 +423,11 @@ internal sealed class Archiver : IArchiver
             {
                 throw new PasswordNeededException(); // 7-Zip with encrypted names
             }
-            s.Encrypted = entries.Any(e => e.IsEncrypted);
+            var files = entries.Where(e => !e.IsDirectory && s.Matches(e.Key)).ToList();
+            // only the files to unpack count: one protected file doesn't need a password for the others
+            s.Encrypted = files.Any(e => e.IsEncrypted);
             if (s.Encrypted && s.Password == null)
                 throw new PasswordNeededException();
-            var files = entries.Where(e => !e.IsDirectory && s.Matches(e.Key)).ToList();
             s.Tracker = new ProgressTracker(OperationKind.Unpack, files.Sum(e => Math.Max(0, e.Size)), files.Count);
 
             if (archive.IsSolid || archive.Type == ArchiveType.SevenZip)
@@ -402,16 +465,7 @@ internal sealed class Archiver : IArchiver
     {
         using var file = new FileStream(s.Request.ArchivePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
         s.Tracker = new ProgressTracker(OperationKind.Unpack, file.Length, 0);
-        using Stream data = s.Kind switch
-        {
-            "tar.gz" or "tgz" => new GZipStream(file, CompressionMode.Decompress, leaveOpen: true),
-            "tar.bz2" or "tbz" or "tbz2" => SharpCompress.Compressors.BZip2.BZip2Stream.Create(
-                new KeepOpenStream(file), SharpCompress.Compressors.CompressionMode.Decompress, decompressConcatenated: true),
-            "tar.xz" or "txz" => new SharpCompress.Compressors.Xz.XZStream(new KeepOpenStream(file)),
-            "tar.lz" => SharpCompress.Compressors.LZMA.LZipStream.Create(
-                new KeepOpenStream(file), SharpCompress.Compressors.CompressionMode.Decompress),
-            _ => new KeepOpenStream(file),
-        };
+        using Stream data = OpenTarData(s.Kind, file);
         using var reader = new TarReader(data, leaveOpen: true);
         while (true)
         {

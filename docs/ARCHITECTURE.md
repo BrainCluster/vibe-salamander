@@ -115,3 +115,9 @@ class implementing `IVibePlugin`; in `Initialize(IPluginHost)` it registers what
   with SharpCompress 0.49.1 (MIT; solid archives in one pass), TAR variants with .NET's `TarReader`
   (pax/GNU/ustar) over gzip / bzip2 / xz / lzip streams. Entry names that would leave the target
   directory are skipped; a wrong password is asked again.
+* **Archives as directories** (`Services/ArchiveFileSystemProvider`, registered before the disk
+  provider): a path like `C:\Downloads\photos.zip\2024` is the `2024` directory inside photos.zip. The
+  archiver's `ListAsync` gives the items once per archive version (cached by size and time); the
+  provider builds the directory tree. The panel is read-only there: F5 unpacks the selected items
+  (`UnpackRequest.Items` + `BasePath`), Enter/F3 unpacks one file to `%TEMP%\VibeSalamander\FromArchives`
+  and opens it.

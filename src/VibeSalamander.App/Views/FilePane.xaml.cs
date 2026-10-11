@@ -771,8 +771,8 @@ public sealed partial class FilePane : UserControl
     /// </summary>
     private void ShowShellMenu(FileItemViewModel? item, int x, int y)
     {
-        if (ViewModel == null || _main == null)
-            return;
+        if (ViewModel == null || _main == null || ViewModel.IsArchive)
+            return; // inside an archive the items aren't on disk (and Explorer's ZIP folder could change the read-only archive)
         List<string> paths;
         if (item != null && item.IsMarked)
             paths = ViewModel.MarkedItems.Select(i => i.Entry.FullPath).ToList();
@@ -1306,9 +1306,10 @@ public sealed partial class FilePane : UserControl
                 await ViewModel.NavigateAsync(ThisPcProvider.RootPath);
             else if (!string.IsNullOrWhiteSpace(text))
             {
-                string target = PathUtil.Resolve(ViewModel.IsLocalDisk ? ViewModel.Path : @"C:\", text);
-                // Confirmations → "The directory doesn't exist. Do you want to create it?"
-                if (_main != null && !Directory.Exists(target) && !File.Exists(target) && !await _main.CreateMissingDirectoryAsync(target))
+                string target = PathUtil.Resolve(ViewModel.IsLocalDisk || ViewModel.IsArchive ? ViewModel.Path : @"C:\", text);
+                // Confirmations → "The directory doesn't exist. Do you want to create it?" (not for a directory in an archive)
+                if (_main != null && !Directory.Exists(target) && !File.Exists(target) && !_main.ArchiveProvider.CanHandle(target) &&
+                    !await _main.CreateMissingDirectoryAsync(target))
                     return;
                 await ViewModel.NavigateAsync(target);
             }
@@ -1345,7 +1346,7 @@ public sealed partial class FilePane : UserControl
         var segments = new List<(string, string)> { ("This PC", ThisPcProvider.RootPath) };
         if (ViewModel == null || ViewModel.IsThisPc)
             return segments;
-        if (!ViewModel.IsLocalDisk)
+        if (!ViewModel.IsLocalDisk && !ViewModel.IsArchive)
         {
             segments.Add((ViewModel.DisplayPath, ViewModel.Path));
             return segments;
@@ -1515,7 +1516,7 @@ public sealed partial class FilePane : UserControl
             return;
         _main.Activate(ViewModel);
         // going up focuses the folder we came from, like Backspace
-        string? focus = ViewModel.IsLocalDisk && path != ThisPcProvider.RootPath ? ChildOnTheWay(path, ViewModel.Path) : null;
+        string? focus = (ViewModel.IsLocalDisk || ViewModel.IsArchive) && path != ThisPcProvider.RootPath ? ChildOnTheWay(path, ViewModel.Path) : null;
         await ViewModel.NavigateAsync(path, focus);
         FocusList();
     }
@@ -1551,7 +1552,9 @@ public sealed partial class FilePane : UserControl
         else
         {
             bool showHidden = _main.Settings.ShowHidden;
-            List<string> folders = await Task.Run(() =>
+            List<string> folders = _main.ArchiveProvider.CanHandle(path)
+                ? await _main.ArchiveProvider.ListDirectoriesAsync(path) // a directory inside an archive (or the archive itself)
+                : await Task.Run(() =>
             {
                 try
                 {
