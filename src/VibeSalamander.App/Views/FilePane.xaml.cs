@@ -679,7 +679,7 @@ public sealed partial class FilePane : UserControl
             }
         }
         var (x, y) = ShellContextMenu.CursorPosition();
-        ShowShellMenu(item, x, y);
+        ShowContextMenu(item, e.GetPosition(FileList), x, y);
         e.Handled = true;
     }
 
@@ -752,9 +752,11 @@ public sealed partial class FilePane : UserControl
             return;
         FileItemViewModel? item = ViewModel.FocusedItem;
         int x = 0, y = 0;
+        var local = new Windows.Foundation.Point(40, 24);
         if (item != null && FileList.ContainerFromItem(item) is ListViewItem container && XamlRoot != null)
         {
             var point = container.TransformToVisual(null).TransformPoint(new Windows.Foundation.Point(40, container.ActualHeight));
+            local = container.TransformToVisual(FileList).TransformPoint(new Windows.Foundation.Point(40, container.ActualHeight));
             double scale = XamlRoot.RasterizationScale;
             (x, y) = ShellContextMenu.ClientToScreen(_main.WindowHandle, (int)(point.X * scale), (int)(point.Y * scale));
         }
@@ -762,7 +764,218 @@ public sealed partial class FilePane : UserControl
         {
             (x, y) = ShellContextMenu.CursorPosition();
         }
-        ShowShellMenu(item, x, y);
+        ShowContextMenu(item, local, x, y, fromMouse: false);
+    }
+
+    /// <summary>
+    /// The Vibe Salamander context menu: the most used commands for the clicked items (or the directory
+    /// when the empty area / ".." was clicked), and "Windows context menu" at the bottom for everything
+    /// else. Shift (or Configuration → Panels) opens the Windows menu directly.
+    /// </summary>
+    /// <param name="position">Where to show it, relative to the list.</param>
+    /// <param name="screenX">Screen position for the Windows menu.</param>
+    /// <param name="fromMouse">Shift+right-click opens the Windows menu (Shift+F10 is just the menu key).</param>
+    private void ShowContextMenu(FileItemViewModel? item, Windows.Foundation.Point position, int screenX, int screenY, bool fromMouse = true)
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        PaneViewModel pane = ViewModel;
+        if (!_main.Settings.Panels.VibeContextMenu || (fromMouse && KeyboardState.IsDown(KeyboardState.Shift)))
+        {
+            ShowShellMenu(item, screenX, screenY);
+            return;
+        }
+        // like Explorer: a right-click on an unmarked item works on that item, not on the marked ones
+        if (item != null && !item.IsMarked && !item.Entry.IsUpDir && pane.MarkedItems.Count > 0)
+        {
+            pane.RememberSelection();
+            pane.MarkAll(false);
+        }
+
+        var menu = new MenuFlyout();
+        void Add(string text, string glyph, CommandId command, bool bold = false)
+        {
+            var entry = new MenuFlyoutItem { Text = text, Icon = new FontIcon { Glyph = glyph } };
+            if (bold)
+                entry.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+            if (_main.KeyMap.GetShortcutText(command) is { Length: > 0 } keys)
+                entry.KeyboardAcceleratorTextOverride = keys;
+            entry.Click += async (_, _) =>
+            {
+                _main.Activate(pane);
+                await _main.ExecuteAsync(command);
+            };
+            menu.Items.Add(entry);
+        }
+        void Separator()
+        {
+            if (menu.Items.Count > 0 && menu.Items[^1] is not MenuFlyoutSeparator)
+                menu.Items.Add(new MenuFlyoutSeparator());
+        }
+
+        bool onItem = item != null && !item.Entry.IsUpDir;
+        bool local = pane.IsLocalDisk;
+        if (item?.Drive != null)
+        {
+            // This PC: a drive
+            Add("Open", "\uE8DA", CommandId.Open, bold: true);
+            Add("Open in other panel", "\uE8A7", CommandId.OpenInOtherPanel);
+            Separator();
+            Add("Drive information", "\uE946", CommandId.DriveInformation);
+            Add("Properties", "\uE90F", CommandId.Properties);
+        }
+        else if (onItem && pane.IsArchive)
+        {
+            // inside an archive: read-only
+            bool directory = item!.Entry.IsDirectory;
+            Add("Open", directory ? "\uE8DA" : "\uE8E5", CommandId.Open, bold: true);
+            Separator();
+            Add("Copy out to other panel...", "\uE8C8", CommandId.Copy);
+            Add("Copy name as text", "\uE8C8", CommandId.CopyNameAsText);
+        }
+        else if (onItem)
+        {
+            int count = pane.MarkedItems.Count;
+            bool several = count > 1;
+            bool directory = item!.Entry.IsDirectory;
+            bool archive = !directory && _main.ArchiveProvider.CanHandle(item.Entry.FullPath);
+            Add(archive ? "Open archive" : "Open", directory || archive ? "\uE8DA" : "\uE8E5", CommandId.Open, bold: true);
+            if (directory || archive)
+                Add("Open in other panel", "\uE8A7", CommandId.OpenInOtherPanel);
+            if (!directory && !several)
+            {
+                Add("Open with...", "\uE7AC", CommandId.OpenWith);
+                Add("Edit", "\uE70F", CommandId.Edit);
+            }
+            Separator();
+            Add("Cut", "\uE8C6", CommandId.ClipboardCut);
+            Add("Copy", "\uE8C8", CommandId.ClipboardCopy);
+            Add("Paste", "\uE77F", CommandId.ClipboardPaste);
+            Separator();
+            Add(several ? $"Copy {count} items to other panel..." : "Copy to other panel...", "\uE8C8", CommandId.Copy);
+            Add(several ? $"Move {count} items to other panel..." : "Move to other panel...", "\uE8DE", CommandId.Move);
+            if (!several)
+                Add("Rename", "\uE8AC", CommandId.QuickRename);
+            Add(several ? $"Delete {count} items" : "Delete", "\uE74D", CommandId.Delete);
+            Separator();
+            Add(several ? "Pack into archive..." : "Pack...", "\uE7B8", CommandId.Pack);
+            if (_main.Plugins.FindUnpacker(item.Entry.FullPath) != null)
+                Add("Unpack...", "\uE896", CommandId.Unpack);
+            Add("Copy path", "\uE8C8", CommandId.CopyFullNameAsText);
+            Separator();
+            Add("Properties", "\uE90F", CommandId.Properties);
+        }
+        else if (local)
+        {
+            // the directory itself (empty area or "..")
+            Add("New folder", "\uE8F4", CommandId.CreateDirectory);
+            Add("New text document", "\uE8A5", CommandId.EditNewFile);
+            Add("New (Windows)...", "\uE710", CommandId.NewMenu);
+            Separator();
+            Add("Paste", "\uE77F", CommandId.ClipboardPaste);
+            Add("Paste shortcut", "\uE71B", CommandId.PasteShortcut);
+            Separator();
+            menu.Items.Add(ViewSubmenu(pane));
+            menu.Items.Add(SortSubmenu(pane));
+            Add("Refresh", "\uE72C", CommandId.Refresh);
+            Add("Select all", "\uE8B3", CommandId.SelectAll);
+            Separator();
+            Add("Open in Explorer", "\uEC50", CommandId.OpenActiveFolder);
+            Add("Command prompt here", "\uE756", CommandId.CommandShell);
+        }
+        else
+        {
+            menu.Items.Add(ViewSubmenu(pane));
+            menu.Items.Add(SortSubmenu(pane));
+            Add("Refresh", "\uE72C", CommandId.Refresh);
+        }
+
+        // everything else: the Windows menu (not for archives - their items aren't files on disk)
+        if (!pane.IsArchive && (local || item?.Drive != null))
+        {
+            Separator();
+            var windows = new MenuFlyoutItem
+            {
+                Text = "Windows context menu",
+                Icon = new FontIcon { Glyph = "\uE712" },
+                KeyboardAcceleratorTextOverride = "Shift+right-click",
+            };
+            windows.Click += (_, _) =>
+            {
+                // after this menu has closed: the Windows menu is modal
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => ShowShellMenu(item, screenX, screenY));
+            };
+            menu.Items.Add(windows);
+        }
+        if (menu.Items.Count == 0)
+            return;
+        menu.Closed += (_, _) =>
+        {
+            if (!IsRenaming)
+                FocusList();
+        };
+        menu.ShowAt(FileList, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+        {
+            Position = position,
+            ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
+        });
+    }
+
+    private MenuFlyoutSubItem ViewSubmenu(PaneViewModel pane)
+    {
+        var sub = new MenuFlyoutSubItem { Text = "View", Icon = new FontIcon { Glyph = "\uE8FD" } };
+        (string Text, ViewMode Mode, CommandId Command)[] views =
+        {
+            ("Brief", ViewMode.Brief, CommandId.ViewBrief),
+            ("Detailed", ViewMode.Detailed, CommandId.ViewDetailed),
+            ("Icons", ViewMode.Icons, CommandId.ViewIcons),
+            ("Thumbnails", ViewMode.Thumbnails, CommandId.ViewThumbnails),
+            ("Tiles", ViewMode.Tiles, CommandId.ViewTiles),
+        };
+        foreach (var (text, mode, command) in views)
+        {
+            var entry = new RadioMenuFlyoutItem { Text = text, GroupName = "ContextView", IsChecked = pane.ViewMode == mode };
+            if (_main?.KeyMap.GetShortcutText(command) is { Length: > 0 } keys)
+                entry.KeyboardAcceleratorTextOverride = keys;
+            CommandId c = command;
+            entry.Click += async (_, _) =>
+            {
+                if (_main == null)
+                    return;
+                _main.Activate(pane);
+                await _main.ExecuteAsync(c);
+            };
+            sub.Items.Add(entry);
+        }
+        return sub;
+    }
+
+    private MenuFlyoutSubItem SortSubmenu(PaneViewModel pane)
+    {
+        var sub = new MenuFlyoutSubItem { Text = "Sort by", Icon = new FontIcon { Glyph = "\uE8CB" } };
+        (string Text, SortMode Mode, CommandId Command)[] sorts =
+        {
+            ("Name", SortMode.Name, CommandId.SortByName),
+            ("Extension", SortMode.Extension, CommandId.SortByExtension),
+            ("Date", SortMode.Date, CommandId.SortByDate),
+            ("Size", SortMode.Size, CommandId.SortBySize),
+        };
+        foreach (var (text, mode, command) in sorts)
+        {
+            var entry = new RadioMenuFlyoutItem { Text = text, GroupName = "ContextSort", IsChecked = pane.SortMode == mode };
+            if (_main?.KeyMap.GetShortcutText(command) is { Length: > 0 } keys)
+                entry.KeyboardAcceleratorTextOverride = keys;
+            CommandId c = command;
+            entry.Click += async (_, _) =>
+            {
+                if (_main == null)
+                    return;
+                _main.Activate(pane);
+                await _main.ExecuteAsync(c);
+            };
+            sub.Items.Add(entry);
+        }
+        return sub;
     }
 
     /// <summary>
