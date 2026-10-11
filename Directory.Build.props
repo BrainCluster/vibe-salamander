@@ -4,6 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Company>Vibe Salamander</Company>
+    <Authors>Claude (Anthropic AI); BrainCluster (guide)</Authors>
     <Product>Vibe Salamander</Product>
     <Version>0.1.0</Version>
     <Copyright>Copyright © 2026 Vibe Salamander Authors. Licensed under GPL-3.0-or-later.</Copyright>

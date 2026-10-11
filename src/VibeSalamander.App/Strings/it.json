@@ -891,6 +891,7 @@
   "Working directories": "Cartelle di lavoro",
   "Working directories (Alt+F12)": "Cartelle di lavoro (Alt+F12)",
   "Write the settings file now": "Scrivi ora il file delle impostazioni",
+  "Written by Claude (Anthropic's AI model), with BrainCluster as its guide.": "Scritto da Claude (il modello di IA di Anthropic), con BrainCluster come guida.",
   "case-sensitive names": "nomi con distinzione maiuscole/minuscole",
   "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...": "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...",
   "directory of the active panel": "cartella del pannello attivo",

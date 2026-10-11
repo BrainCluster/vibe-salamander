@@ -1251,6 +1251,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             new() { Content = text, NavigateUri = new Uri(url), Padding = new Thickness(0), Tag = "NoLoc" };
 
         body.Children.Add(Para(Loc.T("A modern spiritual successor to Altap / Open Salamander: dual-pane, keyboard-first, fast and precise, built with C# and WinUI 3.")));
+        body.Children.Add(Para(Loc.T("Written by Claude (Anthropic's AI model), with BrainCluster as its guide.")));
         body.Children.Add(Para("Copyright © 2026 Vibe Salamander Authors", 0.8));
         body.Children.Add(Para(Loc.T("This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. It comes with ABSOLUTELY NO WARRANTY."), 0.8));
         body.Children.Add(Link(Loc.T("GNU General Public License v3"), "https://www.gnu.org/licenses/gpl-3.0.html"));
