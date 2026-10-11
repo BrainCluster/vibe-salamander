@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Media;
 using VibeSalamander.Core;
 using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Formatting;
+using VibeSalamander.Services;
 
 namespace VibeSalamander.ViewModels;
 
@@ -99,9 +100,9 @@ public sealed class FileItemViewModel : BindableBase
     public GridLength ThumbnailRowHeight => new(UiState.ThumbnailSize);
 
     /// <summary>Second line of a tile: the kind of item.</summary>
-    public string TileType => Entry.IsUpDir ? "Parent directory" :
-        Entry.IsDirectory ? "File folder" :
-        Entry.Extension.Length > 0 ? Entry.Extension.ToUpperInvariant() + " file" : "File";
+    public string TileType => Entry.IsUpDir ? Loc.T("Parent directory") :
+        Entry.IsDirectory ? Loc.T("File folder") :
+        Entry.Extension.Length > 0 ? Loc.F("{0} file", Entry.Extension.ToUpperInvariant()) : Loc.T("File");
 
     /// <summary>Third line of a tile: size and date.</summary>
     public string TileDetail => Entry.IsUpDir ? string.Empty :

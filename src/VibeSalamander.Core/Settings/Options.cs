@@ -8,6 +8,9 @@ public sealed class GeneralOptions
     /// <summary>Write the settings when Vibe Salamander closes (otherwise only on Save Configuration).</summary>
     public bool SaveOnExit { get; set; } = true;
 
+    /// <summary>User interface language ("hr", "de", ...); "" = the language of Windows.</summary>
+    public string Language { get; set; } = string.Empty;
+
     /// <summary>Copies from a CD/DVD lose the read-only attribute every file there has.</summary>
     public bool ClearReadOnlyFromCd { get; set; } = true;
 

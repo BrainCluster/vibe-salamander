@@ -409,6 +409,7 @@ public sealed partial class FilePane : UserControl
         reset.Click += (_, _) => columns.Reset();
         menu.Items.Add(reset);
         menu.Closed += (_, _) => FocusList();
+        Loc.Translate(menu);
         menu.ShowAt(FileHeader, e.GetPosition(FileHeader));
         e.Handled = true;
     }
@@ -489,6 +490,7 @@ public sealed partial class FilePane : UserControl
 
         var flyout = new Flyout { Content = panel, Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft };
         flyout.Closed += (_, _) => FocusList();
+        Loc.Translate(panel);
         flyout.ShowAt(DriveMenuButton);
     }
 
@@ -696,7 +698,8 @@ public sealed partial class FilePane : UserControl
                 menu.Items.Add(new MenuFlyoutSeparator());
                 continue;
             }
-            var item = new MenuFlyoutItem { Text = entry.Text, IsEnabled = entry.IsEnabled };
+            // entries are data (paths, user menu names); only the fixed ones are translated
+            var item = new MenuFlyoutItem { Text = entry.IsEnabled ? entry.Text : Loc.T(entry.Text), IsEnabled = entry.IsEnabled };
             if (entry.Glyph != null)
                 item.Icon = new FontIcon { Glyph = entry.Glyph };
             if (entry.Shortcut != null)
@@ -927,6 +930,7 @@ public sealed partial class FilePane : UserControl
             if (!IsRenaming)
                 FocusList();
         };
+        Loc.Translate(menu);
         menu.ShowAt(FileList, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
         {
             Position = position,
@@ -1431,19 +1435,19 @@ public sealed partial class FilePane : UserControl
                 menu.Items.Add(new MenuFlyoutSeparator());
         }
         menu.Items.Add(new MenuFlyoutSeparator());
-        var thisPc = new MenuFlyoutItem { Text = "This PC", Icon = new FontIcon { Glyph = "\uE7F4" } };
+        var thisPc = new MenuFlyoutItem { Text = Loc.T("This PC"), Icon = new FontIcon { Glyph = "\uE7F4" } };
         thisPc.Click += async (_, _) => await ViewModel.NavigateAsync(ThisPcProvider.RootPath);
         menu.Items.Add(thisPc);
         if (driveOptions.MenuShowDocuments)
         {
             string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            var docs = new MenuFlyoutItem { Text = "Documents", Icon = new FontIcon { Glyph = "\uE8A5" } };
+            var docs = new MenuFlyoutItem { Text = Loc.T("Documents"), Icon = new FontIcon { Glyph = "\uE8A5" } };
             docs.Click += async (_, _) => await ViewModel.NavigateAsync(documents);
             menu.Items.Add(docs);
         }
         if (driveOptions.MenuShowNetwork)
         {
-            var network = new MenuFlyoutItem { Text = "Network", Icon = new FontIcon { Glyph = "\uE968" } };
+            var network = new MenuFlyoutItem { Text = Loc.T("Network"), Icon = new FontIcon { Glyph = "\uE968" } };
             network.Click += (_, _) => Core.Interop.ShellOperations.OpenInExplorer("shell:NetworkPlacesFolder");
             menu.Items.Add(network);
         }
@@ -1451,7 +1455,7 @@ public sealed partial class FilePane : UserControl
         {
             PaneViewModel other = _main.Left == ViewModel ? _main.Right : _main.Left;
             string otherPath = other.IsThisPc ? ThisPcProvider.RootPath : other.Path;
-            var asOther = new MenuFlyoutItem { Text = "As Other Panel", Icon = new FontIcon { Glyph = "\uE8AB" }, KeyboardAcceleratorTextOverride = "Ctrl+." };
+            var asOther = new MenuFlyoutItem { Text = Loc.T("As Other Panel"), Icon = new FontIcon { Glyph = "\uE8AB" }, KeyboardAcceleratorTextOverride = "Ctrl+." };
             asOther.Click += async (_, _) => await ViewModel.NavigateAsync(otherPath);
             menu.Items.Add(asOther);
         }
@@ -1472,7 +1476,7 @@ public sealed partial class FilePane : UserControl
             string hotName = i < _main.Settings.HotPathNames.Count ? _main.Settings.HotPathNames[i] : string.Empty;
             var item = new MenuFlyoutItem
             {
-                Text = hotName.Length > 0 ? hotName : hot == ThisPcProvider.RootPath ? "This PC" : hot,
+                Text = hotName.Length > 0 ? hotName : hot == ThisPcProvider.RootPath ? Loc.T("This PC") : hot,
                 Icon = new FontIcon { Glyph = "\uE734" },
                 KeyboardAcceleratorTextOverride = "Ctrl+" + i,
             };
@@ -1499,7 +1503,7 @@ public sealed partial class FilePane : UserControl
         if (ViewModel == null)
             return;
         // the full location, ready to edit (Windows 11 Explorer: click the empty part of the address bar)
-        PathEditor.Text = ViewModel.IsLocalDisk ? ViewModel.Path : ViewModel.IsThisPc ? "This PC" : ViewModel.DisplayPath;
+        PathEditor.Text = ViewModel.IsLocalDisk ? ViewModel.Path : ViewModel.IsThisPc ? Loc.T("This PC") : ViewModel.DisplayPath;
         BreadcrumbHost.Visibility = Visibility.Collapsed;
         PathEditor.Visibility = Visibility.Visible;
         // focus after menus/flyouts have closed and returned their focus (Shift+F7 from the menu), else the
@@ -1530,7 +1534,7 @@ public sealed partial class FilePane : UserControl
             e.Handled = true;
             string text = PathEditor.Text;
             EndPathEdit();
-            if (text.Trim().Equals("this pc", StringComparison.OrdinalIgnoreCase))
+            if (text.Trim().Equals("this pc", StringComparison.OrdinalIgnoreCase) || text.Trim().Equals(Loc.T("This PC"), StringComparison.CurrentCultureIgnoreCase))
                 await ViewModel.NavigateAsync(ThisPcProvider.RootPath);
             else if (!string.IsNullOrWhiteSpace(text))
             {
@@ -1571,7 +1575,7 @@ public sealed partial class FilePane : UserControl
     /// <summary>"This PC", the drive ("Local Disk (C:)") or share, then each folder of the path.</summary>
     private List<(string Label, string Path)> BreadcrumbSegments()
     {
-        var segments = new List<(string, string)> { ("This PC", ThisPcProvider.RootPath) };
+        var segments = new List<(string, string)> { (Loc.T("This PC"), ThisPcProvider.RootPath) };
         if (ViewModel == null || ViewModel.IsThisPc)
             return segments;
         if (!ViewModel.IsLocalDisk && !ViewModel.IsArchive)
@@ -1651,7 +1655,7 @@ public sealed partial class FilePane : UserControl
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxWidth = 360, // a very long folder name is trimmed instead of pushing everything out
             };
-            Button segment = CrumbButton(text, path == ThisPcProvider.RootPath ? "This PC" : path);
+            Button segment = CrumbButton(text, path == ThisPcProvider.RootPath ? Loc.T("This PC") : path);
             segment.Click += async (_, _) => await NavigateFromBreadcrumbAsync(path);
 
             Button chevron = CrumbButton(new FontIcon { Glyph = "\uE76C", FontSize = 8, Foreground = foreground }, null);
@@ -1803,7 +1807,7 @@ public sealed partial class FilePane : UserControl
                 }
             });
             if (folders.Count == 0)
-                menu.Items.Add(new MenuFlyoutItem { Text = "(no subfolders)", IsEnabled = false });
+                menu.Items.Add(new MenuFlyoutItem { Text = Loc.T("(no subfolders)"), IsEnabled = false });
             string? nextName = next != null ? Path.GetFileName(next.TrimEnd('\\')) : null;
             foreach (string name in folders)
             {

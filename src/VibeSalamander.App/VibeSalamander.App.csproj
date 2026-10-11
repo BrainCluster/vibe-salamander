@@ -33,5 +33,7 @@
 
   <ItemGroup>
     <Content Include="Assets\VibeSalamander.ico" CopyToOutputDirectory="PreserveNewest" />
+    <!-- translations (Configuration → General → Language) -->
+    <Content Include="Strings\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

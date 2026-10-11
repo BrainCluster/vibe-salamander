@@ -638,7 +638,7 @@ public sealed class MainViewModel : BindableBase
         if (items.Count == 0 || !_active.IsLocalDisk)
             return;
 
-        string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : $"{items.Count} items";
+        string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} items", items.Count);
         string defaultTarget = Inactive.IsLocalDisk ? Inactive.Path : string.Empty;
         if (defaultTarget.Length > 0 && !defaultTarget.EndsWith('\\'))
             defaultTarget += "\\";
@@ -827,7 +827,7 @@ public sealed class MainViewModel : BindableBase
         var items = p.GetOperationItems().Where(i => !i.Entry.IsUpDir).ToList();
         if (items.Count == 0)
             return;
-        string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : $"{items.Count} items";
+        string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} items", items.Count);
         string defaultTarget = Inactive.IsLocalDisk ? Inactive.Path : string.Empty;
         if (defaultTarget.Length > 0 && !defaultTarget.EndsWith('\\'))
             defaultTarget += "\\";
@@ -950,7 +950,7 @@ public sealed class MainViewModel : BindableBase
         if (string.IsNullOrWhiteSpace(baseName))
             baseName = _active.Path.Length >= 1 ? _active.Path[..1] : "Archive"; // a drive root: "C"
         string directory = Inactive.IsLocalDisk ? Inactive.Path : _active.Path;
-        string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : $"{items.Count} items";
+        string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} items", items.Count);
 
         var answer = await _host.Dialogs.PackAsync(what, Path.Combine(directory, baseName + format.Extension),
             formats.Select(f => f.Format).ToList(), format.Id, o.PackCompression, o.PackDeleteSources);
@@ -1030,7 +1030,7 @@ public sealed class MainViewModel : BindableBase
         string defaultTarget = Inactive.IsLocalDisk ? Inactive.Path : _active.Path;
         if (!defaultTarget.EndsWith('\\'))
             defaultTarget += "\\";
-        string what = archives.Count == 1 ? $"\"{archives[0].Item.Entry.Name}\"" : $"{archives.Count} archives";
+        string what = archives.Count == 1 ? $"\"{archives[0].Item.Entry.Name}\"" : Loc.F("{0} archives", archives.Count);
         string example = archives.Count == 1 ? Plugins.ArchiveBaseName(archives[0].Item.Entry.Name) + "\\" : "name\\";
         var answer = await _host.Dialogs.UnpackAsync(what, defaultTarget, o.UnpackMask, o.UnpackToSubfolder, example);
         _host.FocusPane(_active);
@@ -1083,26 +1083,39 @@ public sealed class MainViewModel : BindableBase
             recycle.AddRange(items);
         }
 
-        string Describe(IReadOnlyList<FileItemViewModel> list) => list.Count == 1
-            ? $"{(list[0].Entry.IsDirectory ? "directory" : "file")} \"{list[0].Entry.Name}\""
-            : $"{list.Count} selected items";
+        // whole sentences for one file, one directory or several items (so they translate well)
+        static string Ask(IReadOnlyList<FileItemViewModel> list, string file, string directory, string many) => list.Count == 1
+            ? Loc.F(list[0].Entry.IsDirectory ? directory : file, list[0].Entry.Name)
+            : Loc.F(many, list.Count);
 
         // Configuration → Confirmations
         if (recycle.Count > 0 && Settings.ConfirmRecycle &&
-            !await _host.ConfirmAsync("Delete", $"Do you want to move the {Describe(recycle)} to the Recycle Bin?", "Delete"))
+            !await _host.ConfirmAsync("Delete", Ask(recycle,
+                "Do you want to move the file \"{0}\" to the Recycle Bin?",
+                "Do you want to move the directory \"{0}\" to the Recycle Bin?",
+                "Do you want to move the {0} selected items to the Recycle Bin?"), "Delete"))
             return;
         if (remove.Count > 0)
         {
             if (Settings.Confirm.PermanentDelete &&
-                !await _host.ConfirmAsync("Delete", $"Do you want to permanently delete the {Describe(remove)}?\nThis cannot be undone.", "Delete"))
+                !await _host.ConfirmAsync("Delete", Ask(remove,
+                    "Do you want to permanently delete the file \"{0}\"?\nThis cannot be undone.",
+                    "Do you want to permanently delete the directory \"{0}\"?\nThis cannot be undone.",
+                    "Do you want to permanently delete the {0} selected items?\nThis cannot be undone."), "Delete"))
                 return;
             var hiddenFiles = remove.Where(i => !i.Entry.IsDirectory && (i.Entry.IsHidden || i.Entry.IsSystem)).ToList();
             if (hiddenFiles.Count > 0 && Settings.Confirm.HiddenSystemFileDelete &&
-                !await _host.ConfirmAsync("Delete", $"{Describe(hiddenFiles)} {(hiddenFiles.Count == 1 ? "is a" : "include")} hidden or system file{(hiddenFiles.Count == 1 ? "" : "s")}. Delete anyway?", "Delete"))
+                !await _host.ConfirmAsync("Delete", Ask(hiddenFiles,
+                    "The file \"{0}\" is a hidden or system file. Delete it anyway?",
+                    "The file \"{0}\" is a hidden or system file. Delete it anyway?",
+                    "{0} of the files are hidden or system files. Delete them anyway?"), "Delete"))
                 return;
             var hiddenDirs = remove.Where(i => i.Entry.IsDirectory && (i.Entry.IsHidden || i.Entry.IsSystem)).ToList();
             if (hiddenDirs.Count > 0 && Settings.Confirm.HiddenSystemDirectoryDelete &&
-                !await _host.ConfirmAsync("Delete", $"{Describe(hiddenDirs)} {(hiddenDirs.Count == 1 ? "is a" : "include")} hidden or system director{(hiddenDirs.Count == 1 ? "y" : "ies")}. Delete anyway?", "Delete"))
+                !await _host.ConfirmAsync("Delete", Ask(hiddenDirs,
+                    "The directory \"{0}\" is a hidden or system directory. Delete it anyway?",
+                    "The directory \"{0}\" is a hidden or system directory. Delete it anyway?",
+                    "{0} of the directories are hidden or system directories. Delete them anyway?"), "Delete"))
                 return;
             if (Settings.Confirm.NonEmptyDirectoryDelete)
             {
@@ -1150,8 +1163,9 @@ public sealed class MainViewModel : BindableBase
     {
         if (!Settings.Confirm.DragAndDrop)
             return true;
-        string what = paths.Count == 1 ? $"\"{Path.GetFileName(paths[0].TrimEnd('\\'))}\"" : $"{paths.Count} items";
-        return await _host.ConfirmAsync(move ? "Move" : "Copy", $"Do you want to {(move ? "move" : "copy")} {what} to {target}?", move ? "Move" : "Copy");
+        string what = paths.Count == 1 ? $"\"{Path.GetFileName(paths[0].TrimEnd('\\'))}\"" : Loc.F("{0} items", paths.Count);
+        return await _host.ConfirmAsync(move ? "Move" : "Copy",
+            Loc.F(move ? "Do you want to move {0} to {1}?" : "Do you want to copy {0} to {1}?", what, target), move ? "Move" : "Copy");
     }
 
     /// <summary>Confirmations → "The directory doesn't exist. Do you want to create it?" Creates it when confirmed.</summary>
@@ -1323,7 +1337,7 @@ public sealed class MainViewModel : BindableBase
         }
         if (entries.Count > 0)
             entries.Add(MenuEntry.Separator);
-        entries.Add(new MenuEntry("Edit User Menu...", async () => await EditUserMenuAsync(), "\uE70F"));
+        entries.Add(new MenuEntry(Loc.T("Edit User Menu..."), async () => await EditUserMenuAsync(), "\uE70F"));
         _host.ShowMenu(pane, entries, atCaret: true);
     }
 
@@ -1377,7 +1391,7 @@ public sealed class MainViewModel : BindableBase
             return;
         }
         _savedSelection = names;
-        _host.Notify($"Selection of {names.Count} name{(names.Count == 1 ? "" : "s")} saved (Ctrl+Shift+F6 loads it).", isError: false);
+        _host.Notify(Loc.F("Selection saved: {0} names (Ctrl+Shift+F6 loads it).", names.Count), isError: false);
     }
 
     /// <summary>Ctrl+Shift+F6: marks the saved names in the active panel.</summary>
@@ -1389,14 +1403,14 @@ public sealed class MainViewModel : BindableBase
             return;
         }
         int found = pane.MarkNames(_savedSelection);
-        _host.Notify($"Selected {found} of {_savedSelection.Count} saved name{(_savedSelection.Count == 1 ? "" : "s")}.", isError: false);
+        _host.Notify(Loc.F("Selected {0} of {1} saved names.", found, _savedSelection.Count), isError: false);
     }
 
     private void HideNames(PaneViewModel pane, bool selected)
     {
         int count = pane.HideNames(selected);
         if (count > 0)
-            _host.Notify($"{count} name{(count == 1 ? "" : "s")} hidden. Edit → Show Hidden Names brings them back.", isError: false);
+            _host.Notify(Loc.F("Names hidden: {0}. Edit → Show Hidden Names brings them back.", count), isError: false);
     }
 
     private void ShowHiddenNames(PaneViewModel pane)
@@ -1424,7 +1438,7 @@ public sealed class MainViewModel : BindableBase
               .Append(Formats.Attributes(e.Attributes)).AppendLine();
         }
         CopyText(sb.ToString());
-        _host.Notify($"File list of {items.Count} item{(items.Count == 1 ? "" : "s")} copied to the clipboard (tab separated: name, size, date, time, attributes).", isError: false);
+        _host.Notify(Loc.F("File list copied to the clipboard: {0} items (tab separated: name, size, date, time, attributes).", items.Count), isError: false);
     }
 
     /// <summary>Ctrl+S: shortcuts (.lnk) to the files on the clipboard, created in the active panel.</summary>
@@ -1459,7 +1473,7 @@ public sealed class MainViewModel : BindableBase
         if (last != null)
             await pane.NavigateAsync(pane.Path, Path.GetFileName(last), addToHistory: false);
         if (failed > 0)
-            _host.Notify($"{failed} shortcut{(failed == 1 ? "" : "s")} could not be created.");
+            _host.Notify(Loc.F("Shortcuts that could not be created: {0}.", failed));
     }
 
     /// <summary>Files → New: the Explorer "New" menu; the created item is then renamed in place.</summary>
@@ -1507,27 +1521,42 @@ public sealed class MainViewModel : BindableBase
         bool compress = action is NtfsAction.Compress or NtfsAction.Uncompress;
         if (compress ? Settings.Confirm.NtfsCompress : Settings.Confirm.NtfsEncrypt)
         {
-            string askVerb = action.ToString().ToLowerInvariant();
-            string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : $"{items.Count} selected items";
+            string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} selected items", items.Count);
             bool hasDirectories = items.Any(i => i.Entry.IsDirectory);
-            if (!await _host.ConfirmAsync("NTFS " + action,
-                    $"Do you want to {askVerb} {what}{(hasDirectories ? " including the content of directories" : string.Empty)}?",
-                    char.ToUpperInvariant(askVerb[0]) + askVerb[1..]))
+            string question = (action, hasDirectories) switch
+            {
+                (NtfsAction.Compress, false) => "Do you want to compress {0}?",
+                (NtfsAction.Compress, true) => "Do you want to compress {0} including the content of directories?",
+                (NtfsAction.Uncompress, false) => "Do you want to uncompress {0}?",
+                (NtfsAction.Uncompress, true) => "Do you want to uncompress {0} including the content of directories?",
+                (NtfsAction.Encrypt, false) => "Do you want to encrypt {0}?",
+                (NtfsAction.Encrypt, true) => "Do you want to encrypt {0} including the content of directories?",
+                (_, false) => "Do you want to decrypt {0}?",
+                _ => "Do you want to decrypt {0} including the content of directories?",
+            };
+            string button = action switch
+            {
+                NtfsAction.Compress => "Compress",
+                NtfsAction.Uncompress => "Uncompress",
+                NtfsAction.Encrypt => "Encrypt",
+                _ => "Decrypt",
+            };
+            if (!await _host.ConfirmAsync("NTFS", Loc.F(question, what), button))
                 return;
         }
         var (ok, failed, firstError) = await NtfsOperations.ApplyAsync(items.Select(i => i.Entry.FullPath).ToList(), action);
         await pane.RefreshAsync();
-        string verb = action switch
+        string done = action switch
         {
-            NtfsAction.Compress => "Compressed",
-            NtfsAction.Uncompress => "Uncompressed",
-            NtfsAction.Encrypt => "Encrypted",
-            _ => "Decrypted",
+            NtfsAction.Compress => "Items compressed: {0}.",
+            NtfsAction.Uncompress => "Items uncompressed: {0}.",
+            NtfsAction.Encrypt => "Items encrypted: {0}.",
+            _ => "Items decrypted: {0}.",
         };
         if (failed == 0)
-            _host.Notify($"{verb} {ok} item{(ok == 1 ? "" : "s")}.", isError: false);
+            _host.Notify(Loc.F(done, ok), isError: false);
         else
-            _host.Notify($"{verb} {ok}, {failed} failed. {firstError}");
+            _host.Notify(Loc.F(done, ok) + " " + Loc.F("Failed: {0}. {1}", failed, firstError));
     }
 
     private void ShowSecurity(PaneViewModel pane)
@@ -1666,8 +1695,8 @@ public sealed class MainViewModel : BindableBase
         if (!pane.IsLocalDisk || items.Count == 0)
             return;
         OccupiedSpace total = await pane.CalculateSizesAsync(items);
-        _host.Notify($"Occupied space: {Formats.ShortSize(total.Bytes)} ({Formats.ExactSize(total.Bytes)} bytes) in " +
-                     $"{total.Files:N0} file{(total.Files == 1 ? "" : "s")} and {total.Directories:N0} director{(total.Directories == 1 ? "y" : "ies")}",
+        _host.Notify(Loc.F("Occupied space: {0} ({1} bytes) in {2} files and {3} directories",
+                     Formats.ShortSize(total.Bytes), Formats.ExactSize(total.Bytes), total.Files.ToString("N0"), total.Directories.ToString("N0")),
                      isError: false);
     }
 
@@ -1696,7 +1725,7 @@ public sealed class MainViewModel : BindableBase
     private Task ReportProblemsAsync(OperationResult? result)
     {
         if (result != null && result.Failed > 0)
-            _host.Notify($"{result.Failed} item{(result.Failed == 1 ? "" : "s")} could not be processed.");
+            _host.Notify(Loc.F("Items that could not be processed: {0}.", result.Failed));
         return Task.CompletedTask;
     }
 

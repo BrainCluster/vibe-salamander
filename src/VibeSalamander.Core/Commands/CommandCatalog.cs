@@ -82,7 +82,10 @@ public static class CommandCatalog
     };
 
     /// <summary>A readable name ("Compare directories..."); others are derived from the id ("Sort by name").</summary>
-    public static string DisplayName(CommandId command)
+    public static string DisplayName(CommandId command) => Localization.L.T(EnglishName(command));
+
+    /// <summary>The untranslated name (also the key of its translation).</summary>
+    public static string EnglishName(CommandId command)
     {
         if (Names.TryGetValue(command, out string? name))
             return name;
@@ -105,7 +108,9 @@ public static class CommandCatalog
     }
 
     /// <summary>Group for the keyboard settings page.</summary>
-    public static string Category(CommandId command) => command switch
+    public static string Category(CommandId command) => Localization.L.T(EnglishCategory(command));
+
+    private static string EnglishCategory(CommandId command) => command switch
     {
         CommandId.Pack or CommandId.Unpack or CommandId.MountImage or CommandId.UnmountImage => "Files",
         CommandId.PluginsManager => "Options",

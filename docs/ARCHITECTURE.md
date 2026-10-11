@@ -121,3 +121,19 @@ class implementing `IVibePlugin`; in `Initialize(IPluginHost)` it registers what
   provider builds the directory tree. The panel is read-only there: F5 unpacks the selected items
   (`UnpackRequest.Items` + `BasePath`), Enter/F3 unpacks one file to `%TEMP%\VibeSalamander\FromArchives`
   and opens it.
+
+## Languages
+
+`Services/Loc` holds the user interface language (Configuration → General → Language; "" = the
+Windows language). Translations are `src/VibeSalamander.App/Strings/<code>.json` files mapping the
+English text to the translation (`{ "Copy": "Kopiraj" }`); a missing entry stays English.
+
+* Code uses `Loc.T("text")` / `Loc.F("format {0}", value)` where it builds texts (the core uses
+  `Core.Localization.L`, wired to `Loc` at startup).
+* XAML, dialogs and menus are translated by walking their elements (`Loc.Translate`): text blocks,
+  buttons, headers, placeholders, tooltips, menu items, navigation items. Lists of data (ListView)
+  and elements tagged `NoLoc` (names and paths) are skipped.
+* Entries with placeholders also translate texts made from them ("Copy {0} to:" matches
+  "Copy "a.txt" to:"), when their fixed text is distinctive (6+ letters).
+* Adding a language: copy a `Strings\*.json`, translate the values, add the code to `Loc.Languages`.
+

@@ -5,6 +5,7 @@ using VibeSalamander.Core;
 using VibeSalamander.Core.Formatting;
 using VibeSalamander.Core.Operations;
 using VibeSalamander.Plugins;
+using VibeSalamander.Services;
 
 namespace VibeSalamander.ViewModels;
 
@@ -38,16 +39,16 @@ public sealed class TransferItemViewModel : BindableBase
         Kind = kind;
         Sources = sources;
         Target = target;
-        string what = sources.Count == 1 ? Path.GetFileName(sources[0].TrimEnd('\\')) : $"{sources.Count} items";
-        string verb = kind switch
+        string what = sources.Count == 1 ? Path.GetFileName(sources[0].TrimEnd('\\')) : Loc.F("{0} items", sources.Count);
+        string format = kind switch
         {
-            OperationKind.Move => "Move",
-            OperationKind.Delete => "Delete",
-            OperationKind.Pack => "Pack",
-            OperationKind.Unpack => "Unpack",
-            _ => "Copy",
+            OperationKind.Move => "Move {0}",
+            OperationKind.Delete => "Delete {0}",
+            OperationKind.Pack => "Pack {0}",
+            OperationKind.Unpack => "Unpack {0}",
+            _ => "Copy {0}",
         };
-        Title = $"{verb} {what}";
+        Title = Loc.F(format, what);
         Route = target == null
             ? Path.GetDirectoryName(sources[0].TrimEnd('\\')) ?? string.Empty
             : $"{Path.GetDirectoryName(sources[0].TrimEnd('\\'))}  →  {target.TrimEnd('\\')}";
@@ -106,15 +107,15 @@ public sealed class TransferItemViewModel : BindableBase
 
     public string StatusText => _state switch
     {
-        TransferState.Queued => "Queued",
-        TransferState.Preparing => "Preparing",
+        TransferState.Queued => Loc.T("Queued"),
+        TransferState.Preparing => Loc.T("Preparing"),
         TransferState.Running => $"{_percent:0} %",
-        TransferState.Paused => "Paused",
-        TransferState.WaitingForAnswer => "Needs your answer",
-        TransferState.Completed => "Done",
-        TransferState.CompletedWithErrors => $"Done, {Result?.Failed ?? 0} failed",
-        TransferState.Cancelled => "Cancelled",
-        _ => string.IsNullOrEmpty(ErrorText) ? "Failed" : "Failed: " + ErrorText,
+        TransferState.Paused => Loc.T("Paused"),
+        TransferState.WaitingForAnswer => Loc.T("Needs your answer"),
+        TransferState.Completed => Loc.T("Done"),
+        TransferState.CompletedWithErrors => Loc.F("Done, {0} failed", Result?.Failed ?? 0),
+        TransferState.Cancelled => Loc.T("Cancelled"),
+        _ => string.IsNullOrEmpty(ErrorText) ? Loc.T("Failed") : Loc.F("Failed: {0}", Loc.T(ErrorText)),
     };
 
     /// <summary>Why the operation failed (shown in the row instead of a message box).</summary>
@@ -181,7 +182,7 @@ public sealed class TransferItemViewModel : BindableBase
             _indeterminate = true;
             OnPropertyChanged(nameof(IsIndeterminate));
             CurrentFile = p.CurrentSource;
-            DetailText = "Reading directory tree...";
+            DetailText = Loc.T("Reading directory tree...");
             return;
         }
         if (_state == TransferState.Preparing)
@@ -191,13 +192,13 @@ public sealed class TransferItemViewModel : BindableBase
         Percent = Math.Round(p.TotalFraction * 100, 1);
         CurrentFile = p.CurrentSource;
         DetailText = Kind == OperationKind.Delete || p.TotalBytes == 0
-            ? $"{p.ItemsDone:N0} / {p.ItemsTotal:N0} items"
+            ? Loc.F("{0} / {1} items", p.ItemsDone.ToString("N0"), p.ItemsTotal.ToString("N0"))
             : $"{Formats.ShortSize(p.TotalBytesDone)} / {Formats.ShortSize(p.TotalBytes)}  ·  {p.ItemsDone:N0} / {p.ItemsTotal:N0}";
         if (_state == TransferState.Running)
         {
             SpeedText = p.BytesPerSecond > 0 ? Formats.ShortSize((long)p.BytesPerSecond) + "/s" : string.Empty;
             RemainingText = p.Remaining is TimeSpan r
-                ? (r.TotalHours >= 1 ? $"{(int)r.TotalHours}:{r.Minutes:00}:{r.Seconds:00}" : $"{r.Minutes}:{r.Seconds:00}") + " left"
+                ? Loc.F("{0} left", r.TotalHours >= 1 ? $"{(int)r.TotalHours}:{r.Minutes:00}:{r.Seconds:00}" : $"{r.Minutes}:{r.Seconds:00}")
                 : string.Empty;
         }
     }
@@ -324,11 +325,11 @@ public sealed class TransfersViewModel : BindableBase
             int paused = Items.Count(i => i.State == TransferState.Paused);
             int done = Items.Count(i => !i.IsActive);
             var parts = new List<string>();
-            if (running > 0) parts.Add($"{running} running");
-            if (paused > 0) parts.Add($"{paused} paused");
-            if (queued > 0) parts.Add($"{queued} queued");
-            if (done > 0) parts.Add($"{done} finished");
-            return parts.Count == 0 ? "No transfers" : string.Join(", ", parts);
+            if (running > 0) parts.Add(Loc.F("{0} running", running));
+            if (paused > 0) parts.Add(Loc.F("{0} paused", paused));
+            if (queued > 0) parts.Add(Loc.F("{0} queued", queued));
+            if (done > 0) parts.Add(Loc.F("{0} finished", done));
+            return parts.Count == 0 ? Loc.T("No transfers") : string.Join(", ", parts);
         }
     }
 

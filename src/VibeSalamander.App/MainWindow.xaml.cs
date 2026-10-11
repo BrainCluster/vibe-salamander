@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
 using VibeSalamander.Core.Commands;
 using VibeSalamander.Core.Settings;
+using VibeSalamander.Services;
 using VibeSalamander.ViewModels;
 using VibeSalamander.Views;
 
@@ -88,6 +89,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         UpdateMenuShortcuts();
         _vm.QuickBarsChanged += (_, _) => BuildQuickBars();
         RestoreWindowPlacement();
+        Loc.Translate(RootGrid); // the fixed texts of the window (menus, bars, headers) in the chosen language
         ApplyBars();
         ApplyAlwaysOnTop(_vm.Settings.AlwaysOnTop);
         RootGrid.ActualThemeChanged += (_, _) => OnThemeChanged();
@@ -324,6 +326,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             button.Click += Toolbar_Click;
             ToolbarPanel.Children.Add(button);
         }
+        Loc.Translate(ToolbarPanel);
     }
 
     private Button BuildViewMenuButton()
@@ -366,7 +369,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
                 continue;
             string custom = i < _vm.Settings.HotPathNames.Count ? _vm.Settings.HotPathNames[i] : string.Empty;
             string label = !string.IsNullOrWhiteSpace(custom) ? custom
-                : path == Core.FileSystem.ThisPcProvider.RootPath ? "This PC"
+                : path == Core.FileSystem.ThisPcProvider.RootPath ? Loc.T("This PC")
                 : Path.GetFileName(path.TrimEnd('\\')) is { Length: > 0 } name ? name : path;
             var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
             content.Children.Add(new FontIcon { Glyph = "\uE734", FontFamily = IconFont, FontSize = 12 });
@@ -471,6 +474,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
                 sub.Items.Add(new MenuFlyoutItem { Text = "(nothing to show)", IsEnabled = false });
             PluginsMenu.Items.Add(sub);
         }
+        foreach (MenuFlyoutItemBase item in PluginsMenu.Items)
+            Loc.Translate(item);
         UpdateMenuShortcuts();
     }
 
@@ -551,7 +556,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     private void SaveConfiguration_Click(object sender, RoutedEventArgs e)
     {
         _vm.SaveSettings();
-        Notify("Configuration saved to " + SettingsStore.FilePath, isError: false);
+        Notify($"Configuration saved to {SettingsStore.FilePath}", isError: false);
     }
 
     private async void ExportConfiguration_Click(object sender, RoutedEventArgs e) => await ExportConfigurationAsync(AppWindow.Id);
@@ -575,11 +580,11 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             _vm.SaveSettings(); // panels' current state into the settings
             _vm.SuppressSettingsSave = suppressed;
             SettingsStore.Export(_vm.Settings, picked.Path);
-            Notify("Configuration exported to " + picked.Path, isError: false);
+            Notify($"Configuration exported to {picked.Path}", isError: false);
         }
         catch (Exception ex)
         {
-            Notify("Export failed: " + ex.Message);
+            Notify($"Export failed: {ex.Message}");
         }
     }
 
@@ -595,7 +600,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         }
         catch (Exception ex)
         {
-            Notify("Import failed: " + ex.Message);
+            Notify($"Import failed: {ex.Message}");
             return false;
         }
         if (string.IsNullOrEmpty(path))
@@ -638,9 +643,16 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Notify("The settings file could not be deleted: " + ex.Message);
+            Notify($"The settings file could not be deleted: {ex.Message}");
             return;
         }
+        Restart();
+    }
+
+    /// <summary>Saves the settings and restarts (Configuration → General → Language).</summary>
+    public void RestartApp()
+    {
+        _vm.SaveSettings();
         Restart();
     }
 
@@ -650,7 +662,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         _vm.SuppressSettingsSave = true;
         string? exe = Environment.ProcessPath;
         if (exe != null)
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = true });
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, "--restart") { UseShellExecute = true });
         _vm.Transfers.CancelAll();
         _closeConfirmed = true;
         _settingsWindow?.Close();
@@ -805,7 +817,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
                 label = string.Empty;
             }
 
-            _fkeyLabels[i].Text = label;
+            _fkeyLabels[i].Text = Loc.T(label);
             _fkeyActions[i] = action;
             _fkeyButtons[i].IsEnabled = action != null;
             // with a modifier held, the active keys get accent key caps
@@ -1063,7 +1075,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             try
             {
                 close = await ConfirmAsync("Exit Vibe Salamander",
-                    $"{count} transfer{(count == 1 ? " is" : "s are")} still running or queued.\nCancel {(count == 1 ? "it" : "them")} and exit?",
+                    Loc.F(count == 1 ? "{0} transfer is still running or queued.\nCancel it and exit?" : "{0} transfers are still running or queued.\nCancel them and exit?", count),
                     "Cancel and Exit");
             }
             finally
@@ -1247,8 +1259,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     public void Notify(string message, bool isError = true)
     {
         Notification.Severity = isError ? InfoBarSeverity.Error : InfoBarSeverity.Informational;
-        Notification.Title = isError ? "Couldn't do that" : string.Empty;
-        Notification.Message = message;
+        Notification.Title = isError ? Loc.T("Couldn't do that") : string.Empty;
+        Notification.Message = Loc.T(message);
         Notification.IsOpen = true;
         NotificationHost.Visibility = Visibility.Visible;
         if (_notificationTimer == null)

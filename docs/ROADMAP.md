@@ -120,7 +120,8 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Main window title (full path / directory / custom prefix); single instance; beep when background transfers finish | 3 | [x] |
 | Drives: auto-refresh and simple icons per drive type, refresh on activation, fallback for inaccessible directories; Change Drive menu (hidden drives, separators, extra items) | 3 | [x] |
 | Viewers / editors by file mask (default Windows app otherwise); history options and command line history | 3 | [x] |
-| Language, archivers, security / master password, icon overlays (plugins phase) | 4 | [ ] |
+| Languages: English, Hrvatski, Čeština, Deutsch, Español, Français, Italiano, Nederlands, Polski, Português (Brasil), Русский, Українська (Configuration → General → Language, restart to apply) | 4 | [x] |
+| Security / master password, icon overlays | 4 | [ ] |
 | Show/hide bars (toolbars, drive bars, command line, F-key bar, transfer panel) | 1 | [x] |
 | F-key bar follows held Ctrl / Alt / Shift (F1–F12) | 2 | [x] |
 | Ask for copy/move target (on/off, Configuration → Confirmations) | 2 | [x] |

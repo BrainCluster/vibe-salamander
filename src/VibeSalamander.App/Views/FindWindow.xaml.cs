@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media;
 using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Formatting;
 using VibeSalamander.Core.Search;
+using VibeSalamander.Services;
 
 namespace VibeSalamander.Views;
 
@@ -48,6 +49,8 @@ public sealed partial class FindWindow : Window
         _focusInPanel = focusInPanel;
         _confirm = confirm;
         _dialogs = new Dialogs(() => Content.XamlRoot, () => RootGrid.ActualTheme, () => AppWindow.Id);
+        Loc.Translate(RootGrid);
+        Title = Loc.T(Title);
         AppWindow.Closing += async (_, args) =>
         {
             // Configuration → Confirmations → "Do you want to close Find?"
@@ -119,7 +122,7 @@ public sealed partial class FindWindow : Window
         string directory = LookInBox.Text.Trim();
         if (!System.IO.Directory.Exists(directory))
         {
-            StatusText.Text = $"Directory not found: {directory}";
+            StatusText.Text = Loc.F("Directory not found: {0}", directory);
             return;
         }
         var options = new SearchOptions
@@ -135,10 +138,10 @@ public sealed partial class FindWindow : Window
 
         _results.Clear();
         _cts = new CancellationTokenSource();
-        FindButton.Content = "Stop";
+        FindButton.Content = Loc.T("Stop");
         Busy.IsActive = true;
         _flushTimer.Start();
-        var progress = new Progress<string>(dir => DispatcherQueue.TryEnqueue(() => { if (_cts != null) StatusText.Text = "Searching: " + dir; }));
+        var progress = new Progress<string>(dir => DispatcherQueue.TryEnqueue(() => { if (_cts != null) StatusText.Text = Loc.F("Searching: {0}", dir); }));
         string status;
         try
         {
@@ -147,19 +150,19 @@ public sealed partial class FindWindow : Window
                 lock (_pendingLock)
                     _pending.Add(new FindResult(entry));
             }, progress, _cts.Token);
-            status = $"{count:N0} item{(count == 1 ? "" : "s")} found";
+            status = count == 1 ? Loc.T("1 item found") : Loc.F("{0} items found", count.ToString("N0"));
         }
         catch (OperationCanceledException)
         {
-            status = "Search stopped";
+            status = Loc.T("Search stopped");
         }
         _flushTimer.Stop();
         Flush();
         _cts.Dispose();
         _cts = null;
-        FindButton.Content = "Find";
+        FindButton.Content = Loc.T("Find");
         Busy.IsActive = false;
-        StatusText.Text = status + $" ({_results.Count:N0} listed)";
+        StatusText.Text = status + " " + Loc.F("({0} listed)", _results.Count.ToString("N0"));
         if (_results.Count > 0)
         {
             Results.SelectedIndex = 0;
