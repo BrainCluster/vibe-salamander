@@ -220,6 +220,9 @@ public sealed partial class FilePane : UserControl
         }
         if (!_main.Settings.Panels.SlowClickRename || index != _caretAtPress || item.Entry.IsUpDir || item.IsDrive)
             return;
+        // like Explorer: only a click on the name itself renames (not the icon, size, date or empty space)
+        if (e.OriginalSource is not TextBlock { Tag: "NameText" })
+            return;
         // like Explorer: wait out the double-click time; a double-click cancels the rename
         if (_slowClickTimer == null)
         {
