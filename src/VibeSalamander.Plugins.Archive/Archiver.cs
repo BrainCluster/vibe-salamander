@@ -344,7 +344,7 @@ internal sealed class Archiver : IArchiver
         IArchive archive;
         try
         {
-            archive = ArchiveFactory.Open(file, new ReaderOptions { Password = s.Password, LeaveStreamOpen = true });
+            archive = ArchiveFactory.OpenArchive(file, new ReaderOptions { Password = s.Password, LeaveStreamOpen = true });
         }
         catch (Exception ex) when (IsPasswordProblem(ex, s))
         {
@@ -405,12 +405,12 @@ internal sealed class Archiver : IArchiver
         using Stream data = s.Kind switch
         {
             "tar.gz" or "tgz" => new GZipStream(file, CompressionMode.Decompress, leaveOpen: true),
-            "tar.bz2" or "tbz" or "tbz2" => new SharpCompress.Compressors.BZip2.BZip2Stream(
-                SharpCompress.IO.NonDisposingStream.Create(file), SharpCompress.Compressors.CompressionMode.Decompress, decompressConcatenated: true),
-            "tar.xz" or "txz" => new SharpCompress.Compressors.Xz.XZStream(SharpCompress.IO.NonDisposingStream.Create(file)),
-            "tar.lz" => new SharpCompress.Compressors.LZMA.LZipStream(
-                SharpCompress.IO.NonDisposingStream.Create(file), SharpCompress.Compressors.CompressionMode.Decompress),
-            _ => SharpCompress.IO.NonDisposingStream.Create(file),
+            "tar.bz2" or "tbz" or "tbz2" => SharpCompress.Compressors.BZip2.BZip2Stream.Create(
+                new KeepOpenStream(file), SharpCompress.Compressors.CompressionMode.Decompress, decompressConcatenated: true),
+            "tar.xz" or "txz" => new SharpCompress.Compressors.Xz.XZStream(new KeepOpenStream(file)),
+            "tar.lz" => SharpCompress.Compressors.LZMA.LZipStream.Create(
+                new KeepOpenStream(file), SharpCompress.Compressors.CompressionMode.Decompress),
+            _ => new KeepOpenStream(file),
         };
         using var reader = new TarReader(data, leaveOpen: true);
         while (true)
@@ -467,9 +467,9 @@ internal sealed class Archiver : IArchiver
         s.Extract(name, -1, time, () => kind switch
         {
             "gz" => new GZipStream(file, CompressionMode.Decompress, leaveOpen: true),
-            "bz2" => new SharpCompress.Compressors.BZip2.BZip2Stream(file, SharpCompress.Compressors.CompressionMode.Decompress, decompressConcatenated: true),
+            "bz2" => SharpCompress.Compressors.BZip2.BZip2Stream.Create(file, SharpCompress.Compressors.CompressionMode.Decompress, decompressConcatenated: true),
             "xz" => new SharpCompress.Compressors.Xz.XZStream(file),
-            _ => new SharpCompress.Compressors.LZMA.LZipStream(file, SharpCompress.Compressors.CompressionMode.Decompress),
+            _ => SharpCompress.Compressors.LZMA.LZipStream.Create(file, SharpCompress.Compressors.CompressionMode.Decompress),
         }, countBytes: false, position: () => SafePosition(file));
     }
 
@@ -627,4 +627,35 @@ internal sealed class ProgressStream : Stream
     public override void Flush() { }
     public override void SetLength(long value) => throw new NotSupportedException();
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+}
+
+/// <summary>Passes everything through but doesn't close the archive file (decompressors may dispose their input).</summary>
+internal sealed class KeepOpenStream : Stream
+{
+    private readonly Stream _inner;
+
+    public KeepOpenStream(Stream inner) => _inner = inner;
+
+    public override bool CanRead => _inner.CanRead;
+    public override bool CanSeek => _inner.CanSeek;
+    public override bool CanWrite => false;
+    public override long Length => _inner.Length;
+
+    public override long Position
+    {
+        get => _inner.Position;
+        set => _inner.Position = value;
+    }
+
+    public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+    public override int Read(Span<byte> buffer) => _inner.Read(buffer);
+    public override long Seek(long offset, SeekOrigin origin) => _inner.Seek(offset, origin);
+    public override void Flush() { }
+    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+    protected override void Dispose(bool disposing)
+    {
+        // the archive file stays open: its owner disposes it
+    }
 }
