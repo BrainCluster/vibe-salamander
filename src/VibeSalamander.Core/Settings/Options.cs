@@ -121,6 +121,9 @@ public sealed class PanelOptions
     /// <summary>Right-click opens the context menu (off: right-click marks, Ctrl+right-click opens the menu).</summary>
     public bool RightClickOpensMenu { get; set; } = true;
 
+    /// <summary>The Vibe Salamander context menu (with "Windows context menu" at the bottom); off = the Windows menu directly.</summary>
+    public bool VibeContextMenu { get; set; } = true;
+
     /// <summary>Clicking the name of the focused item again (slowly) starts Rename.</summary>
     public bool SlowClickRename { get; set; } = true;
 

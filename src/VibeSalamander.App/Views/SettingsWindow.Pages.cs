@@ -162,6 +162,9 @@ public sealed partial class SettingsWindow
         page.Children.Add(Section("Mouse"));
         page.Children.Add(Toggle("Right-click opens the context menu",
             "Off: right-click selects / unselects (hold Ctrl for the context menu).", p.RightClickOpensMenu, v => p.RightClickOpensMenu = v));
+        page.Children.Add(Toggle("Vibe Salamander context menu",
+            "The most used commands, with the full Windows menu at the bottom (Shift+right-click opens the Windows menu directly). Off: always the Windows menu.",
+            p.VibeContextMenu, v => p.VibeContextMenu = v));
         page.Children.Add(Toggle("Rename by slowly clicking the name twice", null, p.SlowClickRename, v => p.SlowClickRename = v));
         page.Children.Add(Number("Cancel drag-and-drop operations shorter than (ms)", "Protects against accidental drags.",
             p.DragCancelMilliseconds, 0, 2000, v => p.DragCancelMilliseconds = v));
