@@ -19,7 +19,8 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
    Thumbnails/Tiles), column chooser & resizing, hot paths, user menu, compare directories,
    directory sizes, drive information, command line integration, network drives.
 4. **Plugins** – plugin loader and Plugins Manager (done), archives: pack ZIP/TAR/TAR.GZ, unpack
-   ZIP/7z/RAR/TAR/gz/bz2/xz/lz (done); later: browsing archives like directories, FTP/SFTP,
+   ZIP/7z/RAR/TAR/gz/bz2/xz/lz, browse archives in the panels and copy files out (done); later:
+   changing archives in place, FTP/SFTP,
    picture viewer, checksum, renamer, file compare, disk map … (ports of Salamander plugins).
 
 ## Left / Right panel menu
@@ -101,7 +102,10 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Plugins manager (Configuration → Plugins: list, turn on/off, plugins folder) | 4 | [x] |
 | One submenu per plugin with its commands | 4 | [x] |
 | Archive plugin: pack ZIP / TAR / TAR.GZ, unpack ZIP, 7z, RAR, TAR (+gz/bz2/xz/lz), gz, bz2, xz, lz | 4 | [x] |
-| Browse archives like directories (Enter on an archive) | 4 | [ ] |
+| Browse archives like directories (Enter on an archive; address bar, chevrons, ".." back out) | 4 | [x] |
+| Copy files and directories out of an archive (F5 / Alt+F6, into the transfer panel) | 4 | [x] |
+| Open a file in an archive (Enter / F3: temporary copy, opened with its program) | 4 | [x] |
+| Change archives in place (copy into, delete, rename inside) | 4 | [ ] |
 | Last command (Ctrl+I) | 4 | [ ] |
 
 ## Options menu

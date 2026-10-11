@@ -199,6 +199,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
                 OnPropertyChanged(nameof(DisplayPath));
                 OnPropertyChanged(nameof(IsThisPc));
                 OnPropertyChanged(nameof(IsLocalDisk));
+                OnPropertyChanged(nameof(IsArchive));
                 OnPropertyChanged(nameof(EffectiveViewMode));
                 OnPropertyChanged(nameof(DriveMenuGlyph));
                 _directorySizes.Clear(); // sizes belong to the directory we left
@@ -219,6 +220,15 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     };
     public bool IsThisPc => _provider is ThisPcProvider;
     public bool IsLocalDisk => _provider.IsLocalDisk;
+
+    /// <summary>The panel shows the inside of an archive (read-only: copy out with F5, open files with Enter).</summary>
+    public bool IsArchive => _provider is ArchiveFileSystemProvider;
+
+    /// <summary>Which archive and which directory in it, when <see cref="IsArchive"/>.</summary>
+    public ArchiveLocation? Archive => _provider is ArchiveFileSystemProvider archives ? archives.Locate(_path) : null;
+
+    /// <summary>Enter on a file inside an archive: the main view model unpacks it to a temporary folder and opens it.</summary>
+    public event EventHandler<FileItemViewModel>? ArchiveFileOpenRequested;
 
     public string FreeSpaceText
     {
@@ -523,6 +533,10 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             await ChangeDriveAsync(drive.Root);
         else if (e.IsDirectory)
             await NavigateAsync(e.FullPath);
+        else if (IsArchive)
+            ArchiveFileOpenRequested?.Invoke(this, item);
+        else if (_registry.Find(e.FullPath) is ArchiveFileSystemProvider)
+            await NavigateAsync(e.FullPath); // into the archive, like a directory
         else
         {
             Core.Interop.ShellOperations.Open(e.FullPath, _path);

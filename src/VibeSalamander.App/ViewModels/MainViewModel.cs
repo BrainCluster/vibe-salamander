@@ -110,6 +110,10 @@ public sealed class MainViewModel : BindableBase
         _callbacks = new UiOperationCallbacks(dispatcher, host.Dialogs);
         Settings = SettingsStore.Load();
         Registry = new FileSystemRegistry();
+        // plugins: archives open like directories ("C:\\x.zip\\dir"), so their provider goes before the disk's
+        Plugins = new PluginManager();
+        ArchiveProvider = new ArchiveFileSystemProvider(Plugins);
+        Registry.RegisterFirst(ArchiveProvider);
         Icons = new IconCache(dispatcher);
         Thumbnails = new ThumbnailCache(dispatcher);
         Settings.HotPaths ??= new List<string>(); // "HotPaths": null in a hand-edited settings file
@@ -131,6 +135,8 @@ public sealed class MainViewModel : BindableBase
         {
             pane.Navigated += (_, path) => RememberRecent(Settings.WorkingDirectories, path);
             pane.FileOpened += (_, path) => RememberRecent(Settings.OpenedFiles, path);
+            PaneViewModel p = pane;
+            pane.ArchiveFileOpenRequested += async (_, item) => await OpenFromArchiveAsync(p, item);
         }
 
         Settings.General ??= new GeneralOptions();
@@ -173,9 +179,6 @@ public sealed class MainViewModel : BindableBase
                 ClearReadOnlyFromCd = Settings.General.ClearReadOnlyFromCd,
             },
             () => Math.Clamp(Settings.General.ParallelTransfers, 1, 8));
-        // plugins last: they may look at the panels and the transfer queue
-        Plugins = new PluginManager();
-
         Transfers.Finished += async (_, _) =>
         {
             try
@@ -191,6 +194,9 @@ public sealed class MainViewModel : BindableBase
 
     /// <summary>Built-in and installed plugins (Plugins → Plugins Manager).</summary>
     public PluginManager Plugins { get; }
+
+    /// <summary>Archives as directories (Enter on an archive).</summary>
+    public ArchiveFileSystemProvider ArchiveProvider { get; }
 
     /// <summary>Loads the plugins; called by the window once the panels exist.</summary>
     public void LoadPlugins() => Plugins.LoadAll(this, Settings.Plugins.Disabled);
@@ -244,11 +250,11 @@ public sealed class MainViewModel : BindableBase
         _host.FocusPane(_active);
     }
 
-    private static string StartPath(string saved, string fallback)
+    private string StartPath(string saved, string fallback)
     {
         if (saved.StartsWith(ThisPcProvider.RootPath, StringComparison.OrdinalIgnoreCase))
             return saved;
-        return Directory.Exists(saved) ? saved : fallback;
+        return Directory.Exists(saved) || ArchiveProvider.CanHandle(saved) ? saved : fallback; // a panel may have been in an archive
     }
 
     public void Activate(PaneViewModel pane)
@@ -324,6 +330,8 @@ public sealed class MainViewModel : BindableBase
         PaneViewModel p = _active;
         try
         {
+            if (p.IsArchive && await ArchiveCommandAsync(p, command))
+                return;
             switch (command)
             {
                 case CommandId.ChangeDriveLeft: Activate(Left); _host.ShowDriveMenu(Left); break;
@@ -537,13 +545,13 @@ public sealed class MainViewModel : BindableBase
     }
 
     /// <summary>Configuration → Viewers / Editors: the first rule whose masks match starts its program.</summary>
-    private bool RunProgramRule(IEnumerable<ProgramRule> rules, FileItemViewModel item)
+    private bool RunProgramRule(IEnumerable<ProgramRule> rules, FileItemViewModel item, UserMenuContext? fileContext = null)
     {
         foreach (ProgramRule rule in rules)
         {
             if (string.IsNullOrWhiteSpace(rule.Command) || !new WildcardMask(rule.Masks).IsMatch(item.Entry.Name))
                 continue;
-            UserMenuContext context = UserMenuContextFor(_active);
+            UserMenuContext context = fileContext ?? UserMenuContextFor(_active);
             string directory = UserMenu.Expand(string.IsNullOrWhiteSpace(rule.InitialDirectory) ? "$(Path)" : rule.InitialDirectory, context);
             try
             {
@@ -668,6 +676,153 @@ public sealed class MainViewModel : BindableBase
         Transfers.Enqueue(move ? OperationKind.Move : OperationKind.Copy, sources, target,
             (engine, ct) => move ? engine.MoveAsync(sources, target, ct) : engine.CopyAsync(sources, target, ct));
         return Task.CompletedTask;
+    }
+
+    // ---- inside archives (the panel shows an archive's content) --------------------------------
+
+    /// <summary>
+    /// Commands that work differently in an archive: F5 / Alt+F6 copy the selected items out, F3 / F4
+    /// open a temporary copy, and commands that would change the archive say it is read-only.
+    /// Returns true when the command was handled here.
+    /// </summary>
+    private async Task<bool> ArchiveCommandAsync(PaneViewModel p, CommandId command)
+    {
+        switch (command)
+        {
+            case CommandId.Copy:
+            case CommandId.Unpack:
+                await CopyFromArchiveAsync(p);
+                return true;
+            case CommandId.View:
+            case CommandId.Edit:
+                if (p.FocusedItem is { Entry.IsDirectory: false, Entry.IsUpDir: false } item)
+                    await OpenFromArchiveAsync(p, item);
+                return true;
+            case CommandId.Move:
+            case CommandId.Delete:
+            case CommandId.DeletePermanently:
+            case CommandId.QuickRename:
+            case CommandId.CreateDirectory:
+            case CommandId.EditNewFile:
+            case CommandId.ChangeAttributes:
+            case CommandId.ChangeCase:
+            case CommandId.ClipboardCut:
+            case CommandId.ClipboardCopy:
+            case CommandId.ClipboardPaste:
+            case CommandId.Pack:
+            case CommandId.NewMenu:
+                string name = p.Archive is { } location ? Path.GetFileName(location.ArchivePath) : "The archive";
+                _host.Notify($"\"{name}\" is open read-only: copy files out with F5, or unpack it with Alt+F6 from its folder.", isError: false);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>F5 in an archive: unpacks the selected files and directories into a directory (the other panel by default).</summary>
+    private async Task CopyFromArchiveAsync(PaneViewModel p)
+    {
+        if (p.Archive is not { } location)
+            return;
+        var items = p.GetOperationItems().Where(i => !i.Entry.IsUpDir).ToList();
+        if (items.Count == 0)
+            return;
+        string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : $"{items.Count} items";
+        string defaultTarget = Inactive.IsLocalDisk ? Inactive.Path : string.Empty;
+        if (defaultTarget.Length > 0 && !defaultTarget.EndsWith('\\'))
+            defaultTarget += "\\";
+        string target;
+        if (!Settings.AskCopyMoveTarget && Inactive.IsLocalDisk)
+        {
+            target = defaultTarget;
+        }
+        else
+        {
+            var answer = await _host.Dialogs.CopyMoveTargetAsync(move: false, what, defaultTarget);
+            _host.FocusPane(p);
+            if (answer is not { } a)
+                return;
+            target = a.Target;
+            if (a.DontAskAgain)
+            {
+                Settings.AskCopyMoveTarget = false;
+                SaveSettings();
+            }
+        }
+        string directory = PathUtil.Resolve(Inactive.IsLocalDisk ? Inactive.Path : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), target);
+        if (ArchiveProvider.CanHandle(directory) || !Path.IsPathRooted(directory))
+        {
+            _host.Notify("Files can only be copied out of an archive into a directory on disk.");
+            return;
+        }
+        if (!Directory.Exists(directory) && Settings.Confirm.CreateTargetPath &&
+            !await _host.ConfirmAsync("Copy", $"The target directory \"{directory.TrimEnd('\\')}\" doesn't exist. Do you want to create it?", "Create"))
+            return;
+
+        var inner = items.Select(i => location.ItemPath(i.Entry.Name)).ToList();
+        p.RememberSelection();
+        p.MarkAll(false);
+        Transfers.EnqueueJob(OperationKind.Copy, items.Select(i => i.Entry.FullPath).ToList(), directory, job =>
+            Task.Run(() => location.Archiver.UnpackAsync(new UnpackRequest
+            {
+                ArchivePath = location.ArchivePath,
+                TargetDirectory = directory,
+                Items = inner,
+                BasePath = location.InnerPath,
+            }, job)));
+    }
+
+    /// <summary>Folder for files opened from archives (emptied when the app closes).</summary>
+    public static string ArchiveTempRoot => Path.Combine(Path.GetTempPath(), "VibeSalamander", "FromArchives");
+
+    /// <summary>Enter / F3 on a file in an archive: unpacks it into a temporary folder and opens it.</summary>
+    private async Task OpenFromArchiveAsync(PaneViewModel p, FileItemViewModel item)
+    {
+        if (p.Archive is not { } location || item.Entry.IsDirectory)
+            return;
+        string directory = Path.Combine(ArchiveTempRoot, Guid.NewGuid().ToString("N")[..8]);
+        string file = Path.Combine(directory, item.Entry.Name);
+        string inner = location.ItemPath(item.Entry.Name);
+        Transfers.EnqueueJob(OperationKind.Unpack, new[] { item.Entry.FullPath }, directory, async job =>
+        {
+            OperationResult result = await Task.Run(() => location.Archiver.UnpackAsync(new UnpackRequest
+            {
+                ArchivePath = location.ArchivePath,
+                TargetDirectory = directory,
+                Items = new[] { inner },
+                BasePath = location.InnerPath,
+            }, job));
+            // back on the UI thread: open it with its program (Configuration → Viewers, else the default app)
+            if (!result.Cancelled && File.Exists(file))
+            {
+                FileItemViewModel opened = new(new FileEntry(item.Entry.Name, file, false, item.Entry.Size, item.Entry.LastWrite, FileAttributes.ReadOnly), p.Columns);
+                // the rule's $(FullName) / $(Path) must be the temporary copy, not the path inside the archive
+                var context = new UserMenuContext
+                {
+                    Path = directory,
+                    OtherPath = (p == Left ? Right : Left).IsLocalDisk ? (p == Left ? Right : Left).Path : string.Empty,
+                    FullName = file,
+                    Selected = new[] { file },
+                };
+                if (!RunProgramRule(Settings.Viewers, opened, context))
+                    ShellOperations.Open(file, directory);
+            }
+            return result;
+        });
+    }
+
+    /// <summary>At exit: removes the temporary copies of files opened from archives (best effort).</summary>
+    public static void CleanArchiveTemp()
+    {
+        try
+        {
+            if (Directory.Exists(ArchiveTempRoot))
+                Directory.Delete(ArchiveTempRoot, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // a file is still open in its program: it stays until the next time
+        }
     }
 
     // ---- archives (Alt+F5 / Alt+F6, the archive plugin) -----------------------------------------

@@ -77,6 +77,21 @@ public sealed class PluginManager
         Archivers.SelectMany(a => a.PackFormats.Select(f => (a, f)))
                  .GroupBy(x => x.f.Id, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
 
+    /// <summary>The archiver that opens this file in the panel like a directory, or null.</summary>
+    public IArchiver? FindBrowser(string path) => Archivers.FirstOrDefault(a => SafeCanBrowse(a, path));
+
+    private static bool SafeCanBrowse(IArchiver archiver, string path)
+    {
+        try
+        {
+            return archiver.CanBrowse(path);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     /// <summary>The archiver that unpacks this file, or null.</summary>
     public IArchiver? FindUnpacker(string path) => Archivers.FirstOrDefault(a => SafeCanUnpack(a, path));
 

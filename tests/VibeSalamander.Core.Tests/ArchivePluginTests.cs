@@ -233,4 +233,50 @@ public sealed class ArchivePluginTests : IDisposable
         Assert.Equal("docs/a.md", Archiver.EntryName(@"C:\work\docs\a.md", @"C:\work"));
         Assert.Equal("other.txt", Archiver.EntryName(@"D:\elsewhere\other.txt", @"C:\work"));
     }
+
+    [Theory]
+    [InlineData("zip", "list.zip")]
+    [InlineData("tar.gz", "list.tar.gz")]
+    public async Task ListAsync_returns_all_items_with_slash_paths(string format, string name)
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackAsync(archiver, format, name);
+        Assert.True(archiver.CanBrowse(archive));
+        IReadOnlyList<ArchiveItem> items = await archiver.ListAsync(archive, CancellationToken.None);
+        Assert.Contains(items, i => i.Path == "readme.txt" && !i.IsDirectory && i.Size == 5);
+        Assert.Contains(items, i => i.Path == "docs/a.md");
+        Assert.Contains(items, i => i.Path == "docs/deep/data.bin" && i.Size == 300_000);
+        Assert.Contains(items, i => i.Path == "docs" && i.IsDirectory);
+    }
+
+    [Theory]
+    [InlineData("zip", "part.zip")]
+    [InlineData("tar.gz", "part.tar.gz")]
+    public async Task Selected_items_unpack_relative_to_the_base_path(string format, string name)
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackAsync(archiver, format, name);
+        string target = Path.Combine(_root, "part-" + format);
+        OperationResult result = await archiver.UnpackAsync(new UnpackRequest
+        {
+            ArchivePath = archive,
+            TargetDirectory = target,
+            Items = new[] { "docs/deep", "docs/a.md" },
+            BasePath = "docs",
+        }, new FakeJob());
+        Assert.Equal(2, result.Succeeded);
+        Assert.True(File.Exists(Path.Combine(target, "deep", "data.bin")));
+        Assert.True(File.Exists(Path.Combine(target, "a.md")));
+        Assert.False(File.Exists(Path.Combine(target, "readme.txt")));
+        Assert.False(Directory.Exists(Path.Combine(target, "docs")));
+    }
+
+    [Fact]
+    public void Comic_books_and_ebooks_are_not_browsed()
+    {
+        IArchiver archiver = NewArchiver();
+        Assert.False(archiver.CanBrowse(Path.Combine(_root, "book.epub")));
+        Assert.True(archiver.CanUnpack(Path.Combine(_root, "book.epub")));
+        Assert.True(archiver.CanBrowse(Path.Combine(_root, "lib.jar")));
+    }
 }

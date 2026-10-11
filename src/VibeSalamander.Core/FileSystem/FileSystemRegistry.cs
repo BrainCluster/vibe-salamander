@@ -15,5 +15,8 @@ public sealed class FileSystemRegistry
 
     public void Register(IFileSystemProvider provider) => _providers.Add(provider);
 
+    /// <summary>Before the others: providers for paths that also look like disk paths ("C:\\x.zip\\dir").</summary>
+    public void RegisterFirst(IFileSystemProvider provider) => _providers.Insert(0, provider);
+
     public IFileSystemProvider? Find(string path) => _providers.FirstOrDefault(p => p.CanHandle(path));
 }
