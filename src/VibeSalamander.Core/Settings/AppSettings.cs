@@ -68,6 +68,7 @@ public sealed class AppSettings
     public MainWindowOptions Window { get; set; } = new();
     public DriveOptions Drives { get; set; } = new();
     public HistoryOptions History { get; set; } = new();
+    public PluginOptions Plugins { get; set; } = new();
 
     /// <summary>Viewers (F3) by file mask, first match wins; no match = the default Windows app.</summary>
     public List<ProgramRule> Viewers { get; set; } = new();

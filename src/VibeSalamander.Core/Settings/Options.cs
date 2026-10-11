@@ -328,3 +328,25 @@ public sealed class HighlightRule
     private FileSystem.WildcardMask? _mask;
     private string? _maskText;
 }
+
+/// <summary>Plugins (Plugins → Plugins Manager) and the last choices of Pack / Unpack.</summary>
+public sealed class PluginOptions
+{
+    /// <summary>Ids of plugins that are not loaded ("vibe.archive").</summary>
+    public List<string> Disabled { get; set; } = new();
+
+    /// <summary>Last format of Pack (Alt+F5), e.g. "zip", "tar.gz".</summary>
+    public string PackFormat { get; set; } = "zip";
+
+    /// <summary>"Store", "Fastest", "Normal" or "Maximum".</summary>
+    public string PackCompression { get; set; } = "Normal";
+
+    /// <summary>Move to archive: the packed files are deleted when packing succeeded.</summary>
+    public bool PackDeleteSources { get; set; }
+
+    /// <summary>Unpack (Alt+F6) each archive into a directory named after it.</summary>
+    public bool UnpackToSubfolder { get; set; } = true;
+
+    /// <summary>Files to unpack.</summary>
+    public string UnpackMask { get; set; } = "*.*";
+}

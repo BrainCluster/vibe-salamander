@@ -80,6 +80,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
                 MessageBeep(0);
         };
 
+        _vm.LoadPlugins();
+        BuildPluginsMenu();
         BuildFunctionKeyBar();
         BuildToolbar();
         BuildQuickBars();
@@ -426,6 +428,59 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
 
     public void ShowConfiguration() => ShowConfiguration(null);
 
+    public void ShowConfigurationPage(string page) => ShowConfiguration(page);
+
+    /// <summary>
+    /// Plugins menu, like Salamander's: the Plugins Manager, then one submenu per plugin with what it
+    /// adds (Pack / Unpack for archivers, its own commands).
+    /// </summary>
+    private void BuildPluginsMenu()
+    {
+        PluginsMenu.Items.Clear();
+        PluginsMenu.Items.Add(MenuItem("Plugins Manager...", nameof(CommandId.PluginsManager), "\uEA86"));
+        var loaded = _vm.Plugins.Plugins.Where(p => p.Enabled && p.Error == null).ToList();
+        if (loaded.Count > 0)
+            PluginsMenu.Items.Add(new MenuFlyoutSeparator());
+        foreach (Services.PluginInfo plugin in loaded)
+        {
+            var sub = new MenuFlyoutSubItem { Text = plugin.Name };
+            if (plugin.Archivers.Any(a => a.PackFormats.Count > 0))
+                sub.Items.Add(MenuItem("Pack...", nameof(CommandId.Pack), "\uE7B8"));
+            if (plugin.Archivers.Any(a => a.UnpackExtensions.Count > 0))
+                sub.Items.Add(MenuItem("Unpack...", nameof(CommandId.Unpack), "\uE896"));
+            foreach (Plugins.PluginCommand command in plugin.CommandContributors.SelectMany(c => c.Commands))
+            {
+                var item = new MenuFlyoutItem { Text = command.MenuText };
+                if (!string.IsNullOrEmpty(command.ShortcutText))
+                    item.KeyboardAcceleratorTextOverride = command.ShortcutText;
+                Plugins.PluginCommand c = command;
+                item.Click += async (_, _) =>
+                {
+                    try
+                    {
+                        await c.Execute(plugin.Host!);
+                    }
+                    catch (Exception ex)
+                    {
+                        Notify($"{plugin.Name}: {ex.Message}");
+                    }
+                };
+                sub.Items.Add(item);
+            }
+            if (sub.Items.Count == 0)
+                sub.Items.Add(new MenuFlyoutItem { Text = "(nothing to show)", IsEnabled = false });
+            PluginsMenu.Items.Add(sub);
+        }
+        UpdateMenuShortcuts();
+    }
+
+    private MenuFlyoutItem MenuItem(string text, string tag, string glyph)
+    {
+        var item = new MenuFlyoutItem { Text = text, Tag = tag, Icon = new FontIcon { Glyph = glyph } };
+        item.Click += Menu_Click;
+        return item;
+    }
+
     private void ShowConfiguration(string? page)
     {
         if (_settingsWindow == null)
@@ -631,6 +686,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         CommandId.Edit => "Edit",
         CommandId.EditNewFile => "NewFile",
         CommandId.Copy => "Copy",
+        CommandId.Pack => "Pack",
+        CommandId.Unpack => "Unpack",
         CommandId.Move => "Move",
         CommandId.CreateDirectory => "MakeDir",
         CommandId.ChangeDirectory => "ChngDir",
@@ -1291,6 +1348,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         _settingsWindow?.Close();
         _vm.Transfers.CancelAll();
         _vm.SaveSettings(onExit: true);
+        _vm.Plugins.ShutdownAll();
         _vm.Left.Dispose();
         _vm.Right.Dispose();
     }

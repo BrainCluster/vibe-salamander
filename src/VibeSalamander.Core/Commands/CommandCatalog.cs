@@ -74,6 +74,9 @@ public static class CommandCatalog
         [CommandId.ConnectNetworkDrive] = "Connect network drive...",
         [CommandId.DisconnectNetworkDrive] = "Disconnect network drive...",
         [CommandId.Configuration] = "Configuration...",
+        [CommandId.Pack] = "Pack...",
+        [CommandId.Unpack] = "Unpack...",
+        [CommandId.PluginsManager] = "Plugins manager...",
     };
 
     /// <summary>A readable name ("Compare directories..."); others are derived from the id ("Sort by name").</summary>
@@ -102,6 +105,8 @@ public static class CommandCatalog
     /// <summary>Group for the keyboard settings page.</summary>
     public static string Category(CommandId command) => command switch
     {
+        CommandId.Pack or CommandId.Unpack => "Files",
+        CommandId.PluginsManager => "Options",
         <= CommandId.Filter => "Panels",
         <= CommandId.CommandShell => "Files",
         <= CommandId.GoToNextSelected => "Selection",
@@ -169,6 +174,9 @@ public static class CommandCatalog
         CommandId.ViewIcons => "",
         CommandId.ViewThumbnails => "",
         CommandId.ViewTiles => "",
+        CommandId.Pack => "\uE7B8",
+        CommandId.Unpack => "\uE896",
+        CommandId.PluginsManager => "\uEA86",
         CommandId.Configuration => "",
         CommandId.Help => "",
         _ => "",

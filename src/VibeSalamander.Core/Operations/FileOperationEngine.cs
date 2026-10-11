@@ -10,7 +10,7 @@ namespace VibeSalamander.Core.Operations;
 /// Moves within one volume are plain renames. Files are copied with CopyFileEx (keeps attributes,
 /// timestamps, alternate streams; partial targets are removed on cancel).
 /// </summary>
-public sealed class FileOperationEngine
+public sealed class FileOperationEngine : IPausable
 {
     private readonly IOperationCallbacks _callbacks;
     private readonly IProgress<OperationProgress>? _progress;

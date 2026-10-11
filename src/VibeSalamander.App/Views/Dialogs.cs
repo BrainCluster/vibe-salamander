@@ -626,4 +626,175 @@ public sealed class Dialogs
         string mask = box.Text.Trim();
         return new WildcardMask(mask).MatchesEverything ? string.Empty : mask;
     }
+
+    // ---- archives (Alt+F5 / Alt+F6) -----------------------------------------------------------
+
+    /// <summary>A path box with a Browse button (the folder picker keeps the file name when keepFileName).</summary>
+    private (Grid Row, TextBox Box) PathRow(string text, bool keepFileName)
+    {
+        var box = new TextBox { Text = text, MinWidth = 420, IsSpellCheckEnabled = false };
+        var browse = new Button { Content = "Browse...", VerticalAlignment = VerticalAlignment.Stretch };
+        var row = new Grid { ColumnSpacing = 8 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.Children.Add(box);
+        Grid.SetColumn(browse, 1);
+        row.Children.Add(browse);
+        browse.Click += async (_, _) =>
+        {
+            string? folder = await PickFolderAsync();
+            if (folder == null)
+                return;
+            string name = keepFileName ? Path.GetFileName(box.Text.Trim()) : string.Empty;
+            box.Text = name.Length > 0 ? Path.Combine(folder, name) : (folder.EndsWith('\\') ? folder : folder + "\\");
+            box.Focus(FocusState.Programmatic);
+            box.SelectionStart = box.Text.Length;
+        };
+        return (row, box);
+    }
+
+    public sealed record PackAnswer(string ArchivePath, string FormatId, string Compression, bool DeleteSources);
+
+    /// <summary>
+    /// Pack (Alt+F5): the archive's path and name (prefilled), its format and compression and "move to
+    /// archive". Changing the format changes the extension in the name. Null when cancelled.
+    /// </summary>
+    public async Task<PackAnswer?> PackAsync(string what, string defaultPath, IReadOnlyList<Plugins.ArchiveFormat> formats,
+        string formatId, string compression, bool deleteSources)
+    {
+        var (row, box) = PathRow(defaultPath, keepFileName: true);
+        var format = new ComboBox { MinWidth = 200, Header = "Format" };
+        foreach (Plugins.ArchiveFormat f in formats)
+            format.Items.Add(f.DisplayName);
+        int selected = Math.Max(0, formats.ToList().FindIndex(f => string.Equals(f.Id, formatId, StringComparison.OrdinalIgnoreCase)));
+        format.SelectedIndex = selected;
+        string[] levels = { "Store", "Fastest", "Normal", "Maximum" };
+        var level = new ComboBox { MinWidth = 160, Header = "Compression" };
+        foreach (string l in new[] { "Store (no compression)", "Fastest", "Normal", "Maximum (slowest)" })
+            level.Items.Add(l);
+        level.SelectedIndex = Math.Max(0, Array.IndexOf(levels, compression));
+        level.IsEnabled = formats[selected].HasCompressionLevels;
+        var move = new CheckBox { Content = "Delete the files after packing (move to archive)", IsChecked = deleteSources };
+
+        // the extension follows the format ("backup.zip" → "backup.tar.gz")
+        string currentExtension = formats[selected].Extension;
+        format.SelectionChanged += (_, _) =>
+        {
+            if (format.SelectedIndex < 0)
+                return;
+            Plugins.ArchiveFormat chosen = formats[format.SelectedIndex];
+            level.IsEnabled = chosen.HasCompressionLevels;
+            string text = box.Text.TrimEnd();
+            if (text.EndsWith(currentExtension, StringComparison.OrdinalIgnoreCase))
+                box.Text = text[..^currentExtension.Length] + chosen.Extension;
+            currentExtension = chosen.Extension;
+        };
+
+        var options = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        options.Children.Add(format);
+        options.Children.Add(level);
+        var body = new StackPanel { Spacing = 10 };
+        body.Children.Add(Text($"Pack {what} into:"));
+        body.Children.Add(row);
+        body.Children.Add(options);
+        body.Children.Add(move);
+
+        ContentDialog dialog = NewDialog("Pack", body);
+        dialog.PrimaryButtonText = "Pack";
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Primary;
+        bool enter = false;
+        box.KeyDown += (_, e) =>
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                enter = true;
+                e.Handled = true;
+                dialog.Hide();
+            }
+        };
+        dialog.Opened += (_, _) =>
+        {
+            box.Focus(FocusState.Programmatic);
+            // select the name without the extension, like a rename
+            string text = box.Text;
+            int nameStart = text.LastIndexOf('\\') + 1;
+            int nameEnd = text.EndsWith(currentExtension, StringComparison.OrdinalIgnoreCase) ? text.Length - currentExtension.Length : text.Length;
+            box.Select(nameStart, Math.Max(0, nameEnd - nameStart));
+        };
+        ContentDialogResult result = await ShowAsync(dialog);
+        if ((!enter && result != ContentDialogResult.Primary) || string.IsNullOrWhiteSpace(box.Text) || format.SelectedIndex < 0)
+            return null;
+        return new PackAnswer(box.Text.Trim(), formats[format.SelectedIndex].Id, levels[Math.Max(0, level.SelectedIndex)], move.IsChecked == true);
+    }
+
+    public sealed record UnpackAnswer(string Target, string Mask, bool ToSubfolder);
+
+    /// <summary>Unpack (Alt+F6): where to (prefilled with the other panel), which files, one folder per archive.</summary>
+    public async Task<UnpackAnswer?> UnpackAsync(string what, string defaultTarget, string mask, bool toSubfolder, string subfolderExample)
+    {
+        var (row, box) = PathRow(defaultTarget, keepFileName: false);
+        var maskBox = new TextBox { Header = "Files to unpack", Text = mask, MinWidth = 200, IsSpellCheckEnabled = false };
+        var subfolder = new CheckBox { Content = $"Into a folder named after the archive ({subfolderExample})", IsChecked = toSubfolder };
+        var body = new StackPanel { Spacing = 10 };
+        body.Children.Add(Text($"Unpack {what} to:"));
+        body.Children.Add(row);
+        body.Children.Add(subfolder);
+        body.Children.Add(maskBox);
+
+        ContentDialog dialog = NewDialog("Unpack", body);
+        dialog.PrimaryButtonText = "Unpack";
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Primary;
+        bool enter = false;
+        foreach (TextBox b in new[] { box, maskBox })
+        {
+            b.KeyDown += (_, e) =>
+            {
+                if (e.Key == Windows.System.VirtualKey.Enter)
+                {
+                    enter = true;
+                    e.Handled = true;
+                    dialog.Hide();
+                }
+            };
+        }
+        dialog.Opened += (_, _) => { box.Focus(FocusState.Programmatic); box.SelectAll(); };
+        ContentDialogResult result = await ShowAsync(dialog);
+        if ((!enter && result != ContentDialogResult.Primary) || string.IsNullOrWhiteSpace(box.Text))
+            return null;
+        string m = maskBox.Text.Trim();
+        return new UnpackAnswer(box.Text.Trim(), m.Length == 0 ? "*.*" : m, subfolder.IsChecked == true);
+    }
+
+    /// <summary>The password of an encrypted archive; null when cancelled.</summary>
+    public async Task<string?> PasswordAsync(string archivePath, bool wrongPassword, string? context = null)
+    {
+        var password = new PasswordBox { PlaceholderText = "Password", MinWidth = 320 };
+        var body = new StackPanel { Spacing = 8 };
+        if (!string.IsNullOrEmpty(context))
+            body.Children.Add(Text(context, secondary: true));
+        body.Children.Add(Text(wrongPassword ? "The password is wrong. Enter it again:" : "This archive is protected by a password:"));
+        body.Children.Add(Text(archivePath, bold: true));
+        body.Children.Add(password);
+        ContentDialog dialog = NewDialog("Password", body);
+        dialog.PrimaryButtonText = "OK";
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Primary;
+        bool enter = false;
+        password.KeyDown += (_, e) =>
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                enter = true;
+                e.Handled = true;
+                dialog.Hide();
+            }
+        };
+        dialog.Opened += (_, _) => password.Focus(FocusState.Programmatic);
+        ContentDialogResult result = await ShowAsync(dialog);
+        if (!enter && result != ContentDialogResult.Primary)
+            return null;
+        return password.Password;
+    }
 }

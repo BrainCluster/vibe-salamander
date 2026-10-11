@@ -31,7 +31,8 @@ VibeSalamander.sln
 │  │   ├─ Formatting/   sizes, dates, attributes (Salamander formats)
 │  │   ├─ Interop/      Win32/Shell P/Invoke (copy/move/delete, properties)
 │  │   └─ Settings/     JSON settings in %AppData%\VibeSalamander
-│  ├─ VibeSalamander.Plugins.Abstractions  contracts for future addons (no UI deps)
+│  ├─ VibeSalamander.Plugins.Abstractions  plugin contracts (no UI deps)
+│  ├─ VibeSalamander.Plugins.Archive       built-in archive plugin (pack / unpack)
 │  └─ VibeSalamander.App                   WinUI 3 desktop app (unpackaged, self-contained WinAppSDK)
 │      ├─ ViewModels/   PaneViewModel, FileItemViewModel, MainViewModel
 │      ├─ Views/        FilePane (one panel), dialogs
@@ -91,16 +92,26 @@ Every bar can be toggled (Options → Show), as in Salamander.
 * **Density.** One `RowHeight` setting (Compact 20 px ≈ Salamander, Comfortable 28 px ≈ Files) drives
   list, header and bar sizes.
 
-## Addons (planned, not implemented yet)
+## Plugins
 
-`VibeSalamander.Plugins.Abstractions` defines the contracts now so the core is shaped around them:
+`VibeSalamander.Plugins.Abstractions` holds the contracts. A plugin is a .NET assembly with a public
+class implementing `IVibePlugin`; in `Initialize(IPluginHost)` it registers what it adds:
 
-| Salamander plugin type | Vibe contract                   | Examples to port later            |
-|------------------------|----------------------------------|-----------------------------------|
-| File system            | `IFileSystemProviderFactory`     | FTP/SFTP, This PC, Nethood, Registry |
-| Archiver               | `IArchiveProviderFactory`        | ZIP, 7-Zip, TAR, RAR (unpack), ISO   |
-| Viewer                 | `IViewerFactory`                 | Picture, PE, Database, Multimedia    |
-| Menu extension         | `ICommandContributor`            | Checksum, Renamer, File Compare, DiskMap |
+| Salamander plugin type | Vibe contract           | Status / examples                                   |
+|------------------------|--------------------------|-----------------------------------------------------|
+| Archiver               | `IArchiver`              | **Archives** (built-in): pack ZIP/TAR/TAR.GZ, unpack ZIP/7z/RAR/TAR/gz/bz2/xz/lz |
+| Menu extension         | `ICommandContributor`    | Plugins menu commands (checksum, renamer, … later)  |
+| File system, viewer    | (later)                  | FTP/SFTP, archives as directories, picture viewer   |
 
-Addons will be .NET assemblies in `%AppData%\VibeSalamander\Addons\<name>\`, loaded in their own
-`AssemblyLoadContext` and talking to the app only through `IVibeHost`.
+* **Loading** (`Services/PluginManager`): built-in plugins are referenced by the app; others are
+  found in `<app>\Plugins\<name>\` and `%AppData%\VibeSalamander\Plugins\<name>\` (`<name>.dll`, or
+  every assembly in the folder), each in its own `AssemblyLoadContext` that shares Core and the
+  contracts with the app. Disabled plugins (Configuration → Plugins) are listed but not initialized.
+* **Pack / unpack** run in the transfer panel like copies: `TransfersViewModel.EnqueueJob` gives the
+  plugin an `IArchiveJob` (progress, pause, cancel, conflict/error/password questions marshalled to
+  the UI). `ProgressTracker` turns byte counts into speed and remaining time.
+* **Archive plugin** (`VibeSalamander.Plugins.Archive`): packs with .NET (`ZipArchive`, `TarWriter`
+  + `GZipStream`) into a temporary file that replaces the target when complete; unpacks ZIP/7z/RAR
+  with SharpCompress 0.38 (MIT; solid archives in one pass), TAR variants with .NET's `TarReader`
+  (pax/GNU/ustar) over gzip / bzip2 / xz / lzip streams. Entry names that would leave the target
+  directory are skipped; a wrong password is asked again.

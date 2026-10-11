@@ -123,4 +123,9 @@ public enum CommandId
     Help,
     About,
     Exit,
+
+    // phase 4: plugins (the archive plugin)
+    Pack,
+    Unpack,
+    PluginsManager,
 }

@@ -5,6 +5,10 @@ public enum OperationKind
     Copy,
     Move,
     Delete,
+    /// <summary>Alt+F5 (archiver plugins).</summary>
+    Pack,
+    /// <summary>Alt+F6 (archiver plugins).</summary>
+    Unpack,
 }
 
 /// <summary>Answer to "target already exists" (Salamander's overwrite confirmation).</summary>
@@ -53,6 +57,12 @@ public sealed class EngineOptions
 }
 
 public sealed record OperationError(string Path, string Message);
+
+/// <summary>Something the transfer panel can pause and resume (the copy engine, plugin jobs).</summary>
+public interface IPausable
+{
+    bool Paused { get; set; }
+}
 
 /// <summary>Callbacks the engine uses to ask the user. Called from a background thread; implementations marshal to the UI.</summary>
 public interface IOperationCallbacks

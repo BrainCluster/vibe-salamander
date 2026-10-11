@@ -9,6 +9,7 @@ using VibeSalamander.Core.Operations;
 using VibeSalamander.Core.Panels;
 using VibeSalamander.Core.Settings;
 using VibeSalamander.Core.Tools;
+using VibeSalamander.Plugins;
 using VibeSalamander.Services;
 
 namespace VibeSalamander.ViewModels;
@@ -43,6 +44,10 @@ public interface IUiHost
     // phase 3C
     /// <summary>Options → Configuration: the settings window.</summary>
     void ShowConfiguration();
+
+    // phase 4
+    /// <summary>The configuration window at a page ("Plugins").</summary>
+    void ShowConfigurationPage(string page);
 
     // phase 3B
     /// <summary>Shows a command menu at the pane's caret item (atCaret) or at its address bar.</summary>
@@ -146,6 +151,11 @@ public sealed class MainViewModel : BindableBase
         Settings.Drives.HiddenDrives ??= new List<string>();
         Settings.Drives.SeparatorAfter ??= new List<string>();
         Settings.History ??= new HistoryOptions();
+        Settings.Plugins ??= new PluginOptions();
+        Settings.Plugins.Disabled ??= new List<string>();
+        Settings.Plugins.PackFormat ??= "zip";
+        Settings.Plugins.PackCompression ??= "Normal";
+        Settings.Plugins.UnpackMask ??= "*.*";
         Settings.Viewers ??= new List<ProgramRule>();
         Settings.Editors ??= new List<ProgramRule>();
         Settings.CommandLineHistory ??= new List<string>();
@@ -163,6 +173,9 @@ public sealed class MainViewModel : BindableBase
                 ClearReadOnlyFromCd = Settings.General.ClearReadOnlyFromCd,
             },
             () => Math.Clamp(Settings.General.ParallelTransfers, 1, 8));
+        // plugins last: they may look at the panels and the transfer queue
+        Plugins = new PluginManager();
+
         Transfers.Finished += async (_, _) =>
         {
             try
@@ -174,6 +187,21 @@ public sealed class MainViewModel : BindableBase
                 // the watcher refreshes the panels anyway; a failed refresh is not worth a dialog
             }
         };
+    }
+
+    /// <summary>Built-in and installed plugins (Plugins → Plugins Manager).</summary>
+    public PluginManager Plugins { get; }
+
+    /// <summary>Loads the plugins; called by the window once the panels exist.</summary>
+    public void LoadPlugins() => Plugins.LoadAll(this, Settings.Plugins.Disabled);
+
+    /// <summary>A notification-bar message (also callable from plugins on other threads).</summary>
+    public void Notify(string message, bool isError = true)
+    {
+        if (_dispatcher.HasThreadAccess)
+            _host.Notify(message, isError);
+        else
+            _dispatcher.TryEnqueue(() => _host.Notify(message, isError));
     }
 
     /// <summary>Background copy/move/delete queue shown in the transfer panel.</summary>
@@ -361,6 +389,7 @@ public sealed class MainViewModel : BindableBase
                     break;
                 case CommandId.SharedDirectories: await ShowSharesAsync(p); break;
                 case CommandId.Configuration: _host.ShowConfiguration(); break;
+                case CommandId.PluginsManager: _host.ShowConfigurationPage("Plugins"); break;
                 case CommandId.CalculateDirectorySizes:
                     await CalculateOccupiedSpaceAsync(p, p.Items.Where(i => i.Entry.IsDirectory && !i.Entry.IsUpDir && !i.IsDrive).ToList());
                     break;
@@ -393,6 +422,8 @@ public sealed class MainViewModel : BindableBase
                 case CommandId.EditNewFile: await EditNewFileAsync(); break;
                 case CommandId.Copy: await CopyOrMoveAsync(move: false); break;
                 case CommandId.Move: await CopyOrMoveAsync(move: true); break;
+                case CommandId.Pack: await PackAsync(); break;
+                case CommandId.Unpack: await UnpackAsync(); break;
                 case CommandId.Delete: await DeleteAsync(permanent: false); break;
                 case CommandId.DeletePermanently: await DeleteAsync(permanent: true); break;
                 case CommandId.Properties: ShowProperties(); break;
@@ -637,6 +668,140 @@ public sealed class MainViewModel : BindableBase
         Transfers.Enqueue(move ? OperationKind.Move : OperationKind.Copy, sources, target,
             (engine, ct) => move ? engine.MoveAsync(sources, target, ct) : engine.CopyAsync(sources, target, ct));
         return Task.CompletedTask;
+    }
+
+    // ---- archives (Alt+F5 / Alt+F6, the archive plugin) -----------------------------------------
+
+    /// <summary>Alt+F5: packs the marked items (or the focused one) into an archive, in the transfer panel.</summary>
+    private async Task PackAsync()
+    {
+        var items = _active.GetOperationItems();
+        if (items.Count == 0 || !_active.IsLocalDisk)
+            return;
+        IReadOnlyList<(IArchiver Archiver, ArchiveFormat Format)> formats = Plugins.PackFormats;
+        if (formats.Count == 0)
+        {
+            _host.Notify("No plugin can pack: enable the Archives plugin in Plugins → Plugins Manager.");
+            return;
+        }
+        PluginOptions o = Settings.Plugins;
+        ArchiveFormat format = formats.FirstOrDefault(f => string.Equals(f.Format.Id, o.PackFormat, StringComparison.OrdinalIgnoreCase)).Format
+                               ?? formats[0].Format;
+
+        // "photos.zip" for one item, the directory's name for several; into the other panel like F5
+        string baseName = items.Count == 1
+            ? (items[0].Entry.IsDirectory ? items[0].Entry.Name : Path.GetFileNameWithoutExtension(items[0].Entry.Name))
+            : Path.GetFileName(_active.Path.TrimEnd('\\'));
+        if (string.IsNullOrWhiteSpace(baseName))
+            baseName = _active.Path.Length >= 1 ? _active.Path[..1] : "Archive"; // a drive root: "C"
+        string directory = Inactive.IsLocalDisk ? Inactive.Path : _active.Path;
+        string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : $"{items.Count} items";
+
+        var answer = await _host.Dialogs.PackAsync(what, Path.Combine(directory, baseName + format.Extension),
+            formats.Select(f => f.Format).ToList(), format.Id, o.PackCompression, o.PackDeleteSources);
+        _host.FocusPane(_active);
+        if (answer == null)
+            return;
+        (IArchiver archiver, ArchiveFormat chosen) = formats.First(f => f.Format.Id == answer.FormatId);
+        string archivePath = PathUtil.Resolve(_active.Path, answer.ArchivePath);
+        if (answer.ArchivePath.TrimEnd().EndsWith('\\') || Directory.Exists(archivePath))
+            archivePath = Path.Combine(archivePath, baseName + chosen.Extension); // only a directory was given
+        else if (!PluginManager.HasArchiveExtension(archivePath, chosen))
+            archivePath += chosen.Extension;
+        o.PackFormat = chosen.Id;
+        o.PackCompression = answer.Compression;
+        o.PackDeleteSources = answer.DeleteSources;
+        SaveSettings();
+
+        var sources = items.Select(i => i.Entry.FullPath).ToList();
+        string baseDirectory = _active.Path;
+        var compression = Enum.TryParse(answer.Compression, out ArchiveCompression c) ? c : ArchiveCompression.Normal;
+        bool deleteSources = answer.DeleteSources;
+        _active.RememberSelection();
+        _active.MarkAll(false);
+        Transfers.EnqueueJob(OperationKind.Pack, sources, archivePath, async job =>
+        {
+            // on a worker thread: a plugin that blocks on the job's questions must not block the UI thread
+            OperationResult result = await Task.Run(() => archiver.PackAsync(new PackRequest
+            {
+                Sources = sources,
+                BaseDirectory = baseDirectory,
+                ArchivePath = archivePath,
+                FormatId = chosen.Id,
+                Compression = compression,
+            }, job));
+            // move to archive: only when everything went in (and never when the archive is inside a packed directory)
+            if (deleteSources && !result.Cancelled && result.Failed == 0 && result.Skipped == 0 &&
+                !sources.Any(src => archivePath.StartsWith(src.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)))
+            {
+                var engine = new FileOperationEngine(new JobCallbacks(job));
+                OperationResult deleted = await engine.DeleteAsync(sources, job.Cancellation);
+                result.Failed += deleted.Failed;
+            }
+            return result;
+        });
+    }
+
+    /// <summary>Asks the plugin job's questions for the copy engine (deleting after "move to archive").</summary>
+    private sealed class JobCallbacks : IOperationCallbacks
+    {
+        private readonly IArchiveJob _job;
+
+        public JobCallbacks(IArchiveJob job) => _job = job;
+
+        public Task<ConflictChoice> ResolveConflictAsync(ConflictInfo conflict) => _job.ResolveConflictAsync(conflict);
+
+        public Task<ErrorChoice> ResolveErrorAsync(OperationError error) => _job.ResolveErrorAsync(error);
+    }
+
+    /// <summary>Alt+F6: unpacks the marked archives (or the focused one), each in its own transfer row.</summary>
+    private async Task UnpackAsync()
+    {
+        var items = _active.GetOperationItems();
+        if (items.Count == 0 || !_active.IsLocalDisk)
+            return;
+        var archives = items.Where(i => !i.Entry.IsDirectory)
+                            .Select(i => (Item: i, Archiver: Plugins.FindUnpacker(i.Entry.FullPath)))
+                            .Where(x => x.Archiver != null)
+                            .ToList();
+        if (archives.Count == 0)
+        {
+            _host.Notify(items.Count == 1
+                ? $"\"{items[0].Entry.Name}\" is not an archive Vibe Salamander can unpack."
+                : "None of the selected files is an archive Vibe Salamander can unpack.");
+            return;
+        }
+        PluginOptions o = Settings.Plugins;
+        string defaultTarget = Inactive.IsLocalDisk ? Inactive.Path : _active.Path;
+        if (!defaultTarget.EndsWith('\\'))
+            defaultTarget += "\\";
+        string what = archives.Count == 1 ? $"\"{archives[0].Item.Entry.Name}\"" : $"{archives.Count} archives";
+        string example = archives.Count == 1 ? Plugins.ArchiveBaseName(archives[0].Item.Entry.Name) + "\\" : "name\\";
+        var answer = await _host.Dialogs.UnpackAsync(what, defaultTarget, o.UnpackMask, o.UnpackToSubfolder, example);
+        _host.FocusPane(_active);
+        if (answer == null)
+            return;
+        o.UnpackMask = answer.Mask;
+        o.UnpackToSubfolder = answer.ToSubfolder;
+        SaveSettings();
+
+        string target = PathUtil.Resolve(_active.Path, answer.Target);
+        if (!Directory.Exists(target) && Settings.Confirm.CreateTargetPath &&
+            !await _host.ConfirmAsync("Unpack", $"The target directory \"{target.TrimEnd('\\')}\" doesn't exist. Do you want to create it?", "Create"))
+            return;
+        if (archives.Count > 1)
+        {
+            _active.RememberSelection();
+            _active.MarkAll(false);
+        }
+        foreach (var (item, archiver) in archives)
+        {
+            string archivePath = item.Entry.FullPath;
+            string directory = answer.ToSubfolder ? Path.Combine(target, Plugins.ArchiveBaseName(item.Entry.Name)) : target;
+            string mask = answer.Mask;
+            Transfers.EnqueueJob(OperationKind.Unpack, new[] { archivePath }, directory, job =>
+                Task.Run(() => archiver!.UnpackAsync(new UnpackRequest { ArchivePath = archivePath, TargetDirectory = directory, Mask = mask }, job)));
+        }
     }
 
     private async Task DeleteAsync(bool permanent)

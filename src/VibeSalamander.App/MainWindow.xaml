@@ -87,8 +87,8 @@
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="New (Explorer)..." Tag="NewMenu" Click="Menu_Click" />
                 <MenuFlyoutItem Text="Email..." Tag="Email" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+E" />
-                <MenuFlyoutItem Text="Pack..." IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F5" />
-                <MenuFlyoutItem Text="Unpack..." IsEnabled="False" KeyboardAcceleratorTextOverride="Alt+F9" />
+                <MenuFlyoutItem Text="Pack..." Tag="Pack" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F5" />
+                <MenuFlyoutItem Text="Unpack..." Tag="Unpack" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F6" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Exit" Tag="Exit" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F4" />
             </MenuBarItem>
@@ -173,9 +173,8 @@
                     <MenuFlyoutItem Text="Printers" Tag="Printers" Click="OpenFolder_Click" />
                 </MenuFlyoutSubItem>
             </MenuBarItem>
-            <MenuBarItem Title="Plugins">
-                <MenuFlyoutItem Text="Addons Manager... (planned)" IsEnabled="False" />
-            </MenuBarItem>
+            <!-- filled from the plugins (BuildPluginsMenu) -->
+            <MenuBarItem x:Name="PluginsMenu" Title="Plugins" />
             <MenuBarItem Title="Options">
                 <MenuFlyoutSubItem Text="Theme">
                     <RadioMenuFlyoutItem x:Name="ThemeSystemItem" Text="Use System Setting" GroupName="Theme" Tag="System" Click="Theme_Click" />

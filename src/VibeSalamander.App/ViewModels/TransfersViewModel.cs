@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using VibeSalamander.Core;
 using VibeSalamander.Core.Formatting;
 using VibeSalamander.Core.Operations;
+using VibeSalamander.Plugins;
 
 namespace VibeSalamander.ViewModels;
 
@@ -38,7 +39,14 @@ public sealed class TransferItemViewModel : BindableBase
         Sources = sources;
         Target = target;
         string what = sources.Count == 1 ? Path.GetFileName(sources[0].TrimEnd('\\')) : $"{sources.Count} items";
-        string verb = kind switch { OperationKind.Move => "Move", OperationKind.Delete => "Delete", _ => "Copy" };
+        string verb = kind switch
+        {
+            OperationKind.Move => "Move",
+            OperationKind.Delete => "Delete",
+            OperationKind.Pack => "Pack",
+            OperationKind.Unpack => "Unpack",
+            _ => "Copy",
+        };
         Title = $"{verb} {what}";
         Route = target == null
             ? Path.GetDirectoryName(sources[0].TrimEnd('\\')) ?? string.Empty
@@ -52,10 +60,19 @@ public sealed class TransferItemViewModel : BindableBase
     public string Route { get; }
 
     internal CancellationTokenSource Cancellation { get; } = new();
-    internal FileOperationEngine? Engine { get; set; }
+
+    /// <summary>What pauses: the copy engine or a plugin job (set when the operation starts).</summary>
+    internal IPausable? Pausable { get; set; }
     public OperationResult? Result { get; internal set; }
 
-    public string Glyph => Kind switch { OperationKind.Move => "", OperationKind.Delete => "", _ => "" };
+    public string Glyph => Kind switch
+    {
+        OperationKind.Move => "\uE8DE",
+        OperationKind.Delete => "\uE74D",
+        OperationKind.Pack => "\uE7B8",
+        OperationKind.Unpack => "\uE896",
+        _ => "\uE8C8",
+    };
 
     public TransferState State
     {
@@ -199,17 +216,17 @@ public sealed class TransferItemViewModel : BindableBase
 
     public void Pause()
     {
-        if (Engine == null || _state is not (TransferState.Running or TransferState.Preparing))
+        if (Pausable == null || _state is not (TransferState.Running or TransferState.Preparing))
             return;
-        Engine.Paused = true;
+        Pausable.Paused = true;
         State = TransferState.Paused;
     }
 
     public void Resume()
     {
-        if (Engine == null || _state != TransferState.Paused)
+        if (Pausable == null || _state != TransferState.Paused)
             return;
-        Engine.Paused = false;
+        Pausable.Paused = false;
         State = _indeterminate ? TransferState.Preparing : TransferState.Running;
     }
 
@@ -218,8 +235,8 @@ public sealed class TransferItemViewModel : BindableBase
         if (!IsActive)
             return;
         Cancellation.Cancel();
-        if (Engine != null)
-            Engine.Paused = false; // let a paused engine notice the cancellation
+        if (Pausable != null)
+            Pausable.Paused = false; // let a paused engine notice the cancellation
         if (_state == TransferState.Queued)
             State = TransferState.Cancelled;
     }
@@ -331,7 +348,32 @@ public sealed class TransfersViewModel : BindableBase
 
     /// <summary>Adds an operation; it starts as soon as a slot is free. Returns immediately.</summary>
     public TransferItemViewModel Enqueue(OperationKind kind, IReadOnlyList<string> sources, string? target,
-        Func<FileOperationEngine, CancellationToken, Task<OperationResult>> run)
+        Func<FileOperationEngine, CancellationToken, Task<OperationResult>> run) =>
+        Add(kind, sources, target, item =>
+        {
+            var engine = new FileOperationEngine(new ItemCallbacks(item, _dispatcher, _dialogs), new ItemProgress(item, _dispatcher))
+            {
+                Options = _engineOptions(),
+            };
+            item.Pausable = engine;
+            return run(engine, item.Cancellation.Token);
+        });
+
+    /// <summary>
+    /// Adds a plugin operation (pack, unpack): it runs like a copy - queued, with progress, pause,
+    /// cancel and questions shown when they come up.
+    /// </summary>
+    public TransferItemViewModel EnqueueJob(OperationKind kind, IReadOnlyList<string> sources, string? target,
+        Func<IArchiveJob, Task<OperationResult>> run) =>
+        Add(kind, sources, target, item =>
+        {
+            var job = new PluginJob(item, new ItemCallbacks(item, _dispatcher, _dialogs), new ItemProgress(item, _dispatcher));
+            item.Pausable = job;
+            return run(job);
+        });
+
+    private TransferItemViewModel Add(OperationKind kind, IReadOnlyList<string> sources, string? target,
+        Func<TransferItemViewModel, Task<OperationResult>> run)
     {
         var item = new TransferItemViewModel(kind, sources, target);
         item.PropertyChanged += (_, e) =>
@@ -344,7 +386,7 @@ public sealed class TransfersViewModel : BindableBase
         return item;
     }
 
-    private async Task RunAsync(TransferItemViewModel item, Func<FileOperationEngine, CancellationToken, Task<OperationResult>> run)
+    private async Task RunAsync(TransferItemViewModel item, Func<TransferItemViewModel, Task<OperationResult>> run)
     {
         try
         {
@@ -363,13 +405,8 @@ public sealed class TransfersViewModel : BindableBase
         {
             // cancelled between getting the slot and this continuation (it already shows "Cancelled")
             item.Cancellation.Token.ThrowIfCancellationRequested();
-            var engine = new FileOperationEngine(new ItemCallbacks(item, _dispatcher, _dialogs), new ItemProgress(item, _dispatcher))
-            {
-                Options = _engineOptions(),
-            };
-            item.Engine = engine;
             item.State = TransferState.Preparing;
-            OperationResult result = await run(engine, item.Cancellation.Token);
+            OperationResult result = await run(item);
             item.Result = result;
             item.State = result.Cancelled ? TransferState.Cancelled
                        : result.Failed > 0 ? TransferState.CompletedWithErrors
@@ -449,6 +486,9 @@ public sealed class TransfersViewModel : BindableBase
         public Task<ErrorChoice> ResolveErrorAsync(OperationError error) =>
             AskAsync(() => _dialogs.ErrorAsync(error, _item.Title), ErrorChoice.Cancel);
 
+        public Task<string?> AskPasswordAsync(string archivePath, bool wrongPassword) =>
+            AskAsync<string?>(() => _dialogs.PasswordAsync(archivePath, wrongPassword, _item.Title), null);
+
         private Task<T> AskAsync<T>(Func<Task<T>> ask, T fallback)
         {
             var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -486,5 +526,52 @@ public sealed class TransfersViewModel : BindableBase
         }
 
         public void Report(OperationProgress value) => _dispatcher.TryEnqueue(() => _item.Apply(value));
+    }
+
+    /// <summary>A plugin's view of its transfer row (IArchiveJob): progress, pause, cancel and questions.</summary>
+    private sealed class PluginJob : IArchiveJob, IPausable
+    {
+        private readonly TransferItemViewModel _item;
+        private readonly ItemCallbacks _callbacks;
+        private readonly ItemProgress _progress;
+        private readonly ManualResetEventSlim _running = new(true);
+        private volatile bool _paused;
+
+        public PluginJob(TransferItemViewModel item, ItemCallbacks callbacks, ItemProgress progress)
+        {
+            _item = item;
+            _callbacks = callbacks;
+            _progress = progress;
+        }
+
+        public CancellationToken Cancellation => _item.Cancellation.Token;
+
+        public bool Paused
+        {
+            get => _paused;
+            set
+            {
+                _paused = value;
+                if (value)
+                    _running.Reset();
+                else
+                    _running.Set();
+            }
+        }
+
+        public void WaitWhilePaused()
+        {
+            if (_paused)
+                _running.Wait(Cancellation); // throws OperationCanceledException when cancelled while paused
+            Cancellation.ThrowIfCancellationRequested();
+        }
+
+        public void Report(OperationProgress progress) => _progress.Report(progress);
+
+        public Task<ConflictChoice> ResolveConflictAsync(ConflictInfo conflict) => _callbacks.ResolveConflictAsync(conflict);
+
+        public Task<ErrorChoice> ResolveErrorAsync(OperationError error) => _callbacks.ResolveErrorAsync(error);
+
+        public Task<string?> AskPasswordAsync(string archivePath, bool wrongPassword) => _callbacks.AskPasswordAsync(archivePath, wrongPassword);
     }
 }
