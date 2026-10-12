@@ -415,8 +415,6 @@
 
         <!-- mouse rectangle selection (drawn over the list, doesn't take clicks) -->
         <Canvas x:Name="MarqueeLayer" Grid.Row="3" IsHitTestVisible="False">
-            <!-- the row under the mouse: drawn here at once (the list's own hover fades in and lags behind) -->
-            <Border x:Name="HoverHighlight" Visibility="Collapsed" CornerRadius="4" />
             <Border x:Name="Marquee" Visibility="Collapsed" BorderThickness="1" CornerRadius="2"
                     BorderBrush="{ThemeResource AccentFillColorDefaultBrush}">
                 <Rectangle Fill="{ThemeResource AccentFillColorDefaultBrush}" Opacity="0.18" />
