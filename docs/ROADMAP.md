@@ -148,6 +148,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Real shell icons, overlays | 1 (icons) / 3 (overlays) | [~] |
 | Drag & drop between panels and to/from Explorer | 2 | [x] |
 | Mouse rectangle selection from empty space (Ctrl toggles), with auto-scroll (new) | 3 | [x] |
+| Live drives: a plugged-in USB drive or memory card opens in the focused panel; panels leave a drive that is pulled out (This PC); drive bars update (new) | 4 | [x] |
 | Context menu (shell) | 2 | [x] |
 | Vibe Salamander context menu (common commands, View / Sort by, Windows menu at the bottom; Shift+right-click = Windows menu) | 4 | [x] |
 | Disk images: Enter mounts .iso / .img / .vhd(x) and opens the drive in the other panel; Unmount in the context menu; Open With for other programs | 4 | [x] |

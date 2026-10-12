@@ -31,6 +31,7 @@ No installation needed. Windows 10 (2004) or later.
 - Two panels with Salamander's keyboard model: Tab to switch, quick search by typing, Insert / Space to mark, Num + / − / * selections
 - Five views: Brief, Detailed, Icons, Thumbnails, Tiles (Alt+1…5); choose and resize columns; sort by name, extension, date, size or attributes
 - Windows 11 style address bar with a drive menu, clickable path segments and subfolder chevrons; drive bars; This PC with fullness bars
+- Live drives: plug in a USB drive or memory card and it opens in the focused panel; pull it out and the panel goes back to This PC
 - Hot paths 1–9, back / forward history, filter (Ctrl+F12), hidden and system files toggle, maximize or swap panels
 - Mouse rectangle selection, drag & drop between panels and to or from Explorer, auto-refresh that keeps the cursor and marks
 
