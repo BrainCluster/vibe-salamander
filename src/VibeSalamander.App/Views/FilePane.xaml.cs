@@ -68,68 +68,6 @@ public sealed partial class FilePane : UserControl
         FileList.AddHandler(PointerMovedEvent, new PointerEventHandler(Marquee_PointerMoved), handledEventsToo: true);
         FileList.AddHandler(PointerReleasedEvent, new PointerEventHandler(Marquee_PointerReleased), handledEventsToo: true);
         FileList.AddHandler(PointerCaptureLostEvent, new PointerEventHandler(Marquee_CaptureLost), handledEventsToo: true);
-        // instant hover highlight (instead of the list's animated one)
-        FileList.AddHandler(PointerMovedEvent, new PointerEventHandler(Hover_PointerMoved), handledEventsToo: true);
-        FileList.PointerExited += (_, _) => HideHover();
-        FileList.PointerCanceled += (_, _) => HideHover();
-        FileList.Loaded += (_, _) =>
-        {
-            if (FindDescendant<ScrollViewer>(FileList, _ => true) is { } scroller)
-                scroller.ViewChanging += (_, _) => HideHover(); // the row moves away from the mouse
-        };
-        MarqueeLayer.SizeChanged += (_, e) =>
-            MarqueeLayer.Clip = new RectangleGeometry { Rect = new Windows.Foundation.Rect(0, 0, e.NewSize.Width, e.NewSize.Height) };
-    }
-
-    // ---- hover highlight ---------------------------------------------------------------------
-
-    private ListViewItem? _hoverRow;
-
-    /// <summary>
-    /// Highlights the row under the mouse at once. The list's own pointer-over background fades in,
-    /// which looks like lag when the mouse moves quickly over many rows; it is made transparent
-    /// (ApplyOptions) and this overlay is drawn instead.
-    /// </summary>
-    private void Hover_PointerMoved(object sender, PointerRoutedEventArgs e)
-    {
-        if (e.Pointer.PointerDeviceType != Microsoft.UI.Input.PointerDeviceType.Mouse || _marqueeActive || IsRenaming)
-        {
-            HideHover();
-            return;
-        }
-        ListViewItem? row = null;
-        for (DependencyObject? node = e.OriginalSource as DependencyObject; node != null && node != FileList; node = VisualTreeHelper.GetParent(node))
-        {
-            if (node is ListViewItem item)
-            {
-                row = item;
-                break;
-            }
-        }
-        if (row == null)
-        {
-            HideHover();
-            return;
-        }
-        if (row == _hoverRow && HoverHighlight.Visibility == Visibility.Visible)
-            return;
-        _hoverRow = row;
-        Windows.Foundation.Point origin = row.TransformToVisual(MarqueeLayer).TransformPoint(new Windows.Foundation.Point(0, 0));
-        Canvas.SetLeft(HoverHighlight, origin.X);
-        Canvas.SetTop(HoverHighlight, origin.Y);
-        HoverHighlight.Width = row.ActualWidth;
-        HoverHighlight.Height = row.ActualHeight;
-        // the Fluent "subtle secondary" fill: the same tint the list uses for pointer-over
-        HoverHighlight.Background = new SolidColorBrush(FileList.ActualTheme == ElementTheme.Dark
-            ? Windows.UI.Color.FromArgb(0x0F, 0xFF, 0xFF, 0xFF)
-            : Windows.UI.Color.FromArgb(0x09, 0x00, 0x00, 0x00));
-        HoverHighlight.Visibility = Visibility.Visible;
-    }
-
-    private void HideHover()
-    {
-        _hoverRow = null;
-        HoverHighlight.Visibility = Visibility.Collapsed;
     }
 
     public PaneViewModel? ViewModel { get; private set; }
@@ -151,7 +89,6 @@ public sealed partial class FilePane : UserControl
         };
         viewModel.ListingChanged += (_, _) =>
         {
-            HideHover(); // the rows are new
             if (viewModel.EffectiveViewMode == ViewMode.Brief)
                 ApplyViewMode(); // column width follows the longest name
         };
@@ -366,7 +303,6 @@ public sealed partial class FilePane : UserControl
         double rowHeight = UiState.RowHeight; // density changes the Brief item height
         if (mode == _appliedView && briefWidth == _appliedBriefWidth && rowHeight == _appliedRowHeight)
             return;
-        HideHover(); // the rows move
         bool modeChanged = mode != _appliedView;
         _appliedView = mode;
         _appliedBriefWidth = briefWidth;
@@ -1458,8 +1394,6 @@ public sealed partial class FilePane : UserControl
             FileList.Background = background;
         else
             FileList.ClearValue(Control.BackgroundProperty);
-        // no animated pointer-over background: the hover highlight is drawn at once (Hover_PointerMoved)
-        FileList.Resources["ListViewItemBackgroundPointerOver"] = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         foreach (string key in new[] { "ListViewItemBackgroundSelected", "ListViewItemBackgroundSelectedPointerOver", "ListViewItemBackgroundSelectedPressed" })
         {
             if (UiState.FocusBackground is { } focus)
