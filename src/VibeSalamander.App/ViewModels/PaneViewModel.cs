@@ -569,15 +569,25 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             ? new HashSet<string>(_items.Where(i => i.IsMarked).Select(i => i.Entry.Name), StringComparer.OrdinalIgnoreCase)
             : null;
         int previousCaret = _caretIndex;
+        bool showHidden = _showHidden();
+        bool cacheable = provider is LocalFileSystemProvider;
+
+        // a folder seen a moment ago (back, up, a hot path): show it at once, then check it in the background
+        DirectoryListing? cached = !keepCaret && cacheable ? ListingCache.Get(path, showHidden) : null;
+        if (cached != null)
+        {
+            ApplyListing(provider, cached, focusName, null, 0, navigated: true);
+            UpdateWatcher();
+        }
 
         DirectoryListing listing;
         try
         {
-            listing = await provider.ListAsync(path, new ListingOptions { ShowHidden = _showHidden() }, cts.Token);
+            listing = await provider.ListAsync(path, new ListingOptions { ShowHidden = showHidden }, cts.Token);
         }
         catch (OperationCanceledException)
         {
-            return false;
+            return cached != null;
         }
         finally
         {
@@ -585,7 +595,26 @@ public sealed class PaneViewModel : BindableBase, IDisposable
                 IsLoading = false;
         }
         if (cts.IsCancellationRequested)
-            return false;
+            return cached != null;
+        if (cacheable)
+            ListingCache.Put(listing.Path, showHidden, listing);
+
+        if (cached != null)
+        {
+            // the background check: replace the listing only when the folder changed meanwhile
+            if (!ListingCache.SameContent(cached, listing))
+            {
+                ListingCache.Remove(path);
+                if (listing.Error == null && cacheable)
+                    ListingCache.Put(listing.Path, showHidden, listing);
+                ApplyListing(provider, listing, FocusedItem?.Entry.Name,
+                    new HashSet<string>(_items.Where(i => i.IsMarked).Select(i => i.Entry.Name), StringComparer.OrdinalIgnoreCase),
+                    _caretIndex, navigated: false);
+            }
+            else
+                FreeSpaceText = listing.FreeSpace is long freeNow ? Loc.F("{0} free", Formats.ShortSize(freeNow)) : string.Empty;
+            return true;
+        }
 
         // A missing/inaccessible directory: keep the current listing, show the error.
         if (listing.Error != null && listing.Entries.Count <= 1 && !string.Equals(path, _path, StringComparison.OrdinalIgnoreCase) && _path.Length > 0)
@@ -594,6 +623,15 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             return false;
         }
 
+        ApplyListing(provider, listing, focusName, marked, keepCaret ? previousCaret : 0, navigated: !keepCaret);
+        UpdateWatcher();
+        return true;
+    }
+
+    /// <summary>Shows a listing: path, entries, free space, then the sorted rows with the caret.</summary>
+    private void ApplyListing(IFileSystemProvider provider, DirectoryListing listing, string? focusName, HashSet<string>? marked,
+        int fallbackCaret, bool navigated)
+    {
         _provider = provider;
         Path = listing.Path;
         OnPropertyChanged(nameof(DisplayPath));
@@ -601,15 +639,14 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         _hiddenCount = listing.HiddenCount;
         FreeSpaceText = listing.FreeSpace is long free ? Loc.F("{0} free", Formats.ShortSize(free)) : string.Empty;
         Error = listing.Error == null ? null : Loc.T(listing.Error);
-        QuickSearch = string.Empty;
+        if (navigated)
+            QuickSearch = string.Empty;
         if (provider.IsLocalDisk && listing.Path.Length >= 2 && listing.Path[1] == ':')
             _lastPathOnDrive[char.ToUpperInvariant(listing.Path[0])] = listing.Path;
 
-        ApplySort(focusName, marked, keepCaret ? previousCaret : 0);
-        UpdateWatcher();
-        if (!keepCaret)
+        ApplySort(focusName, marked, fallbackCaret);
+        if (navigated)
             Navigated?.Invoke(this, listing.Path);
-        return true;
     }
 
     /// <summary>Raised after the panel went to another directory (for the list of working directories, Alt+F12).</summary>
@@ -960,11 +997,18 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     /// <summary>Applies changed drive options (auto refresh on/off) to the running watcher.</summary>
     public void ApplyDriveOptions()
     {
+        _watcherGeneration++;
         _watcher?.Dispose();
         _watcher = null;
         UpdateWatcher();
     }
 
+    private int _watcherGeneration;
+
+    /// <summary>
+    /// Watches the panel's directory for changes. The watcher is started off the UI thread (opening the
+    /// directory handle can take a moment, mostly on network drives), so navigation never waits for it.
+    /// </summary>
     private void UpdateWatcher()
     {
         bool autoRefresh = CurrentDriveOptions?.AutoRefresh ?? true;
@@ -972,30 +1016,45 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         if (_watcher != null && watchPath != null && string.Equals(_watcher.Path, watchPath, StringComparison.OrdinalIgnoreCase))
             return;
 
+        int generation = ++_watcherGeneration;
         _watcher?.Dispose();
         _watcher = null;
         if (watchPath == null)
             return;
-        try
+        _ = Task.Run(() =>
         {
-            _watcher = new FileSystemWatcher(watchPath)
+            FileSystemWatcher? watcher = null;
+            try
             {
-                IncludeSubdirectories = false,
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size |
-                               NotifyFilters.LastWrite | NotifyFilters.Attributes,
-                InternalBufferSize = 64 * 1024,
-            };
-            _watcher.Created += OnFileSystemChanged;
-            _watcher.Deleted += OnFileSystemChanged;
-            _watcher.Changed += OnFileSystemChanged;
-            _watcher.Renamed += OnFileSystemChanged;
-            _watcher.Error += (_, _) => ScheduleRefresh();
-            _watcher.EnableRaisingEvents = true;
-        }
-        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
-        {
-            _watcher = null; // e.g. some network shares: no auto refresh
-        }
+                watcher = new FileSystemWatcher(watchPath)
+                {
+                    IncludeSubdirectories = false,
+                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size |
+                                   NotifyFilters.LastWrite | NotifyFilters.Attributes,
+                    InternalBufferSize = 64 * 1024,
+                };
+                watcher.Created += OnFileSystemChanged;
+                watcher.Deleted += OnFileSystemChanged;
+                watcher.Changed += OnFileSystemChanged;
+                watcher.Renamed += OnFileSystemChanged;
+                watcher.Error += (_, _) => ScheduleRefresh();
+                watcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
+            {
+                watcher?.Dispose();
+                return; // e.g. some network shares: no auto refresh
+            }
+            FileSystemWatcher started = watcher;
+            if (!_dispatcher.TryEnqueue(() =>
+                {
+                    if (generation == _watcherGeneration && _watcher == null)
+                        _watcher = started;
+                    else
+                        started.Dispose(); // the panel moved on meanwhile
+                }))
+                started.Dispose();
+        });
     }
 
     private void OnFileSystemChanged(object sender, FileSystemEventArgs e) => ScheduleRefresh();
@@ -1020,7 +1079,9 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     public void Dispose()
     {
         _loadCts?.Cancel();
+        _watcherGeneration++; // a watcher still starting is dropped
         _watcher?.Dispose();
+        _watcher = null;
         _refreshTimer?.Stop();
     }
 }

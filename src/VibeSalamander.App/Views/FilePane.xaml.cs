@@ -1634,26 +1634,37 @@ public sealed partial class FilePane : UserControl
         if (_breadcrumbKey == key)
             return;
         _breadcrumbKey = key;
-        Breadcrumb.Children.Clear();
-        _crumbs.Clear();
         Brush foreground = PathForeground(ViewModel.IsActive);
 
         // shown when the path is too long: the leading locations move into its menu (like Explorer)
-        _overflowButton = CrumbButton(new FontIcon { Glyph = "\uE712", FontSize = 12, Foreground = foreground }, "More locations");
-        _overflowButton.Visibility = Visibility.Collapsed;
-        _overflowButton.Click += Overflow_Click;
-        Breadcrumb.Children.Add(_overflowButton);
+        if (_overflowButton == null)
+        {
+            _overflowButton = CrumbButton(new FontIcon { Glyph = "\uE712", FontSize = 12, Foreground = foreground }, "More locations");
+            _overflowButton.Visibility = Visibility.Collapsed;
+            _overflowButton.Click += Overflow_Click;
+            Breadcrumb.Children.Insert(0, _overflowButton);
+        }
 
+        // going into a subfolder or back up keeps the buttons the paths share; only the rest is rebuilt
         var segments = BreadcrumbSegments();
-        for (int i = 0; i < segments.Count; i++)
+        int keep = 0;
+        while (keep < _crumbs.Count && keep < segments.Count && _crumbs[keep].Label == segments[keep].Label &&
+               string.Equals(_crumbs[keep].Path, segments[keep].Path, StringComparison.Ordinal))
+            keep++;
+        for (int i = _crumbs.Count - 1; i >= keep; i--)
+        {
+            Breadcrumb.Children.Remove(_crumbs[i].Segment);
+            Breadcrumb.Children.Remove(_crumbs[i].Chevron);
+            _crumbs.RemoveAt(i);
+        }
+
+        for (int i = keep; i < segments.Count; i++)
         {
             var (label, path) = segments[i];
-            bool last = i == segments.Count - 1;
             var text = new TextBlock
             {
                 Text = label,
                 Foreground = foreground,
-                FontWeight = last ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxWidth = 360, // a very long folder name is trimmed instead of pushing everything out
@@ -1663,13 +1674,23 @@ public sealed partial class FilePane : UserControl
 
             Button chevron = CrumbButton(new FontIcon { Glyph = "\uE76C", FontSize = 8, Foreground = foreground }, null);
             chevron.Padding = new Thickness(3, 4, 3, 4);
-            string? next = last ? null : segments[i + 1].Path;
-            chevron.Click += async (sender, _) => await ShowSubfoldersAsync((Button)sender, path, next);
+            chevron.Click += async (sender, _) =>
+            {
+                // the folder after this one in the current path (it is preselected in the menu)
+                int index = _crumbs.FindIndex(c => c.Chevron == sender);
+                string? next = index >= 0 && index + 1 < _crumbs.Count ? _crumbs[index + 1].Path : null;
+                await ShowSubfoldersAsync((Button)sender, path, next);
+            };
 
             Breadcrumb.Children.Add(segment);
             Breadcrumb.Children.Add(chevron);
             _crumbs.Add(new Crumb(label, path, segment, chevron));
         }
+
+        // the current folder in bold
+        for (int i = 0; i < _crumbs.Count; i++)
+            if (_crumbs[i].Segment.Content is TextBlock label)
+                label.FontWeight = i == _crumbs.Count - 1 ? Microsoft.UI.Text.FontWeights.SemiBold : Microsoft.UI.Text.FontWeights.Normal;
         UpdateBreadcrumbOverflow();
     }
 

@@ -17,6 +17,8 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>Assets\VibeSalamander.ico</ApplicationIcon>
+    <!-- release builds are precompiled (ReadyToRun): no waiting for the JIT the first time a view or folder is shown -->
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Release'">true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
