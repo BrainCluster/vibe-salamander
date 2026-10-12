@@ -216,6 +216,9 @@ public sealed class DriveOptions
     public DriveTypeOptions CdRom { get; set; } = new() { AutoRefresh = false, SimpleIcons = false };
     public DriveTypeOptions Network { get; set; } = new();
 
+    /// <summary>A USB drive or memory card that is plugged in opens in the focused panel.</summary>
+    public bool OpenPluggedInDrives { get; set; } = true;
+
     /// <summary>Don't refresh network drives when the window becomes active.</summary>
     public bool NoRefreshOnActivation { get; set; }
 

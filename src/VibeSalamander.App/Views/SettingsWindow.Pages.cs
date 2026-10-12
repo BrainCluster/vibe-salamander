@@ -649,6 +649,10 @@ public sealed partial class SettingsWindow
             page.Children.Add(Toggle("Use automatic refresh", null, o.AutoRefresh, v => o.AutoRefresh = v, display: true));
             page.Children.Add(Toggle("Use simple icons", null, o.SimpleIcons, v => o.SimpleIcons = v, display: true));
         }
+        page.Children.Add(Section("Plugged-in drives"));
+        page.Children.Add(Toggle("Open USB drives and memory cards when they are plugged in",
+            "The drive opens in the focused panel. A panel showing a drive that is pulled out goes to This PC.",
+            d.OpenPluggedInDrives, v => d.OpenPluggedInDrives = v));
         page.Children.Add(Toggle("Do not refresh network drives when Vibe Salamander becomes active",
             "Manual refresh (Ctrl+R) can be necessary.", d.NoRefreshOnActivation, v => d.NoRefreshOnActivation = v));
 

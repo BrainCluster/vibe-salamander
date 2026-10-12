@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     private readonly MainViewModel _vm;
     private bool _dialogOpen;
     private FindWindow? _findWindow;
+    private DeviceWatcher? _deviceWatcher;
 
     public MainWindow()
     {
@@ -83,6 +84,11 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             if (!_windowActive && _vm.Settings.General.BeepWhenDoneInBackground && _vm.Transfers.ActiveCount == 0)
                 MessageBeep(0);
         };
+
+        // live drives: USB drives and memory cards open when plugged in, panels leave drives that are pulled out
+        _deviceWatcher = new DeviceWatcher(WindowHandle);
+        _deviceWatcher.Arrived += async (_, roots) => await _vm.OnDrivesArrivedAsync(roots);
+        _deviceWatcher.Removed += async (_, roots) => await _vm.OnDrivesRemovedAsync(roots);
 
         _vm.LoadPlugins();
         BuildPluginsMenu();
@@ -1382,6 +1388,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
 
     private void OnClosed()
     {
+        _deviceWatcher?.Dispose();
         AppSettings s = _vm.Settings;
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {

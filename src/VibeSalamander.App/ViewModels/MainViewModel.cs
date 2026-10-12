@@ -769,6 +769,67 @@ public sealed class MainViewModel : BindableBase
                 await pane.RefreshAsync();
     }
 
+    // ---- drives plugged in and pulled out (live USB) ---------------------------------------------
+
+    /// <summary>
+    /// Drives appeared (Windows WM_DEVICECHANGE): the drive bars and This PC are updated, and a USB
+    /// drive or memory card opens in the focused panel (Configuration → Drives). Mounted images and
+    /// internal disks are not opened.
+    /// </summary>
+    public async Task OnDrivesArrivedAsync(IReadOnlyList<string> roots)
+    {
+        try
+        {
+            // a new drive needs a moment before it can be read
+            for (int wait = 0; wait < 20 && !(await Task.Run(() => roots.All(IsReady))); wait++)
+                await Task.Delay(250);
+            await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
+            foreach (PaneViewModel pane in new[] { Left, Right })
+                if (pane.IsThisPc)
+                    await pane.RefreshAsync();
+
+            if (!Settings.Drives.OpenPluggedInDrives)
+                return;
+            foreach (string root in roots)
+            {
+                if (!await Task.Run(() => IsReady(root) && DriveBus.IsPlugIn(root)))
+                    continue;
+                PaneViewModel target = _active;
+                await target.NavigateAsync(root);
+                _host.FocusPane(target);
+                return;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // a drive that came and went at once: nothing to show
+        }
+    }
+
+    /// <summary>Drives are gone: panels showing them go to This PC, the drive bars and This PC are updated.</summary>
+    public async Task OnDrivesRemovedAsync(IReadOnlyList<string> roots)
+    {
+        try
+        {
+            foreach (PaneViewModel pane in new[] { Left, Right })
+            {
+                if (pane.IsThisPc)
+                    continue;
+                string path = pane.Path;
+                if (roots.Any(r => path.StartsWith(r[..2], StringComparison.OrdinalIgnoreCase)))
+                    await pane.NavigateAsync(ThisPcProvider.RootPath);
+            }
+            await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
+            foreach (PaneViewModel pane in new[] { Left, Right })
+                if (pane.IsThisPc)
+                    await pane.RefreshAsync();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // the next refresh shows the right state
+        }
+    }
+
     private static bool IsReady(string root)
     {
         try
