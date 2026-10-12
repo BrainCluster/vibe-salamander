@@ -19,7 +19,7 @@
                     <ColumnDefinition Width="{x:Bind Columns.TimeColumn, Mode=OneWay}" />
                     <ColumnDefinition Width="{x:Bind Columns.AttrColumn, Mode=OneWay}" />
                 </Grid.ColumnDefinitions>
-                <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
+                <TextBlock Text="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
                           Foreground="{x:Bind GlyphBrush, Mode=OneWay}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}"
                           HorizontalAlignment="Left" VerticalAlignment="Center" />
                 <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16"
@@ -58,7 +58,7 @@
                     <ColumnDefinition Width="84" />
                     <ColumnDefinition Width="150" />
                 </Grid.ColumnDefinitions>
-                <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
+                <TextBlock Text="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
                           Visibility="{x:Bind GlyphVisibility, Mode=OneWay}"
                           HorizontalAlignment="Left" VerticalAlignment="Center" />
                 <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16"
@@ -89,7 +89,7 @@
                     <ColumnDefinition Width="16" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
+                <TextBlock Text="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
                           Foreground="{x:Bind GlyphBrush, Mode=OneWay}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}" VerticalAlignment="Center" />
                 <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16" VerticalAlignment="Center" />
                 <TextBlock Tag="NameText" Grid.Column="1" Text="{x:Bind FullName}" Foreground="{x:Bind NameBrush, Mode=OneWay}"
