@@ -57,7 +57,7 @@ jobs:
         run: >
           dotnet publish src/VibeSalamander.App/VibeSalamander.App.csproj
           -c Release -r ${{ matrix.rid }} -p:Platform=${{ matrix.platform }}
-          --self-contained true
+          --self-contained true -p:PublishReadyToRun=true
           -o publish/VibeSalamander
 
       - name: Zip
