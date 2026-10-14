@@ -22,8 +22,12 @@ shortcuts, the menus, speed and precision) and gives it a modern Fluent look in 
 ## Download
 
 Get the latest zip from **[Releases](https://github.com/BrainCluster/vibe-salamander/releases/latest)**
-(`win-x64` for most PCs, `win-arm64` for ARM PCs), unzip it anywhere and run `VibeSalamander.exe`.
-No installation needed. Windows 10 (2004) or later.
+(`win-x64` for most PCs, `win-arm64` for ARM PCs), unzip it anywhere and run `VibeSalamander.exe`
+in the main folder (the program and its libraries are in `lib`). No installation needed.
+Windows 10 (2004) or later.
+
+To build the same folder yourself: `build\publish.ps1` (or `build\publish.ps1 -Runtime win-arm64`),
+the result is in `publish\VibeSalamander`.
 
 ## Features
 

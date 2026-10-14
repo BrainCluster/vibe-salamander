@@ -85,6 +85,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
                 MessageBeep(0);
         };
 
+        TaskbarIdentity.Apply(WindowHandle); // a release runs from "lib": pinning uses the starter in the main folder
+
         // live drives: USB drives and memory cards open when plugged in, panels leave drives that are pulled out
         _deviceWatcher = new DeviceWatcher(WindowHandle);
         _deviceWatcher.Arrived += async (_, roots) => await _vm.OnDrivesArrivedAsync(roots);
