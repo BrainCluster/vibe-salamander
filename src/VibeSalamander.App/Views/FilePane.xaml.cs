@@ -861,6 +861,28 @@ public sealed partial class FilePane : UserControl
                 Add("Open with...", "\uE7AC", CommandId.OpenWith);
                 Add("Edit", "\uE70F", CommandId.Edit);
             }
+            if (!directory && !several && local && Core.Interop.ScriptRunner.HostOf(item.Entry.FullPath) is var host && host != Core.Interop.ScriptHost.None)
+            {
+                // scripts: run in a console window that stays open
+                string script = item.Entry.FullPath;
+                var run = new MenuFlyoutItem
+                {
+                    Text = host == Core.Interop.ScriptHost.PowerShell ? "Run with PowerShell" : "Run in cmd",
+                    Icon = new FontIcon { Glyph = "\uE756" },
+                };
+                run.Click += (_, _) =>
+                {
+                    try
+                    {
+                        Core.Interop.ScriptRunner.Run(script);
+                    }
+                    catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+                    {
+                        _main.Notify(Loc.F("\"{0}\" could not be run: {1}", Path.GetFileName(script), ex.Message));
+                    }
+                };
+                menu.Items.Add(run);
+            }
             Separator();
             Add("Cut", "\uE8C6", CommandId.ClipboardCut);
             Add("Copy", "\uE8C8", CommandId.ClipboardCopy);
