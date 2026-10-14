@@ -991,7 +991,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     /// </summary>
     private void ScheduleTransfersAutoClose()
     {
-        int seconds = _vm.Settings.TransfersAutoCloseSeconds;
+        // an always visible panel keeps its list as a log: nothing is cleared by itself
+        int seconds = _vm.Settings.AlwaysShowTransfers ? 0 : _vm.Settings.TransfersAutoCloseSeconds;
         bool idle = !TransfersView.IsHeld && _vm.Transfers.HasItems && _vm.Transfers.ActiveCount == 0 &&
                     _vm.Transfers.Items.Any(i => i.State == TransferState.Completed); // only failures left: the panel stays
         if (seconds <= 0 || !idle)
@@ -1018,7 +1019,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
 
     private void UpdateTransfersLayout()
     {
-        bool show = _vm.Settings.ShowTransfers && _vm.Transfers.HasItems;
+        bool show = _vm.Settings.ShowTransfers && (_vm.Settings.AlwaysShowTransfers || _vm.Transfers.HasItems);
         TransfersView.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         TransfersSplitter.Visibility = show && !TransfersView.IsCollapsed ? Visibility.Visible : Visibility.Collapsed;
         if (!show)

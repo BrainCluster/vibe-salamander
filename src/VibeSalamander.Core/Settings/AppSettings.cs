@@ -115,6 +115,9 @@ public sealed class AppSettings
     /// <summary>Transfer panel below the file panels (shown while it has items).</summary>
     public bool ShowTransfers { get; set; } = true;
 
+    /// <summary>The transfer panel stays visible even with no transfers (otherwise only while it has transfers).</summary>
+    public bool AlwaysShowTransfers { get; set; }
+
     /// <summary>Seconds after the last transfer finished until the transfer panel closes (0 = it stays open).</summary>
     public int TransfersAutoCloseSeconds { get; set; } = 5;
 
