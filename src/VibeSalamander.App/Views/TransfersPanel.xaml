@@ -111,6 +111,15 @@
 
             <ListView x:Name="List" Grid.Row="1" SelectionMode="None" IsItemClickEnabled="False" Padding="0,2"
                       ItemTemplate="{StaticResource TransferRowTemplate}" ItemContainerStyle="{StaticResource VibeListItemStyle}" />
+
+            <!-- auto close: shrinks from full width to nothing while the panel waits to close -->
+            <Rectangle x:Name="CloseCountdown" Height="2" VerticalAlignment="Top" Margin="4,0,4,0" RadiusX="1" RadiusY="1"
+                       Fill="{ThemeResource AccentFillColorDefaultBrush}" Visibility="Collapsed"
+                       IsHitTestVisible="False" RenderTransformOrigin="0,0.5">
+                <Rectangle.RenderTransform>
+                    <ScaleTransform x:Name="CountdownScale" ScaleX="1" />
+                </Rectangle.RenderTransform>
+            </Rectangle>
         </Grid>
     </Border>
 </UserControl>

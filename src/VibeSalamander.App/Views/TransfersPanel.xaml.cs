@@ -3,6 +3,7 @@
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 using VibeSalamander.ViewModels;
 
 namespace VibeSalamander.Views;
@@ -40,6 +41,30 @@ public sealed partial class TransfersPanel : UserControl
             ToolTipService.SetToolTip(CollapseButton, value ? "Expand" : "Collapse");
             CollapsedChanged?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    private Storyboard? _countdown;
+
+    /// <summary>Shows the thin accent bar on top that runs out while the panel waits to close by itself.</summary>
+    public void StartCloseCountdown(TimeSpan duration)
+    {
+        _countdown?.Stop();
+        var shrink = new DoubleAnimation { From = 1, To = 0, Duration = new Duration(duration) };
+        Storyboard.SetTarget(shrink, CountdownScale);
+        Storyboard.SetTargetProperty(shrink, "ScaleX");
+        _countdown = new Storyboard();
+        _countdown.Children.Add(shrink);
+        CloseCountdown.Visibility = Visibility.Visible;
+        _countdown.Begin();
+    }
+
+    /// <summary>Hides the countdown bar (a new transfer started, or the panel closed).</summary>
+    public void StopCloseCountdown()
+    {
+        _countdown?.Stop();
+        _countdown = null;
+        CloseCountdown.Visibility = Visibility.Collapsed;
+        CountdownScale.ScaleX = 1;
     }
 
     /// <summary>Height of the header alone (the collapsed panel).</summary>

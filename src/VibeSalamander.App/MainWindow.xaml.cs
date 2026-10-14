@@ -991,10 +991,12 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     private void ScheduleTransfersAutoClose()
     {
         int seconds = _vm.Settings.TransfersAutoCloseSeconds;
-        bool idle = _vm.Transfers.HasItems && _vm.Transfers.ActiveCount == 0;
+        bool idle = _vm.Transfers.HasItems && _vm.Transfers.ActiveCount == 0 &&
+                    _vm.Transfers.Items.Any(i => i.State == TransferState.Completed); // only failures left: the panel stays
         if (seconds <= 0 || !idle)
         {
             _transfersCloseTimer?.Stop();
+            TransfersView.StopCloseCountdown();
             return;
         }
         if (_transfersCloseTimer == null)
@@ -1003,12 +1005,14 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             _transfersCloseTimer.IsRepeating = false;
             _transfersCloseTimer.Tick += (_, _) =>
             {
+                TransfersView.StopCloseCountdown();
                 if (_vm.Transfers.ActiveCount == 0)
                     _vm.Transfers.ClearSucceeded();
             };
         }
         _transfersCloseTimer.Interval = TimeSpan.FromSeconds(seconds);
         _transfersCloseTimer.Start(); // restarts the countdown when another transfer ends
+        TransfersView.StartCloseCountdown(TimeSpan.FromSeconds(seconds));
     }
 
     private void UpdateTransfersLayout()
