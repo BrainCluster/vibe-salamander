@@ -441,6 +441,13 @@ public sealed class TransfersViewModel : BindableBase
             Items.Remove(item);
     }
 
+    /// <summary>Removes the transfers that finished without problems (the ones that failed stay).</summary>
+    public void ClearSucceeded()
+    {
+        foreach (var item in Items.Where(i => i.State == TransferState.Completed).ToList())
+            Items.Remove(item);
+    }
+
     public void ClearFinished()
     {
         foreach (var item in Items.Where(i => !i.IsActive).ToList())

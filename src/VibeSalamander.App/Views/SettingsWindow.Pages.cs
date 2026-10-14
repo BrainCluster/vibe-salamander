@@ -626,6 +626,9 @@ public sealed partial class SettingsWindow
         page.Children.Add(Toggle("Command line", null, s.ShowCommandLine, v => s.ShowCommandLine = v));
         page.Children.Add(Toggle("Bottom toolbar (F1–F12)", null, s.ShowFunctionKeyBar, v => s.ShowFunctionKeyBar = v));
         page.Children.Add(Toggle("Transfer panel", "Shown while it has transfers.", s.ShowTransfers, v => s.ShowTransfers = v));
+        page.Children.Add(Number("Close the transfer panel after (seconds)",
+            "Counted from when the last transfer finishes. Transfers that failed stay in the panel. 0 = keep it open.",
+            s.TransfersAutoCloseSeconds, 0, 600, v => s.TransfersAutoCloseSeconds = v));
         return page;
     }
 
