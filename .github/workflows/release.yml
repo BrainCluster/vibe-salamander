@@ -54,16 +54,12 @@ jobs:
         run: dotnet test tests/VibeSalamander.Core.Tests/VibeSalamander.Core.Tests.csproj -c Release
 
       - name: Publish
-        run: >
-          dotnet publish src/VibeSalamander.App/VibeSalamander.App.csproj
-          -c Release -r ${{ matrix.rid }} -p:Platform=${{ matrix.platform }}
-          --self-contained true -p:PublishReadyToRun=true
-          -o publish/VibeSalamander
+        shell: pwsh
+        run: ./build/publish.ps1 -Runtime ${{ matrix.rid }} -Output publish/VibeSalamander
 
       - name: Zip
         shell: pwsh
         run: |
-          Remove-Item publish/VibeSalamander/*.pdb -ErrorAction SilentlyContinue
           $zip = "VibeSalamander-${{ needs.version.outputs.version }}-${{ matrix.rid }}.zip"
           Compress-Archive -Path publish/VibeSalamander -DestinationPath $zip
           "ZIP=$zip" >> $env:GITHUB_ENV
