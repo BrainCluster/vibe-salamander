@@ -139,7 +139,7 @@ public sealed class MainViewModel : BindableBase
         Settings.WorkingDirectories ??= new List<string>();
         foreach (PaneViewModel pane in new[] { Left, Right })
         {
-            pane.Navigated += (_, path) => RememberRecent(Settings.WorkingDirectories, path);
+            pane.Navigated += (_, path) => RememberRecent(Settings.WorkingDirectories, path, WorkingDirectoriesLimit);
             pane.FileOpened += (_, path) => RememberRecent(Settings.OpenedFiles, path);
             PaneViewModel p = pane;
             pane.ArchiveFileOpenRequested += async (_, item) => await OpenFromArchiveAsync(p, item);
@@ -1329,14 +1329,25 @@ public sealed class MainViewModel : BindableBase
 
     private const int MaxRecent = 30;
 
-    private static void RememberRecent(List<string> list, string path)
+    private static void RememberRecent(List<string> list, string path, int max = MaxRecent)
     {
         if (string.IsNullOrEmpty(path) || path.StartsWith(ThisPcProvider.RootPath, StringComparison.OrdinalIgnoreCase))
             return;
         list.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
         list.Insert(0, path);
-        if (list.Count > MaxRecent)
-            list.RemoveRange(MaxRecent, list.Count - MaxRecent);
+        if (list.Count > max)
+            list.RemoveRange(max, list.Count - max);
+    }
+
+    /// <summary>Configuration → History: how many working directories are kept (Alt+F12).</summary>
+    public int WorkingDirectoriesLimit => Math.Clamp(Settings.History.WorkingDirectoriesLimit, 1, 100);
+
+    /// <summary>Applies a lowered limit to the list at once.</summary>
+    public void TrimWorkingDirectories()
+    {
+        int max = WorkingDirectoriesLimit;
+        if (Settings.WorkingDirectories.Count > max)
+            Settings.WorkingDirectories.RemoveRange(max, Settings.WorkingDirectories.Count - max);
     }
 
     private static DirectoryComparer.Item ToCompareItem(FileItemViewModel i) =>
@@ -1684,7 +1695,7 @@ public sealed class MainViewModel : BindableBase
     private void ShowWorkingDirectories(PaneViewModel pane)
     {
         var entries = new List<MenuEntry> { MenuEntry.Header("Working directories") };
-        foreach (string directory in Settings.WorkingDirectories.Take(MaxRecent))
+        foreach (string directory in Settings.WorkingDirectories.Take(WorkingDirectoriesLimit))
         {
             string path = directory;
             entries.Add(new MenuEntry(path, async () => await pane.NavigateAsync(path), "\uE8B7"));

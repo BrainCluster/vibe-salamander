@@ -870,6 +870,11 @@ public sealed partial class SettingsWindow
         StackPanel page = Page("History", "Choose whether recently used values are kept with the configuration.");
         page.Children.Add(Toggle("Save history", "The list of opened files (Alt+F11).", h.SaveHistory, v => h.SaveHistory = v));
         page.Children.Add(Toggle("Save the list of working directories", "Alt+F12 and the drop-down arrow of the address bar.", h.SaveWorkingDirectories, v => h.SaveWorkingDirectories = v));
+        page.Children.Add(Number("Working directories to keep", "The most recent ones are listed first.", h.WorkingDirectoriesLimit, 1, 100, v =>
+        {
+            h.WorkingDirectoriesLimit = v;
+            _vm.TrimWorkingDirectories();
+        }));
 
         page.Children.Add(Section("Command line"));
         page.Children.Add(Hint("The command line history can contain passwords, so it has its own options."));

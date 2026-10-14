@@ -246,6 +246,9 @@ public sealed class HistoryOptions
     /// <summary>Keep the List of Working Directories (Alt+F12) between sessions.</summary>
     public bool SaveWorkingDirectories { get; set; } = true;
 
+    /// <summary>How many directories the List of Working Directories (Alt+F12) keeps.</summary>
+    public int WorkingDirectoriesLimit { get; set; } = 10;
+
     /// <summary>Up / Down in the command line recall earlier commands.</summary>
     public bool CommandLineHistory { get; set; } = true;
 
