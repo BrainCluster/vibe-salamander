@@ -3,6 +3,7 @@
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using VibeSalamander.ViewModels;
 
@@ -20,6 +21,38 @@ public sealed partial class TransfersPanel : UserControl
     public TransfersPanel()
     {
         InitializeComponent();
+        // the mouse over the panel or the keyboard focus in it holds the auto close
+        PointerEntered += (_, _) => SetHold(pointer: true, focus: _focusInside);
+        PointerExited += (_, _) => SetHold(pointer: false, focus: _focusInside);
+        PointerCanceled += (_, _) => SetHold(pointer: false, focus: _focusInside);
+        GotFocus += (_, _) => SetHold(_pointerInside, focus: true);
+        LostFocus += (_, _) => SetHold(_pointerInside, focus: XamlRoot != null && IsInside(FocusManager.GetFocusedElement(XamlRoot) as DependencyObject));
+    }
+
+    private bool _pointerInside;
+    private bool _focusInside;
+
+    /// <summary>True while the mouse is over the panel or it has the keyboard focus: it doesn't close by itself then.</summary>
+    public bool IsHeld => _pointerInside || _focusInside;
+
+    /// <summary>Raised when <see cref="IsHeld"/> changes.</summary>
+    public event EventHandler? HoldChanged;
+
+    private void SetHold(bool pointer, bool focus)
+    {
+        bool before = IsHeld;
+        _pointerInside = pointer;
+        _focusInside = focus;
+        if (before != IsHeld)
+            HoldChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private bool IsInside(DependencyObject? element)
+    {
+        for (DependencyObject? node = element; node != null; node = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(node))
+            if (node == this)
+                return true;
+        return false;
     }
 
     /// <summary>Raised when the list is collapsed to its header or expanded again.</summary>

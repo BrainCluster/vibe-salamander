@@ -70,6 +70,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             ScheduleTransfersAutoClose();
         };
         TransfersView.CollapsedChanged += (_, _) => UpdateTransfersLayout();
+        TransfersView.HoldChanged += (_, _) => ScheduleTransfersAutoClose(); // the mouse or focus on the panel holds the auto close
         RootGrid.SizeChanged += (_, _) => UpdateTransfersLayout(); // keep the panel within 60 % of the window
         TransfersView.Interacted += (_, _) => PaneView(_vm.Active).FocusList();
         AppWindow.Closing += AppWindow_Closing;
@@ -991,7 +992,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     private void ScheduleTransfersAutoClose()
     {
         int seconds = _vm.Settings.TransfersAutoCloseSeconds;
-        bool idle = _vm.Transfers.HasItems && _vm.Transfers.ActiveCount == 0 &&
+        bool idle = !TransfersView.IsHeld && _vm.Transfers.HasItems && _vm.Transfers.ActiveCount == 0 &&
                     _vm.Transfers.Items.Any(i => i.State == TransferState.Completed); // only failures left: the panel stays
         if (seconds <= 0 || !idle)
         {
