@@ -64,7 +64,11 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         _vm.CaretMoveRequested += (_, e) => PaneView(e.Pane).MoveCaret(e.Index);
 
         TransfersView.Initialize(_vm.Transfers);
-        _vm.Transfers.StateChanged += (_, _) => UpdateTransfersLayout();
+        _vm.Transfers.StateChanged += (_, _) =>
+        {
+            UpdateTransfersLayout();
+            ScheduleTransfersAutoClose();
+        };
         TransfersView.CollapsedChanged += (_, _) => UpdateTransfersLayout();
         RootGrid.SizeChanged += (_, _) => UpdateTransfersLayout(); // keep the panel within 60 % of the window
         TransfersView.Interacted += (_, _) => PaneView(_vm.Active).FocusList();
@@ -977,6 +981,36 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     private const double MinTransfersHeight = 80;
 
     /// <summary>Shows the transfer panel while it has items (unless switched off in Options → Show).</summary>
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _transfersCloseTimer;
+
+    /// <summary>
+    /// Configuration → Main Window: when nothing is running any more, the finished transfers are cleared
+    /// after a few seconds, so the panel closes. Transfers that failed or were cancelled stay (their
+    /// messages matter), and so does the panel then.
+    /// </summary>
+    private void ScheduleTransfersAutoClose()
+    {
+        int seconds = _vm.Settings.TransfersAutoCloseSeconds;
+        bool idle = _vm.Transfers.HasItems && _vm.Transfers.ActiveCount == 0;
+        if (seconds <= 0 || !idle)
+        {
+            _transfersCloseTimer?.Stop();
+            return;
+        }
+        if (_transfersCloseTimer == null)
+        {
+            _transfersCloseTimer = DispatcherQueue.CreateTimer();
+            _transfersCloseTimer.IsRepeating = false;
+            _transfersCloseTimer.Tick += (_, _) =>
+            {
+                if (_vm.Transfers.ActiveCount == 0)
+                    _vm.Transfers.ClearSucceeded();
+            };
+        }
+        _transfersCloseTimer.Interval = TimeSpan.FromSeconds(seconds);
+        _transfersCloseTimer.Start(); // restarts the countdown when another transfer ends
+    }
+
     private void UpdateTransfersLayout()
     {
         bool show = _vm.Settings.ShowTransfers && _vm.Transfers.HasItems;
