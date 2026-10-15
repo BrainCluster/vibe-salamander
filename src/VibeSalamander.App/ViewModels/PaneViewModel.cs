@@ -569,25 +569,15 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             ? new HashSet<string>(_items.Where(i => i.IsMarked).Select(i => i.Entry.Name), StringComparer.OrdinalIgnoreCase)
             : null;
         int previousCaret = _caretIndex;
-        bool showHidden = _showHidden();
-        bool cacheable = provider is LocalFileSystemProvider;
-
-        // a folder seen a moment ago (back, up, a hot path): show it at once, then check it in the background
-        DirectoryListing? cached = !keepCaret && cacheable ? ListingCache.Get(path, showHidden) : null;
-        if (cached != null)
-        {
-            ApplyListing(provider, cached, focusName, null, 0, navigated: true);
-            UpdateWatcher();
-        }
 
         DirectoryListing listing;
         try
         {
-            listing = await provider.ListAsync(path, new ListingOptions { ShowHidden = showHidden }, cts.Token);
+            listing = await provider.ListAsync(path, new ListingOptions { ShowHidden = _showHidden() }, cts.Token);
         }
         catch (OperationCanceledException)
         {
-            return cached != null;
+            return false;
         }
         finally
         {
@@ -595,26 +585,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
                 IsLoading = false;
         }
         if (cts.IsCancellationRequested)
-            return cached != null;
-        if (cacheable)
-            ListingCache.Put(listing.Path, showHidden, listing);
-
-        if (cached != null)
-        {
-            // the background check: replace the listing only when the folder changed meanwhile
-            if (!ListingCache.SameContent(cached, listing))
-            {
-                ListingCache.Remove(path);
-                if (listing.Error == null && cacheable)
-                    ListingCache.Put(listing.Path, showHidden, listing);
-                ApplyListing(provider, listing, FocusedItem?.Entry.Name,
-                    new HashSet<string>(_items.Where(i => i.IsMarked).Select(i => i.Entry.Name), StringComparer.OrdinalIgnoreCase),
-                    _caretIndex, navigated: false);
-            }
-            else
-                FreeSpaceText = listing.FreeSpace is long freeNow ? Loc.F("{0} free", Formats.ShortSize(freeNow)) : string.Empty;
-            return true;
-        }
+            return false;
 
         // A missing/inaccessible directory: keep the current listing, show the error.
         if (listing.Error != null && listing.Entries.Count <= 1 && !string.Equals(path, _path, StringComparison.OrdinalIgnoreCase) && _path.Length > 0)
