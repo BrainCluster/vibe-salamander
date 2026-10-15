@@ -252,6 +252,13 @@ public sealed partial class FilePane : UserControl
     {
         if (args.InRecycleQueue || args.Item is not FileItemViewModel item || _main == null)
             return;
+        if (args.Phase == 0)
+        {
+            // the row's texts first; its icon in a later pass, which the list skips for rows that are
+            // scrolled past quickly (dragging the scrollbar through thousands of files stays smooth)
+            args.RegisterUpdateCallback(List_ContainerContentChanging);
+            return;
+        }
         if (ViewModel?.CurrentDriveOptions?.SimpleIcons == true)
             return; // Configuration → Drives: generic icons on this kind of drive
         item.EnsureIcon(_main.Icons);
@@ -292,6 +299,16 @@ public sealed partial class FilePane : UserControl
         return Math.Round(Math.Clamp(longest * charWidth + 46, 126, 386)); // + icon and the row padding
     }
 
+    /// <summary>Detailed view: every row as wide as the list.</summary>
+    private double DetailedRowWidth() => FileList.ActualWidth > 0 ? Math.Floor(FileList.ActualWidth) : 800;
+
+    /// <summary>The list was resized: the Detailed rows follow its width.</summary>
+    private void FileList_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_appliedView == ViewMode.Detailed && FileList.ItemsPanelRoot is ItemsWrapGrid wrap)
+            wrap.ItemWidth = DetailedRowWidth();
+    }
+
     /// <summary>Switches the list's layout and item templates to the panel's view.</summary>
     private void ApplyViewMode()
     {
@@ -318,11 +335,13 @@ public sealed partial class FilePane : UserControl
 
         FileList.ItemsPanel = mode switch
         {
-            ViewMode.Brief => PanelTemplate($"<ItemsWrapGrid Orientation='Vertical' ItemWidth='{Num(briefWidth)}' ItemHeight='{Num(rowHeight)}' />"),
-            ViewMode.Icons => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='96' ItemHeight='104' />"),
-            ViewMode.Thumbnails => PanelTemplate($"<ItemsWrapGrid Orientation='Horizontal' ItemWidth='{Num(UiState.ThumbnailSize + 28)}' ItemHeight='{Num(UiState.ThumbnailSize + 40)}' />"),
-            ViewMode.Tiles => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='264' ItemHeight='64' />"),
-            _ => PanelTemplate("<ItemsStackPanel />"),
+            ViewMode.Brief => PanelTemplate($"<ItemsWrapGrid Orientation='Vertical' ItemWidth='{Num(briefWidth)}' ItemHeight='{Num(rowHeight)}' CacheLength='1' />"),
+            ViewMode.Icons => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='96' ItemHeight='104' CacheLength='1' />"),
+            ViewMode.Thumbnails => PanelTemplate($"<ItemsWrapGrid Orientation='Horizontal' ItemWidth='{Num(UiState.ThumbnailSize + 28)}' ItemHeight='{Num(UiState.ThumbnailSize + 40)}' CacheLength='1' />"),
+            ViewMode.Tiles => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='264' ItemHeight='64' CacheLength='1' />"),
+            // one item per line with a fixed height: the list knows its exact length (a steady scrollbar with
+            // thousands of files) and builds few rows ahead (CacheLength), which keeps memory down
+            _ => PanelTemplate($"<ItemsWrapGrid Orientation='Horizontal' MaximumRowsOrColumns='1' ItemHeight='{Num(rowHeight)}' ItemWidth='{Num(DetailedRowWidth())}' CacheLength='1' />"),
         };
         bool sideways = mode == ViewMode.Brief;
         ScrollViewer.SetHorizontalScrollMode(FileList, sideways ? ScrollMode.Enabled : ScrollMode.Disabled);
@@ -552,6 +571,12 @@ public sealed partial class FilePane : UserControl
     /// </summary>
     private void List_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (ViewModel != null && !IsRenaming && e.Key is (VirtualKey.Left or VirtualKey.Right) &&
+            ViewModel.EffectiveViewMode == ViewMode.Detailed && KeyboardState.CurrentModifiers() == KeyModifiers.None)
+        {
+            e.Handled = true; // one row per line: Left / Right don't move the caret (like a plain list)
+            return;
+        }
         if (ViewModel == null || IsRenaming || KeyboardState.CurrentModifiers() != KeyModifiers.Shift)
             return;
         ViewMode view = ViewModel.EffectiveViewMode;

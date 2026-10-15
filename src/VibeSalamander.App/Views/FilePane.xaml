@@ -403,6 +403,7 @@
                   PreviewKeyDown="List_PreviewKeyDown"
                   DoubleTapped="List_DoubleTapped"
                   ContainerContentChanging="List_ContainerContentChanging"
+                  SizeChanged="FileList_SizeChanged"
                   GotFocus="List_GotFocus"
                   CharacterReceived="List_CharacterReceived"
                   RightTapped="List_RightTapped"

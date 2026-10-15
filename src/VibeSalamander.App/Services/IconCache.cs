@@ -82,6 +82,11 @@ public sealed class IconCache
             bitmap.Invalidate();
             source = bitmap;
         }
+        // icons of individual files (.exe, .lnk, ...) are cached per path: a folder with thousands of them
+        // must not keep every icon for the rest of the session
+        if (_cache.Count > 2000)
+            foreach (string old in _cache.Keys.Where(k => k.StartsWith("file:", StringComparison.Ordinal)).ToList())
+                _cache.Remove(old);
         _cache[key] = source;
         if (_pending.Remove(key, out var callbacks))
             foreach (var callback in callbacks)
