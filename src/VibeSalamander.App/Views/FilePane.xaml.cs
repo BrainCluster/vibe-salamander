@@ -250,7 +250,13 @@ public sealed partial class FilePane : UserControl
 
     private void List_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
     {
-        if (args.InRecycleQueue || args.Item is not FileItemViewModel item || _main == null)
+        if (args.InRecycleQueue)
+        {
+            if (args.Item is FileItemViewModel recycled)
+                recycled.ReleaseLargeIcon(); // off screen: thumbnails are the big part of a row's memory
+            return;
+        }
+        if (args.Item is not FileItemViewModel item || _main == null)
             return;
         if (args.Phase == 0)
         {

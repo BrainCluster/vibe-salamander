@@ -13,7 +13,12 @@ public sealed class FileEntry
                      FileAttributes attributes, bool isUpDir = false, object? tag = null)
     {
         Name = name;
-        FullPath = fullPath;
+        // the folder part is shared by all entries of a listing; the full path is put together when asked for
+        int cut = fullPath.Length - name.Length;
+        if (!isUpDir && name.Length > 0 && cut > 0 && fullPath.EndsWith(name, StringComparison.Ordinal))
+            _directory = SharedDirectory(fullPath.AsSpan(0, cut));
+        else
+            _fullPath = fullPath;
         IsDirectory = isDirectory;
         Size = size;
         LastWrite = lastWrite;
@@ -44,7 +49,21 @@ public sealed class FileEntry
     /// <summary>Extension without the dot ("txt"), empty for directories.</summary>
     public string Extension { get; }
 
-    public string FullPath { get; }
+    public string FullPath => _fullPath ?? string.Concat(_directory, Name);
+
+    private readonly string? _directory;
+    private readonly string? _fullPath;
+
+    // a listing is built on one thread, entry after entry: the same folder string is reused for all of them
+    [ThreadStatic] private static string? t_lastDirectory;
+
+    private static string SharedDirectory(ReadOnlySpan<char> directory)
+    {
+        string? last = t_lastDirectory;
+        if (last != null && directory.SequenceEqual(last))
+            return last;
+        return t_lastDirectory = directory.ToString();
+    }
     public bool IsDirectory { get; }
     public bool IsUpDir { get; }
     public long Size { get; }

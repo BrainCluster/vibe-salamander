@@ -76,7 +76,11 @@ public sealed partial class FindWindow : Window
         _flushTimer = DispatcherQueue.CreateTimer();
         _flushTimer.Interval = TimeSpan.FromMilliseconds(200);
         _flushTimer.Tick += (_, _) => Flush();
-        Closed += (_, _) => _cts?.Cancel();
+        Closed += (_, _) =>
+        {
+            _cts?.Cancel();
+            _flushTimer.Stop(); // a running timer would keep the closed window alive
+        };
         RootGrid.Loaded += (_, _) => { NamedBox.Focus(FocusState.Programmatic); NamedBox.SelectAll(); };
     }
 

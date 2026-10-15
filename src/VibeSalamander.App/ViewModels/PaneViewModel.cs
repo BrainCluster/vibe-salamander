@@ -603,6 +603,9 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     private void ApplyListing(IFileSystemProvider provider, DirectoryListing listing, string? focusName, HashSet<string>? marked,
         int fallbackCaret, bool navigated)
     {
+        // leaving a folder with thousands of files: its rows are garbage now, give the memory back soon
+        if (_items.Count >= 3000 && !string.Equals(listing.Path, _path, StringComparison.OrdinalIgnoreCase))
+            MemoryCleanup.Schedule();
         _provider = provider;
         Path = listing.Path;
         OnPropertyChanged(nameof(DisplayPath));
@@ -700,7 +703,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             var vm = new FileItemViewModel(entry, Columns);
             if (marked != null && !entry.IsUpDir && marked.Contains(entry.Name))
                 vm.IsMarked = true;
-            if (entry.IsDirectory && _directorySizes.TryGetValue(entry.FullPath, out long size))
+            if (entry.IsDirectory && _directorySizes.Count > 0 && _directorySizes.TryGetValue(entry.FullPath, out long size))
                 vm.DirectorySize = size;
             items.Add(vm);
         }

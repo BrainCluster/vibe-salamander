@@ -248,6 +248,16 @@ public sealed class FileItemViewModel : BindableBase
     /// <summary>The big folder/file glyph shown until (or instead of) the thumbnail.</summary>
     public Visibility LargeGlyphVisibility => _largeIcon == null ? Visibility.Visible : Visibility.Collapsed;
 
+    /// <summary>The row scrolled out of view: its thumbnail is let go (the cache keeps the recent ones).</summary>
+    public void ReleaseLargeIcon()
+    {
+        if (_largeIconSize == 0)
+            return;
+        _largeIconSize = 0;
+        _largeIconLoadedSize = 0;
+        LargeIcon = null;
+    }
+
     /// <summary>Called when the item becomes visible in a large view; loads the thumbnail once per size.</summary>
     public void EnsureLargeIcon(Services.ThumbnailCache cache, uint size)
     {
@@ -257,7 +267,8 @@ public sealed class FileItemViewModel : BindableBase
         cache.Request(Entry, size, image =>
         {
             // requests of two sizes (Icons, then Thumbnails) may finish in either order: keep the larger image
-            if (image != null && size > _largeIconLoadedSize)
+            // _largeIconSize < size: the row scrolled away (or was released) before this arrived
+            if (image != null && size > _largeIconLoadedSize && _largeIconSize >= size)
             {
                 _largeIconLoadedSize = size;
                 LargeIcon = image;
