@@ -22,6 +22,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     private bool _dialogOpen;
     private FindWindow? _findWindow;
     private DeviceWatcher? _deviceWatcher;
+    private bool _wasMinimized;
 
     public MainWindow()
     {
@@ -90,6 +91,17 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
                 MessageBeep(0);
         };
 
+        // minimized: thumbnails are dropped and unused memory goes back to Windows
+        AppWindow.Changed += (_, _) =>
+        {
+            bool minimized = AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized };
+            if (minimized && !_wasMinimized)
+            {
+                _vm.Thumbnails.Clear();
+                MemoryCleanup.Trim();
+            }
+            _wasMinimized = minimized;
+        };
         TaskbarIdentity.Apply(WindowHandle); // a release runs from "lib": pinning uses the starter in the main folder
 
         // live drives: USB drives and memory cards open when plugged in, panels leave drives that are pulled out
@@ -512,6 +524,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             {
                 _settingsWindow = null;
                 _vm.SaveSettings();
+                MemoryCleanup.Schedule(); // the closed window's controls and pages are let go
             };
         }
         else if (page != null)
@@ -1392,7 +1405,11 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         if (_findWindow == null)
         {
             _findWindow = new FindWindow(directory, RootGrid.ActualTheme, FocusFoundItemAsync, () => _vm.Settings.Confirm);
-            _findWindow.Closed += (_, _) => _findWindow = null;
+            _findWindow.Closed += (_, _) =>
+            {
+                _findWindow = null;
+                MemoryCleanup.Schedule(); // the closed window and its results are let go
+            };
         }
         else
         {
