@@ -512,7 +512,7 @@ public sealed class MainViewModel : BindableBase
                     _host.ApplyAlwaysOnTop(Settings.AlwaysOnTop);
                     break;
                 case CommandId.Help:
-                    ShellOperations.Open("https://github.com/OpenSalamander/salamander");
+                    ShellOperations.Open("https://github.com/BrainCluster/vibe-salamander");
                     break;
                 case CommandId.About: _host.ShowAbout(); break;
                 case CommandId.Exit: _host.Exit(); break;

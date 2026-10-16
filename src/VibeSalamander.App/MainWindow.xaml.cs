@@ -1335,6 +1335,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         body.Children.Add(Link("Open Salamander", "https://github.com/OpenSalamander/salamander"));
         body.Children.Add(Para(Loc.T("Built with .NET, the Windows App SDK (WinUI 3) and SharpCompress (MIT licenses). See LICENSE.txt and CREDITS.md next to the program."), 0.8));
         body.Children.Add(Para(Loc.T("Settings:") + " " + SettingsStore.FilePath, 0.6));
+        body.Children.Add(Link("Vibe Salamander", "https://github.com/BrainCluster/vibe-salamander"));
 
         ContentDialog dialog = Dialogs.Create("About Vibe Salamander", new ScrollViewer { Content = body, MaxHeight = 520 });
         dialog.CloseButtonText = "OK";
