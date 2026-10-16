@@ -12,3 +12,5 @@ BundleArtifacts/
 .vs/
 TestResults/
 *.binlog
+publish/
+build/publish/
