@@ -25,6 +25,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VibeSalamander.Plugins.Arch
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VibeSalamander.Launcher", "src\VibeSalamander.Launcher\VibeSalamander.Launcher.csproj", "{6E2B9C41-7A3D-4F58-9B1E-3C8D5A2F7E19}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VibeSalamander.Plugins.Checksum", "src\VibeSalamander.Plugins.Checksum\VibeSalamander.Plugins.Checksum.csproj", "{8D1F4A6C-3B27-4E9A-A5C2-7F06B9D3E812}"
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VibeSalamander.Core.Tests", "tests\VibeSalamander.Core.Tests\VibeSalamander.Core.Tests.csproj", "{2372596F-4D5D-4941-9BA1-2CA2B9B03AFC}"
 EndProject
 Global
@@ -83,6 +85,14 @@ Global
 		{6E2B9C41-7A3D-4F58-9B1E-3C8D5A2F7E19}.Release|x64.Build.0 = Release|Any CPU
 		{6E2B9C41-7A3D-4F58-9B1E-3C8D5A2F7E19}.Release|ARM64.ActiveCfg = Release|Any CPU
 		{6E2B9C41-7A3D-4F58-9B1E-3C8D5A2F7E19}.Release|ARM64.Build.0 = Release|Any CPU
+		{8D1F4A6C-3B27-4E9A-A5C2-7F06B9D3E812}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8D1F4A6C-3B27-4E9A-A5C2-7F06B9D3E812}.Debug|x64.Build.0 = Debug|Any CPU
+		{8D1F4A6C-3B27-4E9A-A5C2-7F06B9D3E812}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{8D1F4A6C-3B27-4E9A-A5C2-7F06B9D3E812}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{8D1F4A6C-3B27-4E9A-A5C2-7F06B9D3E812}.Release|x64.ActiveCfg = Release|Any CPU
+		{8D1F4A6C-3B27-4E9A-A5C2-7F06B9D3E812}.Release|x64.Build.0 = Release|Any CPU
+		{8D1F4A6C-3B27-4E9A-A5C2-7F06B9D3E812}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{8D1F4A6C-3B27-4E9A-A5C2-7F06B9D3E812}.Release|ARM64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -93,6 +103,7 @@ Global
 		{742DCA12-0252-4123-8F8B-D04FF50E7554} = {4BE14A65-79CB-4311-9212-0888569DF129}
 		{5C3E7A2B-9F41-4D7E-8B6A-2E1F0C9D4A71} = {4BE14A65-79CB-4311-9212-0888569DF129}
 		{6E2B9C41-7A3D-4F58-9B1E-3C8D5A2F7E19} = {4BE14A65-79CB-4311-9212-0888569DF129}
+		{8D1F4A6C-3B27-4E9A-A5C2-7F06B9D3E812} = {4BE14A65-79CB-4311-9212-0888569DF129}
 		{2372596F-4D5D-4941-9BA1-2CA2B9B03AFC} = {847DADFA-138E-437C-9CBC-C2E517ED7853}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution

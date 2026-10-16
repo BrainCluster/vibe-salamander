@@ -147,6 +147,7 @@ public sealed class KeyMap
         // phase 4: archives
         m.Bind(VK.F5, A, CommandId.Pack);
         m.Bind(VK.F6, A, CommandId.Unpack);
+        m.Bind(VK.V, C | S, CommandId.VerifyChecksums); // Checksum plugin, like Open Salamander
         // hot paths 1-9 (Windows takes Ctrl+Shift+0 for switching the keyboard layout, so there is no hot path 0)
         for (int digit = 1; digit <= 9; digit++)
         {

@@ -20,6 +20,9 @@ namespace VibeSalamander.ViewModels;
 /// <summary>UI services the main view model needs from the window.</summary>
 public interface IUiHost
 {
+    /// <summary>The user interface lent to plugins (windows, dialogs, clipboard).</summary>
+    IPluginUi PluginUi { get; }
+
     IntPtr WindowHandle { get; }
     Task<string?> PromptAsync(string title, string label, string initialText, string primaryButton, bool selectNameWithoutExtension = false);
     Task<bool> ConfirmAsync(string title, string message, string primaryButton);
@@ -201,6 +204,35 @@ public sealed class MainViewModel : BindableBase
 
     /// <summary>Built-in and installed plugins (Plugins → Plugins Manager).</summary>
     public PluginManager Plugins { get; }
+
+    /// <summary>The user interface lent to plugins.</summary>
+    public IPluginUi PluginUi => _host.PluginUi;
+
+    /// <summary>
+    /// An app command that a plugin command answers to (Calculate / Verify Checksums): runs the enabled
+    /// plugin's command, or says which plugin is needed.
+    /// </summary>
+    private async Task RunPluginHostCommandAsync(CommandId command)
+    {
+        string name = command.ToString();
+        foreach (PluginInfo plugin in Plugins.Plugins.Where(p => p.Enabled && p.Error == null && p.Host != null))
+        {
+            PluginCommand? match = plugin.CommandContributors.SelectMany(c => c.Commands)
+                .FirstOrDefault(c => string.Equals(c.HostCommand, name, StringComparison.Ordinal));
+            if (match == null)
+                continue;
+            try
+            {
+                await match.Execute(plugin.Host!);
+            }
+            catch (Exception ex)
+            {
+                Notify($"{plugin.Name}: {ex.Message}");
+            }
+            return;
+        }
+        Notify(Loc.F("\"{0}\" needs the Checksum plugin (Plugins → Plugins Manager).", CommandCatalog.DisplayName(command)));
+    }
 
     /// <summary>Archives as directories (Enter on an archive).</summary>
     public ArchiveFileSystemProvider ArchiveProvider { get; }
@@ -438,6 +470,7 @@ public sealed class MainViewModel : BindableBase
                 case CommandId.Copy: await CopyOrMoveAsync(move: false); break;
                 case CommandId.Move: await CopyOrMoveAsync(move: true); break;
                 case CommandId.Pack: await PackAsync(); break;
+                case CommandId.CalculateChecksums or CommandId.VerifyChecksums: await RunPluginHostCommandAsync(command); break;
                 case CommandId.MountImage:
                     if (p.FocusedItem is { Entry.IsDirectory: false } diskImage && p.IsLocalDisk && DiskImages.IsDiskImage(diskImage.Entry.FullPath))
                         await MountImageAsync(p, diskImage.Entry.FullPath);

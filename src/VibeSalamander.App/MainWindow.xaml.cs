@@ -22,6 +22,10 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     private bool _dialogOpen;
     private FindWindow? _findWindow;
     private DeviceWatcher? _deviceWatcher;
+    private PluginUi? _pluginUi;
+
+    /// <summary>Windows and dialogs of plugins (Calculate / Verify Checksums).</summary>
+    public Plugins.IPluginUi PluginUi => _pluginUi ??= new PluginUi(DispatcherQueue, () => RootGrid.ActualTheme, Dialogs);
     private bool _wasMinimized;
 
     public MainWindow()
@@ -482,8 +486,12 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             foreach (Plugins.PluginCommand command in plugin.CommandContributors.SelectMany(c => c.Commands))
             {
                 var item = new MenuFlyoutItem { Text = command.MenuText };
-                if (!string.IsNullOrEmpty(command.ShortcutText))
-                    item.KeyboardAcceleratorTextOverride = command.ShortcutText;
+                // a command answering to an app command shows that command's (customizable) key
+                string? keys = command.HostCommand != null && Enum.TryParse(command.HostCommand, out CommandId hostCommand)
+                    ? _vm.KeyMap.GetShortcutText(hostCommand)
+                    : command.ShortcutText;
+                if (!string.IsNullOrEmpty(keys))
+                    item.KeyboardAcceleratorTextOverride = keys;
                 Plugins.PluginCommand c = command;
                 item.Click += async (_, _) =>
                 {
@@ -728,6 +736,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         CommandId.EditNewFile => "NewFile",
         CommandId.Copy => "Copy",
         CommandId.Pack => "Pack",
+        CommandId.CalculateChecksums => "Checksum",
+        CommandId.VerifyChecksums => "Verify",
         CommandId.Unpack => "Unpack",
         CommandId.Move => "Move",
         CommandId.CreateDirectory => "MakeDir",
@@ -1464,6 +1474,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         _settingsWindow?.Close();
         _vm.Transfers.CancelAll();
         _vm.SaveSettings(onExit: true);
+        _pluginUi?.CloseAll();
         _vm.Plugins.ShutdownAll();
         MainViewModel.CleanArchiveTemp();
         _vm.Left.Dispose();

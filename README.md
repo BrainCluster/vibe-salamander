@@ -54,6 +54,7 @@ the result is in `publish\VibeSalamander`.
 **Tools**
 - Find files (Alt+F7), compare directories, directory sizes, drive information, file lists
 - Command line and command shell, user menu with variables, network drives and shares
+- Checksum plugin: CRC32 (SFV), MD5, SHA-1, SHA-256 and SHA-512 of files and folders, saved to checksum files and verified again (Ctrl+Shift+V)
 - Plugins with their own menus (Plugins Manager)
 
 **Make it yours**

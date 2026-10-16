@@ -36,6 +36,7 @@
     <ProjectReference Include="..\VibeSalamander.Plugins.Abstractions\VibeSalamander.Plugins.Abstractions.csproj" />
     <!-- built-in plugins -->
     <ProjectReference Include="..\VibeSalamander.Plugins.Archive\VibeSalamander.Plugins.Archive.csproj" />
+    <ProjectReference Include="..\VibeSalamander.Plugins.Checksum\VibeSalamander.Plugins.Checksum.csproj" />
   </ItemGroup>
 
   <ItemGroup>

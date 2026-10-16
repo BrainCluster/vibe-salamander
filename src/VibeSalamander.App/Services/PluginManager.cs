@@ -130,6 +130,7 @@ public sealed class PluginManager
     {
         // built-in
         Add(new global::VibeSalamander.Plugins.Archive.ArchivePlugin(), "Built-in", builtIn: true, main, disabled);
+        Add(new global::VibeSalamander.Plugins.Checksum.ChecksumPlugin(), "Built-in", builtIn: true, main, disabled);
 
         // external: one folder per plugin
         foreach (string root in new[] { AppPluginDirectory, UserPluginDirectory })
@@ -313,6 +314,8 @@ internal sealed class PluginHost : IPluginHost
     public IPanelContext InactivePanel => new PanelContext(_main.Inactive);
 
     public void Notify(string message, bool isError = false) => _main.Notify(message, isError);
+
+    public IPluginUi Ui => _main.PluginUi;
 
     private sealed class PanelContext : IPanelContext
     {

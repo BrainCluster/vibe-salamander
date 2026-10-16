@@ -131,6 +131,8 @@ public enum CommandId
     Pack,
     Unpack,
     PluginsManager,
+    CalculateChecksums,
+    VerifyChecksums,
 
     // disk images
     MountImage,

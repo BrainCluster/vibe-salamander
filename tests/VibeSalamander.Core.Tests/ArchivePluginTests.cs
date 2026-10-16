@@ -76,6 +76,7 @@ public sealed class ArchivePluginTests : IDisposable
         public IPanelContext ActivePanel => throw new NotSupportedException();
         public IPanelContext InactivePanel => throw new NotSupportedException();
         public void Notify(string message, bool isError = false) { }
+        public IPluginUi Ui => throw new NotSupportedException();
     }
 
     private async Task<string> PackAsync(IArchiver archiver, string formatId, string name, IArchiveJob? job = null)

@@ -80,6 +80,8 @@ public static class CommandCatalog
         [CommandId.Pack] = "Pack...",
         [CommandId.Unpack] = "Unpack...",
         [CommandId.PluginsManager] = "Plugins manager...",
+        [CommandId.CalculateChecksums] = "Calculate checksums...",
+        [CommandId.VerifyChecksums] = "Verify checksums...",
         [CommandId.MountImage] = "Mount disk image",
         [CommandId.UnmountImage] = "Unmount disk image",
     };
@@ -116,6 +118,7 @@ public static class CommandCatalog
     private static string EnglishCategory(CommandId command) => command switch
     {
         CommandId.Pack or CommandId.Unpack or CommandId.MountImage or CommandId.UnmountImage => "Files",
+        CommandId.CalculateChecksums or CommandId.VerifyChecksums => "Files",
         CommandId.PluginsManager => "Options",
         <= CommandId.Filter => "Panels",
         <= CommandId.CommandShell => "Files",
@@ -187,6 +190,8 @@ public static class CommandCatalog
         CommandId.Pack => "\uE7B8",
         CommandId.Unpack => "\uE896",
         CommandId.PluginsManager => "\uEA86",
+        CommandId.CalculateChecksums => "\uE9D5",
+        CommandId.VerifyChecksums => "\uE73E",
         CommandId.MountImage => "\uE958",
         CommandId.UnmountImage => "\uE711",
         CommandId.Configuration => "",

@@ -105,6 +105,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Browse archives like directories (Enter on an archive; address bar, chevrons, ".." back out) | 4 | [x] |
 | Copy files and directories out of an archive (F5 / Alt+F6, into the transfer panel) | 4 | [x] |
 | Open a file in an archive (Enter / F3: temporary copy, opened with its program) | 4 | [x] |
+| Checksum plugin: calculate CRC32 / MD5 / SHA-1 / SHA-256 / SHA-512 (non-blocking window, copy to clipboard, save SFV / MD5 / SHA files), verify checksum files (Ctrl+Shift+V, Focus), configuration | 4 | [x] |
 | Change archives in place (copy into, delete, rename inside) | 4 | [ ] |
 | Last command (Ctrl+I) | 4 | [ ] |
 

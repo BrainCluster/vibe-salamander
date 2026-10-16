@@ -54,6 +54,107 @@ public interface IPluginHost
 
     /// <summary>A short message in the notification bar (no dialog).</summary>
     void Notify(string message, bool isError = false);
+
+    /// <summary>Windows, dialogs, the clipboard and translations for plugins (they never touch the UI framework).</summary>
+    IPluginUi Ui { get; }
+}
+
+// ---- user interface for plugins ------------------------------------------------------------------
+
+/// <summary>
+/// The parts of the user interface a plugin can use. Every method may be called from any thread; the
+/// host moves the work to the UI thread. Dialogs are shown in the given window (or the main window).
+/// </summary>
+public interface IPluginUi
+{
+    /// <summary>A non-modal window with a list of rows (columns of text), a status line, a progress bar and buttons.</summary>
+    IPluginListWindow OpenListWindow(string title, IReadOnlyList<PluginColumn> columns);
+
+    /// <summary>A Yes / No question.</summary>
+    Task<bool> ConfirmAsync(string title, string message, IPluginListWindow? owner = null);
+
+    /// <summary>A message with an OK button.</summary>
+    Task ShowMessageAsync(string title, string message, IPluginListWindow? owner = null);
+
+    /// <summary>Check boxes (true / false options); false when cancelled, otherwise the options hold the new values.</summary>
+    Task<bool> EditOptionsAsync(string title, string? description, IReadOnlyList<PluginOption> options, IPluginListWindow? owner = null);
+
+    /// <summary>Where to save a file and in which of the formats; null when cancelled.</summary>
+    Task<PluginSaveChoice?> AskSaveFileAsync(string title, string suggestedPath, IReadOnlyList<PluginFileType> types,
+        int selectedType, IPluginListWindow? owner = null);
+
+    void CopyToClipboard(string text);
+
+    /// <summary>The text in the user's language (the same tables as the app's own texts).</summary>
+    string T(string english);
+}
+
+/// <param name="Header">Column title.</param>
+/// <param name="Width">Width in pixels; 0 = takes the remaining space.</param>
+/// <param name="AlignRight">Numbers (sizes) are right-aligned.</param>
+/// <param name="Monospace">In a fixed-width font (checksums, codes).</param>
+public sealed record PluginColumn(string Header, double Width, bool AlignRight = false, bool Monospace = false);
+
+/// <param name="Name">"SFV files"</param>
+/// <param name="Extension">With the dot: ".sfv"</param>
+public sealed record PluginFileType(string Name, string Extension);
+
+public sealed record PluginSaveChoice(string Path, int TypeIndex);
+
+public sealed class PluginOption
+{
+    public required string Label { get; init; }
+    public bool Value { get; set; }
+}
+
+/// <param name="ShortcutText">"Ctrl+C", "Delete": shown in the menu and also works as a key in the window.</param>
+public sealed record PluginMenuItem(string Text, string? ShortcutText, Action Execute, bool IsEnabled = true);
+
+/// <param name="IsDefault">Enter presses it.</param>
+public sealed record PluginButton(string Id, string Text, Action Click, bool IsDefault = false);
+
+/// <summary>A window opened by a plugin (see <see cref="IPluginUi.OpenListWindow"/>).</summary>
+public interface IPluginListWindow
+{
+    /// <summary>Adds a row at the end; cells beyond the given ones are empty.</summary>
+    IPluginRow AddRow(IReadOnlyList<string> cells);
+
+    IReadOnlyList<IPluginRow> Rows { get; }
+
+    /// <summary>The selected row, or null.</summary>
+    IPluginRow? SelectedRow { get; }
+
+    void SetStatus(string text);
+
+    /// <summary>0..1, or null to hide the progress bar.</summary>
+    void SetProgress(double? value);
+
+    void SetButtons(IReadOnlyList<PluginButton> buttons);
+
+    void UpdateButton(string id, string? text = null, bool? enabled = null);
+
+    /// <summary>The right-click menu of a row (and its shortcut keys).</summary>
+    Func<IPluginRow, IReadOnlyList<PluginMenuItem>>? RowMenu { get; set; }
+
+    /// <summary>Called on the UI thread when the window has closed.</summary>
+    event EventHandler? Closed;
+
+    bool IsClosed { get; }
+
+    void Close();
+}
+
+/// <summary>One row of a plugin window.</summary>
+public interface IPluginRow
+{
+    /// <summary>A cell's text (setting it updates the window).</summary>
+    string this[int column] { get; set; }
+
+    /// <summary>The plugin's own data for the row.</summary>
+    object? Tag { get; set; }
+
+    /// <summary>Takes the row out of the window.</summary>
+    void Remove();
 }
 
 public interface IPanelContext
@@ -75,7 +176,12 @@ public interface ICommandContributor
 /// <param name="MenuText">"Pack...", "Calculate checksums..."</param>
 /// <param name="ShortcutText">Shown in the menu only ("Alt+F5"); keys are bound in Configuration → Keyboard.</param>
 /// <param name="Execute">Runs on the UI thread.</param>
-public sealed record PluginCommand(string Id, string MenuText, string? ShortcutText, Func<IPluginHost, Task> Execute);
+/// <param name="HostCommand">
+/// The app command this plugin command answers to ("VerifyChecksums"): it then has a key in
+/// Configuration → Keyboard, and the shortcut shown in the menu follows it.
+/// </param>
+public sealed record PluginCommand(string Id, string MenuText, string? ShortcutText, Func<IPluginHost, Task> Execute,
+    string? HostCommand = null);
 
 // ---- archivers ---------------------------------------------------------------------------------
 
