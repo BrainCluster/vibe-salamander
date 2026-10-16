@@ -10,7 +10,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using VibeSalamander.Plugins;
 using VibeSalamander.Services;
-using Windows.System;
+using VirtualKey = Windows.System.VirtualKey;
 
 namespace VibeSalamander.Views;
 
