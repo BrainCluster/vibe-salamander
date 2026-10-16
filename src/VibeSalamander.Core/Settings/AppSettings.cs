@@ -119,7 +119,7 @@ public sealed class AppSettings
     public bool AlwaysShowTransfers { get; set; }
 
     /// <summary>Seconds after the last transfer finished until the transfer panel closes (0 = it stays open).</summary>
-    public int TransfersAutoCloseSeconds { get; set; } = 5;
+    public int TransfersAutoCloseSeconds { get; set; } = 3;
 
     /// <summary>Height of the transfer panel in DIPs (resized with the splitter above it).</summary>
     public double TransfersHeight { get; set; } = 150;
