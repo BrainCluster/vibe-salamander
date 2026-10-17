@@ -200,7 +200,6 @@ public sealed partial class FilePane : UserControl
     // ---- mouse options (Configuration → Panels / Appearance) -------------------------------
 
     private int _caretAtPress = -1;
-    private DateTime _pressTime;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _slowClickTimer;
 
     /// <summary>Single click opens (Appearance) or a slow second click on the focused item renames (Panels).</summary>
@@ -526,7 +525,6 @@ public sealed partial class FilePane : UserControl
     {
         if (ViewModel == null || IsRenaming || !e.GetCurrentPoint(FileList).Properties.IsLeftButtonPressed)
             return;
-        _pressTime = DateTime.UtcNow;
         MarqueePressed(e);
         bool ctrl = KeyboardState.IsDown(KeyboardState.Control);
         bool shift = KeyboardState.IsDown(KeyboardState.Shift);
@@ -1262,13 +1260,9 @@ public sealed partial class FilePane : UserControl
             e.Cancel = true;
             return;
         }
-        // Configuration → Panels: very short drags are accidental
-        int minimum = _main?.Settings.Panels.DragCancelMilliseconds ?? 0;
-        if (minimum > 0 && (DateTime.UtcNow - _pressTime).TotalMilliseconds < minimum)
-        {
-            e.Cancel = true;
-            return;
-        }
+        // the drag starts as soon as the mouse moves, also when it was already moving at the click;
+        // very short drags (Configuration → Panels) are cancelled at the drop instead (TooShortDrag)
+        _dragStartedAt = DateTime.UtcNow;
         _slowClickTimer?.Stop();
         var dragged = e.Items.OfType<FileItemViewModel>().ToList();
         // dragging a marked item drags the whole selection (Salamander)
@@ -1301,6 +1295,20 @@ public sealed partial class FilePane : UserControl
         });
     }
 
+    /// <summary>When the last drag from a panel started (shared: drags go from one panel to the other).</summary>
+    private static DateTime _dragStartedAt;
+
+    /// <summary>
+    /// A drag from a panel released sooner than Configuration → Panels → "Cancel drag-and-drop operations
+    /// shorter than" after it started: accidental, nothing is dropped.
+    /// </summary>
+    private bool TooShortDrag(DragEventArgs e)
+    {
+        int minimum = _main?.Settings.Panels.DragCancelMilliseconds ?? 0;
+        return minimum > 0 && e.DataView.Properties.ContainsKey(InternalPathsKey) &&
+               (DateTime.UtcNow - _dragStartedAt).TotalMilliseconds < minimum;
+    }
+
     /// <summary>Drop target: the directory under the pointer, or the panel's directory.</summary>
     private string? DropTarget(DragEventArgs e)
     {
@@ -1325,7 +1333,7 @@ public sealed partial class FilePane : UserControl
     private void Root_DragOver(object sender, DragEventArgs e)
     {
         string? target = DropTarget(e);
-        if (target == null || !e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+        if (target == null || !e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems) || TooShortDrag(e))
         {
             e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.None;
             return;
@@ -1341,7 +1349,7 @@ public sealed partial class FilePane : UserControl
         if (ViewModel == null || _main == null)
             return;
         string? target = DropTarget(e);
-        if (target == null)
+        if (target == null || TooShortDrag(e))
             return;
         var deferral = e.GetDeferral();
         try
