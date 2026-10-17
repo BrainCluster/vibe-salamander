@@ -234,6 +234,8 @@ public sealed class FileItemViewModel : BindableBase
     private ImageSource? _largeIcon;
     private uint _largeIconSize;
     private uint _largeIconLoadedSize;
+    private Services.ThumbnailCache? _thumbnails;
+    private Services.ThumbnailCache.Ticket? _largeIconTicket;
 
     public ImageSource? LargeIcon
     {
@@ -255,6 +257,8 @@ public sealed class FileItemViewModel : BindableBase
             return;
         _largeIconSize = 0;
         _largeIconLoadedSize = 0;
+        _thumbnails?.Cancel(_largeIconTicket); // not loaded at all when it has not started yet
+        _largeIconTicket = null;
         LargeIcon = null;
     }
 
@@ -264,10 +268,14 @@ public sealed class FileItemViewModel : BindableBase
         if (_largeIconSize >= size || Entry.IsUpDir || IsDrive)
             return;
         _largeIconSize = size;
-        cache.Request(Entry, size, image =>
+        _thumbnails = cache;
+        cache.Cancel(_largeIconTicket); // a smaller size was asked for before: only the larger one is wanted now
+        _largeIconTicket = cache.Request(Entry, size, image =>
         {
             // requests of two sizes (Icons, then Thumbnails) may finish in either order: keep the larger image
             // _largeIconSize < size: the row scrolled away (or was released) before this arrived
+            if (_largeIconSize == size)
+                _largeIconTicket = null;
             if (image != null && size > _largeIconLoadedSize && _largeIconSize >= size)
             {
                 _largeIconLoadedSize = size;
