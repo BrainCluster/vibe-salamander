@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/screenshot.png" alt="Vibe Salamander: two panels, toolbar, drive bars, command line and F-key bar">
+  <img src="docs/images/screenshot.png" alt="Vibe Salamander: two panels with color-coded file types, a copy running in the transfer panel, command line and F-key bar">
 </p>
 
 Vibe Salamander keeps what made Salamander great (two panels, the classic keyboard
