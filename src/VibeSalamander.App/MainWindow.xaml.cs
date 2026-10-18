@@ -1415,7 +1415,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     {
         if (_findWindow == null)
         {
-            _findWindow = new FindWindow(directory, RootGrid.ActualTheme, FocusFoundItemAsync, () => _vm.Settings.Confirm);
+            _findWindow = new FindWindow(directory, RootGrid.ActualTheme, _vm, FocusFoundItemAsync);
             _findWindow.Closed += (_, _) =>
             {
                 _findWindow = null;
@@ -1429,8 +1429,11 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         _findWindow.Activate();
     }
 
-    /// <summary>"Focus in Panel" from the Find window: show the item in the active panel.</summary>
-    private async Task FocusFoundItemAsync(string directory, string name)
+    /// <summary>
+    /// "Focus in Panel" / "Open file location" from the Find window: shows the item in the active panel
+    /// (name null: opens the directory or archive itself).
+    /// </summary>
+    private async Task FocusFoundItemAsync(string directory, string? name)
     {
         await _vm.Active.NavigateAsync(directory, name);
         Activate();

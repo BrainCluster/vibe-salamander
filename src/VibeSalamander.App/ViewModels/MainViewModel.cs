@@ -596,6 +596,45 @@ public sealed class MainViewModel : BindableBase
         }
     }
 
+    // ---- found items (the Find window's context menu) -------------------------------------------
+
+    /// <summary>Open on a found file: with its program (archives and directories open in a panel, see FindWindow).</summary>
+    public void OpenFoundFile(FileEntry entry) =>
+        RunFoundFile(entry, Array.Empty<ProgramRule>(), () => ShellOperations.Open(entry.FullPath, Path.GetDirectoryName(entry.FullPath)));
+
+    /// <summary>F3 on a found file: Configuration → Viewers, else the associated program.</summary>
+    public void ViewFoundFile(FileEntry entry) =>
+        RunFoundFile(entry, Settings.Viewers, () => ShellOperations.Open(entry.FullPath, Path.GetDirectoryName(entry.FullPath)));
+
+    /// <summary>F4 on a found file: Configuration → Editors, else the "edit" verb.</summary>
+    public void EditFoundFile(FileEntry entry) =>
+        RunFoundFile(entry, Settings.Editors, () => ShellOperations.Edit(entry.FullPath));
+
+    private void RunFoundFile(FileEntry entry, IEnumerable<ProgramRule> rules, Action fallback)
+    {
+        if (entry.IsDirectory)
+            return;
+        string directory = Path.GetDirectoryName(entry.FullPath) ?? string.Empty;
+        // the rule's $(Path) / $(FullName) are the found file's, not the panel's
+        var context = new UserMenuContext
+        {
+            Path = directory,
+            OtherPath = _active.IsLocalDisk ? _active.Path : string.Empty,
+            FullName = entry.FullPath,
+            Selected = new[] { entry.FullPath },
+        };
+        try
+        {
+            if (!RunProgramRule(rules, new FileItemViewModel(entry, _active.Columns), context))
+                fallback();
+            RememberRecent(Settings.OpenedFiles, entry.FullPath);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or FileNotFoundException)
+        {
+            _host.Notify(ex.Message);
+        }
+    }
+
     /// <summary>Configuration → Viewers / Editors: the first rule whose masks match starts its program.</summary>
     private bool RunProgramRule(IEnumerable<ProgramRule> rules, FileItemViewModel item, UserMenuContext? fileContext = null)
     {

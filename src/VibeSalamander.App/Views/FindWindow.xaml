@@ -57,20 +57,42 @@
                 <RowDefinition Height="26" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <Grid Padding="14,0,14,0" ColumnSpacing="8">
+            <!-- column headers: click to sort, again for the other direction -->
+            <Grid Padding="8,0,8,0" ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="2*" />
                     <ColumnDefinition Width="3*" />
                     <ColumnDefinition Width="110" />
                     <ColumnDefinition Width="140" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="Name" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center" Foreground="{ThemeResource VibeHeaderForegroundBrush}" />
-                <TextBlock Grid.Column="1" Text="Path" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center" Foreground="{ThemeResource VibeHeaderForegroundBrush}" />
-                <TextBlock Grid.Column="2" Text="Size" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="{ThemeResource VibeHeaderForegroundBrush}" />
-                <TextBlock Grid.Column="3" Text="Modified" Style="{StaticResource CaptionTextBlockStyle}" VerticalAlignment="Center" Foreground="{ThemeResource VibeHeaderForegroundBrush}" />
+                <Button Style="{StaticResource VibeHeaderButtonStyle}" Tag="Name" Click="SortHeader_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="Name" />
+                        <FontIcon x:Name="NameArrow" Glyph="" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="1" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Path" Click="SortHeader_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="Path" />
+                        <FontIcon x:Name="PathArrow" Glyph="" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="2" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Size" Click="SortHeader_Click" HorizontalContentAlignment="Right">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <FontIcon x:Name="SizeArrow" Glyph="" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
+                        <TextBlock Text="Size" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="3" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Date" Click="SortHeader_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="Modified" />
+                        <FontIcon x:Name="DateArrow" Glyph="" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
+                    </StackPanel>
+                </Button>
             </Grid>
             <ListView x:Name="Results" Grid.Row="1" SelectionMode="Single" ItemContainerStyle="{StaticResource VibeListItemStyle}"
-                      DoubleTapped="Results_DoubleTapped" SelectionChanged="Results_SelectionChanged">
+                      DoubleTapped="Results_DoubleTapped" SelectionChanged="Results_SelectionChanged"
+                      ContextRequested="Results_ContextRequested">
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="views:FindResult">
                         <Grid Height="22" ColumnSpacing="8">
