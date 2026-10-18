@@ -901,15 +901,42 @@ public sealed class PaneViewModel : BindableBase, IDisposable
 
     // ---- quick search --------------------------------------------------------------------------
 
-    /// <summary>Adds a typed character to the quick search and moves the caret; returns the new caret or -1.</summary>
+    /// <summary>
+    /// Adds a typed character to the quick search and moves the caret; returns the new caret or -1.
+    /// The same letter again ("a", "a", ...) goes through the items starting with it, like Explorer,
+    /// unless a name starts with the repeated letters ("aa").
+    /// </summary>
     public int QuickSearchType(char c)
     {
         string text = _quickSearch + c;
         int index = FindByPrefix(text, 0);
-        if (index < 0)
-            return -1; // no match: ignore the character (Salamander beeps)
-        QuickSearch = text;
-        return index;
+        if (index >= 0)
+        {
+            QuickSearch = text;
+            return index;
+        }
+        if (IsRepeatedLetter(text))
+        {
+            // the next item with that first letter after the caret, from the top again after the last one
+            string first = c.ToString();
+            int next = FindByPrefix(first, _caretIndex + 1);
+            if (next < 0)
+                return -1;
+            QuickSearch = first;
+            return next;
+        }
+        return -1; // no match: ignore the character (Salamander beeps)
+    }
+
+    private static bool IsRepeatedLetter(string text)
+    {
+        if (text.Length < 2)
+            return false;
+        char first = char.ToUpperInvariant(text[0]);
+        foreach (char ch in text)
+            if (char.ToUpperInvariant(ch) != first)
+                return false;
+        return true;
     }
 
     public int QuickSearchBackspace()
@@ -926,7 +953,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     {
         for (int i = 0; i < _items.Count; i++)
         {
-            int idx = (start + i) % _items.Count;
+            int idx = (Math.Max(0, start) + i) % _items.Count;
             if (_items[idx].Entry.Name.StartsWith(prefix, StringComparison.CurrentCultureIgnoreCase))
                 return idx;
         }
