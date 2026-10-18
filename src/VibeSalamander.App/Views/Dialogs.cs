@@ -659,11 +659,12 @@ public sealed class Dialogs
         return (row, box);
     }
 
-    public sealed record PackAnswer(string ArchivePath, string FormatId, string Compression, bool DeleteSources);
+    public sealed record PackAnswer(string ArchivePath, string FormatId, string Compression, bool DeleteSources, string? Password = null);
 
     /// <summary>
     /// Pack (Alt+F5): the archive's path and name (prefilled), its format and compression and "move to
-    /// archive". Changing the format changes the extension in the name. Null when cancelled.
+    /// archive", and a password for formats that can be encrypted (typed twice; never remembered).
+    /// Changing the format changes the extension in the name. Null when cancelled.
     /// </summary>
     public async Task<PackAnswer?> PackAsync(string what, string defaultPath, IReadOnlyList<Plugins.ArchiveFormat> formats,
         string formatId, string compression, bool deleteSources)
@@ -682,6 +683,34 @@ public sealed class Dialogs
         level.IsEnabled = formats[selected].HasCompressionLevels;
         var move = new CheckBox { Content = "Delete the files after packing (move to archive)", IsChecked = deleteSources };
 
+        // password (ZIP: AES-256): typed twice, shown only when asked for
+        var encrypt = new CheckBox { Content = "Encrypt with a password (AES-256)", IsEnabled = formats[selected].SupportsPassword };
+        var password = new PasswordBox { PlaceholderText = "Password", MinWidth = 200 };
+        var repeat = new PasswordBox { PlaceholderText = "Repeat the password", MinWidth = 200 };
+        var passwordError = new TextBlock { Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SystemFillColorCriticalBrush"], Visibility = Visibility.Collapsed, TextWrapping = TextWrapping.Wrap };
+        var passwords = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Visibility = Visibility.Collapsed };
+        passwords.Children.Add(password);
+        passwords.Children.Add(repeat);
+        encrypt.Checked += (_, _) =>
+        {
+            passwords.Visibility = Visibility.Visible;
+            password.Focus(FocusState.Programmatic);
+        };
+        encrypt.Unchecked += (_, _) =>
+        {
+            passwords.Visibility = Visibility.Collapsed;
+            passwordError.Visibility = Visibility.Collapsed;
+        };
+        // null = fine; otherwise what is wrong with the password
+        string? PasswordProblem()
+        {
+            if (encrypt.IsChecked != true || !encrypt.IsEnabled)
+                return null;
+            if (password.Password.Length == 0)
+                return "Type a password, or turn off the encryption.";
+            return password.Password == repeat.Password ? null : "The passwords don't match.";
+        }
+
         // the extension follows the format ("backup.zip" → "backup.tar.gz")
         string currentExtension = formats[selected].Extension;
         format.SelectionChanged += (_, _) =>
@@ -690,6 +719,8 @@ public sealed class Dialogs
                 return;
             Plugins.ArchiveFormat chosen = formats[format.SelectedIndex];
             level.IsEnabled = chosen.HasCompressionLevels;
+            encrypt.IsEnabled = chosen.SupportsPassword;
+            passwords.Visibility = chosen.SupportsPassword && encrypt.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             string text = box.Text.TrimEnd();
             if (text.EndsWith(currentExtension, StringComparison.OrdinalIgnoreCase))
                 box.Text = text[..^currentExtension.Length] + chosen.Extension;
@@ -704,21 +735,38 @@ public sealed class Dialogs
         body.Children.Add(row);
         body.Children.Add(options);
         body.Children.Add(move);
+        body.Children.Add(encrypt);
+        body.Children.Add(passwords);
+        body.Children.Add(passwordError);
 
         ContentDialog dialog = NewDialog("Pack", body);
         dialog.PrimaryButtonText = "Pack";
         dialog.CloseButtonText = "Cancel";
         dialog.DefaultButton = ContentDialogButton.Primary;
-        bool enter = false;
-        box.KeyDown += (_, e) =>
+        // a missing or mistyped password keeps the dialog open
+        bool ShowPasswordProblem()
         {
-            if (e.Key == Windows.System.VirtualKey.Enter)
+            string? problem = PasswordProblem();
+            passwordError.Text = problem == null ? string.Empty : Services.Loc.T(problem);
+            passwordError.Visibility = problem == null ? Visibility.Collapsed : Visibility.Visible;
+            return problem != null;
+        }
+        dialog.PrimaryButtonClick += (_, e) => e.Cancel = ShowPasswordProblem();
+        bool enter = false;
+        foreach (Control input in new Control[] { box, password, repeat })
+        {
+            input.KeyDown += (_, e) =>
             {
-                enter = true;
-                e.Handled = true;
-                dialog.Hide();
-            }
-        };
+                if (e.Key == Windows.System.VirtualKey.Enter)
+                {
+                    e.Handled = true;
+                    if (ShowPasswordProblem())
+                        return;
+                    enter = true;
+                    dialog.Hide();
+                }
+            };
+        }
         dialog.Opened += (_, _) =>
         {
             box.Focus(FocusState.Programmatic);
@@ -731,7 +779,9 @@ public sealed class Dialogs
         ContentDialogResult result = await ShowAsync(dialog);
         if ((!enter && result != ContentDialogResult.Primary) || string.IsNullOrWhiteSpace(box.Text) || format.SelectedIndex < 0)
             return null;
-        return new PackAnswer(box.Text.Trim(), formats[format.SelectedIndex].Id, levels[Math.Max(0, level.SelectedIndex)], move.IsChecked == true);
+        bool encrypted = encrypt.IsChecked == true && formats[format.SelectedIndex].SupportsPassword && password.Password.Length > 0;
+        return new PackAnswer(box.Text.Trim(), formats[format.SelectedIndex].Id, levels[Math.Max(0, level.SelectedIndex)], move.IsChecked == true,
+            encrypted ? password.Password : null);
     }
 
     public sealed record UnpackAnswer(string Target, string Mask, bool ToSubfolder);

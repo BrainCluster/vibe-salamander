@@ -16,7 +16,8 @@ public sealed record ArchiveLocation(string ArchivePath, string InnerPath, IArch
 /// <summary>
 /// Browsing archives like directories (Salamander style): "C:\Downloads\photos.zip\2024" lists the
 /// "2024" directory inside photos.zip. The archivers of the plugins read the archive; the listing is
-/// cached per archive until the archive file changes. Read-only: files are copied out (F5) or opened.
+/// cached per archive until the archive file changes. Files are copied out (F5) or opened; ZIP and TAR
+/// archives also take files in and lose them (MainViewModel, through IArchiver.AddAsync / DeleteAsync).
 /// </summary>
 public sealed class ArchiveFileSystemProvider : IFileSystemProvider
 {

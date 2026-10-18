@@ -11,8 +11,11 @@ using VibeSalamander.Core.Operations;
 
 namespace VibeSalamander.Plugins.Archive;
 
-/// <summary>Packing with .NET (ZIP, TAR, TAR.GZ) and unpacking with SharpCompress (and .NET for gzip).</summary>
-internal sealed class Archiver : IArchiver
+/// <summary>
+/// Packing (own ZIP writer, .NET for TAR and TAR.GZ), unpacking with SharpCompress (and .NET for gzip and TAR),
+/// and changing ZIP and TAR archives in place (Archiver.Edit.cs).
+/// </summary>
+internal sealed partial class Archiver : IArchiver
 {
     private const int BufferSize = 1 << 20;
 
@@ -20,7 +23,7 @@ internal sealed class Archiver : IArchiver
 
     public IReadOnlyList<ArchiveFormat> PackFormats { get; } = new[]
     {
-        new ArchiveFormat("zip", "ZIP", ".zip", HasCompressionLevels: true),
+        new ArchiveFormat("zip", "ZIP", ".zip", HasCompressionLevels: true, SupportsPassword: true),
         new ArchiveFormat("tar.gz", "TAR.GZ (gzip)", ".tar.gz", HasCompressionLevels: true),
         new ArchiveFormat("tar", "TAR (not compressed)", ".tar", HasCompressionLevels: false),
     };
@@ -92,7 +95,7 @@ internal sealed class Archiver : IArchiver
     }
 
     /// <summary>The TAR data of a .tar / .tar.gz / .tar.bz2 / .tar.xz / .tar.lz file (the file itself stays open).</summary>
-    private static Stream OpenTarData(string kind, FileStream file) => kind switch
+    internal static Stream OpenTarData(string kind, FileStream file) => kind switch
     {
         "tar.gz" or "tgz" => new GZipStream(file, CompressionMode.Decompress, leaveOpen: true),
         "tar.bz2" or "tbz" or "tbz2" => SharpCompress.Compressors.BZip2.BZip2Stream.Create(
@@ -115,7 +118,7 @@ internal sealed class Archiver : IArchiver
 
     // ---- pack ---------------------------------------------------------------------------------
 
-    private sealed record PackItem(string FullPath, string EntryName, bool IsDirectory, long Size, DateTime LastWrite);
+    internal sealed record PackItem(string FullPath, string EntryName, bool IsDirectory, long Size, DateTime LastWrite);
 
     public Task<OperationResult> PackAsync(PackRequest request, IArchiveJob job) =>
         Task.Run(() => Pack(request, job));
@@ -166,10 +169,12 @@ internal sealed class Archiver : IArchiver
             switch (request.FormatId)
             {
                 case "zip":
-                    PackZip(items, temp, request.Compression, job, tracker, result);
+                    PackZip(items, temp, request.Compression, string.IsNullOrEmpty(request.Password) ? null : request.Password, job, tracker, result);
                     break;
                 case "tar":
                 case "tar.gz":
+                    if (!string.IsNullOrEmpty(request.Password))
+                        throw new NotSupportedException("TAR archives can't be encrypted: choose ZIP for a password.");
                     PackTar(items, temp, request.FormatId == "tar.gz", request.Compression, job, tracker, result);
                     break;
                 default:
@@ -191,7 +196,7 @@ internal sealed class Archiver : IArchiver
     }
 
     /// <summary>Adds a file, or a directory with its content (not following junctions).</summary>
-    private static void Collect(string path, string baseDir, string archivePath, List<PackItem> items, IArchiveJob job, OperationResult result)
+    internal static void Collect(string path, string baseDir, string archivePath, List<PackItem> items, IArchiveJob job, OperationResult result)
     {
         string entryName = EntryName(path, baseDir);
         if (File.Exists(path))
@@ -245,18 +250,18 @@ internal sealed class Archiver : IArchiver
         return relative.Replace('\\', '/');
     }
 
-    private static void PackZip(List<PackItem> items, string temp, ArchiveCompression compression, IArchiveJob job, ProgressTracker tracker, OperationResult result)
+    private static void PackZip(List<PackItem> items, string temp, ArchiveCompression compression, string? password, IArchiveJob job,
+        ProgressTracker tracker, OperationResult result)
     {
-        CompressionLevel level = Level(compression);
         using var file = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16);
-        using var zip = new ZipArchive(file, ZipArchiveMode.Create);
+        var zip = new ZipBuilder(file);
         foreach (PackItem item in items)
         {
             job.WaitWhilePaused();
+            job.Cancellation.ThrowIfCancellationRequested();
             if (item.IsDirectory)
             {
-                ZipArchiveEntry dirEntry = zip.CreateEntry(item.EntryName + "/");
-                dirEntry.LastWriteTime = ZipTime(item.LastWrite);
+                zip.AddDirectory(item.EntryName, item.LastWrite);
                 continue;
             }
             tracker.Start(item.FullPath);
@@ -264,14 +269,28 @@ internal sealed class Archiver : IArchiver
             using FileStream? source = OpenSource(item, job, result);
             if (source == null)
                 continue;
-            ZipArchiveEntry entry = zip.CreateEntry(item.EntryName, level);
-            entry.LastWriteTime = ZipTime(item.LastWrite);
-            using (Stream target = entry.Open())
-                Copy(source, target, job, tracker);
+            AddZipFile(zip, item.EntryName, source, item, compression, password, job, tracker);
             tracker.ItemDone();
             result.Succeeded++;
         }
+        zip.Finish();
     }
+
+    /// <summary>One file into a ZIP, with progress and pause / cancel checks.</summary>
+    internal static void AddZipFile(ZipBuilder zip, string entryName, Stream source, PackItem item, ArchiveCompression compression,
+        string? password, IArchiveJob job, ProgressTracker tracker) =>
+        zip.AddFile(entryName, source, item.Size, item.LastWrite,
+            compression == ArchiveCompression.Store ? null : Level(compression), password,
+            progress: read =>
+            {
+                tracker.AddBytes(read);
+                tracker.ReportTo(job);
+            },
+            checkpoint: () =>
+            {
+                job.WaitWhilePaused();
+                job.Cancellation.ThrowIfCancellationRequested();
+            });
 
     private static void PackTar(List<PackItem> items, string temp, bool gzip, ArchiveCompression compression, IArchiveJob job, ProgressTracker tracker, OperationResult result)
     {
@@ -311,7 +330,7 @@ internal sealed class Archiver : IArchiver
     }
 
     /// <summary>Opens a file to pack; asks on errors. Null = skipped.</summary>
-    private static FileStream? OpenSource(PackItem item, IArchiveJob job, OperationResult result)
+    internal static FileStream? OpenSource(PackItem item, IArchiveJob job, OperationResult result)
     {
         while (true)
         {
@@ -335,7 +354,7 @@ internal sealed class Archiver : IArchiver
         }
     }
 
-    private static CompressionLevel Level(ArchiveCompression compression) => compression switch
+    internal static CompressionLevel Level(ArchiveCompression compression) => compression switch
     {
         ArchiveCompression.Store => CompressionLevel.NoCompression,
         ArchiveCompression.Fastest => CompressionLevel.Fastest,
@@ -344,18 +363,10 @@ internal sealed class Archiver : IArchiver
     };
 
     /// <summary>TarEntry.ModificationTime rejects times before 1970.</summary>
-    private static DateTimeOffset TarTime(DateTime time)
+    internal static DateTimeOffset TarTime(DateTime time)
     {
         var value = new DateTimeOffset(time);
         return value < DateTimeOffset.UnixEpoch ? DateTimeOffset.UnixEpoch : value;
-    }
-
-    /// <summary>ZIP stores times from 1980 to 2107.</summary>
-    private static DateTimeOffset ZipTime(DateTime time)
-    {
-        var min = new DateTime(1980, 1, 1, 0, 0, 0, DateTimeKind.Local);
-        var max = new DateTime(2107, 12, 31, 0, 0, 0, DateTimeKind.Local);
-        return new DateTimeOffset(time < min ? min : time > max ? max : time);
     }
 
     // ---- unpack -------------------------------------------------------------------------------
@@ -543,7 +554,7 @@ internal sealed class Archiver : IArchiver
         }
     }
 
-    private static long SafePosition(Stream stream)
+    internal static long SafePosition(Stream stream)
     {
         try
         {

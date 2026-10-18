@@ -863,12 +863,20 @@ public sealed partial class FilePane : UserControl
         }
         else if (onItem && pane.IsArchive)
         {
-            // inside an archive: read-only
+            // inside an archive: ZIP and TAR also move out and delete, the others are read-only
             bool directory = item!.Entry.IsDirectory;
+            bool editable = _main.IsEditableArchive(pane);
             Add("Open", directory ? "\uE8DA" : "\uE8E5", CommandId.Open, bold: true);
             Separator();
             Add("Copy out to other panel...", "\uE8C8", CommandId.Copy);
+            if (editable)
+                Add("Move out to other panel...", "\uE8DE", CommandId.Move);
             Add("Copy name as text", "\uE8C8", CommandId.CopyNameAsText);
+            if (editable)
+            {
+                Separator();
+                Add("Delete", "\uE74D", CommandId.Delete);
+            }
         }
         else if (onItem)
         {
@@ -1312,19 +1320,23 @@ public sealed partial class FilePane : UserControl
     /// <summary>Drop target: the directory under the pointer, or the panel's directory.</summary>
     private string? DropTarget(DragEventArgs e)
     {
-        if (ViewModel == null || !ViewModel.IsLocalDisk)
+        // a ZIP or TAR shown in the panel takes files too (they are copied into the archive)
+        if (ViewModel == null || _main == null || !(ViewModel.IsLocalDisk || _main.IsEditableArchive(ViewModel)))
             return null;
         if ((e.OriginalSource as FrameworkElement)?.DataContext is FileItemViewModel { Entry.IsDirectory: true, Entry.IsUpDir: false } dir)
             return dir.Entry.FullPath;
         return ViewModel.Path;
     }
 
-    /// <summary>Explorer rules: Shift = move, Ctrl = copy, otherwise move within a drive and copy across drives.</summary>
-    private static bool DecideMove(DragEventArgs e, string target)
+    /// <summary>
+    /// Explorer rules: Shift = move, Ctrl = copy, otherwise move within a drive and copy across drives.
+    /// Into an archive files are copied unless Shift is held.
+    /// </summary>
+    private bool DecideMove(DragEventArgs e, string target)
     {
         if (KeyboardState.IsDown(KeyboardState.Shift))
             return true;
-        if (KeyboardState.IsDown(KeyboardState.Control))
+        if (KeyboardState.IsDown(KeyboardState.Control) || ViewModel?.IsArchive == true)
             return false;
         return e.DataView.Properties.TryGetValue(InternalPathsKey, out object? value) && value is string[] { Length: > 0 } internalPaths &&
                string.Equals(Path.GetPathRoot(internalPaths[0]), Path.GetPathRoot(target), StringComparison.OrdinalIgnoreCase);

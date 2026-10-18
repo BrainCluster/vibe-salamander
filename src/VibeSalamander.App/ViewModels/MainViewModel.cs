@@ -355,10 +355,12 @@ public sealed class MainViewModel : BindableBase
 
     public bool CanExecute(CommandId command) => command switch
     {
-        CommandId.Copy or CommandId.Move or CommandId.Delete or CommandId.DeletePermanently or
+        CommandId.Copy => _active.IsLocalDisk || _active.IsArchive,
+        CommandId.Move or CommandId.Delete or CommandId.DeletePermanently or CommandId.ClipboardPaste =>
+            _active.IsLocalDisk || EditableArchive(_active) != null,
         CommandId.QuickRename or CommandId.CreateDirectory or CommandId.EditNewFile or
         CommandId.ChangeAttributes or CommandId.ChangeCase or CommandId.ClipboardCut or
-        CommandId.ClipboardCopy or CommandId.ClipboardPaste => _active.IsLocalDisk,
+        CommandId.ClipboardCopy => _active.IsLocalDisk,
         CommandId.GoBack => _active.CanGoBack,
         CommandId.GoForward => _active.CanGoForward,
         _ => true,
@@ -675,7 +677,9 @@ public sealed class MainViewModel : BindableBase
             return;
 
         string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} items", items.Count);
-        string defaultTarget = Inactive.IsLocalDisk ? Inactive.Path : string.Empty;
+        // the other panel, also when it shows a ZIP or TAR (the files go into the archive)
+        bool otherUsable = Inactive.IsLocalDisk || EditableArchive(Inactive) != null;
+        string defaultTarget = otherUsable ? Inactive.Path : string.Empty;
         if (defaultTarget.Length > 0 && !defaultTarget.EndsWith('\\'))
             defaultTarget += "\\";
 
@@ -683,7 +687,7 @@ public sealed class MainViewModel : BindableBase
         // target (This PC, or the same directory) - then the dialog is shown anyway
         bool sameDirectory = string.Equals(Inactive.Path.TrimEnd('\\'), _active.Path.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase);
         string target;
-        if (!Settings.AskCopyMoveTarget && Inactive.IsLocalDisk && !sameDirectory)
+        if (!Settings.AskCopyMoveTarget && otherUsable && !sameDirectory)
         {
             target = defaultTarget;
         }
@@ -702,6 +706,14 @@ public sealed class MainViewModel : BindableBase
         }
         bool endsWithSeparator = target.TrimEnd().EndsWith('\\');
         string resolved = PathUtil.Resolve(_active.Path, target);
+        if (!Directory.Exists(resolved) && ArchiveProvider.Locate(resolved) is { } archive)
+        {
+            if (EditableArchiveAt(resolved) is { } editable)
+                AddToArchive(items.Select(i => i.Entry.FullPath).ToList(), editable, move);
+            else
+                _host.Notify($"\"{Path.GetFileName(archive.ArchivePath)}\" is open read-only: copy files out with F5, or unpack it with Alt+F6 from its folder.", isError: false);
+            return;
+        }
         if (endsWithSeparator && !resolved.EndsWith('\\'))
             resolved += "\\"; // "target\" always means "into this directory"
         // Confirmations → "Do you want to create target path?"
@@ -720,6 +732,11 @@ public sealed class MainViewModel : BindableBase
     {
         if (sources.Count == 0)
             return Task.CompletedTask;
+        if (!Directory.Exists(target) && EditableArchiveAt(target) is { } archive)
+        {
+            AddToArchive(sources, archive, move); // dropped or pasted onto a ZIP / TAR panel
+            return Task.CompletedTask;
+        }
         // like Salamander, the marks are cleared once the operation is started; Ctrl+W brings them back
         _active.RememberSelection();
         _active.MarkAll(false);
@@ -879,16 +896,34 @@ public sealed class MainViewModel : BindableBase
 
     /// <summary>
     /// Commands that work differently in an archive: F5 / Alt+F6 copy the selected items out, F3 / F4
-    /// open a temporary copy, and commands that would change the archive say it is read-only.
+    /// open a temporary copy. In ZIP and TAR archives F6 moves out, F8 deletes and Ctrl+V pastes in;
+    /// other commands (and every change of 7-Zip and RAR archives) say what can be done instead.
     /// Returns true when the command was handled here.
     /// </summary>
     private async Task<bool> ArchiveCommandAsync(PaneViewModel p, CommandId command)
     {
+        ArchiveLocation? editable = EditableArchive(p);
         switch (command)
         {
             case CommandId.Copy:
             case CommandId.Unpack:
-                await CopyFromArchiveAsync(p);
+                await CopyFromArchiveAsync(p, move: false);
+                return true;
+            case CommandId.Move when editable != null:
+                await CopyFromArchiveAsync(p, move: true);
+                return true;
+            case CommandId.Delete when editable != null:
+            case CommandId.DeletePermanently when editable != null:
+                await DeleteFromArchiveAsync(p, editable);
+                return true;
+            case CommandId.ClipboardPaste when editable != null:
+                var (paths, cut) = await FileClipboard.GetFilesAsync();
+                if (paths.Count > 0)
+                {
+                    AddToArchive(paths, editable, cut);
+                    if (cut)
+                        Clipboard.Clear();
+                }
                 return true;
             case CommandId.View:
             case CommandId.Edit:
@@ -909,15 +944,99 @@ public sealed class MainViewModel : BindableBase
             case CommandId.Pack:
             case CommandId.NewMenu:
                 string name = p.Archive is { } location ? Path.GetFileName(location.ArchivePath) : "The archive";
-                _host.Notify($"\"{name}\" is open read-only: copy files out with F5, or unpack it with Alt+F6 from its folder.", isError: false);
+                if (editable != null)
+                    _host.Notify(Loc.F("In \"{0}\" files can be copied in and out (F5, F6) and deleted (F8).", name), isError: false);
+                else
+                    _host.Notify($"\"{name}\" is open read-only: copy files out with F5, or unpack it with Alt+F6 from its folder.", isError: false);
                 return true;
             default:
                 return false;
         }
     }
 
-    /// <summary>F5 in an archive: unpacks the selected files and directories into a directory (the other panel by default).</summary>
-    private async Task CopyFromArchiveAsync(PaneViewModel p)
+    /// <summary>True when the panel shows a ZIP or TAR that files can be copied into and deleted from.</summary>
+    public bool IsEditableArchive(PaneViewModel p) => EditableArchive(p) != null;
+
+    /// <summary>Where the panel is in an archive that can be changed (ZIP, TAR), or null.</summary>
+    private static ArchiveLocation? EditableArchive(PaneViewModel p) =>
+        p.Archive is { } location && SafeCanEdit(location.Archiver, location.ArchivePath) ? location : null;
+
+    /// <summary>The archive (that can be changed) a target path points into, or null.</summary>
+    private ArchiveLocation? EditableArchiveAt(string path) =>
+        ArchiveProvider.Locate(path) is { } location && SafeCanEdit(location.Archiver, location.ArchivePath) ? location : null;
+
+    private static bool SafeCanEdit(IArchiver archiver, string path)
+    {
+        try
+        {
+            return archiver.CanEdit(path);
+        }
+        catch (Exception)
+        {
+            return false; // a broken plugin: its archives stay read-only
+        }
+    }
+
+    /// <summary>
+    /// F5 / F6 / drag and drop / paste into a panel showing a ZIP or TAR: the files go into the archive (in
+    /// the transfer panel). Moving deletes the originals only when everything went in.
+    /// </summary>
+    private void AddToArchive(IReadOnlyList<string> sources, ArchiveLocation location, bool move)
+    {
+        if (sources.Count == 0)
+            return;
+        _active.RememberSelection();
+        _active.MarkAll(false);
+        var compression = Enum.TryParse(Settings.Plugins.PackCompression, out ArchiveCompression c) ? c : ArchiveCompression.Normal;
+        string display = ArchiveFileSystemProvider.Combine(location.ArchivePath, location.InnerPath);
+        Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, sources, display, async job =>
+        {
+            OperationResult result = await Task.Run(() => location.Archiver.AddAsync(new ArchiveAddRequest
+            {
+                ArchivePath = location.ArchivePath,
+                Sources = sources,
+                TargetPath = location.InnerPath,
+                Compression = compression,
+            }, job));
+            // never delete a directory the archive itself is in
+            if (move && !result.Cancelled && result.Failed == 0 && result.Skipped == 0 &&
+                !sources.Any(src => location.ArchivePath.StartsWith(src.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)))
+            {
+                var engine = new FileOperationEngine(new JobCallbacks(job));
+                OperationResult deleted = await engine.DeleteAsync(sources, job.Cancellation);
+                result.Failed += deleted.Failed;
+            }
+            return result;
+        });
+    }
+
+    /// <summary>F8 in a ZIP or TAR: deletes the selected files and directories from the archive (in the transfer panel).</summary>
+    private async Task DeleteFromArchiveAsync(PaneViewModel p, ArchiveLocation location)
+    {
+        var items = p.GetOperationItems().Where(i => !i.Entry.IsUpDir).ToList();
+        if (items.Count == 0)
+            return;
+        if (Settings.Confirm.PermanentDelete && !await _host.ConfirmAsync("Delete", items.Count == 1
+                ? Loc.F("Do you want to delete \"{0}\" from the archive?\nThis cannot be undone.", items[0].Entry.Name)
+                : Loc.F("Do you want to delete the {0} selected items from the archive?\nThis cannot be undone.", items.Count), "Delete"))
+            return;
+        var inner = items.Select(i => location.ItemPath(i.Entry.Name)).ToList();
+        p.RememberSelection();
+        p.MarkAll(false);
+        Transfers.EnqueueJob(OperationKind.Delete, items.Select(i => i.Entry.FullPath).ToList(), null, job =>
+            Task.Run(() => location.Archiver.DeleteAsync(new ArchiveDeleteRequest
+            {
+                ArchivePath = location.ArchivePath,
+                Items = inner,
+                BasePath = location.InnerPath,
+            }, job)));
+    }
+
+    /// <summary>
+    /// F5 in an archive: unpacks the selected files and directories into a directory (the other panel by
+    /// default). F6 (ZIP, TAR) then deletes them from the archive, when everything came out.
+    /// </summary>
+    private async Task CopyFromArchiveAsync(PaneViewModel p, bool move)
     {
         if (p.Archive is not { } location)
             return;
@@ -935,7 +1054,7 @@ public sealed class MainViewModel : BindableBase
         }
         else
         {
-            var answer = await _host.Dialogs.CopyMoveTargetAsync(move: false, what, defaultTarget);
+            var answer = await _host.Dialogs.CopyMoveTargetAsync(move, what, defaultTarget);
             _host.FocusPane(p);
             if (answer is not { } a)
                 return;
@@ -953,20 +1072,33 @@ public sealed class MainViewModel : BindableBase
             return;
         }
         if (!Directory.Exists(directory) && Settings.Confirm.CreateTargetPath &&
-            !await _host.ConfirmAsync("Copy", $"The target directory \"{directory.TrimEnd('\\')}\" doesn't exist. Do you want to create it?", "Create"))
+            !await _host.ConfirmAsync(move ? "Move" : "Copy", $"The target directory \"{directory.TrimEnd('\\')}\" doesn't exist. Do you want to create it?", "Create"))
             return;
 
         var inner = items.Select(i => location.ItemPath(i.Entry.Name)).ToList();
         p.RememberSelection();
         p.MarkAll(false);
-        Transfers.EnqueueJob(OperationKind.Copy, items.Select(i => i.Entry.FullPath).ToList(), directory, job =>
-            Task.Run(() => location.Archiver.UnpackAsync(new UnpackRequest
+        Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, items.Select(i => i.Entry.FullPath).ToList(), directory, async job =>
+        {
+            OperationResult result = await Task.Run(() => location.Archiver.UnpackAsync(new UnpackRequest
             {
                 ArchivePath = location.ArchivePath,
                 TargetDirectory = directory,
                 Items = inner,
                 BasePath = location.InnerPath,
-            }, job)));
+            }, job));
+            if (move && !result.Cancelled && result.Failed == 0 && result.Skipped == 0)
+            {
+                OperationResult deleted = await Task.Run(() => location.Archiver.DeleteAsync(new ArchiveDeleteRequest
+                {
+                    ArchivePath = location.ArchivePath,
+                    Items = inner,
+                    BasePath = location.InnerPath,
+                }, job));
+                result.Failed += deleted.Failed;
+            }
+            return result;
+        });
     }
 
     /// <summary>Folder for files opened from archives (emptied when the app closes).</summary>
@@ -1069,6 +1201,7 @@ public sealed class MainViewModel : BindableBase
         string baseDirectory = _active.Path;
         var compression = Enum.TryParse(answer.Compression, out ArchiveCompression c) ? c : ArchiveCompression.Normal;
         bool deleteSources = answer.DeleteSources;
+        string? password = chosen.SupportsPassword ? answer.Password : null;
         _active.RememberSelection();
         _active.MarkAll(false);
         Transfers.EnqueueJob(OperationKind.Pack, sources, archivePath, async job =>
@@ -1081,6 +1214,7 @@ public sealed class MainViewModel : BindableBase
                 ArchivePath = archivePath,
                 FormatId = chosen.Id,
                 Compression = compression,
+                Password = password,
             }, job));
             // move to archive: only when everything went in (and never when the archive is inside a packed directory)
             if (deleteSources && !result.Cancelled && result.Failed == 0 && result.Skipped == 0 &&

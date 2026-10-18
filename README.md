@@ -47,8 +47,8 @@ the result is in `publish\VibeSalamander`.
 - Fewer dialogs: new folders and files are created and renamed in place, errors appear as notifications that close themselves
 
 **Archives and disk images**
-- Archive plugin: pack ZIP / TAR / TAR.GZ (Alt+F5), unpack ZIP, 7z, RAR, TAR, gz, bz2, xz and lz (Alt+F6), with passwords
-- Browse archives like folders and copy single files out of them
+- Archive plugin: pack ZIP (optionally AES-256 encrypted) / TAR / TAR.GZ (Alt+F5), unpack ZIP, 7z, RAR, TAR, gz, bz2, xz and lz (Alt+F6), with passwords
+- Browse archives like folders and copy single files out of them; ZIP and TAR archives can be edited in place: copy or drop files in, delete them (F8), move them out (F6)
 - Mount .iso, .img, .vhd and .vhdx images: the mounted drive opens in the other panel, unmount from the menu
 
 **Tools**

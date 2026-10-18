@@ -190,7 +190,8 @@ public sealed record PluginCommand(string Id, string MenuText, string? ShortcutT
 /// <param name="DisplayName">"ZIP", "TAR.GZ (gzip)"</param>
 /// <param name="Extension">Of new archives, with the dot: ".zip", ".tar.gz"</param>
 /// <param name="HasCompressionLevels">The compression level choice applies.</param>
-public sealed record ArchiveFormat(string Id, string DisplayName, string Extension, bool HasCompressionLevels);
+/// <param name="SupportsPassword">Archives of this format can be encrypted with a password (<see cref="PackRequest.Password"/>).</param>
+public sealed record ArchiveFormat(string Id, string DisplayName, string Extension, bool HasCompressionLevels, bool SupportsPassword = false);
 
 public enum ArchiveCompression
 {
@@ -214,6 +215,38 @@ public sealed class PackRequest
     public required string FormatId { get; init; }
 
     public ArchiveCompression Compression { get; init; } = ArchiveCompression.Normal;
+
+    /// <summary>Encrypts the files with this password (formats with <see cref="ArchiveFormat.SupportsPassword"/>); null = not encrypted.</summary>
+    public string? Password { get; init; }
+}
+
+/// <summary>Copying files and directories into an archive (F5 / F6 / drag and drop onto a panel showing the archive).</summary>
+public sealed class ArchiveAddRequest
+{
+    public required string ArchivePath { get; init; }
+
+    /// <summary>Files and directories (full paths); directories go in with their content, under their own names.</summary>
+    public required IReadOnlyList<string> Sources { get; init; }
+
+    /// <summary>The directory inside the archive they go into ("docs/images"); "" = the archive's root.</summary>
+    public string TargetPath { get; init; } = string.Empty;
+
+    public ArchiveCompression Compression { get; init; } = ArchiveCompression.Normal;
+}
+
+/// <summary>Deleting files and directories from an archive (F8 in a panel showing the archive).</summary>
+public sealed class ArchiveDeleteRequest
+{
+    public required string ArchivePath { get; init; }
+
+    /// <summary>"docs/readme.txt", "docs/images" (a directory with its content); '/' separated.</summary>
+    public required IReadOnlyList<string> Items { get; init; }
+
+    /// <summary>
+    /// The directory the panel shows ("docs"): it stays in the archive (as an empty directory) when
+    /// everything in it is deleted. "" = the archive's root.
+    /// </summary>
+    public string BasePath { get; init; } = string.Empty;
 }
 
 /// <summary>Alt+F6: unpack an archive into a directory.</summary>
@@ -273,6 +306,20 @@ public interface IArchiver
 
     /// <summary>Runs on a background thread; asks about existing files and passwords through the job.</summary>
     Task<OperationResult> UnpackAsync(UnpackRequest request, IArchiveJob job);
+
+    /// <summary>True when files can be copied into and deleted from this archive (by its name and format).</summary>
+    bool CanEdit(string archivePath) => false;
+
+    /// <summary>
+    /// Copies files into the archive (the archive is rewritten; it is replaced only when everything went well).
+    /// Asks about existing names and, for encrypted archives, the password through the job. Background thread.
+    /// </summary>
+    Task<OperationResult> AddAsync(ArchiveAddRequest request, IArchiveJob job) =>
+        throw new NotSupportedException("This archive can't be changed.");
+
+    /// <summary>Deletes files and directories from the archive (rewritten like <see cref="AddAsync"/>). Background thread.</summary>
+    Task<OperationResult> DeleteAsync(ArchiveDeleteRequest request, IArchiveJob job) =>
+        throw new NotSupportedException("This archive can't be changed.");
 }
 
 /// <summary>

@@ -283,4 +283,241 @@ public sealed class ArchivePluginTests : IDisposable
         Assert.True(archiver.CanUnpack(Path.Combine(_root, "book.epub")));
         Assert.True(archiver.CanBrowse(Path.Combine(_root, "lib.jar")));
     }
+
+    // ---- passwords ------------------------------------------------------------------------------
+
+    private async Task<string> PackEncryptedAsync(IArchiver archiver, string name, string password, ArchiveCompression compression = ArchiveCompression.Normal)
+    {
+        string archive = Path.Combine(_root, name);
+        OperationResult result = await archiver.PackAsync(new PackRequest
+        {
+            Sources = new[] { Path.Combine(_root, "src", "readme.txt"), Path.Combine(_root, "src", "docs") },
+            BaseDirectory = Path.Combine(_root, "src"),
+            ArchivePath = archive,
+            FormatId = "zip",
+            Compression = compression,
+            Password = password,
+        }, new FakeJob());
+        Assert.Equal(3, result.Succeeded);
+        return archive;
+    }
+
+    [Theory]
+    [InlineData(ArchiveCompression.Normal)]
+    [InlineData(ArchiveCompression.Store)]
+    public async Task Encrypted_zip_unpacks_only_with_its_password(ArchiveCompression compression)
+    {
+        IArchiver archiver = NewArchiver();
+        Assert.True(archiver.PackFormats.Single(f => f.Id == "zip").SupportsPassword);
+        string archive = await PackEncryptedAsync(archiver, $"secret-{compression}.zip", "pässword 1", compression);
+
+        // the files are AES encrypted (WinZip AES, method 99)
+        using (var stream = File.OpenRead(archive))
+        {
+            var (records, _) = Zip.ReadDirectory(stream);
+            Assert.All(records.Where(r => !r.IsDirectory), r => Assert.True(r.IsEncrypted && r.Method == Zip.AesMethod));
+            Assert.False(Zip.CheckPassword(stream, records.First(r => !r.IsDirectory), "wrong"));
+            Assert.True(Zip.CheckPassword(stream, records.First(r => !r.IsDirectory), "pässword 1"));
+        }
+
+        // a wrong password is asked again; the right one unpacks (SharpCompress reads it: another implementation)
+        var job = new FakeJob { Passwords = new() { "wrong", "pässword 1" } };
+        string target = Path.Combine(_root, "secret-out-" + compression);
+        OperationResult result = await archiver.UnpackAsync(new UnpackRequest { ArchivePath = archive, TargetDirectory = target }, job);
+        Assert.False(result.Cancelled);
+        Assert.Equal(2, job.PasswordQuestions);
+        Assert.Equal(3, result.Succeeded);
+        AssertUnpacked(target);
+    }
+
+    [Fact]
+    public async Task Tar_archives_refuse_a_password()
+    {
+        IArchiver archiver = NewArchiver();
+        Assert.False(archiver.PackFormats.Single(f => f.Id == "tar").SupportsPassword);
+        await Assert.ThrowsAsync<NotSupportedException>(() => archiver.PackAsync(new PackRequest
+        {
+            Sources = new[] { Path.Combine(_root, "src", "readme.txt") },
+            BaseDirectory = Path.Combine(_root, "src"),
+            ArchivePath = Path.Combine(_root, "no.tar"),
+            FormatId = "tar",
+            Password = "x",
+        }, new FakeJob()));
+    }
+
+    // ---- changing archives ----------------------------------------------------------------------
+
+    private string NewFile(string name, string text)
+    {
+        string path = Path.Combine(_root, "new", name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, text);
+        return path;
+    }
+
+    private static async Task<List<ArchiveItem>> ItemsAsync(IArchiver archiver, string archive) =>
+        (await archiver.ListAsync(archive, CancellationToken.None)).ToList();
+
+    [Theory]
+    [InlineData("zip", "edit.zip", true)]
+    [InlineData("tar", "edit.tar", true)]
+    [InlineData("tar.gz", "edit.tar.gz", true)]
+    [InlineData("tar.gz", "edit.tgz", true)]
+    [InlineData("7z", "edit.7z", false)]
+    [InlineData("rar", "edit.rar", false)]
+    public void Zip_and_tar_can_be_changed(string format, string name, bool expected)
+    {
+        _ = format;
+        Assert.Equal(expected, NewArchiver().CanEdit(Path.Combine(_root, name)));
+    }
+
+    [Theory]
+    [InlineData("zip", "add.zip")]
+    [InlineData("tar", "add.tar")]
+    [InlineData("tar.gz", "add.tar.gz")]
+    public async Task Files_and_directories_are_added_into_a_directory_of_the_archive(string format, string name)
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackAsync(archiver, format, name);
+        string file = NewFile("added.txt", "added text");
+        NewFile(Path.Combine("folder", "inner.txt"), "inner text");
+        OperationResult result = await archiver.AddAsync(new ArchiveAddRequest
+        {
+            ArchivePath = archive,
+            Sources = new[] { file, Path.Combine(_root, "new", "folder") },
+            TargetPath = "docs",
+        }, new FakeJob());
+        Assert.False(result.Cancelled);
+        Assert.Equal(2, result.Succeeded);
+        Assert.False(File.Exists(archive + ".vibe-partial"));
+
+        var items = await ItemsAsync(archiver, archive);
+        Assert.Contains(items, i => i.Path == "docs/added.txt" && i.Size == 10);
+        Assert.Contains(items, i => i.Path == "docs/folder/inner.txt");
+        Assert.Contains(items, i => i.Path == "docs/folder" && i.IsDirectory);
+
+        // everything that was there is still there and unpacks
+        string target = Path.Combine(_root, "add-out-" + format);
+        OperationResult unpacked = await archiver.UnpackAsync(new UnpackRequest { ArchivePath = archive, TargetDirectory = target }, new FakeJob());
+        Assert.Equal(5, unpacked.Succeeded);
+        AssertUnpacked(target);
+        Assert.Equal("added text", File.ReadAllText(Path.Combine(target, "docs", "added.txt")));
+        Assert.Equal("inner text", File.ReadAllText(Path.Combine(target, "docs", "folder", "inner.txt")));
+    }
+
+    [Fact]
+    public async Task A_zip_changed_in_place_is_still_a_valid_zip()
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackAsync(archiver, "zip", "valid.zip");
+        await archiver.AddAsync(new ArchiveAddRequest { ArchivePath = archive, Sources = new[] { NewFile("x.txt", "x") } }, new FakeJob());
+        await archiver.DeleteAsync(new ArchiveDeleteRequest { ArchivePath = archive, Items = new[] { "docs/a.md" } }, new FakeJob());
+        // .NET's own reader agrees
+        using ZipArchive zip = ZipFile.OpenRead(archive);
+        var names = zip.Entries.Select(e => e.FullName).ToList();
+        Assert.Contains("x.txt", names);
+        Assert.Contains("docs/deep/data.bin", names);
+        Assert.DoesNotContain("docs/a.md", names);
+        using var reader = new StreamReader(zip.GetEntry("readme.txt")!.Open());
+        Assert.Equal("hello", reader.ReadToEnd());
+    }
+
+    [Theory]
+    [InlineData("zip", "delete.zip")]
+    [InlineData("tar", "delete.tar")]
+    [InlineData("tar.gz", "delete.tar.gz")]
+    public async Task Files_and_directories_are_deleted(string format, string name)
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackAsync(archiver, format, name);
+        OperationResult result = await archiver.DeleteAsync(new ArchiveDeleteRequest
+        {
+            ArchivePath = archive,
+            Items = new[] { "readme.txt", "docs/deep" },
+        }, new FakeJob());
+        Assert.Equal(2, result.Succeeded); // readme.txt and data.bin
+
+        var items = await ItemsAsync(archiver, archive);
+        Assert.DoesNotContain(items, i => i.Path == "readme.txt");
+        Assert.DoesNotContain(items, i => i.Path.StartsWith("docs/deep", StringComparison.Ordinal));
+        Assert.Contains(items, i => i.Path == "docs/a.md");
+    }
+
+    [Theory]
+    [InlineData("zip", "empty-dir.zip")]
+    [InlineData("tar.gz", "empty-dir.tar.gz")]
+    public async Task Deleting_everything_in_the_panels_directory_keeps_the_directory(string format, string name)
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackAsync(archiver, format, name);
+        await archiver.DeleteAsync(new ArchiveDeleteRequest
+        {
+            ArchivePath = archive,
+            Items = new[] { "docs/deep/data.bin" },
+            BasePath = "docs/deep",
+        }, new FakeJob());
+        var items = await ItemsAsync(archiver, archive);
+        Assert.Contains(items, i => i.Path == "docs/deep" && i.IsDirectory);
+        Assert.DoesNotContain(items, i => i.Path == "docs/deep/data.bin");
+    }
+
+    [Theory]
+    [InlineData(ConflictChoice.Skip, "hello", false)]
+    [InlineData(ConflictChoice.Overwrite, "new readme", false)]
+    [InlineData(ConflictChoice.Rename, "hello", true)]
+    public async Task Adding_an_existing_name_follows_the_conflict_answer(ConflictChoice choice, string expectedReadme, bool keptBoth)
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackAsync(archiver, "zip", $"conflict-{choice}.zip");
+        var job = new FakeJob { Conflict = choice };
+        await archiver.AddAsync(new ArchiveAddRequest { ArchivePath = archive, Sources = new[] { NewFile("readme.txt", "new readme") } }, job);
+        Assert.Equal(1, job.Conflicts);
+        string target = Path.Combine(_root, "conflict-out-" + choice);
+        await archiver.UnpackAsync(new UnpackRequest { ArchivePath = archive, TargetDirectory = target }, new FakeJob());
+        Assert.Equal(expectedReadme, File.ReadAllText(Path.Combine(target, "readme.txt")));
+        Assert.Equal(keptBoth, File.Exists(Path.Combine(target, "readme (2).txt")));
+        var items = await ItemsAsync(archiver, archive);
+        Assert.Single(items, i => i.Path == "readme.txt");
+    }
+
+    [Fact]
+    public async Task Files_added_to_an_encrypted_zip_get_its_password()
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackEncryptedAsync(archiver, "locked.zip", "open sesame");
+        var job = new FakeJob { Passwords = new() { "wrong", "open sesame" } };
+        OperationResult result = await archiver.AddAsync(new ArchiveAddRequest { ArchivePath = archive, Sources = new[] { NewFile("more.txt", "more") } }, job);
+        Assert.Equal(2, job.PasswordQuestions); // the wrong one was noticed
+        Assert.Equal(1, result.Succeeded);
+        using (var stream = File.OpenRead(archive))
+        {
+            var (records, _) = Zip.ReadDirectory(stream);
+            Assert.True(records.Single(r => r.Name == "more.txt").IsEncrypted);
+        }
+        string target = Path.Combine(_root, "locked-out");
+        OperationResult unpacked = await archiver.UnpackAsync(new UnpackRequest { ArchivePath = archive, TargetDirectory = target },
+            new FakeJob { Passwords = new() { "open sesame" } });
+        Assert.Equal(4, unpacked.Succeeded);
+        Assert.Equal("more", File.ReadAllText(Path.Combine(target, "more.txt")));
+        AssertUnpacked(target);
+    }
+
+    [Fact]
+    public async Task Cancelling_the_password_leaves_the_archive_alone()
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackEncryptedAsync(archiver, "untouched.zip", "pw");
+        byte[] before = File.ReadAllBytes(archive);
+        OperationResult result = await archiver.AddAsync(new ArchiveAddRequest { ArchivePath = archive, Sources = new[] { NewFile("no.txt", "no") } }, new FakeJob());
+        Assert.True(result.Cancelled);
+        Assert.Equal(before, File.ReadAllBytes(archive));
+    }
+
+    [Fact]
+    public void Unique_entry_names_count_up()
+    {
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "docs/a.txt", "docs/a (2).txt" };
+        Assert.Equal("docs/a (3).txt", Archiver.UniqueEntryName("docs/a.txt", taken));
+        Assert.Equal("b (2)", Archiver.UniqueEntryName("b", taken));
+    }
 }

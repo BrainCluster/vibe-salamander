@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Built-in plugin: pack (Alt+F5) and unpack (Alt+F6). Packing uses .NET (ZIP, TAR, TAR.GZ);
-       unpacking also reads 7-Zip, RAR, bzip2, xz and lzip through SharpCompress (MIT). -->
+  <!-- Built-in plugin: pack (Alt+F5) and unpack (Alt+F6). Packing uses its own ZIP writer (also AES-256
+       encrypted, and for changing ZIPs in place) and .NET (TAR, TAR.GZ); unpacking also reads 7-Zip,
+       RAR, bzip2, xz and lzip through SharpCompress (MIT). -->
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
@@ -8,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="SharpCompress" Version="0.49.1" />
+    <PackageReference Include="System.IO.Hashing" Version="9.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\VibeSalamander.Plugins.Abstractions\VibeSalamander.Plugins.Abstractions.csproj" />
