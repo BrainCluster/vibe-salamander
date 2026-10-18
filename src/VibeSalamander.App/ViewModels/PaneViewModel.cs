@@ -53,8 +53,16 @@ public sealed class DriveButtonViewModel : BindableBase
 /// <summary>Arguments of <see cref="PaneViewModel.ListingChanged"/>: where the caret should be after a (re)load.</summary>
 public sealed class ListingChangedEventArgs : EventArgs
 {
-    public ListingChangedEventArgs(int caretIndex) => CaretIndex = caretIndex;
+    public ListingChangedEventArgs(int caretIndex, bool samePlace)
+    {
+        CaretIndex = caretIndex;
+        SamePlace = samePlace;
+    }
+
     public int CaretIndex { get; }
+
+    /// <summary>The same directory again (a refresh, a new sort): the list keeps its scroll position.</summary>
+    public bool SamePlace { get; }
 }
 
 /// <summary>State and behavior of one panel (left or right).</summary>
@@ -714,12 +722,17 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         if (caret < 0)
             caret = items.Count == 0 ? -1 : Math.Clamp(fallbackCaret, 0, items.Count - 1);
 
+        bool samePlace = string.Equals(_lastListedPath, _path, StringComparison.OrdinalIgnoreCase);
+        _lastListedPath = _path;
         Items = items;
         _caretIndex = caret;
         OnPropertyChanged(nameof(CaretIndex));
         OnPropertyChanged(nameof(InfoText));
-        ListingChanged?.Invoke(this, new ListingChangedEventArgs(caret));
+        ListingChanged?.Invoke(this, new ListingChangedEventArgs(caret, samePlace));
     }
+
+    /// <summary>The directory of the last list shown (to tell a refresh from going elsewhere).</summary>
+    private string? _lastListedPath;
 
     public void SetSort(SortMode mode)
     {

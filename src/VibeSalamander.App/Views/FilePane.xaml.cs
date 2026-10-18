@@ -60,6 +60,7 @@ public sealed partial class FilePane : UserControl
         InitializeComponent();
         // ListViewItems handle PointerPressed themselves; listen to handled events too for Ctrl+click marking.
         FileList.AddHandler(PointerPressedEvent, new PointerEventHandler(List_PointerPressed), handledEventsToo: true);
+        FileList.Loaded += (_, _) => TrackedScroller(); // the scroll position is followed from the start
         // the list items handle Tapped themselves (selection): listen to handled taps too
         FileList.AddHandler(TappedEvent, new TappedEventHandler(List_Tapped), handledEventsToo: true);
         // any click inside the panel makes it the active one (also on the empty area below the items)
@@ -77,7 +78,13 @@ public sealed partial class FilePane : UserControl
     {
         ViewModel = viewModel;
         _main = main;
-        viewModel.ListingChanged += (_, e) => ApplyCaret(e.CaretIndex, focus: viewModel.IsActive);
+        viewModel.ListingChanged += (_, e) =>
+        {
+            if (e.SamePlace)
+                KeepScrollPosition(e.CaretIndex, focus: viewModel.IsActive);
+            else
+                ApplyCaret(e.CaretIndex, focus: viewModel.IsActive);
+        };
         viewModel.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(PaneViewModel.DisplayPath) or nameof(PaneViewModel.Path) or nameof(PaneViewModel.Drives) or nameof(PaneViewModel.VisibleDrives))
@@ -121,6 +128,63 @@ public sealed partial class FilePane : UserControl
         }
         if (focus && !IsRenaming)
             FocusList();
+    }
+
+    // where the list was scrolled to (kept up to date by the ScrollViewer)
+    private double _scrollX, _scrollY;
+    private bool _scrollTracked;
+
+    private ScrollViewer? TrackedScroller()
+    {
+        _listScroller ??= FindDescendant<ScrollViewer>(FileList, _ => true);
+        if (_listScroller != null && !_scrollTracked)
+        {
+            _scrollTracked = true;
+            _scrollX = _listScroller.HorizontalOffset;
+            _scrollY = _listScroller.VerticalOffset;
+            _listScroller.ViewChanged += (_, _) =>
+            {
+                _scrollX = _listScroller.HorizontalOffset;
+                _scrollY = _listScroller.VerticalOffset;
+            };
+        }
+        return _listScroller;
+    }
+
+    /// <summary>
+    /// The same directory listed again (a refresh after deleting, copying, a new sort): the rows stay where
+    /// they were on the screen instead of the caret jumping to the bottom edge. Only when the caret would
+    /// be out of sight is it scrolled into view.
+    /// </summary>
+    private void KeepScrollPosition(int index, bool focus)
+    {
+        ScrollViewer? scroller = TrackedScroller();
+        if (scroller == null || index < 0 || index >= FileList.Items.Count)
+        {
+            ApplyCaret(index, focus);
+            return;
+        }
+        double x = _scrollX, y = _scrollY; // before the new rows reset the scroll position
+        FileList.SelectedIndex = index;
+        FileList.UpdateLayout();
+        scroller.ChangeView(x, y, null, disableAnimation: true);
+        FileList.UpdateLayout();
+        if (!IsShown(scroller, index))
+            FileList.ScrollIntoView(FileList.Items[index]);
+        if (focus && !IsRenaming)
+            FocusList();
+    }
+
+    /// <summary>True when the row is completely inside the visible part of the list.</summary>
+    private bool IsShown(ScrollViewer scroller, int index)
+    {
+        if (FileList.ContainerFromIndex(index) is not FrameworkElement row || row.ActualHeight <= 0)
+            return false;
+        Windows.Foundation.Point p = row.TransformToVisual(scroller).TransformPoint(new Windows.Foundation.Point(0, 0));
+        bool vertically = p.Y >= 0 && p.Y + row.ActualHeight <= scroller.ViewportHeight + 0.5;
+        // sideways only matters where rows are narrower than the list (the Brief view's columns)
+        bool sideways = row.ActualWidth >= scroller.ViewportWidth || (p.X >= 0 && p.X + row.ActualWidth <= scroller.ViewportWidth + 0.5);
+        return vertically && sideways;
     }
 
     public void MoveCaret(int index)
