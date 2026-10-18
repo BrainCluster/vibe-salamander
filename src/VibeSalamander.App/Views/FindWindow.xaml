@@ -57,13 +57,14 @@
                 <RowDefinition Height="26" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <!-- column headers: click to sort, again for the other direction -->
-            <Grid Padding="8,0,8,0" ColumnSpacing="8">
+            <!-- column headers: click to sort, again for the other direction; drag the grips to resize
+                 (double-click a grip: the default width) -->
+            <Grid x:Name="HeaderGrid" Padding="8,0,8,0" ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*" />
-                    <ColumnDefinition Width="3*" />
-                    <ColumnDefinition Width="110" />
-                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="{x:Bind Layout.NameWidth, Mode=OneWay}" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="{x:Bind Layout.SizeWidth, Mode=OneWay}" />
+                    <ColumnDefinition Width="{x:Bind Layout.DateWidth, Mode=OneWay}" />
                 </Grid.ColumnDefinitions>
                 <Button Style="{StaticResource VibeHeaderButtonStyle}" Tag="Name" Click="SortHeader_Click">
                     <StackPanel Orientation="Horizontal" Spacing="4">
@@ -89,6 +90,15 @@
                         <FontIcon x:Name="DateArrow" Glyph="" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
                     </StackPanel>
                 </Button>
+                <views:PanelSplitter Tag="Name" Width="7" Margin="0,3,-8,3" HorizontalAlignment="Right" Background="Transparent"
+                                     PointerPressed="Grip_PointerPressed" PointerMoved="Grip_PointerMoved"
+                                     PointerReleased="Grip_PointerReleased" DoubleTapped="Grip_DoubleTapped" />
+                <views:PanelSplitter Grid.Column="2" Tag="Size" Width="7" Margin="-8,3,0,3" HorizontalAlignment="Left" Background="Transparent"
+                                     PointerPressed="Grip_PointerPressed" PointerMoved="Grip_PointerMoved"
+                                     PointerReleased="Grip_PointerReleased" DoubleTapped="Grip_DoubleTapped" />
+                <views:PanelSplitter Grid.Column="3" Tag="Date" Width="7" Margin="-8,3,0,3" HorizontalAlignment="Left" Background="Transparent"
+                                     PointerPressed="Grip_PointerPressed" PointerMoved="Grip_PointerMoved"
+                                     PointerReleased="Grip_PointerReleased" DoubleTapped="Grip_DoubleTapped" />
             </Grid>
             <ListView x:Name="Results" Grid.Row="1" SelectionMode="Single" ItemContainerStyle="{StaticResource VibeListItemStyle}"
                       DoubleTapped="Results_DoubleTapped" SelectionChanged="Results_SelectionChanged"
@@ -97,10 +107,10 @@
                     <DataTemplate x:DataType="views:FindResult">
                         <Grid Height="22" ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2*" />
-                                <ColumnDefinition Width="3*" />
-                                <ColumnDefinition Width="110" />
-                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="{x:Bind Columns.NameWidth, Mode=OneWay}" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="{x:Bind Columns.SizeWidth, Mode=OneWay}" />
+                                <ColumnDefinition Width="{x:Bind Columns.DateWidth, Mode=OneWay}" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />

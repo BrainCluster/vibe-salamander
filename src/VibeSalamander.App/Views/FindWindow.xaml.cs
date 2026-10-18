@@ -14,15 +14,67 @@ using VibeSalamander.ViewModels;
 
 namespace VibeSalamander.Views;
 
+/// <summary>The widths of the result columns, shared by the header and every row (resized at the header).</summary>
+public sealed class FindColumnLayout : System.ComponentModel.INotifyPropertyChanged
+{
+    private double _name, _size, _date;
+
+    public FindColumnLayout(Core.Settings.FindColumnWidths widths)
+    {
+        _name = Clamp(widths.Name);
+        _size = Clamp(widths.Size);
+        _date = Clamp(widths.Date);
+    }
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    public GridLength NameWidth => new(_name);
+    public GridLength SizeWidth => new(_size);
+    public GridLength DateWidth => new(_date);
+
+    private static double Clamp(double width) => double.IsFinite(width) ? Math.Clamp(width, 40, 1200) : 100;
+
+    /// <summary>"Name", "Size" or "Date".</summary>
+    public double Get(string column) => column switch { "Name" => _name, "Size" => _size, _ => _date };
+
+    public void Set(string column, double width)
+    {
+        width = Clamp(width);
+        switch (column)
+        {
+            case "Name": _name = width; break;
+            case "Size": _size = width; break;
+            default: _date = width; break;
+        }
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(column + "Width"));
+    }
+
+    public static double Default(string column) => column switch
+    {
+        "Name" => Core.Settings.FindColumnWidths.DefaultName,
+        "Size" => Core.Settings.FindColumnWidths.DefaultSize,
+        _ => Core.Settings.FindColumnWidths.DefaultDate,
+    };
+
+    public void SaveTo(Core.Settings.FindColumnWidths widths)
+    {
+        widths.Name = _name;
+        widths.Size = _size;
+        widths.Date = _date;
+    }
+}
+
 /// <summary>One search result row.</summary>
 public sealed class FindResult
 {
-    public FindResult(FileEntry entry)
+    public FindResult(FileEntry entry, FindColumnLayout columns)
     {
         Entry = entry;
+        Columns = columns;
     }
 
     public FileEntry Entry { get; }
+    public FindColumnLayout Columns { get; }
     public string Name => Entry.Name;
     public string Directory => Path.GetDirectoryName(Entry.FullPath) ?? string.Empty;
     public string SizeText => Entry.IsDirectory ? "DIR" : Formats.ExactSize(Entry.Size);
@@ -52,8 +104,9 @@ public sealed partial class FindWindow : Window
     /// <param name="focusInPanel">Navigates the active panel to (directory, name to focus or null) and shows the main window.</param>
     public FindWindow(string startDirectory, ElementTheme theme, MainViewModel main, Func<string, string?, Task> focusInPanel)
     {
-        InitializeComponent();
         _main = main;
+        Layout = new FindColumnLayout(main.Settings.FindColumns);
+        InitializeComponent();
         _focusInPanel = focusInPanel;
         _confirm = () => main.Settings.Confirm;
         _dialogs = new Dialogs(() => Content.XamlRoot, () => RootGrid.ActualTheme, () => AppWindow.Id);
@@ -160,7 +213,7 @@ public sealed partial class FindWindow : Window
             int count = await FileSearcher.SearchAsync(options, entry =>
             {
                 lock (_pendingLock)
-                    _pending.Add(new FindResult(entry));
+                    _pending.Add(new FindResult(entry, Layout));
             }, progress, _cts.Token);
             status = count == 1 ? Loc.T("1 item found") : Loc.F("{0} items found", count.ToString("N0"));
         }
@@ -209,6 +262,65 @@ public sealed partial class FindWindow : Window
             foreach (FindResult r in batch)
                 _results.Insert(InsertionIndex(r, compare), r);
         }
+    }
+
+    // ---- column widths (grips in the header) ---------------------------------------------------
+
+    /// <summary>The result columns' widths (x:Bind in the header; the rows share it).</summary>
+    public FindColumnLayout Layout { get; }
+
+    private string? _resizing;
+    private double _resizeStartX, _resizeStartWidth;
+
+    private void Grip_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string column } grip)
+            return;
+        _resizing = column;
+        _resizeStartX = e.GetCurrentPoint(HeaderGrid).Position.X;
+        _resizeStartWidth = Layout.Get(column);
+        grip.CapturePointer(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void Grip_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (_resizing is not string column)
+            return;
+        if (!e.Pointer.IsInContact)
+        {
+            _resizing = null; // capture lost without a release: hovering must not resize
+            return;
+        }
+        // Name's grip is on its right edge, the others' on their left edge
+        double dx = e.GetCurrentPoint(HeaderGrid).Position.X - _resizeStartX;
+        Layout.Set(column, column == "Name" ? _resizeStartWidth + dx : _resizeStartWidth - dx);
+        e.Handled = true;
+    }
+
+    private void Grip_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (_resizing != null)
+            SaveColumnWidths();
+        _resizing = null;
+        (sender as UIElement)?.ReleasePointerCapture(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void Grip_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is string column)
+        {
+            Layout.Set(column, FindColumnLayout.Default(column));
+            SaveColumnWidths();
+        }
+        e.Handled = true;
+    }
+
+    private void SaveColumnWidths()
+    {
+        Layout.SaveTo(_main.Settings.FindColumns);
+        _main.SaveSettings();
     }
 
     // ---- sorting (column headers) --------------------------------------------------------------

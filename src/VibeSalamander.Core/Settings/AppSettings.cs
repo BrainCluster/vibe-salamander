@@ -34,6 +34,18 @@ public sealed class PanelSettings
 }
 
 /// <summary>User configuration, stored as JSON in %AppData%\VibeSalamander\settings.json.</summary>
+/// <summary>Widths of the Find window's Name, Size and Modified columns (Path takes the rest).</summary>
+public sealed class FindColumnWidths
+{
+    public const double DefaultName = 260;
+    public const double DefaultSize = 110;
+    public const double DefaultDate = 140;
+
+    public double Name { get; set; } = DefaultName;
+    public double Size { get; set; } = DefaultSize;
+    public double Date { get; set; } = DefaultDate;
+}
+
 public sealed class AppSettings
 {
     public PanelSettings Left { get; set; } = new();
@@ -53,6 +65,9 @@ public sealed class AppSettings
 
     /// <summary>Last options of Compare Directories (Ctrl+F10).</summary>
     public CompareOptions Compare { get; set; } = new();
+
+    /// <summary>Column widths of the Find window's results (dragged at the column headers).</summary>
+    public FindColumnWidths FindColumns { get; set; } = new();
 
     /// <summary>List of Opened Files (Alt+F11), most recent first.</summary>
     public List<string> OpenedFiles { get; set; } = new();
