@@ -272,10 +272,8 @@ internal sealed class FtpRemoteClient : IRemoteClient
             {
                 try
                 {
-                    FtpListItem? target = await _client.DereferenceLink(item, ct);
-                    isDirectory = target?.Type == FtpObjectType.Directory;
-                    if (target != null)
-                        size = target.Size;
+                    // a link to a directory is entered like a directory
+                    isDirectory = await _client.DirectoryExists(item.FullName, ct);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
