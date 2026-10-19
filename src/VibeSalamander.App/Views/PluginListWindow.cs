@@ -78,6 +78,12 @@ public sealed class PluginListWindow : Window, IPluginListWindow
         _list.SelectionChanged += (_, _) => _selected = _list.SelectedItem as Row;
         _list.RightTapped += List_RightTapped;
         _list.KeyDown += List_KeyDown;
+        // a double-click on a row presses the default button (Connect, Open, ...)
+        _list.DoubleTapped += (_, _) =>
+        {
+            if (_list.SelectedItem != null && _default is { } button && _buttons.TryGetValue(button.Id, out Button? control) && control.IsEnabled)
+                Invoke(button.Click);
+        };
 
         _table = new Grid();
         _table.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -439,6 +445,7 @@ public sealed class PluginListWindow : Window, IPluginListWindow
             >= VirtualKey.Number0 and <= VirtualKey.Number9 => ((char)('0' + (key - VirtualKey.Number0))).ToString(),
             VirtualKey.Delete => "Delete",
             VirtualKey.Insert => "Insert",
+            >= VirtualKey.F1 and <= VirtualKey.F12 => "F" + (key - VirtualKey.F1 + 1),
             _ => string.Empty,
         };
         if (name.Length == 0)

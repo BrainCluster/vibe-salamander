@@ -137,4 +137,7 @@ public enum CommandId
     // disk images
     MountImage,
     UnmountImage,
+
+    // the FTP / SFTP plugin
+    ConnectFtp,
 }

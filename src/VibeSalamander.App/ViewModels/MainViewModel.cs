@@ -102,7 +102,7 @@ internal sealed class UiOperationCallbacks : IOperationCallbacks
 }
 
 /// <summary>Owns both panels and executes every <see cref="CommandId"/>.</summary>
-public sealed class MainViewModel : BindableBase
+public sealed partial class MainViewModel : BindableBase
 {
     private readonly IUiHost _host;
     private readonly DispatcherQueue _dispatcher;
@@ -123,6 +123,8 @@ public sealed class MainViewModel : BindableBase
         Plugins = new PluginManager();
         ArchiveProvider = new ArchiveFileSystemProvider(Plugins);
         Registry.RegisterFirst(ArchiveProvider);
+        RemoteProvider = new RemoteFileSystemProvider(Plugins);
+        Registry.RegisterFirst(RemoteProvider);
         Icons = new IconCache(dispatcher);
         Thumbnails = new ThumbnailCache(dispatcher);
         Settings.HotPaths ??= new List<string>(); // "HotPaths": null in a hand-edited settings file
@@ -145,7 +147,13 @@ public sealed class MainViewModel : BindableBase
             pane.Navigated += (_, path) => RememberRecent(Settings.WorkingDirectories, path, WorkingDirectoriesLimit);
             pane.FileOpened += (_, path) => RememberRecent(Settings.OpenedFiles, path);
             PaneViewModel p = pane;
-            pane.ArchiveFileOpenRequested += async (_, item) => await OpenFromArchiveAsync(p, item);
+            pane.ArchiveFileOpenRequested += async (_, item) =>
+            {
+                if (p.IsRemote)
+                    await OpenFromRemoteAsync(p, item, Settings.Viewers);
+                else
+                    await OpenFromArchiveAsync(p, item);
+            };
             pane.DiskImageOpenRequested += async (_, path) => await OpenDiskImageAsync(p, path);
         }
 
@@ -231,7 +239,7 @@ public sealed class MainViewModel : BindableBase
             }
             return;
         }
-        Notify(Loc.F("\"{0}\" needs the Checksum plugin (Plugins → Plugins Manager).", CommandCatalog.DisplayName(command)));
+        Notify(Loc.F("\"{0}\" needs a plugin that is not enabled (Plugins → Plugins Manager).", CommandCatalog.DisplayName(command)));
     }
 
     /// <summary>Archives as directories (Enter on an archive).</summary>
@@ -355,9 +363,10 @@ public sealed class MainViewModel : BindableBase
 
     public bool CanExecute(CommandId command) => command switch
     {
-        CommandId.Copy => _active.IsLocalDisk || _active.IsArchive,
+        CommandId.Copy => _active.IsLocalDisk || _active.IsArchive || _active.IsRemote,
         CommandId.Move or CommandId.Delete or CommandId.DeletePermanently or CommandId.ClipboardPaste =>
-            _active.IsLocalDisk || EditableArchive(_active) != null,
+            _active.IsLocalDisk || _active.IsRemote || EditableArchive(_active) != null,
+        CommandId.QuickRename or CommandId.CreateDirectory when _active.IsRemote => true,
         CommandId.QuickRename or CommandId.CreateDirectory or CommandId.EditNewFile or
         CommandId.ChangeAttributes or CommandId.ChangeCase or CommandId.ClipboardCut or
         CommandId.ClipboardCopy => _active.IsLocalDisk,
@@ -372,6 +381,8 @@ public sealed class MainViewModel : BindableBase
         try
         {
             if (p.IsArchive && await ArchiveCommandAsync(p, command))
+                return;
+            if (p.IsRemote && await RemoteCommandAsync(p, command))
                 return;
             switch (command)
             {
@@ -472,7 +483,7 @@ public sealed class MainViewModel : BindableBase
                 case CommandId.Copy: await CopyOrMoveAsync(move: false); break;
                 case CommandId.Move: await CopyOrMoveAsync(move: true); break;
                 case CommandId.Pack: await PackAsync(); break;
-                case CommandId.CalculateChecksums or CommandId.VerifyChecksums: await RunPluginHostCommandAsync(command); break;
+                case CommandId.CalculateChecksums or CommandId.VerifyChecksums or CommandId.ConnectFtp: await RunPluginHostCommandAsync(command); break;
                 case CommandId.MountImage:
                     if (p.FocusedItem is { Entry.IsDirectory: false } diskImage && p.IsLocalDisk && DiskImages.IsDiskImage(diskImage.Entry.FullPath))
                         await MountImageAsync(p, diskImage.Entry.FullPath);
@@ -717,7 +728,7 @@ public sealed class MainViewModel : BindableBase
 
         string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} items", items.Count);
         // the other panel, also when it shows a ZIP or TAR (the files go into the archive)
-        bool otherUsable = Inactive.IsLocalDisk || EditableArchive(Inactive) != null;
+        bool otherUsable = Inactive.IsLocalDisk || Inactive.IsRemote || EditableArchive(Inactive) != null;
         string defaultTarget = otherUsable ? Inactive.Path : string.Empty;
         if (defaultTarget.Length > 0 && !defaultTarget.EndsWith('\\'))
             defaultTarget += "\\";
@@ -745,6 +756,11 @@ public sealed class MainViewModel : BindableBase
         }
         bool endsWithSeparator = target.TrimEnd().EndsWith('\\');
         string resolved = PathUtil.Resolve(_active.Path, target);
+        if (RemoteProvider.FileSystemOf(resolved) is { } remote)
+        {
+            UploadToRemote(items.Select(i => i.Entry.FullPath).ToList(), remote, resolved, move);
+            return;
+        }
         if (!Directory.Exists(resolved) && ArchiveProvider.Locate(resolved) is { } archive)
         {
             if (EditableArchiveAt(resolved) is { } editable)
@@ -771,6 +787,11 @@ public sealed class MainViewModel : BindableBase
     {
         if (sources.Count == 0)
             return Task.CompletedTask;
+        if (RemoteProvider.FileSystemOf(target) is { } remote)
+        {
+            UploadToRemote(sources, remote, target, move); // dropped or pasted onto an FTP / SFTP panel
+            return Task.CompletedTask;
+        }
         if (!Directory.Exists(target) && EditableArchiveAt(target) is { } archive)
         {
             AddToArchive(sources, archive, move); // dropped or pasted onto a ZIP / TAR panel

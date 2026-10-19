@@ -13,6 +13,7 @@
     <ProjectReference Include="..\..\src\VibeSalamander.Core\VibeSalamander.Core.csproj" />
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Archive\VibeSalamander.Plugins.Archive.csproj" />
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Checksum\VibeSalamander.Plugins.Checksum.csproj" />
+    <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Ftp\VibeSalamander.Plugins.Ftp.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

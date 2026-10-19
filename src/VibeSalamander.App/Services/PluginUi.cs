@@ -122,6 +122,136 @@ public sealed class PluginUi : IPluginUi
             return true;
         });
 
+    public Task<bool> EditFieldsAsync(string title, string? description, IReadOnlyList<PluginField> fields,
+        Func<string?>? validate = null, IPluginListWindow? owner = null) => OnUiAsync(async () =>
+    {
+        Dialogs dialogs = DialogsFor(owner);
+        var body = new StackPanel { Spacing = 10, MinWidth = 420 };
+        if (!string.IsNullOrEmpty(description))
+            body.Children.Add(Text(description));
+        // read back into the fields: when the dialog closes, and before a field's Changed callback runs
+        var readers = new List<Action>();
+        var writers = new List<Action>();
+        Control? first = null;
+        foreach (PluginField field in fields)
+        {
+            Control input;
+            switch (field.Kind)
+            {
+                case PluginFieldKind.Password:
+                {
+                    var box = new PasswordBox { Header = field.Label, Password = field.Value, PlaceholderText = field.Placeholder ?? string.Empty, Tag = "NoLoc" };
+                    readers.Add(() => field.Value = box.Password);
+                    writers.Add(() => { if (box.Password != field.Value) box.Password = field.Value; });
+                    input = box;
+                    body.Children.Add(box);
+                    break;
+                }
+                case PluginFieldKind.Check:
+                {
+                    var box = new CheckBox { Content = field.Label, IsChecked = field.Value == "true", Tag = "NoLoc" };
+                    readers.Add(() => field.Value = box.IsChecked == true ? "true" : "false");
+                    writers.Add(() => box.IsChecked = field.Value == "true");
+                    input = box;
+                    body.Children.Add(box);
+                    break;
+                }
+                case PluginFieldKind.Choice:
+                {
+                    var box = new ComboBox { Header = field.Label, MinWidth = 220, Tag = "NoLoc" };
+                    foreach (string choice in field.Choices)
+                        box.Items.Add(choice);
+                    box.SelectedIndex = Math.Max(0, field.Choices.ToList().IndexOf(field.Value));
+                    readers.Add(() => field.Value = box.SelectedItem as string ?? string.Empty);
+                    writers.Add(() => box.SelectedIndex = Math.Max(0, field.Choices.ToList().IndexOf(field.Value)));
+                    if (field.Changed != null)
+                    {
+                        box.SelectionChanged += (_, _) =>
+                        {
+                            foreach (Action read in readers)
+                                read();
+                            field.Changed(field.Value);
+                            foreach (Action write in writers)
+                                write();
+                        };
+                    }
+                    input = box;
+                    body.Children.Add(box);
+                    break;
+                }
+                default:
+                {
+                    var box = new TextBox { Header = field.Label, Text = field.Value, PlaceholderText = field.Placeholder ?? string.Empty, Tag = "NoLoc", IsSpellCheckEnabled = false };
+                    readers.Add(() => field.Value = box.Text.Trim());
+                    writers.Add(() => { if (box.Text.Trim() != field.Value) box.Text = field.Value; });
+                    input = box;
+                    if (field.Kind == PluginFieldKind.File)
+                    {
+                        var browse = new Button { Content = Loc.T("Browse..."), VerticalAlignment = VerticalAlignment.Bottom };
+                        Microsoft.UI.WindowId windowId = dialogs.WindowId;
+                        browse.Click += async (_, _) =>
+                        {
+                            try
+                            {
+                                var picker = new Microsoft.Windows.Storage.Pickers.FileOpenPicker(windowId);
+                                picker.FileTypeFilter.Add("*");
+                                var picked = await picker.PickSingleFileAsync();
+                                if (!string.IsNullOrEmpty(picked?.Path))
+                                    box.Text = picked.Path;
+                            }
+                            catch (Exception)
+                            {
+                                // no picker: the path is typed
+                            }
+                        };
+                        var row = new Grid { ColumnSpacing = 8 };
+                        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                        row.Children.Add(box);
+                        Grid.SetColumn(browse, 1);
+                        row.Children.Add(browse);
+                        body.Children.Add(row);
+                    }
+                    else
+                    {
+                        body.Children.Add(box);
+                    }
+                    break;
+                }
+            }
+            first ??= input;
+        }
+        var problem = new TextBlock
+        {
+            Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SystemFillColorCriticalBrush"],
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed,
+            Tag = "NoLoc",
+        };
+        body.Children.Add(problem);
+        var scroller = new ScrollViewer { Content = body, MaxHeight = 560, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+
+        ContentDialog dialog = dialogs.Create(title, scroller);
+        dialog.PrimaryButtonText = "OK";
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Primary;
+        dialog.PrimaryButtonClick += (_, e) =>
+        {
+            foreach (Action read in readers)
+                read();
+            string? message = validate?.Invoke();
+            problem.Text = message ?? string.Empty;
+            problem.Visibility = message == null ? Visibility.Collapsed : Visibility.Visible;
+            e.Cancel = message != null;
+        };
+        dialog.Opened += (_, _) => first?.Focus(FocusState.Programmatic);
+        if (await dialogs.ShowDialogAsync(dialog) != ContentDialogResult.Primary)
+            return false;
+        foreach (Action read in readers)
+            read();
+        return true;
+    });
+
     public Task<PluginSaveChoice?> AskSaveFileAsync(string title, string suggestedPath, IReadOnlyList<PluginFileType> types, int selectedType,
         IPluginListWindow? owner = null) => OnUiAsync<PluginSaveChoice?>(async () =>
     {

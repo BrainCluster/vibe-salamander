@@ -139,6 +139,7 @@
                 <MenuFlyoutItem Text="List of Working Directories" Tag="WorkingDirectoriesList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F12" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Connect Network Drive..." Tag="ConnectNetworkDrive" Click="Menu_Click" KeyboardAcceleratorTextOverride="F11" />
+                <MenuFlyoutItem Text="Connect to FTP / SFTP Server..." Tag="ConnectFtp" Click="Menu_Click" />
                 <MenuFlyoutItem Text="Disconnect..." Tag="DisconnectNetworkDrive" Click="Menu_Click" KeyboardAcceleratorTextOverride="F12" />
                 <MenuFlyoutItem Text="Shared Directories" Tag="SharedDirectories" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F9" />
                 <MenuFlyoutSeparator />

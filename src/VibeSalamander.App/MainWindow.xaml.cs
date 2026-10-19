@@ -770,6 +770,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         CommandId.OpenedFilesList => "Files",
         CommandId.WorkingDirectoriesList => "Dirs",
         CommandId.ConnectNetworkDrive => "NetCon",
+        CommandId.ConnectFtp => "FTP",
         CommandId.DisconnectNetworkDrive => "NetDis",
         CommandId.SharedDirectories => "Shares",
         _ => command.ToString(),

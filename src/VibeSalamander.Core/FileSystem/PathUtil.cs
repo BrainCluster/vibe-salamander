@@ -43,6 +43,8 @@ public static class PathUtil
     public static string Resolve(string currentDirectory, string input)
     {
         input = Environment.ExpandEnvironmentVariables(input.Trim().Trim('"'));
+        if (input.Contains("://", StringComparison.Ordinal))
+            return input; // a plugin file system's URL ("sftp://user@host/dir") is taken as it is
         if (input.Length == 2 && input[1] == ':')
             return NormalizeDirectory(input);
         if (Path.IsPathRooted(input) && !(input.StartsWith('\\') && !input.StartsWith(@"\\")))

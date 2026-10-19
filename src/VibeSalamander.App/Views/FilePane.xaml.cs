@@ -338,7 +338,7 @@ public sealed partial class FilePane : UserControl
             ViewMode.Thumbnails => UiState.ThumbnailSize,
             _ => 0,
         };
-        if (dips > 0)
+        if (dips > 0 && !ViewModel!.IsRemote) // a server's files would have to be downloaded for their pictures
         {
             double scale = XamlRoot?.RasterizationScale ?? 1;
             item.EnsureLargeIcon(_main.Thumbnails, (uint)Math.Ceiling(dips * scale));
@@ -925,6 +925,25 @@ public sealed partial class FilePane : UserControl
             Add("Drive information", "\uE946", CommandId.DriveInformation);
             Add("Properties", "\uE90F", CommandId.Properties);
         }
+        else if (onItem && pane.IsRemote)
+        {
+            // on a server (FTP, SFTP): copies go through the transfer panel
+            bool directory = item!.Entry.IsDirectory;
+            Add("Open", directory ? "\uE8DA" : "\uE8E5", CommandId.Open, bold: true);
+            if (!directory)
+            {
+                Add("View", "\uE890", CommandId.View);
+                Add("Edit", "\uE70F", CommandId.Edit);
+            }
+            Separator();
+            Add("Copy to other panel...", "\uE8C8", CommandId.Copy);
+            Add("Move to other panel...", "\uE8DE", CommandId.Move);
+            Add("Rename", "\uE8AC", CommandId.QuickRename);
+            Add("Delete", "\uE74D", CommandId.Delete);
+            Separator();
+            Add("Copy name as text", "\uE8C8", CommandId.CopyNameAsText);
+            Add("Copy path", "\uE8C8", CommandId.CopyFullNameAsText);
+        }
         else if (onItem && pane.IsArchive)
         {
             // inside an archive: ZIP and TAR also move out and delete, the others are read-only
@@ -1027,6 +1046,12 @@ public sealed partial class FilePane : UserControl
         }
         else
         {
+            if (pane.IsRemote)
+            {
+                Add("New folder", "\uE8F4", CommandId.CreateDirectory);
+                Add("Paste", "\uE77F", CommandId.ClipboardPaste);
+                Separator();
+            }
             menu.Items.Add(ViewSubmenu(pane));
             menu.Items.Add(SortSubmenu(pane));
             Add("Refresh", "\uE72C", CommandId.Refresh);
@@ -1127,8 +1152,8 @@ public sealed partial class FilePane : UserControl
     /// </summary>
     private void ShowShellMenu(FileItemViewModel? item, int x, int y)
     {
-        if (ViewModel == null || _main == null || ViewModel.IsArchive)
-            return; // inside an archive the items aren't on disk (and Explorer's ZIP folder could change the read-only archive)
+        if (ViewModel == null || _main == null || ViewModel.IsArchive || ViewModel.IsRemote)
+            return; // inside an archive or on a server the items aren't on disk (and Explorer's ZIP folder could change the read-only archive)
         List<string> paths;
         if (item != null && item.IsMarked)
             paths = ViewModel.MarkedItems.Select(i => i.Entry.FullPath).ToList();
@@ -1385,7 +1410,7 @@ public sealed partial class FilePane : UserControl
     private string? DropTarget(DragEventArgs e)
     {
         // a ZIP or TAR shown in the panel takes files too (they are copied into the archive)
-        if (ViewModel == null || _main == null || !(ViewModel.IsLocalDisk || _main.IsEditableArchive(ViewModel)))
+        if (ViewModel == null || _main == null || !(ViewModel.IsLocalDisk || ViewModel.IsRemote || _main.IsEditableArchive(ViewModel)))
             return null;
         if ((e.OriginalSource as FrameworkElement)?.DataContext is FileItemViewModel { Entry.IsDirectory: true, Entry.IsUpDir: false } dir)
             return dir.Entry.FullPath;
@@ -1400,7 +1425,7 @@ public sealed partial class FilePane : UserControl
     {
         if (KeyboardState.IsDown(KeyboardState.Shift))
             return true;
-        if (KeyboardState.IsDown(KeyboardState.Control) || ViewModel?.IsArchive == true)
+        if (KeyboardState.IsDown(KeyboardState.Control) || ViewModel?.IsArchive == true || ViewModel?.IsRemote == true)
             return false;
         return e.DataView.Properties.TryGetValue(InternalPathsKey, out object? value) && value is string[] { Length: > 0 } internalPaths &&
                string.Equals(Path.GetPathRoot(internalPaths[0]), Path.GetPathRoot(target), StringComparison.OrdinalIgnoreCase);
@@ -1718,6 +1743,21 @@ public sealed partial class FilePane : UserControl
         var segments = new List<(string, string)> { (Loc.T("This PC"), ThisPcProvider.RootPath) };
         if (ViewModel == null || ViewModel.IsThisPc)
             return segments;
+        if (ViewModel.IsRemote && _main != null)
+        {
+            // the server, then its directories: walked up through the plugin's parents
+            var chain = new List<string>();
+            string? current = ViewModel.Path;
+            while (current != null && current != ThisPcProvider.RootPath && chain.Count < 64)
+            {
+                chain.Add(current);
+                current = _main.RemoteProvider.GetParent(current)?.Path;
+            }
+            chain.Reverse();
+            for (int i = 0; i < chain.Count; i++)
+                segments.Add((i == 0 ? _main.RemoteProvider.GetDisplayPath(chain[i]).TrimEnd('/') : RemoteFileSystemProvider.LastName(chain[i]), chain[i]));
+            return segments;
+        }
         if (!ViewModel.IsLocalDisk && !ViewModel.IsArchive)
         {
             segments.Add((ViewModel.DisplayPath, ViewModel.Path));
@@ -1945,7 +1985,17 @@ public sealed partial class FilePane : UserControl
         else
         {
             bool showHidden = _main.Settings.ShowHidden;
-            List<string> folders = _main.ArchiveProvider.CanHandle(path)
+            // on a server: its directories, as the plugin lists them
+            var remoteTargets = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (_main.RemoteProvider.CanHandle(path))
+            {
+                DirectoryListing listing = await _main.RemoteProvider.ListAsync(path, new ListingOptions { ShowHidden = showHidden }, CancellationToken.None);
+                foreach (FileEntry entry in listing.Entries.Where(e => e.IsDirectory && !e.IsUpDir).OrderBy(e => e.Name, StringComparer.CurrentCultureIgnoreCase).Take(500))
+                    remoteTargets[entry.Name] = entry.FullPath;
+            }
+            List<string> folders = remoteTargets.Count > 0 || _main.RemoteProvider.CanHandle(path)
+                ? remoteTargets.Keys.ToList()
+                : _main.ArchiveProvider.CanHandle(path)
                 ? await _main.ArchiveProvider.ListDirectoriesAsync(path) // a directory inside an archive (or the archive itself)
                 : await Task.Run(() =>
             {
@@ -1969,10 +2019,11 @@ public sealed partial class FilePane : UserControl
             });
             if (folders.Count == 0)
                 menu.Items.Add(new MenuFlyoutItem { Text = Loc.T("(no subfolders)"), IsEnabled = false });
-            string? nextName = next != null ? Path.GetFileName(next.TrimEnd('\\')) : null;
+            string? nextName = next == null ? null
+                : remoteTargets.Count > 0 ? RemoteFileSystemProvider.LastName(next) : Path.GetFileName(next.TrimEnd('\\'));
             foreach (string name in folders)
             {
-                string target = Path.Combine(path, name);
+                string target = remoteTargets.TryGetValue(name, out string? remotePath) ? remotePath : Path.Combine(path, name);
                 var item = new MenuFlyoutItem { Text = name, Icon = new FontIcon { Glyph = "\uE8B7" } };
                 if (nextName != null && string.Equals(name, nextName, StringComparison.OrdinalIgnoreCase))
                     item.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;

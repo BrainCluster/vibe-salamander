@@ -33,6 +33,7 @@ public sealed class PluginInfo
     public IPluginHost? Host { get; internal set; }
     public List<IArchiver> Archivers { get; } = new();
     public List<ICommandContributor> CommandContributors { get; } = new();
+    public List<IPluginFileSystem> FileSystems { get; } = new();
 
     /// <summary>"Pack and unpack", "3 commands" - what the plugin adds, for the manager.</summary>
     public string FeaturesText
@@ -47,6 +48,8 @@ public sealed class PluginInfo
                 if (a.UnpackExtensions.Count > 0)
                     parts.Add("Unpack: " + string.Join(", ", a.UnpackExtensions.Take(12)) + (a.UnpackExtensions.Count > 12 ? ", ..." : string.Empty));
             }
+            foreach (IPluginFileSystem fs in FileSystems)
+                parts.Add(fs.DisplayName);
             int commands = CommandContributors.Sum(c => c.Commands.Count);
             if (commands > 0)
                 parts.Add(commands == 1 ? "1 command" : $"{commands} commands");
@@ -79,6 +82,29 @@ public sealed class PluginManager
     public IReadOnlyList<(IArchiver Archiver, ArchiveFormat Format)> PackFormats =>
         Archivers.SelectMany(a => a.PackFormats.Select(f => (a, f)))
                  .GroupBy(x => x.f.Id, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
+
+    /// <summary>File systems of the enabled plugins (FTP, SFTP, ...).</summary>
+    public IEnumerable<IPluginFileSystem> FileSystems => _plugins.Where(p => p.Enabled && p.Error == null).SelectMany(p => p.FileSystems);
+
+    /// <summary>The plugin file system a path belongs to ("sftp://..."), or null.</summary>
+    public IPluginFileSystem? FindFileSystem(string path)
+    {
+        if (path.Length < 4 || !path.Contains("://", StringComparison.Ordinal))
+            return null; // only URLs: disk paths never reach the plugins
+        foreach (IPluginFileSystem fs in FileSystems)
+        {
+            try
+            {
+                if (fs.CanHandle(path))
+                    return fs;
+            }
+            catch (Exception)
+            {
+                // a broken plugin must not break the panel
+            }
+        }
+        return null;
+    }
 
     /// <summary>The archiver that opens this file in the panel like a directory, or null.</summary>
     public IArchiver? FindBrowser(string path) => Archivers.FirstOrDefault(a => SafeCanBrowse(a, path));
@@ -131,6 +157,7 @@ public sealed class PluginManager
         // built-in
         Add(new global::VibeSalamander.Plugins.Archive.ArchivePlugin(), "Built-in", builtIn: true, main, disabled);
         Add(new global::VibeSalamander.Plugins.Checksum.ChecksumPlugin(), "Built-in", builtIn: true, main, disabled);
+        Add(new global::VibeSalamander.Plugins.Ftp.FtpPlugin(), "Built-in", builtIn: true, main, disabled);
 
         // external: one folder per plugin
         foreach (string root in new[] { AppPluginDirectory, UserPluginDirectory })
@@ -308,6 +335,8 @@ internal sealed class PluginHost : IPluginHost
     public void RegisterArchiver(IArchiver archiver) => _info.Archivers.Add(archiver);
 
     public void RegisterCommands(ICommandContributor contributor) => _info.CommandContributors.Add(contributor);
+
+    public void RegisterFileSystem(IPluginFileSystem fileSystem) => _info.FileSystems.Add(fileSystem);
 
     public IPanelContext ActivePanel => new PanelContext(_main.Active);
 

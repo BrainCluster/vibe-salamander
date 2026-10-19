@@ -47,6 +47,9 @@ public interface IPluginHost
     /// <summary>Commands shown in the Plugins menu under the plugin's name.</summary>
     void RegisterCommands(ICommandContributor contributor);
 
+    /// <summary>A file system the panels can show (FTP, SFTP, ...), with paths like "sftp://user@host/dir".</summary>
+    void RegisterFileSystem(IPluginFileSystem fileSystem) => throw new NotSupportedException("This host has no plugin file systems.");
+
     /// <summary>The active panel's current path and focused/marked items.</summary>
     IPanelContext ActivePanel { get; }
 
@@ -79,6 +82,14 @@ public interface IPluginUi
     /// <summary>Check boxes (true / false options); false when cancelled, otherwise the options hold the new values.</summary>
     Task<bool> EditOptionsAsync(string title, string? description, IReadOnlyList<PluginOption> options, IPluginListWindow? owner = null);
 
+    /// <summary>
+    /// A form: text, password, choice and check box fields. False when cancelled, otherwise the fields hold
+    /// the new values. <paramref name="validate"/> (optional) returns a problem to show (the form stays
+    /// open) or null.
+    /// </summary>
+    Task<bool> EditFieldsAsync(string title, string? description, IReadOnlyList<PluginField> fields,
+        Func<string?>? validate = null, IPluginListWindow? owner = null) => Task.FromResult(false);
+
     /// <summary>Where to save a file and in which of the formats; null when cancelled.</summary>
     Task<PluginSaveChoice?> AskSaveFileAsync(string title, string suggestedPath, IReadOnlyList<PluginFileType> types,
         int selectedType, IPluginListWindow? owner = null);
@@ -105,6 +116,36 @@ public sealed class PluginOption
 {
     public required string Label { get; init; }
     public bool Value { get; set; }
+}
+
+public enum PluginFieldKind
+{
+    Text,
+    /// <summary>Hidden while typed.</summary>
+    Password,
+    /// <summary>One of <see cref="PluginField.Choices"/> (the value is the chosen text).</summary>
+    Choice,
+    /// <summary>A check box: the value is "true" or "false".</summary>
+    Check,
+    /// <summary>A file on disk, with a Browse button.</summary>
+    File,
+}
+
+/// <summary>One field of <see cref="IPluginUi.EditFieldsAsync"/>.</summary>
+public sealed class PluginField
+{
+    public required string Label { get; init; }
+    public PluginFieldKind Kind { get; init; } = PluginFieldKind.Text;
+    public string Value { get; set; } = string.Empty;
+
+    /// <summary>The choices of a <see cref="PluginFieldKind.Choice"/> field.</summary>
+    public IReadOnlyList<string> Choices { get; init; } = Array.Empty<string>();
+
+    /// <summary>Shown in an empty text field.</summary>
+    public string? Placeholder { get; init; }
+
+    /// <summary>Called when a choice changes (to fill in other fields, e.g. the port of a protocol); may change other fields' values.</summary>
+    public Action<string>? Changed { get; init; }
 }
 
 /// <param name="ShortcutText">"Ctrl+C", "Delete": shown in the menu and also works as a key in the window.</param>
@@ -182,6 +223,52 @@ public interface ICommandContributor
 /// </param>
 public sealed record PluginCommand(string Id, string MenuText, string? ShortcutText, Func<IPluginHost, Task> Execute,
     string? HostCommand = null);
+
+// ---- file systems (FTP, SFTP, ...) ---------------------------------------------------------------
+
+/// <summary>
+/// A file system shown in the panels like a directory tree. Its paths are URLs the plugin understands
+/// ("sftp://user@host:22/home/user"). The host lists them, and runs copies, deletes and so on in the
+/// transfer panel through an <see cref="IArchiveJob"/> (progress, pause, cancel, questions).
+/// All methods run on background threads.
+/// </summary>
+public interface IPluginFileSystem
+{
+    string DisplayName { get; }
+
+    /// <summary>True when the path belongs to this file system.</summary>
+    bool CanHandle(string path);
+
+    /// <summary>The items of a directory (without ".."). Throws with a readable message when it can't be listed.</summary>
+    Task<IReadOnlyList<RemoteItem>> ListAsync(string path, CancellationToken cancellationToken);
+
+    /// <summary>The parent directory, or null at the root (the panel then goes to This PC).</summary>
+    string? GetParent(string path);
+
+    /// <summary>"sftp://user@host/dir": for the directory line and the window title.</summary>
+    string GetDisplayPath(string path);
+
+    /// <summary>The path of an item in a directory.</summary>
+    string Combine(string directory, string name);
+
+    /// <summary>Copies files and directories (with their content) from here into a local directory.</summary>
+    Task<OperationResult> DownloadAsync(IReadOnlyList<RemoteItem> items, string targetDirectory, IArchiveJob job);
+
+    /// <summary>Copies local files and directories (with their content) into a directory here.</summary>
+    Task<OperationResult> UploadAsync(IReadOnlyList<string> sources, string targetDirectory, IArchiveJob job);
+
+    /// <summary>Deletes files and directories (with their content).</summary>
+    Task<OperationResult> DeleteAsync(IReadOnlyList<RemoteItem> items, IArchiveJob job);
+
+    Task CreateDirectoryAsync(string path, CancellationToken cancellationToken);
+
+    /// <summary>Renames (or moves within the same server) an item.</summary>
+    Task RenameAsync(string path, string newPath, CancellationToken cancellationToken);
+}
+
+/// <summary>One file or directory of a plugin file system.</summary>
+/// <param name="Path">Its full path (as the plugin's paths go).</param>
+public sealed record RemoteItem(string Name, string Path, bool IsDirectory, long Size, DateTime LastWrite, bool IsHidden = false, bool IsLink = false);
 
 // ---- archivers ---------------------------------------------------------------------------------
 

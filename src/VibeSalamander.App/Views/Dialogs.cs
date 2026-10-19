@@ -25,6 +25,9 @@ public sealed class Dialogs
         _windowId = windowId;
     }
 
+    /// <summary>The window the dialogs belong to (for file pickers).</summary>
+    public Microsoft.UI.WindowId WindowId => _windowId();
+
     /// <summary>Raised while a dialog is open (the main window suspends its key handling).</summary>
     public event EventHandler<bool>? DialogOpenChanged;
 
@@ -591,6 +594,34 @@ public sealed class Dialogs
         if (!enter && result != ContentDialogResult.Primary)
             return null;
         return (string.IsNullOrWhiteSpace(box.Text) ? "*.*" : box.Text.Trim(), dirs.IsChecked == true);
+    }
+
+    /// <summary>One line of text (a new directory's name, ...); null when cancelled or empty.</summary>
+    public async Task<string?> InputAsync(string title, string prompt, string initial = "")
+    {
+        var box = new TextBox { Text = initial, MinWidth = 380, IsSpellCheckEnabled = false };
+        var body = new StackPanel { Spacing = 8 };
+        body.Children.Add(Text(prompt));
+        body.Children.Add(box);
+        ContentDialog dialog = NewDialog(title, body);
+        dialog.PrimaryButtonText = "OK";
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Primary;
+        bool enter = false;
+        box.KeyDown += (_, e) =>
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter)
+            {
+                enter = true;
+                e.Handled = true;
+                dialog.Hide();
+            }
+        };
+        dialog.Opened += (_, _) => { box.Focus(FocusState.Programmatic); box.SelectAll(); };
+        ContentDialogResult result = await ShowAsync(dialog);
+        if ((!enter && result != ContentDialogResult.Primary) || string.IsNullOrWhiteSpace(box.Text))
+            return null;
+        return box.Text.Trim();
     }
 
     /// <summary>Filter for the panel. Returns the new mask, "" to remove the filter, or null when cancelled.</summary>

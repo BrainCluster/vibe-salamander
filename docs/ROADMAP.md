@@ -20,7 +20,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
    directory sizes, drive information, command line integration, network drives.
 4. **Plugins** – plugin loader and Plugins Manager (done), archives: pack ZIP/TAR/TAR.GZ, unpack
    ZIP/7z/RAR/TAR/gz/bz2/xz/lz, browse archives in the panels and copy files out (done); later:
-   changing archives in place, FTP/SFTP,
+   changing archives in place (done), FTP/SFTP (first version done),
    picture viewer, checksum, renamer, file compare, disk map … (ports of Salamander plugins).
 
 ## Left / Right panel menu
