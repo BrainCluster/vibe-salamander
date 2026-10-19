@@ -1747,11 +1747,11 @@ public sealed partial class FilePane : UserControl
         {
             // the server, then its directories: walked up through the plugin's parents
             var chain = new List<string>();
-            string? current = ViewModel.Path;
-            while (current != null && current != ThisPcProvider.RootPath && chain.Count < 64)
+            string? step = ViewModel.Path;
+            while (step != null && step != ThisPcProvider.RootPath && chain.Count < 64)
             {
-                chain.Add(current);
-                current = _main.RemoteProvider.GetParent(current)?.Path;
+                chain.Add(step);
+                step = _main.RemoteProvider.GetParent(step)?.Path;
             }
             chain.Reverse();
             for (int i = 0; i < chain.Count; i++)
