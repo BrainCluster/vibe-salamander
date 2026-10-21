@@ -14,8 +14,11 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock x:Name="TitleBarText" Grid.Row="0" Text="Find Files and Directories" VerticalAlignment="Center"
-                   Style="{StaticResource CaptionTextBlockStyle}" />
+        <!-- the whole row drags the window (not only the title's text); room is left for the caption buttons -->
+        <Grid x:Name="TitleBarArea" Grid.Row="0" Background="Transparent" Margin="0,0,140,0">
+            <TextBlock x:Name="TitleBarText" Text="Find Files and Directories" VerticalAlignment="Center"
+                       Style="{StaticResource CaptionTextBlockStyle}" />
+        </Grid>
 
         <!-- criteria -->
         <Grid Grid.Row="1" ColumnSpacing="12" RowSpacing="8">

@@ -29,8 +29,11 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock x:Name="TitleBarText" Grid.Row="0" Margin="16,0,0,0" Text="Configuration" VerticalAlignment="Center"
-                   Style="{StaticResource CaptionTextBlockStyle}" />
+        <!-- the whole row drags the window (not only the title's text); room is left for the caption buttons -->
+        <Grid x:Name="TitleBarArea" Grid.Row="0" Background="Transparent" Margin="0,0,140,0">
+            <TextBlock x:Name="TitleBarText" Margin="16,0,0,0" Text="Configuration" VerticalAlignment="Center"
+                       Style="{StaticResource CaptionTextBlockStyle}" />
+        </Grid>
 
         <NavigationView x:Name="Nav" Grid.Row="1" PaneDisplayMode="Left" IsBackButtonVisible="Collapsed"
                         IsSettingsVisible="False" IsPaneToggleButtonVisible="False" OpenPaneLength="220"

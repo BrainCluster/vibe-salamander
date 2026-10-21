@@ -57,7 +57,7 @@ public sealed partial class SettingsWindow : Window
         _vm = host.ViewModel;
         SystemBackdrop = new MicaBackdrop();
         ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarText);
+        SetTitleBar(TitleBarArea);
         RootGrid.RequestedTheme = theme;
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1040, 740));
         string icon = Path.Combine(AppContext.BaseDirectory, "Assets", "VibeSalamander.ico");

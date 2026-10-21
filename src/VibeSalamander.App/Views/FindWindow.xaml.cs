@@ -122,7 +122,7 @@ public sealed partial class FindWindow : Window
         };
         SystemBackdrop = new MicaBackdrop();
         ExtendsContentIntoTitleBar = true;
-        SetTitleBar(TitleBarText);
+        SetTitleBar(TitleBarArea);
         RootGrid.RequestedTheme = theme;
         AppWindow.Resize(new Windows.Graphics.SizeInt32(980, 640));
         string icon = Path.Combine(AppContext.BaseDirectory, "Assets", "VibeSalamander.ico");
