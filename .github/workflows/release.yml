@@ -1,6 +1,6 @@
-# Builds Vibe Salamander for x64 and ARM64 on every push to main (a check that it still builds).
-# When the version in Directory.Build.props has no release yet, it also publishes the GitHub release
-# "v<version>" with both zips and the notes from docs/releases/<version>.md.
+# Every push to main: a quick check - the tests and an x64 build of the app (a few minutes).
+# When the version in Directory.Build.props has no release yet: the full x64 and ARM64 builds, and the
+# GitHub release "v<version>" with both zips and the notes from docs/releases/<version>.md.
 # To release: raise <Version> in Directory.Build.props, add docs/releases/<version>.md, push.
 name: Build and release
 
@@ -37,8 +37,33 @@ jobs:
             echo "release=true" >> "$GITHUB_OUTPUT"
           fi
 
+  check:
+    needs: version
+    if: needs.version.outputs.release != 'true'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-
+
+      - name: Test
+        run: dotnet test tests/VibeSalamander.Core.Tests/VibeSalamander.Core.Tests.csproj -c Release --blame-hang-timeout 5m
+
+      - name: Build the app
+        run: dotnet build src/VibeSalamander.App/VibeSalamander.App.csproj -c Release -p:Platform=x64
+
   build:
     needs: version
+    if: needs.version.outputs.release == 'true'
     runs-on: windows-latest
     timeout-minutes: 30
     strategy:
@@ -54,6 +79,12 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-
 
       - name: Test
         if: matrix.platform == 'x64'

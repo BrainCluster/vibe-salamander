@@ -549,8 +549,11 @@ public static class UiState
     {
         Density = density;
         double baseFont = density == Core.Settings.Density.Compact ? 13 : 14;
-        double customFont = _settings?.Appearance.FontSize ?? 0;
-        FontSize = customFont >= 8 ? Math.Min(customFont, 28) : baseFont;
+        // Configuration → Appearance → Font size is a step from the density's size (Tiny 12 = one smaller,
+        // Medium 14 = one bigger, Large 15 = two bigger than compact's 13), so the density still changes it
+        double chosen = _settings?.Appearance.FontSize ?? 0;
+        double step = chosen >= 8 ? chosen - 13 : 0;
+        FontSize = Math.Clamp(baseFont + step, 8, 28);
         double baseRow = density == Core.Settings.Density.Compact ? 20 : 28;
         // bigger fonts need taller rows
         RowHeight = Math.Max(baseRow, Math.Ceiling(FontSize * 1.6));
