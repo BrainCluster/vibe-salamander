@@ -67,6 +67,7 @@ public sealed partial class SettingsWindow : Window
         Loc.Translate(Nav);
         TitleBarText.Text = Loc.T(TitleBarText.Text);
         Title = Loc.T(Title);
+        SetUpSearch();
         ShowPage(page ?? "General");
     }
 
@@ -102,8 +103,11 @@ public sealed partial class SettingsWindow : Window
 
     private string _currentPage = "General";
 
-    private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args) =>
+    private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    {
+        ClearSearch();
         Render((args.SelectedItem as NavigationViewItem)?.Tag as string ?? "General");
+    }
 
     private void Render(string tag)
     {
@@ -111,28 +115,7 @@ public sealed partial class SettingsWindow : Window
         _loading = true;
         try
         {
-            PageHost.Content = tag switch
-            {
-                "RecycleBin" => BuildRecycleBinPage(),
-                "Confirmations" => BuildConfirmationsPage(),
-                "Panels" => BuildPanelOptionsPage(),
-                "Views" => BuildViewsPage(),
-                "Appearance" => BuildAppearancePage(),
-                "Colors" => BuildColorsPage(),
-                "MainWindow" => BuildMainWindowPage(),
-                "Drives" => BuildDrivesPage(),
-                "ChangeDrive" => BuildChangeDrivePage(),
-                "Viewers" => BuildProgramsPage(viewers: true),
-                "Editors" => BuildProgramsPage(viewers: false),
-                "History" => BuildHistoryPage(),
-                "Keyboard" => BuildKeyboardPage(),
-                "Toolbar" => BuildToolbarPage(),
-                "HotPaths" => BuildHotPathsPage(),
-                "UserMenu" => BuildUserMenuPage(),
-                "Backup" => BuildBackupPage(),
-                "Plugins" => BuildPluginsPage(),
-                _ => BuildGeneralPage(),
-            };
+            PageHost.Content = BuildPage(tag);
         }
         finally
         {
@@ -140,6 +123,33 @@ public sealed partial class SettingsWindow : Window
         }
         Loc.Translate(PageHost.Content);
         PageScroller.ChangeView(null, 0, null, disableAnimation: true);
+    }
+
+    /// <summary>A new instance of a page (by its tag in the navigation).</summary>
+    private UIElement BuildPage(string tag)
+    {
+        return tag switch
+        {
+            "RecycleBin" => BuildRecycleBinPage(),
+            "Confirmations" => BuildConfirmationsPage(),
+            "Panels" => BuildPanelOptionsPage(),
+            "Views" => BuildViewsPage(),
+            "Appearance" => BuildAppearancePage(),
+            "Colors" => BuildColorsPage(),
+            "MainWindow" => BuildMainWindowPage(),
+            "Drives" => BuildDrivesPage(),
+            "ChangeDrive" => BuildChangeDrivePage(),
+            "Viewers" => BuildProgramsPage(viewers: true),
+            "Editors" => BuildProgramsPage(viewers: false),
+            "History" => BuildHistoryPage(),
+            "Keyboard" => BuildKeyboardPage(),
+            "Toolbar" => BuildToolbarPage(),
+            "HotPaths" => BuildHotPathsPage(),
+            "UserMenu" => BuildUserMenuPage(),
+            "Backup" => BuildBackupPage(),
+            "Plugins" => BuildPluginsPage(),
+            _ => BuildGeneralPage(),
+        };
     }
 
     /// <param name="display">The change affects how the panels look (rebuilds the lists).</param>
