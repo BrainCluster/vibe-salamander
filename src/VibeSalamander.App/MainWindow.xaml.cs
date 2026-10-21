@@ -572,8 +572,9 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             _vm.Left.Rebuild();
             _vm.Right.Rebuild();
         }
-        if (displayChanged)
+        if (displayChanged || densityChanged)
         {
+            // the density changes the font size too, and the font is set on the rows' style
             LeftPane.ApplyOptions();
             RightPane.ApplyOptions();
             LeftPane.RefreshBindings();
@@ -957,6 +958,9 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     public void ApplyDensity()
     {
         UiState.ApplyDensity(_vm.Settings.Density);
+        // the font size follows the density: it is set on the rows' style (ApplyOptions)
+        LeftPane.ApplyOptions();
+        RightPane.ApplyOptions();
         _vm.Left.Rebuild();
         _vm.Right.Rebuild();
         UpdateMenuChecks();
