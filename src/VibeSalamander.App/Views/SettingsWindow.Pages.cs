@@ -48,15 +48,10 @@ public sealed partial class SettingsWindow
         page.Children.Add(Toggle("Save configuration on exit",
             "Off: changes are kept only when you choose Options → Save Configuration (or change them here).",
             g.SaveOnExit, v => g.SaveOnExit = v));
-        page.Children.Add(Toggle("Clear read-only attribute when copying from CD / DVD",
-            "Files on optical discs are always read-only; their copies usually shouldn't be.", g.ClearReadOnlyFromCd, v => g.ClearReadOnlyFromCd = v));
         page.Children.Add(Toggle("Allow only one instance of Vibe Salamander",
             "Starting it again brings the running window to the front. Takes effect at the next start.", g.SingleInstance, v => g.SingleInstance = v));
-        page.Children.Add(Toggle("Beep when work finishes in the background",
-            "When the last transfer ends while the window isn't active.", g.BeepWhenDoneInBackground, v => g.BeepWhenDoneInBackground = v));
         page.Children.Add(Toggle("Close the console window after a command line command",
             "Off: the window stays open so you can read the output.", g.CloseShellAfterCommand, v => g.CloseShellAfterCommand = v));
-        page.Children.Add(Toggle("Always on top", null, s.AlwaysOnTop, v => s.AlwaysOnTop = v));
 
         page.Children.Add(Section("Compare Directories"));
         page.Children.Add(Number("Ignore time differences up to (seconds)",
@@ -67,13 +62,14 @@ public sealed partial class SettingsWindow
         page.Children.Add(Section("Rename"));
         page.Children.Add(Toggle("Select the extension too in Quick Rename (F2)", null, g.RenameSelectsExtension, v => g.RenameSelectsExtension = v));
         page.Children.Add(Toggle("Select the extension too in Edit New File (Shift+F4)", null, g.EditNewSelectsExtension, v => g.EditNewSelectsExtension = v));
-        page.Children.Add(Toggle("Mount disk images (.iso, .img, .vhd, .vhdx) on Enter",
-            "The drive opens in the other panel; unmount it from its context menu. Open With (Alt+F3) still offers other programs. Off: Enter opens the image with its default app.",
-            g.MountDiskImages, v => g.MountDiskImages = v));
 
         page.Children.Add(Section("Transfers"));
         page.Children.Add(Number("Transfers at the same time",
             "Copy, move and delete operations in the transfer panel; the others wait as Queued.", g.ParallelTransfers, 1, 8, v => g.ParallelTransfers = v));
+        page.Children.Add(Toggle("Clear read-only attribute when copying from CD / DVD",
+            "Files on optical discs are always read-only; their copies usually shouldn't be.", g.ClearReadOnlyFromCd, v => g.ClearReadOnlyFromCd = v));
+        page.Children.Add(Toggle("Beep when work finishes in the background",
+            "When the last transfer ends while the window isn't active.", g.BeepWhenDoneInBackground, v => g.BeepWhenDoneInBackground = v));
         return page;
     }
 
@@ -190,6 +186,7 @@ public sealed partial class SettingsWindow
             "In addition to Ctrl+number. It conflicts with keyboard layouts that type characters with Shift+number.", p.ShiftDigitGoesToHotPath, v => p.ShiftDigitGoesToHotPath = v));
 
         page.Children.Add(Section("Mouse"));
+        page.Children.Add(Toggle("Single-click to open an item (point to select)", null, s.Appearance.SingleClickOpens, v => s.Appearance.SingleClickOpens = v));
         page.Children.Add(Toggle("Right-click opens the context menu",
             "Off: right-click selects / unselects (hold Ctrl for the context menu).", p.RightClickOpensMenu, v => p.RightClickOpensMenu = v));
         page.Children.Add(Toggle("Vibe Salamander context menu",
@@ -282,7 +279,6 @@ public sealed partial class SettingsWindow
             s.Theme, v => s.Theme = v));
         page.Children.Add(Choice("Density", "Compact is Salamander-like; comfortable gives rows more room, like Files.",
             new[] { ("Compact", Density.Compact), ("Comfortable", Density.Comfortable) }, s.Density, v => s.Density = v));
-        page.Children.Add(Toggle("Single-click to open an item (point to select)", null, a.SingleClickOpens, v => a.SingleClickOpens = v));
         page.Children.Add(Toggle("Dim hidden and system items", null, a.DimHiddenItems, v => a.DimHiddenItems = v, display: true));
         page.Children.Add(Toggle("Show a maximize / restore button in the address bar", null, a.MaximizeButtonInAddressBar,
             v => a.MaximizeButtonInAddressBar = v, display: true));
@@ -608,6 +604,7 @@ public sealed partial class SettingsWindow
         AppSettings s = _vm.Settings;
         MainWindowOptions w = s.Window;
         StackPanel page = Page("Main Window");
+        page.Children.Add(Toggle("Always on top", null, s.AlwaysOnTop, v => s.AlwaysOnTop = v));
         page.Children.Add(Choice("Show the current path in the window title as", null, new[]
         {
             ("Directory name only", TitleMode.DirectoryName),
@@ -626,6 +623,8 @@ public sealed partial class SettingsWindow
         page.Children.Add(Toggle("Command line", null, s.ShowCommandLine, v => s.ShowCommandLine = v));
         page.Children.Add(Toggle("Bottom toolbar (F1–F12)", null, s.ShowFunctionKeyBar, v => s.ShowFunctionKeyBar = v));
         page.Children.Add(Toggle("Transfer panel", null, s.ShowTransfers, v => s.ShowTransfers = v));
+
+        page.Children.Add(Section("Transfer panel"));
         page.Children.Add(Choice("Show the transfer panel", null, new[]
         {
             ("While transferring", false),
@@ -656,13 +655,19 @@ public sealed partial class SettingsWindow
             page.Children.Add(Section(title));
             page.Children.Add(Toggle("Use automatic refresh", null, o.AutoRefresh, v => o.AutoRefresh = v, display: true));
             page.Children.Add(Toggle("Use simple icons", null, o.SimpleIcons, v => o.SimpleIcons = v, display: true));
+            if (ReferenceEquals(options, d.Network))
+                page.Children.Add(Toggle("Do not refresh network drives when Vibe Salamander becomes active",
+                    "Manual refresh (Ctrl+R) can be necessary.", d.NoRefreshOnActivation, v => d.NoRefreshOnActivation = v));
         }
         page.Children.Add(Section("Plugged-in drives"));
         page.Children.Add(Toggle("Open USB drives and memory cards when they are plugged in",
             "The drive opens in the focused panel. A panel showing a drive that is pulled out goes to This PC.",
             d.OpenPluggedInDrives, v => d.OpenPluggedInDrives = v));
-        page.Children.Add(Toggle("Do not refresh network drives when Vibe Salamander becomes active",
-            "Manual refresh (Ctrl+R) can be necessary.", d.NoRefreshOnActivation, v => d.NoRefreshOnActivation = v));
+
+        page.Children.Add(Section("Disk images"));
+        page.Children.Add(Toggle("Mount disk images (.iso, .img, .vhd, .vhdx) on Enter",
+            "The drive opens in the other panel; unmount it from its context menu. Open With (Alt+F3) still offers other programs. Off: Enter opens the image with its default app.",
+            s.General.MountDiskImages, v => s.General.MountDiskImages = v));
 
         page.Children.Add(Section("Inaccessible path"));
         var fallback = new TextBox { Text = d.InaccessibleFallback, Width = 360, PlaceholderText = "the nearest existing parent, else This PC" };
