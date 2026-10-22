@@ -614,15 +614,12 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         ["Temp"] = "\uE81C", ["Recent"] = "\uE81C", ["Templates"] = "\uE8A5", ["SendTo"] = "\uE724",
         ["StartMenu"] = "\uE71D", ["Programs"] = "\uE71D", ["Startup"] = "\uE768", ["ControlPanel"] = "\uE713",
         ["Network"] = "\uE968", ["RecycleBin"] = "\uE74D", ["Fonts"] = "\uE8D2", ["Printers"] = "\uE749",
-        // Options
-        ["System"] = "\uE770", ["Light"] = "\uE706", ["Dark"] = "\uE708",
+        // Options (Theme and Show have check marks instead)
         ["Toolbar"] = "\uE771", ["Keyboard"] = "\uE765",
     };
 
     private static readonly Dictionary<string, string> TextGlyphs = new()
     {
-        ["Top Toolbar"] = "\uE71D", ["Hot Path Bar"] = "\uE734", ["User Menu Bar"] = "\uE712", ["Drive Bars"] = "\uEDA2",
-        ["Information Line"] = "\uE946", ["Command Line"] = "\uE756", ["Bottom Toolbar"] = "\uE765", ["Transfer Panel"] = "\uE896",
         ["Save Configuration"] = "\uE74E", ["Export Configuration..."] = "\uEDE1", ["Import Configuration..."] = "\uE8B5",
         ["Keyboard Shortcuts"] = "\uE765",
         // submenus
@@ -1046,10 +1043,13 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
 
     // ---- options -----------------------------------------------------------------------------
 
+    private static FontIcon CheckIcon(bool on) => new() { Glyph = on ? "\uE73A" : "\uE739" };
+
     private void UpdateMenuChecks()
     {
-        HiddenFilesMenuItem.IsChecked = _vm.Settings.ShowHidden;
-        AlwaysOnTopMenuItem.IsChecked = _vm.Settings.AlwaysOnTop;
+        // check boxes as icons: a check mark column would push every icon of the Options menu to the right
+        HiddenFilesMenuItem.Icon = CheckIcon(_vm.Settings.ShowHidden);
+        AlwaysOnTopMenuItem.Icon = CheckIcon(_vm.Settings.AlwaysOnTop);
         ThemeSystemItem.IsChecked = _vm.Settings.Theme == AppTheme.System;
         ThemeLightItem.IsChecked = _vm.Settings.Theme == AppTheme.Light;
         ThemeDarkItem.IsChecked = _vm.Settings.Theme == AppTheme.Dark;

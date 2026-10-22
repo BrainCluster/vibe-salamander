@@ -193,8 +193,8 @@
                     <ToggleMenuFlyoutItem x:Name="ShowFKeyBarItem" Text="Bottom Toolbar" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowTransfersItem" Text="Transfer Panel" Click="ShowBars_Click" />
                 </MenuFlyoutSubItem>
-                <ToggleMenuFlyoutItem x:Name="HiddenFilesMenuItem" Text="Show Hidden and System Files" Tag="ToggleHiddenFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+H" />
-                <ToggleMenuFlyoutItem x:Name="AlwaysOnTopMenuItem" Text="Always on Top" Tag="AlwaysOnTop" Click="Menu_Click" />
+                <MenuFlyoutItem x:Name="HiddenFilesMenuItem" Text="Show Hidden and System Files" Tag="ToggleHiddenFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+H" />
+                <MenuFlyoutItem x:Name="AlwaysOnTopMenuItem" Text="Always on Top" Tag="AlwaysOnTop" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Configuration..." Tag="Configuration" Click="Menu_Click" />
                 <MenuFlyoutItem Text="Customize Toolbar..." Tag="Toolbar" Click="ConfigurationPage_Click" />
