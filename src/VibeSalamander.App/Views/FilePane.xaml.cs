@@ -23,6 +23,7 @@ public sealed partial class FileRowTemplateSelector : DataTemplateSelector
     public DataTemplate? IconTemplate { get; set; }
     public DataTemplate? ThumbnailTemplate { get; set; }
     public DataTemplate? TileTemplate { get; set; }
+    public DataTemplate? DriveTileTemplate { get; set; }
 
     /// <summary>The panel's view; drives (This PC) use their own row template in the Detailed view.</summary>
     public ViewMode Mode { get; set; } = ViewMode.Detailed;
@@ -36,11 +37,14 @@ public sealed partial class FileRowTemplateSelector : DataTemplateSelector
         IconTemplate = IconTemplate,
         ThumbnailTemplate = ThumbnailTemplate,
         TileTemplate = TileTemplate,
+        DriveTileTemplate = DriveTileTemplate,
         Mode = mode,
     };
 
     protected override DataTemplate? SelectTemplateCore(object item) =>
-        item is FileItemViewModel { IsDrive: true } && Mode == ViewMode.Detailed ? DriveTemplate : Mode switch
+        item is FileItemViewModel { IsDrive: true } && Mode is ViewMode.Detailed or ViewMode.Tiles
+            ? (Mode == ViewMode.Tiles ? DriveTileTemplate : DriveTemplate)
+            : Mode switch
         {
             ViewMode.Brief => BriefTemplate,
             ViewMode.Icons => IconTemplate,

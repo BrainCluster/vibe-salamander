@@ -194,6 +194,27 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         private set => SetProperty(ref _items, value);
     }
 
+    /// <summary>
+    /// What the list shows: the items, on This PC in groups like Explorer (Devices and drives, Network
+    /// locations). The groups keep the items' order, so an index means the same in both.
+    /// </summary>
+    public object ItemsSource => _groupedItems ?? _items;
+
+    private object? _groupedItems;
+
+    /// <summary>This PC's groups: 0 = devices and drives, 1 = network locations.</summary>
+    private static int DriveGroupOf(FileItemViewModel item) => item.Drive?.Type == DriveType.Network ? 1 : 0;
+
+    private static object GroupDrives(IReadOnlyList<FileItemViewModel> items)
+    {
+        var groups = new List<ItemGroup>
+        {
+            new(Loc.T("Devices and drives"), items.Where(i => DriveGroupOf(i) == 0)),
+            new(Loc.T("Network locations"), items.Where(i => DriveGroupOf(i) == 1)),
+        };
+        return new Microsoft.UI.Xaml.Data.CollectionViewSource { IsSourceGrouped = true, Source = groups.Where(g => g.Count > 0).ToList() }.View;
+    }
+
     public IReadOnlyList<DriveButtonViewModel> Drives
     {
         get => _drives;
@@ -730,6 +751,9 @@ public sealed class PaneViewModel : BindableBase, IDisposable
             items.Add(vm);
         }
 
+        if (IsThisPc)
+            items = items.OrderBy(DriveGroupOf).ToList(); // in the order of their groups (a stable sort)
+
         int caret = -1;
         if (!string.IsNullOrEmpty(focusName))
             caret = items.FindIndex(i => string.Equals(i.Entry.Name, focusName, StringComparison.OrdinalIgnoreCase));
@@ -739,6 +763,8 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         bool samePlace = string.Equals(_lastListedPath, _path, StringComparison.OrdinalIgnoreCase);
         _lastListedPath = _path;
         Items = items;
+        _groupedItems = IsThisPc ? GroupDrives(items) : null;
+        OnPropertyChanged(nameof(ItemsSource));
         _caretIndex = caret;
         OnPropertyChanged(nameof(CaretIndex));
         OnPropertyChanged(nameof(InfoText));
@@ -1112,4 +1138,12 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         _watcher = null;
         _refreshTimer?.Stop();
     }
+}
+
+/// <summary>A group of items with its title (This PC: Devices and drives, Network locations).</summary>
+public sealed class ItemGroup : List<FileItemViewModel>
+{
+    public ItemGroup(string title, IEnumerable<FileItemViewModel> items) : base(items) => Title = title;
+
+    public string Title { get; }
 }

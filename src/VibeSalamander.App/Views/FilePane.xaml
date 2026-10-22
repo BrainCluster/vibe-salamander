@@ -170,13 +170,34 @@
             </Grid>
         </DataTemplate>
 
+        <!-- Tiles view of This PC: the drive with its fullness bar and "free of" (like Explorer) -->
+        <DataTemplate x:Key="DriveTileTemplate" x:DataType="vm:FileItemViewModel">
+            <Grid ColumnSpacing="10" Padding="4,4,6,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="48" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="36"
+                          Visibility="{x:Bind LargeGlyphVisibility, Mode=OneWay}" />
+                <Image Source="{x:Bind LargeIcon, Mode=OneWay}" Width="48" Height="48" Stretch="Uniform" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                    <TextBlock Text="{x:Bind FullName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <ProgressBar Value="{x:Bind UsedPercent}" Maximum="100" Foreground="{x:Bind UsedBrush}"
+                                 Background="{ThemeResource VibeUsedTrackBrush}" MinHeight="6" Height="6" CornerRadius="3"
+                                 Visibility="{x:Bind UsedVisibility}" />
+                    <TextBlock Text="{x:Bind DriveFreeOfTotal}" Foreground="{x:Bind TextBrush, Mode=OneWay}" FontSize="11"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
         <views:FileRowTemplateSelector x:Key="RowTemplateSelector"
                                        FileTemplate="{StaticResource FileRowTemplate}"
                                        DriveTemplate="{StaticResource DriveRowTemplate}"
                                        BriefTemplate="{StaticResource BriefTemplate}"
                                        IconTemplate="{StaticResource IconTemplate}"
                                        ThumbnailTemplate="{StaticResource ThumbnailTemplate}"
-                                       TileTemplate="{StaticResource TileTemplate}" />
+                                       TileTemplate="{StaticResource TileTemplate}"
+                                       DriveTileTemplate="{StaticResource DriveTileTemplate}" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" Background="{ThemeResource VibePaneBackgroundBrush}" AllowDrop="True"
@@ -393,7 +414,7 @@
 
         <!-- file list -->
         <ListView x:Name="FileList" Grid.Row="3"
-                  ItemsSource="{x:Bind ViewModel.Items, Mode=OneWay}"
+                  ItemsSource="{x:Bind ViewModel.ItemsSource, Mode=OneWay}"
                   ItemTemplateSelector="{StaticResource RowTemplateSelector}"
                   ItemContainerStyle="{StaticResource VibeListItemStyle}"
                   SelectionMode="Single"
@@ -412,6 +433,23 @@
             <ListView.ItemContainerTransitions>
                 <TransitionCollection />
             </ListView.ItemContainerTransitions>
+            <!-- This PC's groups (Devices and drives, Network locations); folders aren't grouped -->
+            <ListView.GroupStyle>
+                <GroupStyle HidesIfEmpty="True">
+                    <GroupStyle.HeaderTemplate>
+                        <DataTemplate x:DataType="vm:ItemGroup">
+                            <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" FontSize="13" Opacity="0.85" />
+                        </DataTemplate>
+                    </GroupStyle.HeaderTemplate>
+                    <GroupStyle.HeaderContainerStyle>
+                        <Style TargetType="ListViewHeaderItem">
+                            <Setter Property="MinHeight" Value="28" />
+                            <Setter Property="Padding" Value="14,8,8,4" />
+                            <Setter Property="Margin" Value="0" />
+                        </Style>
+                    </GroupStyle.HeaderContainerStyle>
+                </GroupStyle>
+            </ListView.GroupStyle>
         </ListView>
 
         <!-- mouse rectangle selection (drawn over the list, doesn't take clicks) -->

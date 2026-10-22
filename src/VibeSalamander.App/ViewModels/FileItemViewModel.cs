@@ -97,7 +97,7 @@ public sealed class FileItemViewModel : BindableBase
     }
 
     /// <summary>Name with extension (Brief, Icons, Thumbnails, Tiles views).</summary>
-    public string FullName => Entry.IsUpDir ? ".." : Formats.ApplyCasing(Entry.Name, Entry.IsDirectory, UiState.NameCasing);
+    public string FullName => Entry.IsUpDir ? ".." : Drive is { } drive ? drive.Caption : Formats.ApplyCasing(Entry.Name, Entry.IsDirectory, UiState.NameCasing);
 
     /// <summary>Height of the preview area in the Thumbnails view (Configuration → Appearance).</summary>
     public GridLength ThumbnailRowHeight => new(UiState.ThumbnailSize);
@@ -125,6 +125,11 @@ public sealed class FileItemViewModel : BindableBase
     public double UsedPercent => Math.Max(0, Drive?.UsedPercent ?? 0);
     public Visibility UsedVisibility => Drive is { HasSize: true } ? Visibility.Visible : Visibility.Collapsed;
     public string UsedText => Drive is { HasSize: true } d ? d.UsedPercent + " %" : string.Empty;
+
+    /// <summary>"120 GB free of 476 GB" (the Tiles view of This PC, like Explorer); the drive type when unknown.</summary>
+    public string DriveFreeOfTotal => Drive is { HasSize: true } d
+        ? Loc.F("{0} free of {1}", Formats.ShortSize(d.FreeSpace), Formats.ShortSize(d.TotalSize))
+        : Drive?.TypeName ?? string.Empty;
     public Brush UsedBrush => (Drive?.UsedPercent ?? 0) >= 90 ? UiState.CriticalBrush : UiState.AccentBarBrush;
 
     // ---- appearance ------------------------------------------------------------------------
