@@ -570,7 +570,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
                 sub.Items.Add(MenuItem("Unpack...", nameof(CommandId.Unpack), "\uE896"));
             foreach (Plugins.PluginCommand command in plugin.CommandContributors.SelectMany(c => c.Commands))
             {
-                bool isHostCommand = command.HostCommand != null && Enum.TryParse(command.HostCommand, out CommandId hostCommand);
+                CommandId hostCommand = CommandId.None;
+                bool isHostCommand = command.HostCommand != null && Enum.TryParse(command.HostCommand, out hostCommand);
                 string glyph = isHostCommand && CommandCatalog.Glyph(hostCommand) is { Length: > 0 } commandGlyph ? commandGlyph : pluginGlyph;
                 var item = new MenuFlyoutItem { Text = command.MenuText, Icon = new FontIcon { Glyph = glyph } };
                 // a command answering to an app command shows that command's (customizable) key
