@@ -873,7 +873,7 @@
  "Temporary Files": "Временные файлы",
  "Terminal-style schemes (Yazi, Superfile, ...) make the panels dark and color files by type. Custom uses the colors below.": "Схемы в стиле терминала (Yazi, Superfile, ...) делают панели тёмными и раскрашивают файлы по типу. «Особая» использует цвета ниже.",
  "The Thumbnails view (Alt+4).": "Представление «Эскизы» (Alt+4).",
- "The Thumbnails view (Alt+4): from small icons to extra large icons. Also on the toolbar while a panel shows thumbnails.": "Вид «Эскизы» (Alt+4): от мелких до огромных значков. Также на панели инструментов, пока панель показывает эскизы.",
+ "The Thumbnails view (Alt+4), from 64 to 256 pixels (extra large icons). Also on the toolbar while a panel shows thumbnails.": "Вид «Эскизы» (Alt+4), от 64 до 256 пикселей (огромные значки). Также на панели инструментов, пока панель показывает эскизы.",
  "The active panel's directory": "Папка активной панели",
  "The archive": "Архив",
  "The archive can't be read: {0}": "Не удаётся прочитать архив: {0}",

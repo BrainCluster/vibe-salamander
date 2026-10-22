@@ -352,7 +352,7 @@ public sealed partial class SettingsWindow
             if (!_loading)
                 _host.SetThumbnailSize((int)Math.Round(args.NewValue));
         };
-        page.Children.Add(Card("Thumbnail size", "The Thumbnails view (Alt+4): from small icons to extra large icons. Also on the toolbar while a panel shows thumbnails.", thumbnailSlider));
+        page.Children.Add(Card("Thumbnail size", "The Thumbnails view (Alt+4), from 64 to 256 pixels (extra large icons). Also on the toolbar while a panel shows thumbnails.", thumbnailSlider));
         return page;
     }
 

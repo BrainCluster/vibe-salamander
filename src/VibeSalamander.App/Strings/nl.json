@@ -873,7 +873,7 @@
  "Temporary Files": "Tijdelijke bestanden",
  "Terminal-style schemes (Yazi, Superfile, ...) make the panels dark and color files by type. Custom uses the colors below.": "Terminalachtige schema's (Yazi, Superfile, ...) maken de panelen donker en kleuren bestanden op type. Aangepast gebruikt de kleuren hieronder.",
  "The Thumbnails view (Alt+4).": "De weergave Miniaturen (Alt+4).",
- "The Thumbnails view (Alt+4): from small icons to extra large icons. Also on the toolbar while a panel shows thumbnails.": "De weergave Miniaturen (Alt+4): van kleine tot extra grote pictogrammen. Ook op de werkbalk zolang een paneel miniaturen toont.",
+ "The Thumbnails view (Alt+4), from 64 to 256 pixels (extra large icons). Also on the toolbar while a panel shows thumbnails.": "De weergave Miniaturen (Alt+4), van 64 tot 256 pixels (extra grote pictogrammen). Ook op de werkbalk zolang een paneel miniaturen toont.",
  "The active panel's directory": "De map van het actieve paneel",
  "The archive": "Het archief",
  "The archive can't be read: {0}": "Het archief kan niet worden gelezen: {0}",

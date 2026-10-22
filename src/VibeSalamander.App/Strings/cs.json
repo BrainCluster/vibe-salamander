@@ -873,7 +873,7 @@
   "Temporary Files": "Dočasné soubory",
   "Terminal-style schemes (Yazi, Superfile, ...) make the panels dark and color files by type. Custom uses the colors below.": "Schémata ve stylu terminálu (Yazi, Superfile, ...) ztmaví panely a obarví soubory podle typu. Vlastní používá barvy níže.",
   "The Thumbnails view (Alt+4).": "Zobrazení Miniatury (Alt+4).",
-  "The Thumbnails view (Alt+4): from small icons to extra large icons. Also on the toolbar while a panel shows thumbnails.": "Zobrazení Miniatury (Alt+4): od malých po velmi velké ikony. Je také na panelu nástrojů, když panel zobrazuje miniatury.",
+  "The Thumbnails view (Alt+4), from 64 to 256 pixels (extra large icons). Also on the toolbar while a panel shows thumbnails.": "Zobrazení Miniatury (Alt+4), od 64 do 256 pixelů (velmi velké ikony). Je také na panelu nástrojů, když panel zobrazuje miniatury.",
   "The active panel's directory": "Adresář aktivního panelu",
   "The archive": "Archiv",
   "The archive can't be read: {0}": "Archiv nelze přečíst: {0}",

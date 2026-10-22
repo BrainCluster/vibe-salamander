@@ -875,7 +875,7 @@
   "Temporary Files": "Privremene datoteke",
   "Terminal-style schemes (Yazi, Superfile, ...) make the panels dark and color files by type. Custom uses the colors below.": "Sheme u stilu terminala (Yazi, Superfile, ...) zatamnjuju ploče i boje datoteke prema vrsti. Prilagođeno koristi boje ispod.",
   "The Thumbnails view (Alt+4).": "Prikaz Minijature (Alt+4).",
-  "The Thumbnails view (Alt+4): from small icons to extra large icons. Also on the toolbar while a panel shows thumbnails.": "Prikaz Minijature (Alt+4): od malih do vrlo velikih ikona. Nalazi se i na alatnoj traci dok ploča prikazuje minijature.",
+  "The Thumbnails view (Alt+4), from 64 to 256 pixels (extra large icons). Also on the toolbar while a panel shows thumbnails.": "Prikaz Minijature (Alt+4), od 64 do 256 piksela (vrlo velike ikone). Nalazi se i na alatnoj traci dok ploča prikazuje minijature.",
   "The active panel's directory": "Mapa aktivne ploče",
   "The archive": "Arhiva",
   "The archive can't be read: {0}": "Arhivu nije moguće pročitati: {0}",

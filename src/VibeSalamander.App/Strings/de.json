@@ -873,7 +873,7 @@
   "Temporary Files": "Temporäre Dateien",
   "Terminal-style schemes (Yazi, Superfile, ...) make the panels dark and color files by type. Custom uses the colors below.": "Schemata im Terminal-Stil (Yazi, Superfile, ...) machen die Panels dunkel und färben Dateien nach Typ. Benutzerdefiniert verwendet die Farben unten.",
   "The Thumbnails view (Alt+4).": "Die Ansicht „Miniaturansichten“ (Alt+4).",
-  "The Thumbnails view (Alt+4): from small icons to extra large icons. Also on the toolbar while a panel shows thumbnails.": "Die Miniaturansicht (Alt+4): von kleinen bis extragroßen Symbolen. Auch in der Symbolleiste, solange ein Bereich Miniaturen zeigt.",
+  "The Thumbnails view (Alt+4), from 64 to 256 pixels (extra large icons). Also on the toolbar while a panel shows thumbnails.": "Die Miniaturansicht (Alt+4), von 64 bis 256 Pixel (extragroße Symbole). Auch in der Symbolleiste, solange ein Bereich Miniaturen zeigt.",
   "The active panel's directory": "Der Ordner des aktiven Panels",
   "The archive": "Das Archiv",
   "The archive can't be read: {0}": "Das Archiv kann nicht gelesen werden: {0}",

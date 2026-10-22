@@ -345,8 +345,8 @@ public static class UiState
     public static bool DimHiddenItems => _settings?.Appearance.DimHiddenItems ?? true;
     public static int ThumbnailSize => Math.Clamp(_settings?.Appearance.ThumbnailSize ?? 112, MinThumbnailSize, MaxThumbnailSize);
 
-    /// <summary>The thumbnail size slider: Explorer's small icons (16) to extra large icons (256).</summary>
-    public const int MinThumbnailSize = 16;
+    /// <summary>The thumbnail size slider: 64 pixels to Explorer's extra large icons (256).</summary>
+    public const int MinThumbnailSize = 64;
 
     public const int MaxThumbnailSize = 256;
     public static string InfoLineFormat => _settings?.Appearance.InfoLineFormat is { Length: > 0 } f ? f : Core.Settings.AppearanceOptions.DefaultInfoLine;
