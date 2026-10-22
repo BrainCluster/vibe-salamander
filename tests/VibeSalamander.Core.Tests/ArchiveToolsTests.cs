@@ -135,6 +135,7 @@ public sealed class ArchiveToolsTests : IDisposable
         }
         Assert.All(RunTest(exe, "zip"), r => Assert.Null(r.Problem));
     }
+
     [Fact]
     public void RarVolumes_AreFoundInOrder()
     {
