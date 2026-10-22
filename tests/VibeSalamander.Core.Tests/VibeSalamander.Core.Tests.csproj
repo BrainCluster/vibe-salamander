@@ -14,6 +14,7 @@
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Archive\VibeSalamander.Plugins.Archive.csproj" />
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Checksum\VibeSalamander.Plugins.Checksum.csproj" />
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Ftp\VibeSalamander.Plugins.Ftp.csproj" />
+    <ProjectReference Include="..\..\src\VibeSalamander.Plugins.DiskMap\VibeSalamander.Plugins.DiskMap.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

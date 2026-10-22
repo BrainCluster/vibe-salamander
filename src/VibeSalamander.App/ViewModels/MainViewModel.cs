@@ -484,7 +484,7 @@ public sealed partial class MainViewModel : BindableBase
                 case CommandId.Copy: await CopyOrMoveAsync(move: false); break;
                 case CommandId.Move: await CopyOrMoveAsync(move: true); break;
                 case CommandId.Pack: await PackAsync(); break;
-                case CommandId.CalculateChecksums or CommandId.VerifyChecksums or CommandId.ConnectFtp: await RunPluginHostCommandAsync(command); break;
+                case CommandId.CalculateChecksums or CommandId.VerifyChecksums or CommandId.ConnectFtp or CommandId.DiskMap: await RunPluginHostCommandAsync(command); break;
                 case CommandId.MountImage:
                     if (p.FocusedItem is { Entry.IsDirectory: false } diskImage && p.IsLocalDisk && DiskImages.IsDiskImage(diskImage.Entry.FullPath))
                         await MountImageAsync(p, diskImage.Entry.FullPath);

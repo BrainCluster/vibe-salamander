@@ -73,6 +73,12 @@ public interface IPluginUi
     /// <summary>A non-modal window with a list of rows (columns of text), a status line, a progress bar and buttons.</summary>
     IPluginListWindow OpenListWindow(string title, IReadOnlyList<PluginColumn> columns);
 
+    /// <summary>
+    /// A non-modal window with a picture the plugin draws itself (pixels), text labels over it, a choice of
+    /// views, a legend, a status line, a progress bar and buttons (Disk Map).
+    /// </summary>
+    IPluginCanvasWindow OpenCanvasWindow(string title) => throw new NotSupportedException("This host has no picture windows.");
+
     /// <summary>A Yes / No question.</summary>
     Task<bool> ConfirmAsync(string title, string message, IPluginListWindow? owner = null);
 
@@ -182,6 +188,100 @@ public interface IPluginListWindow
 
     /// <summary>The right-click menu of a row (and its shortcut keys).</summary>
     Func<IPluginRow, IReadOnlyList<PluginMenuItem>>? RowMenu { get; set; }
+
+    /// <summary>Called on the UI thread when the window has closed.</summary>
+    event EventHandler? Closed;
+
+    bool IsClosed { get; }
+
+    void Close();
+}
+
+/// <summary>A point in a canvas window's picture, in pixels (not scaled by the display's DPI).</summary>
+public readonly record struct PluginPoint(double X, double Y);
+
+/// <summary>
+/// A text over a canvas window's picture. Position and size are in pixels; the text is trimmed to the box
+/// and left out when the box is too small for it.
+/// </summary>
+/// <param name="Color">0xAARRGGBB.</param>
+/// <param name="Background">0xAARRGGBB behind the text (a rounded plate); 0 = none.</param>
+/// <param name="FontSize">In display-independent units (like the app's texts).</param>
+/// <param name="Centered">Centered in the box (otherwise at its top left).</param>
+public sealed record PluginLabel(double X, double Y, double Width, double Height, string Text, uint Color,
+    uint Background = 0, double FontSize = 12, bool Bold = false, bool Centered = false);
+
+/// <summary>A color and what it means, below a canvas window's picture.</summary>
+/// <param name="Color">0xAARRGGBB.</param>
+public sealed record PluginLegendItem(uint Color, string Text);
+
+/// <summary>
+/// A window with a picture the plugin draws (see <see cref="IPluginUi.OpenCanvasWindow"/>). Methods may be
+/// called from any thread. The callbacks (pointer, keys, menu) run on the UI thread and must be quick.
+/// Coordinates are in pixels of the picture.
+/// </summary>
+public interface IPluginCanvasWindow
+{
+    /// <summary>The size the picture should have now, in pixels.</summary>
+    int PixelWidth { get; }
+
+    int PixelHeight { get; }
+
+    /// <summary>Pixels per display-independent unit (1.5 at 150 % display scaling).</summary>
+    double Scale { get; }
+
+    /// <summary>The app uses its dark theme.</summary>
+    bool IsDark { get; }
+
+    /// <summary>The picture area changed its size (raised once the resizing settles; UI thread).</summary>
+    event EventHandler? Resized;
+
+    /// <summary>The picture (premultiplied BGRA, width × height × 4 bytes; transparent shows the window) and its labels.</summary>
+    void SetPicture(int width, int height, byte[] pixels, IReadOnlyList<PluginLabel> labels);
+
+    /// <summary>Outlines over the picture: the item under the pointer and the selected item (null = none).</summary>
+    void SetHighlight(IReadOnlyList<PluginPoint>? hover, IReadOnlyList<PluginPoint>? selected);
+
+    /// <summary>The line above the picture (the path shown).</summary>
+    void SetHeading(string text);
+
+    /// <summary>The views to choose from (above the picture, right); <see cref="ViewChanged"/> reports the choice.</summary>
+    void SetViews(IReadOnlyList<string> names, int selected);
+
+    /// <summary>The user chose another view (its index; UI thread).</summary>
+    event EventHandler<int>? ViewChanged;
+
+    void SetLegend(IReadOnlyList<PluginLegendItem> items);
+
+    void SetStatus(string text);
+
+    /// <summary>0..1; a negative value = busy without a known end; null hides the progress bar.</summary>
+    void SetProgress(double? value);
+
+    void SetButtons(IReadOnlyList<PluginButton> buttons);
+
+    void UpdateButton(string id, string? text = null, bool? enabled = null);
+
+    /// <summary>The text of the tip next to the pointer (null = no tip).</summary>
+    Func<PluginPoint, string?>? ToolTip { get; set; }
+
+    Action<PluginPoint>? PointerMoved { get; set; }
+
+    /// <summary>The pointer left the picture.</summary>
+    Action? PointerExited { get; set; }
+
+    Action<PluginPoint>? Clicked { get; set; }
+
+    Action<PluginPoint>? DoubleClicked { get; set; }
+
+    /// <summary>The right-click menu at a point.</summary>
+    Func<PluginPoint, IReadOnlyList<PluginMenuItem>>? ContextMenu { get; set; }
+
+    /// <summary>
+    /// A key ("Backspace", "Enter", "Delete", "Ctrl+C", "F5", ...; the mouse's back button is "Backspace");
+    /// true when the plugin used it. Escape closes the window.
+    /// </summary>
+    Func<string, bool>? KeyPressed { get; set; }
 
     /// <summary>Called on the UI thread when the window has closed.</summary>
     event EventHandler? Closed;

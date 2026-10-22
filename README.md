@@ -49,6 +49,7 @@ the result is in `publish\VibeSalamander`.
 **Archives and disk images**
 - Archive plugin: pack ZIP (optionally AES-256 encrypted) / TAR / TAR.GZ (Alt+F5), unpack ZIP, 7z, RAR, TAR, gz, bz2, xz and lz (Alt+F6), with passwords
 - FTP / FTPS / SFTP plugin (Commands → Connect to FTP / SFTP Server): saved servers, password or SSH key, the server in the panel like a folder, copies both ways in the transfer panel
+- Disk Map plugin (Commands → Disk Map): what takes the space in a directory, as Salamander's cushion treemap or as Blocks, a Sunburst or Columns; hover for sizes, double-click to zoom in, Backspace to go up
 - Browse archives like folders and copy single files out of them; ZIP and TAR archives can be edited in place: copy or drop files in, delete them (F8), move them out (F6)
 - Mount .iso, .img, .vhd and .vhdx images: the mounted drive opens in the other panel, unmount from the menu
 

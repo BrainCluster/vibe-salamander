@@ -20,6 +20,7 @@ public sealed class PluginUi : IPluginUi
     private readonly Func<ElementTheme> _theme;
     private readonly Dialogs _mainDialogs;
     private readonly List<PluginListWindow> _windows = new();
+    private readonly List<PluginCanvasWindow> _canvasWindows = new();
 
     public PluginUi(DispatcherQueue dispatcher, Func<ElementTheme> theme, Dialogs mainDialogs)
     {
@@ -66,10 +67,27 @@ public sealed class PluginUi : IPluginUi
         return OnUiAsync(() => Task.FromResult(Create())).GetAwaiter().GetResult();
     }
 
+    public IPluginCanvasWindow OpenCanvasWindow(string title)
+    {
+        PluginCanvasWindow Create()
+        {
+            var window = new PluginCanvasWindow(title, _theme());
+            _canvasWindows.Add(window);
+            window.Closed += (_, _) => _canvasWindows.Remove(window);
+            window.Activate();
+            return window;
+        }
+        if (_dispatcher.HasThreadAccess)
+            return Create();
+        return OnUiAsync(() => Task.FromResult(Create())).GetAwaiter().GetResult();
+    }
+
     /// <summary>Closes every plugin window (the app is closing).</summary>
     public void CloseAll()
     {
         foreach (PluginListWindow window in _windows.ToList())
+            window.Close();
+        foreach (PluginCanvasWindow window in _canvasWindows.ToList())
             window.Close();
     }
 

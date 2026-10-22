@@ -132,6 +132,7 @@
                 <MenuFlyoutItem Text="Calculate Occupied Space" Tag="CalculateOccupiedSpace" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F10" />
                 <MenuFlyoutItem Text="Calculate Directory Sizes" Tag="CalculateDirectorySizes" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F10" />
                 <MenuFlyoutItem Text="Drive Information" Tag="DriveInformation" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F1" />
+                <MenuFlyoutItem Text="Disk Map" Tag="DiskMap" Click="Menu_Click" />
                 <MenuFlyoutItem Text="Find Files and Directories..." Tag="FindFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F7" />
                 <MenuFlyoutItem Text="Make File List" Tag="MakeFileList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+M" />
                 <MenuFlyoutItem Text="Go to Shortcut Target" Tag="GoToShortcutTarget" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+T" />

@@ -101,6 +101,7 @@ class implementing `IVibePlugin`; in `Initialize(IPluginHost)` it registers what
 |------------------------|--------------------------|-----------------------------------------------------|
 | Archiver               | `IArchiver`              | **Archives** (built-in): pack ZIP/TAR/TAR.GZ, unpack ZIP/7z/RAR/TAR/gz/bz2/xz/lz |
 | Menu extension         | `ICommandContributor`    | Plugins menu commands (checksum, renamer, … later)  |
+| Picture window         | `IPluginUi.OpenCanvasWindow` | **Disk Map** (built-in): the plugin draws pixels and labels, the host shows them with views, legend, tips and outlines |
 | File system            | `IPluginFileSystem`      | **FTP / SFTP** (built-in): servers in the panels (`RemoteFileSystemProvider`) |
 | Viewer                 | (later)                  | picture viewer                                      |
 

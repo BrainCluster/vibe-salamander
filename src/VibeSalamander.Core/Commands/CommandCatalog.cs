@@ -85,6 +85,7 @@ public static class CommandCatalog
         [CommandId.MountImage] = "Mount disk image",
         [CommandId.UnmountImage] = "Unmount disk image",
         [CommandId.ConnectFtp] = "Connect to FTP / SFTP server...",
+        [CommandId.DiskMap] = "Disk map",
     };
 
     /// <summary>A readable name ("Compare directories..."); others are derived from the id ("Sort by name").</summary>
@@ -120,7 +121,7 @@ public static class CommandCatalog
     {
         CommandId.Pack or CommandId.Unpack or CommandId.MountImage or CommandId.UnmountImage => "Files",
         CommandId.CalculateChecksums or CommandId.VerifyChecksums => "Files",
-        CommandId.ConnectFtp => "Commands",
+        CommandId.ConnectFtp or CommandId.DiskMap => "Commands",
         CommandId.PluginsManager => "Options",
         <= CommandId.Filter => "Panels",
         <= CommandId.CommandShell => "Files",
@@ -195,6 +196,7 @@ public static class CommandCatalog
         CommandId.CalculateChecksums => "\uE9D5",
         CommandId.VerifyChecksums => "\uE73E",
         CommandId.ConnectFtp => "\uE968",
+        CommandId.DiskMap => "\uEDA2",
         CommandId.MountImage => "\uE958",
         CommandId.UnmountImage => "\uE711",
         CommandId.Configuration => "",

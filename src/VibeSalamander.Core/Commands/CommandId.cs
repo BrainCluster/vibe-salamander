@@ -140,4 +140,7 @@ public enum CommandId
 
     // the FTP / SFTP plugin
     ConnectFtp,
+
+    // the Disk Map plugin
+    DiskMap,
 }

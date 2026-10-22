@@ -856,6 +856,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         CommandId.WorkingDirectoriesList => "Dirs",
         CommandId.ConnectNetworkDrive => "NetCon",
         CommandId.ConnectFtp => "FTP",
+        CommandId.DiskMap => "DiskMap",
         CommandId.DisconnectNetworkDrive => "NetDis",
         CommandId.SharedDirectories => "Shares",
         _ => command.ToString(),

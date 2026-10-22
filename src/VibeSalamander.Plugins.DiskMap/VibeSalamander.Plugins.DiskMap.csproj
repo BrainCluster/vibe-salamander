@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Built-in plugin: Open Salamander's Disk Map, modernised, with more views (Blocks, Sunburst, Columns).
+       No UI framework: it draws its pictures into pixels; the window comes from the host. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RootNamespace>VibeSalamander.Plugins.DiskMap</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\VibeSalamander.Plugins.Abstractions\VibeSalamander.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="VibeSalamander.Core.Tests" />
+  </ItemGroup>
+</Project>
