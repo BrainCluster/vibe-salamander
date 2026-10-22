@@ -89,6 +89,9 @@
                 <MenuFlyoutItem Text="Email..." Tag="Email" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+E" />
                 <MenuFlyoutItem Text="Pack..." Tag="Pack" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F5" />
                 <MenuFlyoutItem Text="Unpack..." Tag="Unpack" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F6" />
+                <MenuFlyoutItem Text="Test Archive" Tag="TestArchive" Click="Menu_Click" />
+                <MenuFlyoutItem Text="Make Self-Extracting Archive..." Tag="MakeSelfExtractingArchive" Click="Menu_Click" />
+                <MenuFlyoutItem Text="Archive Comment..." Tag="ArchiveComment" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Exit" Tag="Exit" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F4" />
             </MenuBarItem>

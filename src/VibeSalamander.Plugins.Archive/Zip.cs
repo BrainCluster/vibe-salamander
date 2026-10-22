@@ -92,6 +92,61 @@ internal static class Zip
                 (ushort)((time.Hour << 11) | (time.Minute << 5) | (time.Second / 2)));
     }
 
+    // ---- the archive comment ----------------------------------------------------------------------
+
+    /// <summary>The comment as text: UTF-8 when it is valid UTF-8, else the DOS code page (IBM 437).</summary>
+    public static string DecodeComment(byte[] bytes)
+    {
+        try
+        {
+            return new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(bytes).Replace("\r\n", "\n");
+        }
+        catch (DecoderFallbackException)
+        {
+            return Encoding.GetEncoding(437).GetString(bytes).Replace("\r\n", "\n");
+        }
+    }
+
+    /// <summary>Text as a comment: Windows line ends; plain ASCII, or UTF-8 when it needs more.</summary>
+    public static byte[] EncodeComment(string text)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(text.Replace("\r\n", "\n").Replace("\n", "\r\n"));
+        if (bytes.Length > 0xFFFF)
+            throw new InvalidDataException("A ZIP comment can have at most 65,535 bytes.");
+        return bytes;
+    }
+
+    /// <summary>Where the end record (the last part of a ZIP, which holds the comment) starts.</summary>
+    public static long FindEndRecord(Stream s)
+    {
+        long length = s.Length;
+        int tail = (int)Math.Min(length, 22 + 65535);
+        byte[] buffer = new byte[tail];
+        s.Position = length - tail;
+        s.ReadExactly(buffer);
+        for (int i = tail - 22; i >= 0; i--)
+        {
+            if (BinaryPrimitives.ReadUInt32LittleEndian(buffer.AsSpan(i)) == EndSignature &&
+                i + 22 + BinaryPrimitives.ReadUInt16LittleEndian(buffer.AsSpan(i + 20)) <= tail)
+                return length - tail + i;
+        }
+        throw new InvalidDataException("This is not a ZIP archive, or it is damaged.");
+    }
+
+    /// <summary>Replaces the archive's comment in place (the end record is the last part of the file).</summary>
+    public static void WriteComment(string path, string text)
+    {
+        byte[] comment = EncodeComment(text);
+        using var file = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        long end = FindEndRecord(file);
+        byte[] length = new byte[2];
+        BinaryPrimitives.WriteUInt16LittleEndian(length, (ushort)comment.Length);
+        file.Position = end + 20;
+        file.Write(length);
+        file.Write(comment);
+        file.SetLength(end + 22 + comment.Length);
+    }
+
     // ---- reading the central directory ------------------------------------------------------------
 
     /// <summary>The entries of a ZIP archive and its comment. Throws InvalidDataException for damaged or split archives.</summary>

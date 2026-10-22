@@ -197,6 +197,28 @@ public sealed class PluginUi : IPluginUi
                     body.Children.Add(box);
                     break;
                 }
+                case PluginFieldKind.MultilineText:
+                {
+                    var box = new TextBox
+                    {
+                        Header = field.Label,
+                        Text = field.Value,
+                        PlaceholderText = field.Placeholder ?? string.Empty,
+                        Tag = "NoLoc",
+                        AcceptsReturn = true,
+                        TextWrapping = TextWrapping.Wrap,
+                        Height = 170,
+                        IsSpellCheckEnabled = false,
+                    };
+                    ScrollViewer.SetVerticalScrollBarVisibility(box, ScrollBarVisibility.Auto);
+                    // the text box ends lines with "\r"
+                    static string Lines(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
+                    readers.Add(() => field.Value = Lines(box.Text));
+                    writers.Add(() => { if (Lines(box.Text) != field.Value) box.Text = field.Value; });
+                    input = box;
+                    body.Children.Add(box);
+                    break;
+                }
                 default:
                 {
                     var box = new TextBox { Header = field.Label, Text = field.Value, PlaceholderText = field.Placeholder ?? string.Empty, Tag = "NoLoc", IsSpellCheckEnabled = false };

@@ -103,6 +103,7 @@ Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly
 | Plugins manager (Configuration → Plugins: list, turn on/off, plugins folder) | 4 | [x] |
 | One submenu per plugin with its commands | 4 | [x] |
 | Archive plugin: pack ZIP / TAR / TAR.GZ, unpack ZIP, 7z, RAR, TAR (+gz/bz2/xz/lz), gz, bz2, xz, lz | 4 | [x] |
+| Archive plugin: test archive, make self-extracting archive (ZIP → .exe), archive comment (ZIP) | 4 | [x] |
 | Browse archives like directories (Enter on an archive; address bar, chevrons, ".." back out) | 4 | [x] |
 | Copy files and directories out of an archive (F5 / Alt+F6, into the transfer panel) | 4 | [x] |
 | Open a file in an archive (Enter / F3: temporary copy, opened with its program) | 4 | [x] |

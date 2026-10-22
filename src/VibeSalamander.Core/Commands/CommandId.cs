@@ -143,4 +143,9 @@ public enum CommandId
 
     // the Disk Map plugin
     DiskMap,
+
+    // the archive plugin's commands
+    TestArchive,
+    MakeSelfExtractingArchive,
+    ArchiveComment,
 }

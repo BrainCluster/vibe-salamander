@@ -141,6 +141,8 @@ public enum PluginFieldKind
     Check,
     /// <summary>A file on disk, with a Browse button.</summary>
     File,
+    /// <summary>Text of several lines (lines end with "\n").</summary>
+    MultilineText,
 }
 
 /// <summary>One field of <see cref="IPluginUi.EditFieldsAsync"/>.</summary>
