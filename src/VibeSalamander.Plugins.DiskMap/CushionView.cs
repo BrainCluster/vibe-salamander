@@ -4,13 +4,13 @@
 namespace VibeSalamander.Plugins.DiskMap;
 
 /// <summary>
-/// The original Disk Map view, modernised: a squarified cushion treemap (van Wijk and van de Wetering).
+/// The original Disk Map view (Classic), modernised: a squarified cushion treemap (van Wijk and van de Wetering).
 /// Every file is a tile as large as the file; each directory level adds a ridge to a shaded surface, so
 /// directories show as bumps of tiles. Files are colored by what they are.
 /// </summary>
 internal sealed class CushionView : IMapView
 {
-    public string Name => "Disk Map";
+    public string Name => "Classic";
 
     private const double StartHeight = 0.38;
     private const double HeightFactor = 0.88;

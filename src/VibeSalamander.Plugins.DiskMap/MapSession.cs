@@ -15,7 +15,7 @@ internal sealed class MapSession
     private readonly DiskMapPlugin _plugin;
     private readonly string _path;
     private readonly IPluginCanvasWindow _window;
-    private readonly IMapView[] _views = { new CushionView(), new BlocksView(), new SunburstView(), new ColumnsView() };
+    private readonly IMapView[] _views = { new BlocksView(), new SunburstView(), new ColumnsView(), new CushionView() };
 
     private CancellationTokenSource? _scanCancel;
     private CancellationTokenSource? _renderCancel;
@@ -33,7 +33,7 @@ internal sealed class MapSession
         _host = host;
         _plugin = plugin;
         _path = path;
-        _viewIndex = Math.Clamp(plugin.LastView, 0, _views.Length - 1);
+        _viewIndex = Math.Max(0, Array.FindIndex(_views, v => v.Name == plugin.LastView)); // Blocks unless another was chosen
         _window = host.Ui.OpenCanvasWindow(T("Disk Map") + " – " + path);
         _window.SetHeading(path);
         _window.SetViews(_views.Select(v => T(v.Name)).ToList(), _viewIndex);
@@ -46,7 +46,7 @@ internal sealed class MapSession
         _window.ViewChanged += (_, index) =>
         {
             _viewIndex = Math.Clamp(index, 0, _views.Length - 1);
-            _plugin.LastView = _viewIndex;
+            _plugin.LastView = _views[_viewIndex].Name;
             Render();
         };
         _window.Resized += (_, _) =>
@@ -320,7 +320,7 @@ internal sealed class MapSession
                 return true;
             case "1" or "2" or "3" or "4":
                 _viewIndex = key[0] - '1';
-                _plugin.LastView = _viewIndex;
+                _plugin.LastView = _views[_viewIndex].Name;
                 _window.SetViews(_views.Select(v => T(v.Name)).ToList(), _viewIndex);
                 Render();
                 return true;

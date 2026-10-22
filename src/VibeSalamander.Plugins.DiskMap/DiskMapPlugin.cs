@@ -5,7 +5,7 @@ namespace VibeSalamander.Plugins.DiskMap;
 
 /// <summary>
 /// The built-in Disk Map plugin (Open Salamander's DiskMap, modernised): what takes the space in a directory,
-/// as a cushion treemap like the original, or as Blocks, a Sunburst or Columns.
+/// as Blocks (the default), a Sunburst, Columns, or the original's cushion treemap (Classic).
 /// Commands → Disk Map maps the active panel's directory.
 /// </summary>
 public sealed class DiskMapPlugin : IVibePlugin, ICommandContributor
@@ -18,12 +18,12 @@ public sealed class DiskMapPlugin : IVibePlugin, ICommandContributor
 
     private IPluginHost? _host;
     private string? _settingsFile;
-    private int _lastView;
+    private string _lastView = string.Empty;
 
     public IReadOnlyList<PluginCommand> Commands { get; private set; } = Array.Empty<PluginCommand>();
 
-    /// <summary>The view chosen last (the next window opens with it).</summary>
-    internal int LastView
+    /// <summary>The (English) name of the view chosen last: the next window opens with it.</summary>
+    internal string LastView
     {
         get => _lastView;
         set
@@ -34,7 +34,7 @@ public sealed class DiskMapPlugin : IVibePlugin, ICommandContributor
             try
             {
                 if (_settingsFile != null)
-                    File.WriteAllText(_settingsFile, value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    File.WriteAllText(_settingsFile, value);
             }
             catch (Exception)
             {
@@ -48,9 +48,9 @@ public sealed class DiskMapPlugin : IVibePlugin, ICommandContributor
         _host = host;
         try
         {
-            _settingsFile = Path.Combine(host.GetDataDirectory(this), "view.txt");
-            if (File.Exists(_settingsFile) && int.TryParse(File.ReadAllText(_settingsFile).Trim(), out int view))
-                _lastView = view;
+            _settingsFile = Path.Combine(host.GetDataDirectory(this), "view name.txt");
+            if (File.Exists(_settingsFile))
+                _lastView = File.ReadAllText(_settingsFile).Trim();
         }
         catch (Exception)
         {
@@ -58,7 +58,7 @@ public sealed class DiskMapPlugin : IVibePlugin, ICommandContributor
         }
         Commands = new[]
         {
-            new PluginCommand("map", "Disk Map", null, h =>
+            new PluginCommand("map", "Show disk map", null, h =>
             {
                 Open(h);
                 return Task.CompletedTask;

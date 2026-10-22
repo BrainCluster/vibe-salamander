@@ -85,7 +85,7 @@ public static class CommandCatalog
         [CommandId.MountImage] = "Mount disk image",
         [CommandId.UnmountImage] = "Unmount disk image",
         [CommandId.ConnectFtp] = "Connect to FTP / SFTP server...",
-        [CommandId.DiskMap] = "Disk map",
+        [CommandId.DiskMap] = "Show disk map",
     };
 
     /// <summary>A readable name ("Compare directories..."); others are derived from the id ("Sort by name").</summary>
