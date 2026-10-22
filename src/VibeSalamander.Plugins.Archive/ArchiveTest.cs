@@ -3,7 +3,6 @@
 
 using System.Formats.Tar;
 using System.IO.Compression;
-using System.Security.Cryptography;
 using SharpCompress.Archives;
 using SharpCompress.Common;
 using SharpCompress.Readers;
@@ -49,7 +48,7 @@ internal static class ArchiveTest
     }
 
     private static bool LooksLikePassword(Exception ex) =>
-        ex is CryptographicException ||
+        ex is System.Security.Cryptography.CryptographicException or SharpCompress.Common.CryptographicException ||
         ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase) ||
         ex.Message.Contains("encrypt", StringComparison.OrdinalIgnoreCase);
 
