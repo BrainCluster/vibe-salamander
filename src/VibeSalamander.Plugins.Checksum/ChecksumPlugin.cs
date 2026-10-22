@@ -17,6 +17,7 @@ public sealed class ChecksumPlugin : IVibePlugin, ICommandContributor
     public Version Version => new(1, 0);
     public string Description => "SFV, MD5, SHA-1, SHA-256 and SHA-512 checksum calculator and verifier.";
     public string Author => "Vibe Salamander";
+    public string? IconGlyph => "\uE9D5";
 
     private IPluginHost? _host;
     private ChecksumSettings _settings = new();

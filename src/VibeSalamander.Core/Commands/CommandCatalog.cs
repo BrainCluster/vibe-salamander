@@ -196,7 +196,7 @@ public static class CommandCatalog
         CommandId.CalculateChecksums => "\uE9D5",
         CommandId.VerifyChecksums => "\uE73E",
         CommandId.ConnectFtp => "\uE968",
-        CommandId.DiskMap => "\uEDA2",
+        CommandId.DiskMap => "\uEB05",
         CommandId.MountImage => "\uE958",
         CommandId.UnmountImage => "\uE711",
         CommandId.Configuration => "",

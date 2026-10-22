@@ -19,6 +19,7 @@ public sealed class ArchivePlugin : IVibePlugin
         "Password-protected ZIP, 7-Zip and RAR archives can be unpacked. " +
         "Files can be copied into ZIP and TAR archives and deleted from them.";
     public string Author => "Vibe Salamander";
+    public string? IconGlyph => "\uF012";
 
     public void Initialize(IPluginHost host) => host.RegisterArchiver(new Archiver());
 

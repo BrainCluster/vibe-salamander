@@ -26,6 +26,12 @@ public interface IVibePlugin
 
     string Author { get; }
 
+    /// <summary>
+    /// Its icon in the Plugins menu: a Segoe Fluent Icons character ("\uEB05"); null = a general plugin icon
+    /// (or an archive / network icon for archivers and file systems).
+    /// </summary>
+    string? IconGlyph => null;
+
     /// <summary>Called once after loading; the plugin registers its features through the host.</summary>
     void Initialize(IPluginHost host);
 

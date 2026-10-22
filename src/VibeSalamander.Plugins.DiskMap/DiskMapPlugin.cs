@@ -15,6 +15,7 @@ public sealed class DiskMapPlugin : IVibePlugin, ICommandContributor
     public Version Version => new(1, 0);
     public string Description => "Shows what takes the space in a directory: a cushion treemap like Salamander's Disk Map, nested blocks, a sunburst or columns.";
     public string Author => "Vibe Salamander";
+    public string? IconGlyph => "\uEB05";
 
     private IPluginHost? _host;
     private string? _settingsFile;

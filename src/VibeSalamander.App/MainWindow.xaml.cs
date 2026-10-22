@@ -562,18 +562,19 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             PluginsMenu.Items.Add(new MenuFlyoutSeparator());
         foreach (Services.PluginInfo plugin in loaded)
         {
-            var sub = new MenuFlyoutSubItem { Text = plugin.Name };
+            string pluginGlyph = PluginGlyph(plugin);
+            var sub = new MenuFlyoutSubItem { Text = plugin.Name, Icon = new FontIcon { Glyph = pluginGlyph } };
             if (plugin.Archivers.Any(a => a.PackFormats.Count > 0))
                 sub.Items.Add(MenuItem("Pack...", nameof(CommandId.Pack), "\uE7B8"));
             if (plugin.Archivers.Any(a => a.UnpackExtensions.Count > 0))
                 sub.Items.Add(MenuItem("Unpack...", nameof(CommandId.Unpack), "\uE896"));
             foreach (Plugins.PluginCommand command in plugin.CommandContributors.SelectMany(c => c.Commands))
             {
-                var item = new MenuFlyoutItem { Text = command.MenuText };
+                bool isHostCommand = command.HostCommand != null && Enum.TryParse(command.HostCommand, out CommandId hostCommand);
+                string glyph = isHostCommand && CommandCatalog.Glyph(hostCommand) is { Length: > 0 } commandGlyph ? commandGlyph : pluginGlyph;
+                var item = new MenuFlyoutItem { Text = command.MenuText, Icon = new FontIcon { Glyph = glyph } };
                 // a command answering to an app command shows that command's (customizable) key
-                string? keys = command.HostCommand != null && Enum.TryParse(command.HostCommand, out CommandId hostCommand)
-                    ? _vm.KeyMap.GetShortcutText(hostCommand)
-                    : command.ShortcutText;
+                string? keys = isHostCommand ? _vm.KeyMap.GetShortcutText(hostCommand) : command.ShortcutText;
                 if (!string.IsNullOrEmpty(keys))
                     item.KeyboardAcceleratorTextOverride = keys;
                 Plugins.PluginCommand c = command;
@@ -597,6 +598,18 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         foreach (MenuFlyoutItemBase item in PluginsMenu.Items)
             Loc.Translate(item);
         UpdateMenuShortcuts();
+    }
+
+    /// <summary>A plugin's icon in the Plugins menu: its own, or one for what it adds.</summary>
+    private static string PluginGlyph(Services.PluginInfo plugin)
+    {
+        if (plugin.IconGlyph is { Length: > 0 } own)
+            return own;
+        if (plugin.Archivers.Count > 0)
+            return "\uF012"; // a zipped folder
+        if (plugin.FileSystems.Count > 0)
+            return "\uE968"; // network
+        return "\uEA86"; // a puzzle piece
     }
 
     private MenuFlyoutItem MenuItem(string text, string tag, string glyph)

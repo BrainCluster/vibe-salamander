@@ -15,6 +15,7 @@ public sealed class FtpPlugin : IVibePlugin, ICommandContributor
     public Version Version => new(1, 0);
     public string Description => "FTP, FTPS and SFTP servers in the panels: browse, copy both ways, move, delete, rename and create directories.";
     public string Author => "Vibe Salamander";
+    public string? IconGlyph => "\uE968";
 
     private IPluginHost? _host;
     private ConnectionStore? _store;

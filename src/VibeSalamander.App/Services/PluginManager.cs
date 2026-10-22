@@ -18,6 +18,9 @@ public sealed class PluginInfo
     public string Description { get; init; } = string.Empty;
     public string Author { get; init; } = string.Empty;
 
+    /// <summary>Its icon in the Plugins menu (a Segoe Fluent Icons character), or null.</summary>
+    public string? IconGlyph { get; init; }
+
     /// <summary>"Built-in", or the plugin's file.</summary>
     public required string Source { get; init; }
 
@@ -235,6 +238,19 @@ public sealed class PluginManager
         }
     }
 
+    /// <summary>The plugin's menu icon (a plugin built for an older host has none).</summary>
+    private static string? SafeGlyph(IVibePlugin plugin)
+    {
+        try
+        {
+            return plugin.IconGlyph;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     private void Add(IVibePlugin plugin, string source, bool builtIn, MainViewModel main, ICollection<string> disabled)
     {
         if (_plugins.Any(p => string.Equals(p.Id, plugin.Id, StringComparison.OrdinalIgnoreCase)))
@@ -246,6 +262,7 @@ public sealed class PluginManager
             Version = plugin.Version,
             Description = plugin.Description,
             Author = plugin.Author,
+            IconGlyph = SafeGlyph(plugin),
             Source = source,
             IsBuiltIn = builtIn,
             Enabled = !disabled.Contains(plugin.Id, StringComparer.OrdinalIgnoreCase),
