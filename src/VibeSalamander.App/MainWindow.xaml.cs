@@ -337,6 +337,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     private void BuildToolbar()
     {
         ToolbarPanel.Children.Clear();
+        bool sliderAdded = false;
         foreach (string id in _vm.Settings.Toolbar)
         {
             if (id == CommandCatalog.SeparatorId)
@@ -360,11 +361,15 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             ToolTipService.SetToolTip(button, WithShortcut(CommandCatalog.DisplayName(command), command));
             button.Click += Toolbar_Click;
             ToolbarPanel.Children.Add(button);
-            if (command == CommandId.ToggleDensity)
+            if (command == CommandId.ToggleDensity && !sliderAdded)
+            {
                 ToolbarPanel.Children.Add(BuildThumbnailSlider());
+                sliderAdded = true;
+            }
         }
-        if (_thumbnailSlider == null || _thumbnailSlider.Parent == null)
-            ToolbarPanel.Children.Add(BuildThumbnailSlider()); // density isn't on the toolbar: at its end
+        // one slider for both panels: next to the density button, or at the end when that isn't on the toolbar
+        if (!sliderAdded)
+            ToolbarPanel.Children.Add(BuildThumbnailSlider());
         Loc.Translate(ToolbarPanel);
         UpdateThumbnailSlider();
     }
