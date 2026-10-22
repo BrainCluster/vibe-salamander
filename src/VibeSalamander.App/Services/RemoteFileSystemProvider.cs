@@ -38,6 +38,23 @@ public sealed class RemoteFileSystemProvider : IFileSystemProvider
         }
     }
 
+    /// <summary>"sftp://user@host:2222" of "sftp://user@host:2222/a/b": the server part of a path.</summary>
+    public static string ServerOf(string path)
+    {
+        int scheme = path.IndexOf("://", StringComparison.Ordinal);
+        if (scheme < 0)
+            return string.Empty;
+        int slash = path.IndexOf('/', scheme + 3);
+        return slash < 0 ? path : path[..slash];
+    }
+
+    /// <summary>True when both paths are on the same server (and user).</summary>
+    public static bool SameServer(string a, string b)
+    {
+        string server = ServerOf(a);
+        return server.Length > 0 && string.Equals(server, ServerOf(b), StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>"dir" of "sftp://host/a/dir".</summary>
     public static string LastName(string path)
     {

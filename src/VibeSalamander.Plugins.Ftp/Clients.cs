@@ -25,6 +25,10 @@ internal delegate bool TrustCheck(string server, string fingerprint, string desc
 internal interface IRemoteClient : IDisposable
 {
     bool IsConnected { get; }
+
+    /// <summary>Where the connection's steps are written (the Connections window's log); null = nowhere.</summary>
+    Action<string>? Log { get; set; }
+
     Task ConnectAsync(CancellationToken ct);
     Task<string> GetHomeAsync(CancellationToken ct);
     Task<List<RemoteEntry>> ListAsync(string directory, CancellationToken ct);
@@ -61,7 +65,10 @@ internal sealed class SftpRemoteClient : IRemoteClient
 {
     private readonly SftpClient _client;
     private readonly string _server;
+    private readonly string _user;
     private Exception? _rejectedKey;
+
+    public Action<string>? Log { get; set; }
 
     public SftpRemoteClient(RemotePath server, Credentials credentials, TrustCheck trust)
     {
@@ -86,6 +93,7 @@ internal sealed class SftpRemoteClient : IRemoteClient
             };
             methods.Add(interactive);
         }
+        _user = user;
         var info = new ConnectionInfo(server.Host, server.Port, user, methods.ToArray())
         {
             Timeout = TimeSpan.FromSeconds(20),
@@ -95,6 +103,7 @@ internal sealed class SftpRemoteClient : IRemoteClient
         _client.HostKeyReceived += (_, e) =>
         {
             string fingerprint = "SHA256:" + e.FingerPrintSHA256;
+            Log?.Invoke($"Host key: {e.HostKeyName} {fingerprint}");
             e.CanTrust = trust(_server, fingerprint, $"SSH {e.HostKeyName}", changed: false);
             if (!e.CanTrust)
                 _rejectedKey = new InvalidOperationException($"The key of {_server} is not trusted.");
@@ -107,7 +116,10 @@ internal sealed class SftpRemoteClient : IRemoteClient
     {
         try
         {
+            Log?.Invoke($"Connecting to {_server} (SFTP)...");
             await _client.ConnectAsync(ct);
+            Log?.Invoke($"Server: {_client.ConnectionInfo.ServerVersion}");
+            Log?.Invoke($"Logged in as {_user}; SFTP version {_client.ProtocolVersion}");
         }
         catch (SshConnectionException) when (_rejectedKey != null)
         {
@@ -212,6 +224,9 @@ internal sealed class SftpRemoteClient : IRemoteClient
 internal sealed class FtpRemoteClient : IRemoteClient
 {
     private readonly AsyncFtpClient _client;
+    private readonly string _server;
+
+    public Action<string>? Log { get; set; }
 
     public FtpRemoteClient(RemotePath server, Credentials credentials, TrustCheck trust)
     {
@@ -228,6 +243,18 @@ internal sealed class FtpRemoteClient : IRemoteClient
         _client.Config.ConnectTimeout = 20_000;
         _client.Config.ReadTimeout = 60_000;
         string id = $"{server.Host}:{server.Port}";
+        _server = id + " (" + server.Protocol switch
+        {
+            RemoteProtocol.FtpsExplicit => "FTPS, explicit TLS",
+            RemoteProtocol.FtpsImplicit => "FTPS, implicit TLS",
+            _ => "FTP",
+        } + ")";
+        // FluentFTP's own log: the commands and the server's answers (it doesn't write the password)
+        _client.LegacyLogger = (level, message) =>
+        {
+            if (level != FtpTraceLevel.Verbose)
+                Log?.Invoke(message.TrimEnd());
+        };
         _client.ValidateCertificate += (_, e) =>
         {
             if (e.PolicyErrors == System.Net.Security.SslPolicyErrors.None)
@@ -249,6 +276,7 @@ internal sealed class FtpRemoteClient : IRemoteClient
     {
         try
         {
+            Log?.Invoke($"Connecting to {_server}...");
             await _client.Connect(ct);
         }
         catch (FluentFTP.Exceptions.FtpAuthenticationException ex)

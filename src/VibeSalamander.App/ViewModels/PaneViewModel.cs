@@ -236,6 +236,12 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     /// <summary>The panel shows the inside of an archive (read-only: copy out with F5, open files with Enter).</summary>
     public bool IsArchive => _provider is ArchiveFileSystemProvider;
 
+    /// <summary>
+    /// The panel is about to leave the server it shows (pane, the server path); false keeps it there.
+    /// Set by the main view model (it asks whether to disconnect).
+    /// </summary>
+    public Func<PaneViewModel, string, Task<bool>>? LeavingServer { get; set; }
+
     /// <summary>A plugin file system (FTP, SFTP, ...): its files aren't on this computer.</summary>
     public bool IsRemote => _provider is RemoteFileSystemProvider;
 
@@ -426,6 +432,10 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         }
         if (provider is LocalFileSystemProvider)
             path = PathUtil.NormalizeDirectory(path);
+        // leaving a server (FTP, SFTP): asked whether to disconnect; no = the panel stays
+        if (_provider is RemoteFileSystemProvider && LeavingServer != null &&
+            !RemoteFileSystemProvider.SameServer(_path, path) && !await LeavingServer(this, _path))
+            return;
 
         string previous = _path;
         bool ok = await LoadAsync(provider, path, focusName, keepCaret: false);

@@ -22,6 +22,35 @@ public sealed partial class MainViewModel
     /// <summary>Plugin file systems (FTP, SFTP) in the panels.</summary>
     public RemoteFileSystemProvider RemoteProvider { get; }
 
+    /// <summary>
+    /// A panel leaves a server: "Disconnect from ...?" Yes closes the connection (unless the other panel
+    /// is on the same server, then nothing is asked); No keeps the panel where it is.
+    /// </summary>
+    private async Task<bool> ConfirmLeaveServerAsync(PaneViewModel pane, string serverPath)
+    {
+        PaneViewModel other = pane == Left ? Right : Left;
+        if (other.IsRemote && RemoteFileSystemProvider.SameServer(other.Path, serverPath))
+            return true; // still in use there
+        IPluginFileSystem? fs = RemoteProvider.FileSystemOf(serverPath);
+        if (fs == null)
+            return true;
+        string server = RemoteFileSystemProvider.ServerOf(serverPath).Replace("%40", "@");
+        if (!await _host.ConfirmAsync("Disconnect", Loc.F("Do you want to disconnect from {0}?", server), "Disconnect"))
+        {
+            _host.FocusPane(pane);
+            return false;
+        }
+        try
+        {
+            fs.Disconnect(serverPath);
+        }
+        catch (Exception ex)
+        {
+            _host.Notify(ex.Message);
+        }
+        return true;
+    }
+
     /// <summary>Handles a command in a panel showing a server; true when it was handled here.</summary>
     private async Task<bool> RemoteCommandAsync(PaneViewModel p, CommandId command)
     {

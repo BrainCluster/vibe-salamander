@@ -129,11 +129,37 @@ public sealed class PluginListWindow : Window, IPluginListWindow
         if (Application.Current.Resources.TryGetValue("VibePaneBackgroundBrush", out object? background) && background is Brush backgroundBrush)
             listBorder.Background = backgroundBrush;
 
+        // the log (a connection log, ...): below the list, from its first line on
+        _logText = new TextBlock
+        {
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 12,
+            TextWrapping = TextWrapping.Wrap,
+            IsTextSelectionEnabled = true,
+            Tag = "NoLoc",
+        };
+        _logScroller = new ScrollViewer { Content = _logText, Padding = new Thickness(10, 6, 10, 6), Height = 150 };
+        _logBorder = new Border
+        {
+            Child = _logScroller,
+            Margin = new Thickness(12, 8, 12, 0),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Visibility = Visibility.Collapsed,
+        };
+        if (Application.Current.Resources.TryGetValue("VibePaneBorderBrush", out object? logBorder) && logBorder is Brush logBorderBrush)
+            _logBorder.BorderBrush = logBorderBrush;
+        if (Application.Current.Resources.TryGetValue("VibePaneBackgroundBrush", out object? logBackground) && logBackground is Brush logBackgroundBrush)
+            _logBorder.Background = logBackgroundBrush;
+
         var root = new Grid { RequestedTheme = theme };
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.Children.Add(listBorder);
-        Grid.SetRow(bottom, 1);
+        Grid.SetRow(_logBorder, 1);
+        root.Children.Add(_logBorder);
+        Grid.SetRow(bottom, 2);
         root.Children.Add(bottom);
         root.KeyDown += Root_KeyDown;
         Content = root;
@@ -290,6 +316,40 @@ public sealed class PluginListWindow : Window, IPluginListWindow
     }
 
     public IPluginRow? SelectedRow => _selected;
+
+    private readonly TextBlock _logText;
+    private readonly ScrollViewer _logScroller;
+    private readonly Border _logBorder;
+
+    public void AppendLog(string line)
+    {
+        void Add()
+        {
+            if (IsClosed)
+                return;
+            _logBorder.Visibility = Visibility.Visible;
+            _logText.Text = _logText.Text.Length == 0 ? line : _logText.Text + "\n" + line;
+            _logScroller.UpdateLayout();
+            _logScroller.ChangeView(null, _logScroller.ScrollableHeight, null, disableAnimation: true);
+        }
+        if (_dispatcher.HasThreadAccess)
+            Add();
+        else
+            _dispatcher.TryEnqueue(Add);
+    }
+
+    public void ClearLog()
+    {
+        void Clear()
+        {
+            _logText.Text = string.Empty;
+            _logBorder.Visibility = Visibility.Collapsed;
+        }
+        if (_dispatcher.HasThreadAccess)
+            Clear();
+        else
+            _dispatcher.TryEnqueue(Clear);
+    }
 
     public void SetStatus(string text)
     {

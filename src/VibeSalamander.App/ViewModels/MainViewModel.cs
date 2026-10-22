@@ -155,6 +155,7 @@ public sealed partial class MainViewModel : BindableBase
                     await OpenFromArchiveAsync(p, item);
             };
             pane.DiskImageOpenRequested += async (_, path) => await OpenDiskImageAsync(p, path);
+            pane.LeavingServer = ConfirmLeaveServerAsync;
         }
 
         Settings.General ??= new GeneralOptions();

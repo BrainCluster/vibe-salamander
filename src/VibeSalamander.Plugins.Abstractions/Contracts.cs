@@ -167,6 +167,12 @@ public interface IPluginListWindow
 
     void SetStatus(string text);
 
+    /// <summary>Adds a line to the log below the list (shown from the first line on; a connection log, ...).</summary>
+    void AppendLog(string line) { }
+
+    /// <summary>Empties the log and hides it.</summary>
+    void ClearLog() { }
+
     /// <summary>0..1, or null to hide the progress bar.</summary>
     void SetProgress(double? value);
 
@@ -264,6 +270,9 @@ public interface IPluginFileSystem
 
     /// <summary>Renames (or moves within the same server) an item.</summary>
     Task RenameAsync(string path, string newPath, CancellationToken cancellationToken);
+
+    /// <summary>The panel leaves the server: its connection is closed (the next visit logs in again).</summary>
+    void Disconnect(string path) { }
 }
 
 /// <summary>One file or directory of a plugin file system.</summary>

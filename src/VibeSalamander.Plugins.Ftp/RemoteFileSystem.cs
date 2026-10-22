@@ -127,18 +127,21 @@ internal sealed class RemoteFileSystem : IPluginFileSystem, IDisposable
     }
 
     /// <summary>A new connection to the session's server (asks for the password again when the login fails).</summary>
-    private async Task<IRemoteClient> ConnectAsync(Session session, CancellationToken ct)
+    private async Task<IRemoteClient> ConnectAsync(Session session, CancellationToken ct, Action<string>? log = null)
     {
         for (int attempt = 0; ; attempt++)
         {
             IRemoteClient client = RemoteClients.Create(session.Server, session.Credentials, Trust);
+            client.Log = log;
             try
             {
                 await client.ConnectAsync(ct);
+                client.Log = null; // later commands of this connection don't go to the (closed) window
                 return client;
             }
-            catch (UnauthorizedAccessException) when (attempt < 3)
+            catch (UnauthorizedAccessException ex) when (attempt < 3)
             {
+                log?.Invoke(ex.Message);
                 client.Dispose();
                 Credentials? again = AskPassword(session.Server, session.Credentials.PrivateKeyFile, wrong: true);
                 if (again == null)
@@ -207,8 +210,34 @@ internal sealed class RemoteFileSystem : IPluginFileSystem, IDisposable
         return trusted;
     }
 
-    /// <summary>Connects to a saved server and returns the directory to open (Connections window → Connect).</summary>
-    public async Task<string> OpenAsync(Connection connection, CancellationToken ct)
+    /// <summary>The panel left the server: its connection and the password typed for it are let go.</summary>
+    public void Disconnect(string path)
+    {
+        if (RemotePath.Parse(path) is not { } server)
+            return;
+        Session? session;
+        lock (_sessions)
+        {
+            if (_sessions.Remove(server.ServerKey, out session) && session.Client != null)
+            {
+                try
+                {
+                    session.Client.Dispose();
+                }
+                catch (Exception)
+                {
+                    // closing anyway
+                }
+                session.Client = null;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Connects to a saved server and returns the directory to open (Connections window → Connect).
+    /// <paramref name="log"/> gets the connection's steps.
+    /// </summary>
+    public async Task<string> OpenAsync(Connection connection, CancellationToken ct, Action<string>? log = null)
     {
         RemotePath root = connection.Root;
         string? password = connection.Password;
@@ -220,9 +249,24 @@ internal sealed class RemoteFileSystem : IPluginFileSystem, IDisposable
             password = asked.Password;
         }
         Remember(root, new Credentials(password ?? string.Empty, string.IsNullOrWhiteSpace(connection.PrivateKeyFile) ? null : connection.PrivateKeyFile));
-        string directory = await WithSessionAsync(root, async client =>
-            string.IsNullOrWhiteSpace(connection.InitialPath) ? await client.GetHomeAsync(ct) : connection.InitialPath!, ct);
-        return root.WithPath(string.IsNullOrEmpty(directory) ? "/" : directory).ToString();
+        Session session = GetSession(root);
+        await session.Gate.WaitAsync(ct);
+        try
+        {
+            session.Client?.Dispose();
+            session.Client = null;
+            session.Client = await ConnectAsync(session, ct, log);
+            session.LastUse = DateTime.UtcNow;
+            string directory = string.IsNullOrWhiteSpace(connection.InitialPath) ? await session.Client.GetHomeAsync(ct) : connection.InitialPath!;
+            if (string.IsNullOrEmpty(directory))
+                directory = "/";
+            log?.Invoke(string.Format(T("Directory: {0}"), directory));
+            return root.WithPath(directory).ToString();
+        }
+        finally
+        {
+            session.Gate.Release();
+        }
     }
 
     // ---- listing ------------------------------------------------------------------------------------

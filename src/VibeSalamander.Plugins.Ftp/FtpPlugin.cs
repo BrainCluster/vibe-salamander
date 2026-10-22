@@ -125,21 +125,34 @@ public sealed class FtpPlugin : IVibePlugin, ICommandContributor
     {
         if (row.Tag is not Connection connection || _fileSystem == null || _host == null)
             return;
+        // the connection log, below the list
+        window.ClearLog();
+        void Log(string line) => window.AppendLog($"{DateTime.Now:HH:mm:ss}  {line}");
         window.SetStatus(string.Format(T("Connecting to {0}..."), connection.Host));
-        window.SetProgress(null);
+        window.UpdateButton("connect", enabled: false);
         try
         {
-            string path = await Task.Run(() => _fileSystem.OpenAsync(connection, CancellationToken.None));
+            string path = await Task.Run(() => _fileSystem.OpenAsync(connection, CancellationToken.None, Log));
+            Log(T("Connected."));
+            window.SetStatus(T("Connected."));
+            await Task.Delay(700); // a moment to see the log
             window.Close();
             await _host.ActivePanel.NavigateAsync(path);
         }
         catch (OperationCanceledException)
         {
+            Log(T("Not connected."));
             window.SetStatus(T("Not connected."));
         }
         catch (Exception ex)
         {
+            Log(ex.Message);
             window.SetStatus(string.Format(T("{0}: {1}"), connection.Host, ex.Message));
+        }
+        finally
+        {
+            if (!window.IsClosed)
+                window.UpdateButton("connect", enabled: true);
         }
     }
 
