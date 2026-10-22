@@ -336,7 +336,23 @@ public sealed partial class SettingsWindow
         page.Children.Add(Hint("Variables: $(Name), $(NamePart), $(Ext), $(Size), $(Date), $(Time), $(Attributes), $(Type), $(Path), $(FullName)."));
 
         page.Children.Add(Section("Thumbnails"));
-        page.Children.Add(Number("Thumbnail size (pixels)", "The Thumbnails view (Alt+4).", a.ThumbnailSize, 48, 256, v => a.ThumbnailSize = v, display: true));
+        var thumbnailSlider = new Slider
+        {
+            Minimum = UiState.MinThumbnailSize,
+            Maximum = UiState.MaxThumbnailSize,
+            Value = UiState.ThumbnailSize,
+            StepFrequency = 4,
+            SmallChange = 4,
+            LargeChange = 32,
+            Width = 240,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        thumbnailSlider.ValueChanged += (_, args) =>
+        {
+            if (!_loading)
+                _host.SetThumbnailSize((int)Math.Round(args.NewValue));
+        };
+        page.Children.Add(Card("Thumbnail size", "The Thumbnails view (Alt+4): from small icons to extra large icons. Also on the toolbar while a panel shows thumbnails.", thumbnailSlider));
         return page;
     }
 

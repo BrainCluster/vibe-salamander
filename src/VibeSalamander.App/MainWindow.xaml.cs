@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
 using VibeSalamander.Core.Commands;
+using VibeSalamander.Core.Panels;
 using VibeSalamander.Core.Settings;
 using VibeSalamander.Services;
 using VibeSalamander.ViewModels;
@@ -143,6 +144,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     {
         if (e.PropertyName is nameof(PaneViewModel.Path) or nameof(PaneViewModel.IsActive))
             UpdateTitle();
+        if (e.PropertyName is nameof(PaneViewModel.EffectiveViewMode))
+            UpdateThumbnailSlider();
     }
 
     private void UpdateTitle()
@@ -357,8 +360,84 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             ToolTipService.SetToolTip(button, WithShortcut(CommandCatalog.DisplayName(command), command));
             button.Click += Toolbar_Click;
             ToolbarPanel.Children.Add(button);
+            if (command == CommandId.ToggleDensity)
+                ToolbarPanel.Children.Add(BuildThumbnailSlider());
         }
+        if (_thumbnailSlider == null || _thumbnailSlider.Parent == null)
+            ToolbarPanel.Children.Add(BuildThumbnailSlider()); // density isn't on the toolbar: at its end
         Loc.Translate(ToolbarPanel);
+        UpdateThumbnailSlider();
+    }
+
+    // ---- the thumbnail size slider (toolbar and Configuration → Appearance) --------------------------------
+
+    private Slider? _thumbnailSlider;
+    private bool _syncingThumbnailSlider;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _thumbnailSaveTimer;
+
+    /// <summary>The thumbnail size of both panels; on the toolbar while either panel shows thumbnails.</summary>
+    private Slider BuildThumbnailSlider()
+    {
+        var slider = new Slider
+        {
+            Minimum = UiState.MinThumbnailSize,
+            Maximum = UiState.MaxThumbnailSize,
+            Value = UiState.ThumbnailSize,
+            StepFrequency = 4,
+            SmallChange = 4,
+            LargeChange = 32,
+            Width = 140,
+            Margin = new Thickness(8, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            IsTabStop = false,
+        };
+        ToolTipService.SetToolTip(slider, "Thumbnail size");
+        slider.ValueChanged += (_, args) =>
+        {
+            if (!_syncingThumbnailSlider)
+                SetThumbnailSize((int)Math.Round(args.NewValue));
+        };
+        _thumbnailSlider = slider;
+        return slider;
+    }
+
+    private void UpdateThumbnailSlider()
+    {
+        if (_thumbnailSlider == null)
+            return;
+        bool thumbnails = _vm.Left.EffectiveViewMode == ViewMode.Thumbnails || _vm.Right.EffectiveViewMode == ViewMode.Thumbnails;
+        _thumbnailSlider.Visibility = thumbnails ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public void SetThumbnailSize(int size)
+    {
+        size = Math.Clamp(size, UiState.MinThumbnailSize, UiState.MaxThumbnailSize);
+        if (_vm.Settings.Appearance.ThumbnailSize == size)
+            return;
+        _vm.Settings.Appearance.ThumbnailSize = size;
+        if (_thumbnailSlider != null && (int)Math.Round(_thumbnailSlider.Value) != size)
+        {
+            _syncingThumbnailSlider = true;
+            _thumbnailSlider.Value = size;
+            _syncingThumbnailSlider = false;
+        }
+        LeftPane.ApplyThumbnailSize();
+        RightPane.ApplyThumbnailSize();
+        // once the slider stops: sharper pictures for larger sizes, and the setting saved
+        if (_thumbnailSaveTimer == null)
+        {
+            _thumbnailSaveTimer = DispatcherQueue.CreateTimer();
+            _thumbnailSaveTimer.Interval = TimeSpan.FromMilliseconds(300);
+            _thumbnailSaveTimer.IsRepeating = false;
+            _thumbnailSaveTimer.Tick += (_, _) =>
+            {
+                LeftPane.ReloadThumbnails();
+                RightPane.ReloadThumbnails();
+                _vm.SaveSettings();
+            };
+        }
+        _thumbnailSaveTimer.Stop();
+        _thumbnailSaveTimer.Start();
     }
 
     private Button BuildViewMenuButton()

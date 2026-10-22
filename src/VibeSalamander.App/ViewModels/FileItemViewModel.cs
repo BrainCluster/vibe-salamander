@@ -102,6 +102,16 @@ public sealed class FileItemViewModel : BindableBase
     /// <summary>Height of the preview area in the Thumbnails view (Configuration → Appearance).</summary>
     public GridLength ThumbnailRowHeight => new(UiState.ThumbnailSize);
 
+    /// <summary>The placeholder glyph of the Thumbnails view, smaller than the picture area.</summary>
+    public double ThumbnailGlyphSize => Math.Clamp(UiState.ThumbnailSize * 0.6, 12, 48);
+
+    /// <summary>The thumbnail size slider moved: the visible items resize.</summary>
+    public void RefreshThumbnailSize()
+    {
+        OnPropertyChanged(nameof(ThumbnailRowHeight));
+        OnPropertyChanged(nameof(ThumbnailGlyphSize));
+    }
+
     /// <summary>Second line of a tile: the kind of item.</summary>
     public string TileType => Entry.IsUpDir ? Loc.T("Parent directory") :
         Entry.IsDirectory ? Loc.T("File folder") :
@@ -333,7 +343,12 @@ public static class UiState
     public static Core.Settings.SizeFormat SizeFormat => _settings?.Panels.SizeFormat ?? Core.Settings.SizeFormat.Bytes;
     public static bool DirectoriesHaveExtensions => _settings?.Panels.DirectoriesHaveExtensions ?? false;
     public static bool DimHiddenItems => _settings?.Appearance.DimHiddenItems ?? true;
-    public static int ThumbnailSize => Math.Clamp(_settings?.Appearance.ThumbnailSize ?? 112, 48, 256);
+    public static int ThumbnailSize => Math.Clamp(_settings?.Appearance.ThumbnailSize ?? 112, MinThumbnailSize, MaxThumbnailSize);
+
+    /// <summary>The thumbnail size slider: Explorer's small icons (16) to extra large icons (256).</summary>
+    public const int MinThumbnailSize = 16;
+
+    public const int MaxThumbnailSize = 256;
     public static string InfoLineFormat => _settings?.Appearance.InfoLineFormat is { Length: > 0 } f ? f : Core.Settings.AppearanceOptions.DefaultInfoLine;
     public static bool SelectIncludesDirectories => _settings?.Panels.SelectIncludesDirectories ?? false;
     public static Core.Settings.DriveOptions? Drives => _settings?.Drives;

@@ -30,6 +30,9 @@ public interface ISettingsHost
     /// <summary>Like ApplySettings; displayChanged = how items look changed (names, sizes, colors, sorting, font).</summary>
     void ApplySettings(bool displayChanged);
 
+    /// <summary>The thumbnail size slider: both panels follow at once; saved when the slider stops.</summary>
+    void SetThumbnailSize(int size);
+
     Task ExportConfigurationAsync(Microsoft.UI.WindowId owner);
 
     /// <summary>Imports a configuration file; returns true when the app restarts to apply it.</summary>

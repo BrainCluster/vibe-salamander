@@ -125,14 +125,14 @@
         <DataTemplate x:Key="ThumbnailTemplate" x:DataType="vm:FileItemViewModel">
             <Grid Opacity="{x:Bind ItemOpacity}" Padding="4,6,4,2" RowSpacing="4">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="{x:Bind ThumbnailRowHeight}" />
+                    <RowDefinition Height="{x:Bind ThumbnailRowHeight, Mode=OneWay}" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Border CornerRadius="4" Background="{ThemeResource VibeInactivePathBrush}">
                     <Grid>
-                        <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="48"
+                        <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="{x:Bind ThumbnailGlyphSize, Mode=OneWay}"
                                   Foreground="{x:Bind GlyphBrush, Mode=OneWay}" Visibility="{x:Bind LargeGlyphVisibility, Mode=OneWay}" />
-                        <Image Source="{x:Bind LargeIcon, Mode=OneWay}" Stretch="Uniform" Margin="4" />
+                        <Image Source="{x:Bind LargeIcon, Mode=OneWay}" Stretch="Uniform" Margin="2" />
                     </Grid>
                 </Border>
                 <TextBlock Tag="NameText" Grid.Row="1" Text="{x:Bind FullName}" Foreground="{x:Bind NameBrush, Mode=OneWay}"

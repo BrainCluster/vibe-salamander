@@ -354,6 +354,38 @@ public sealed partial class FilePane : UserControl
     private ViewMode _appliedView = (ViewMode)(-1);
     private double _appliedBriefWidth;
     private double _appliedRowHeight;
+    private int _appliedThumbnailSize;
+
+    private static double ThumbnailItemWidth => Math.Max(UiState.ThumbnailSize + 28, 76); // room for a name under small icons
+    private static double ThumbnailItemHeight => UiState.ThumbnailSize + 40;
+
+    /// <summary>The thumbnail size slider moved: the Thumbnails view follows at once.</summary>
+    public void ApplyThumbnailSize() => ApplyViewMode();
+
+    private void ResizeThumbnails(ItemsWrapGrid grid)
+    {
+        grid.ItemWidth = ThumbnailItemWidth;
+        grid.ItemHeight = ThumbnailItemHeight;
+        foreach (UIElement child in grid.Children)
+        {
+            if (child is ListViewItem { Content: FileItemViewModel item })
+                item.RefreshThumbnailSize();
+        }
+    }
+
+    /// <summary>After the slider stops: the visible pictures load again when they're now larger than before.</summary>
+    public void ReloadThumbnails()
+    {
+        if (_appliedView != ViewMode.Thumbnails || _main == null || ViewModel is not { IsRemote: false } ||
+            FileList.ItemsPanelRoot is not ItemsWrapGrid grid)
+            return;
+        uint size = (uint)Math.Ceiling(UiState.ThumbnailSize * (XamlRoot?.RasterizationScale ?? 1));
+        foreach (UIElement child in grid.Children)
+        {
+            if (child is ListViewItem { Content: FileItemViewModel item })
+                item.EnsureLargeIcon(_main.Thumbnails, size);
+        }
+    }
 
     private static ItemsPanelTemplate PanelTemplate(string panel) =>
         (ItemsPanelTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
@@ -391,12 +423,22 @@ public sealed partial class FilePane : UserControl
         ViewMode mode = vm.EffectiveViewMode;
         double briefWidth = mode == ViewMode.Brief ? BriefColumnWidth() : 0;
         double rowHeight = UiState.RowHeight; // density changes the Brief item height
-        if (mode == _appliedView && briefWidth == _appliedBriefWidth && rowHeight == _appliedRowHeight)
+        int thumbnailSize = UiState.ThumbnailSize;
+        if (mode == _appliedView && briefWidth == _appliedBriefWidth && rowHeight == _appliedRowHeight &&
+            (mode != ViewMode.Thumbnails || thumbnailSize == _appliedThumbnailSize))
             return;
         bool modeChanged = mode != _appliedView;
         _appliedView = mode;
         _appliedBriefWidth = briefWidth;
         _appliedRowHeight = rowHeight;
+        _appliedThumbnailSize = thumbnailSize;
+
+        // Thumbnails with a new size (the slider): resize the existing panel and the visible items
+        if (!modeChanged && mode == ViewMode.Thumbnails && FileList.ItemsPanelRoot is ItemsWrapGrid grid)
+        {
+            ResizeThumbnails(grid);
+            return;
+        }
 
         // Brief after a reload: resize the existing panel instead of swapping it (no re-realization, no flicker)
         if (!modeChanged && mode == ViewMode.Brief && FileList.ItemsPanelRoot is ItemsWrapGrid wrap)
@@ -410,7 +452,7 @@ public sealed partial class FilePane : UserControl
         {
             ViewMode.Brief => PanelTemplate($"<ItemsWrapGrid Orientation='Vertical' ItemWidth='{Num(briefWidth)}' ItemHeight='{Num(rowHeight)}' CacheLength='1' />"),
             ViewMode.Icons => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='96' ItemHeight='104' CacheLength='1' />"),
-            ViewMode.Thumbnails => PanelTemplate($"<ItemsWrapGrid Orientation='Horizontal' ItemWidth='{Num(UiState.ThumbnailSize + 28)}' ItemHeight='{Num(UiState.ThumbnailSize + 40)}' CacheLength='1' />"),
+            ViewMode.Thumbnails => PanelTemplate($"<ItemsWrapGrid Orientation='Horizontal' ItemWidth='{Num(ThumbnailItemWidth)}' ItemHeight='{Num(ThumbnailItemHeight)}' CacheLength='1' />"),
             ViewMode.Tiles => PanelTemplate("<ItemsWrapGrid Orientation='Horizontal' ItemWidth='264' ItemHeight='64' CacheLength='1' />"),
             // one item per line with a fixed height: the list knows its exact length (a steady scrollbar with
             // thousands of files) and builds few rows ahead (CacheLength), which keeps memory down
