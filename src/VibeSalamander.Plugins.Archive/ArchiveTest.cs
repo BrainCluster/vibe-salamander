@@ -60,7 +60,7 @@ internal static class ArchiveTest
         List<IArchiveEntry> entries;
         try
         {
-            archive = ArchiveFactory.OpenArchive(file, new ReaderOptions { Password = password, LeaveStreamOpen = true });
+            archive = Archiver.OpenRandomAccess(path, file, new ReaderOptions { Password = password, LeaveStreamOpen = true });
             entries = archive.Entries.ToList();
         }
         catch (Exception ex) when (LooksLikePassword(ex))

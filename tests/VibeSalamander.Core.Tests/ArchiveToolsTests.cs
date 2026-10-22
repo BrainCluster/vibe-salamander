@@ -135,4 +135,19 @@ public sealed class ArchiveToolsTests : IDisposable
         }
         Assert.All(RunTest(exe, "zip"), r => Assert.Null(r.Problem));
     }
+    [Fact]
+    public void RarVolumes_AreFoundInOrder()
+    {
+        string dir = Path.Combine(_root, "rar");
+        Directory.CreateDirectory(dir);
+        foreach (string name in new[] { "old.rar", "old.r00", "old.r01", "old.r02", "new.part1.rar", "new.part2.rar", "new.part10.rar", "other.part1.rar" })
+            File.WriteAllBytes(Path.Combine(dir, name), new byte[1]);
+
+        Assert.Equal(new[] { "old.rar", "old.r00", "old.r01", "old.r02" },
+            Archiver.RarVolumes(Path.Combine(dir, "old.rar")).Select(f => f.Name));
+        // any volume of the new naming gives all of them, the first first
+        Assert.Equal(new[] { "new.part1.rar", "new.part2.rar", "new.part10.rar" },
+            Archiver.RarVolumes(Path.Combine(dir, "new.part2.rar")).Select(f => f.Name));
+        Assert.Single(Archiver.RarVolumes(Path.Combine(dir, "other.part1.rar")));
+    }
 }

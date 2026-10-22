@@ -62,7 +62,7 @@ internal sealed partial class Archiver : IArchiver
         if (RandomAccess.Contains(kind))
         {
             using var file = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
-            using IArchive archive = ArchiveFactory.OpenArchive(file, new ReaderOptions { LeaveStreamOpen = true });
+            using IArchive archive = OpenRandomAccess(archivePath, file, new ReaderOptions { LeaveStreamOpen = true });
             foreach (IArchiveEntry entry in archive.Entries)
             {
                 ct.ThrowIfCancellationRequested();
@@ -92,6 +92,59 @@ internal sealed partial class Archiver : IArchiver
             }
         }
         return items;
+    }
+
+    /// <summary>
+    /// ZIP, 7z, RAR: a RAR in several volumes (name.part1.rar, name.part2.rar, ... or name.rar, name.r00,
+    /// name.r01, ...) is opened with all its volumes, otherwise files that continue in the next volume are
+    /// "incomplete".
+    /// </summary>
+    internal static IArchive OpenRandomAccess(string path, FileStream file, ReaderOptions options)
+    {
+        if (path.EndsWith(".rar", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".cbr", StringComparison.OrdinalIgnoreCase))
+        {
+            List<FileInfo> volumes = RarVolumes(path);
+            if (volumes.Count > 1)
+                return ArchiveFactory.OpenArchive(volumes, options);
+        }
+        return ArchiveFactory.OpenArchive(file, options);
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex PartName =
+        new(@"^(?<base>.*)\.part(?<n>\d+)\.(?<ext>rar|cbr)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    /// <summary>The volumes of a RAR archive in order, starting with the first (any volume may be given).</summary>
+    internal static List<FileInfo> RarVolumes(string path)
+    {
+        string directory = Path.GetDirectoryName(path) ?? ".";
+        string name = Path.GetFileName(path);
+        System.Text.RegularExpressions.Match part = PartName.Match(name);
+        if (part.Success)
+        {
+            // new naming: name.part1.rar, name.part2.rar, ... (also part01, part001)
+            string baseName = part.Groups["base"].Value;
+            var volumes = Directory.EnumerateFiles(directory, baseName + ".part*." + part.Groups["ext"].Value)
+                .Select(f => (Path: f, Match: PartName.Match(Path.GetFileName(f))))
+                .Where(v => v.Match.Success && string.Equals(v.Match.Groups["base"].Value, baseName, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(v => long.Parse(v.Match.Groups["n"].Value, System.Globalization.CultureInfo.InvariantCulture))
+                .Select(v => new FileInfo(v.Path))
+                .ToList();
+            return volumes.Count > 0 ? volumes : new List<FileInfo> { new(path) };
+        }
+        // old naming: name.rar, then name.r00 ... name.r99, name.s00 ...
+        var list = new List<FileInfo> { new(path) };
+        string stem = Path.Combine(directory, Path.GetFileNameWithoutExtension(name));
+        for (char letter = 'r'; letter <= 'z'; letter++)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                string next = $"{stem}.{letter}{i:00}";
+                if (!File.Exists(next))
+                    return list;
+                list.Add(new FileInfo(next));
+            }
+        }
+        return list;
     }
 
     /// <summary>The TAR data of a .tar / .tar.gz / .tar.bz2 / .tar.xz / .tar.lz file (the file itself stays open).</summary>
@@ -420,7 +473,7 @@ internal sealed partial class Archiver : IArchiver
         IArchive archive;
         try
         {
-            archive = ArchiveFactory.OpenArchive(file, new ReaderOptions { Password = s.Password, LeaveStreamOpen = true });
+            archive = OpenRandomAccess(s.Request.ArchivePath, file, new ReaderOptions { Password = s.Password, LeaveStreamOpen = true });
         }
         catch (Exception ex) when (IsPasswordProblem(ex, s))
         {
