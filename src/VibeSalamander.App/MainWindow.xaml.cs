@@ -32,6 +32,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     public MainWindow()
     {
         InitializeComponent();
+        ApplyMenuIcons(MainMenu.Items.OfType<MenuBarItem>().SelectMany(m => m.Items));
 
         SystemBackdrop = new MicaBackdrop();
         ExtendsContentIntoTitleBar = true;
@@ -599,6 +600,61 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         foreach (MenuFlyoutItemBase item in PluginsMenu.Items)
             Loc.Translate(item);
         UpdateMenuShortcuts();
+    }
+
+    /// <summary>
+    /// Icons of the menu items that aren't app commands (by tag), and of submenus and other items (by their
+    /// English text, before the menus are translated).
+    /// </summary>
+    private static readonly Dictionary<string, string> TagGlyphs = new()
+    {
+        // Commands → Open Folder
+        ["Desktop"] = "\uE8B7", ["Documents"] = "\uE8A5", ["Downloads"] = "\uE896", ["Pictures"] = "\uE91B",
+        ["Music"] = "\uE8D6", ["Videos"] = "\uE714", ["UserProfile"] = "\uE77B", ["Computer"] = "\uE7F4",
+        ["Temp"] = "\uE81C", ["Recent"] = "\uE81C", ["Templates"] = "\uE8A5", ["SendTo"] = "\uE724",
+        ["StartMenu"] = "\uE71D", ["Programs"] = "\uE71D", ["Startup"] = "\uE768", ["ControlPanel"] = "\uE713",
+        ["Network"] = "\uE968", ["RecycleBin"] = "\uE74D", ["Fonts"] = "\uE8D2", ["Printers"] = "\uE749",
+        // Options
+        ["System"] = "\uE770", ["Light"] = "\uE706", ["Dark"] = "\uE708",
+        ["Toolbar"] = "\uE771", ["Keyboard"] = "\uE765",
+    };
+
+    private static readonly Dictionary<string, string> TextGlyphs = new()
+    {
+        ["Top Toolbar"] = "\uE71D", ["Hot Path Bar"] = "\uE734", ["User Menu Bar"] = "\uE712", ["Drive Bars"] = "\uEDA2",
+        ["Information Line"] = "\uE946", ["Command Line"] = "\uE756", ["Bottom Toolbar"] = "\uE765", ["Transfer Panel"] = "\uE896",
+        ["Save Configuration"] = "\uE74E", ["Export Configuration..."] = "\uEDE1", ["Import Configuration..."] = "\uE8B5",
+        ["Keyboard Shortcuts"] = "\uE765",
+        // submenus
+        ["View"] = "\uE8A9", ["Sort By"] = "\uE8CB", ["NTFS"] = "\uEDA2", ["Advanced"] = "\uE712",
+        ["Open Folder"] = "\uE838", ["Theme"] = "\uE790", ["Show"] = "\uE7B3",
+    };
+
+    /// <summary>Puts an icon before every menu item (and submenu) that has none.</summary>
+    private static void ApplyMenuIcons(IEnumerable<MenuFlyoutItemBase> items)
+    {
+        foreach (MenuFlyoutItemBase entry in items)
+        {
+            switch (entry)
+            {
+                case MenuFlyoutSubItem sub:
+                    if (sub.Icon == null && TextGlyphs.TryGetValue(sub.Text, out string? subGlyph))
+                        sub.Icon = new FontIcon { Glyph = subGlyph };
+                    ApplyMenuIcons(sub.Items);
+                    break;
+                case MenuFlyoutItem item when item.Icon == null:
+                    string? glyph = null;
+                    if (item.Tag is string tag && TagGlyphs.TryGetValue(tag, out string? byTag))
+                        glyph = byTag;
+                    else if (item.Tag is string command && Enum.TryParse(command, out CommandId id) && id != CommandId.None)
+                        glyph = CommandCatalog.Glyph(id);
+                    else if (TextGlyphs.TryGetValue(item.Text, out string? byText))
+                        glyph = byText;
+                    if (!string.IsNullOrEmpty(glyph))
+                        item.Icon = new FontIcon { Glyph = glyph };
+                    break;
+            }
+        }
     }
 
     /// <summary>A plugin's icon in the Plugins menu: its own, or one for what it adds.</summary>
