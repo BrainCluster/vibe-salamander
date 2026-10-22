@@ -48,6 +48,15 @@ internal interface IRemoteClient : IDisposable
 
     /// <summary>Keeps the original time of an uploaded file (best effort: not every server allows it).</summary>
     Task SetLastWriteAsync(string path, DateTime time, CancellationToken ct);
+
+    /// <summary>Who the server proved to be: the SSH host key or the TLS certificate; null for plain FTP.</summary>
+    string? Identity { get; }
+
+    /// <summary>A command for the server (FTP: a raw FTP command; SFTP: a command run over SSH) and its answer.</summary>
+    Task<string> SendCommandAsync(string command, CancellationToken ct);
+
+    /// <summary>The directory listing as the server sends it (FTP: LIST lines; SFTP: "ls -l" style lines).</summary>
+    Task<List<string>> RawListingAsync(string directory, CancellationToken ct);
 }
 
 internal static class RemoteClients
@@ -64,9 +73,12 @@ internal static class RemoteClients
 internal sealed class SftpRemoteClient : IRemoteClient
 {
     private readonly SftpClient _client;
+    private readonly ConnectionInfo _info;
+    private readonly TrustCheck _trust;
     private readonly string _server;
     private readonly string _user;
     private Exception? _rejectedKey;
+    private string? _hostKey;
 
     public Action<string>? Log { get; set; }
 
@@ -99,10 +111,13 @@ internal sealed class SftpRemoteClient : IRemoteClient
             Timeout = TimeSpan.FromSeconds(20),
         };
         _server = $"{server.Host}:{server.Port}";
+        _info = info;
+        _trust = trust;
         _client = new SftpClient(info) { OperationTimeout = TimeSpan.FromMinutes(2) };
         _client.HostKeyReceived += (_, e) =>
         {
             string fingerprint = "SHA256:" + e.FingerPrintSHA256;
+            _hostKey = $"SSH host key: {e.HostKeyName}, {e.KeyLength} bits\n{fingerprint}";
             Log?.Invoke($"Host key: {e.HostKeyName} {fingerprint}");
             e.CanTrust = trust(_server, fingerprint, $"SSH {e.HostKeyName}", changed: false);
             if (!e.CanTrust)
@@ -133,8 +148,55 @@ internal sealed class SftpRemoteClient : IRemoteClient
 
     public Task<string> GetHomeAsync(CancellationToken ct) => Task.FromResult(_client.WorkingDirectory);
 
+    public string? Identity => _hostKey == null ? null : $"{_hostKey}\nServer: {_client.ConnectionInfo?.ServerVersion}";
+
+    public Task<string> SendCommandAsync(string command, CancellationToken ct) => Task.Run(() =>
+    {
+        // SFTP has no commands of its own: the command runs in the server's shell over a second SSH connection
+        Log?.Invoke("SSH command: " + command);
+        using var ssh = new SshClient(_info);
+        ssh.HostKeyReceived += (_, e) => e.CanTrust = _trust(_server, "SHA256:" + e.FingerPrintSHA256, $"SSH {e.HostKeyName}", changed: false);
+        ssh.Connect();
+        try
+        {
+            using SshCommand run = ssh.CreateCommand(command);
+            run.CommandTimeout = TimeSpan.FromMinutes(2);
+            string output = run.Execute();
+            string text = (output + run.Error).TrimEnd();
+            text += (text.Length > 0 ? "\n" : string.Empty) + $"(exit status {run.ExitStatus})";
+            Log?.Invoke(text);
+            return text;
+        }
+        finally
+        {
+            ssh.Disconnect();
+        }
+    }, ct);
+
+    public Task<List<string>> RawListingAsync(string directory, CancellationToken ct) => Task.Run(() =>
+    {
+        Log?.Invoke("LIST " + directory);
+        var lines = new List<string>();
+        foreach (ISftpFile file in _client.ListDirectory(directory))
+        {
+            ct.ThrowIfCancellationRequested();
+            SftpFileAttributes a = file.Attributes;
+            char type = a.IsDirectory ? 'd' : a.IsSymbolicLink ? 'l' : '-';
+            string rights = new string(new[]
+            {
+                type,
+                a.OwnerCanRead ? 'r' : '-', a.OwnerCanWrite ? 'w' : '-', a.OwnerCanExecute ? 'x' : '-',
+                a.GroupCanRead ? 'r' : '-', a.GroupCanWrite ? 'w' : '-', a.GroupCanExecute ? 'x' : '-',
+                a.OthersCanRead ? 'r' : '-', a.OthersCanWrite ? 'w' : '-', a.OthersCanExecute ? 'x' : '-',
+            });
+            lines.Add($"{rights} {a.UserId,6} {a.GroupId,6} {a.Size,14} {a.LastWriteTime:yyyy-MM-dd HH:mm} {file.Name}");
+        }
+        return lines;
+    }, ct);
+
     public Task<List<RemoteEntry>> ListAsync(string directory, CancellationToken ct) => Task.Run(() =>
     {
+        Log?.Invoke("LIST " + directory);
         var result = new List<RemoteEntry>();
         foreach (ISftpFile file in _client.ListDirectory(directory))
         {
@@ -180,18 +242,18 @@ internal sealed class SftpRemoteClient : IRemoteClient
     }, ct);
 
     public Task DownloadAsync(string path, Stream target, CancellationToken ct) =>
-        Task.Run(() => _client.DownloadFile(path, target), ct);
+        Task.Run(() => { Log?.Invoke("GET " + path); _client.DownloadFile(path, target); }, ct);
 
     public Task UploadAsync(Stream source, string path, CancellationToken ct) =>
-        Task.Run(() => _client.UploadFile(source, path, canOverride: true), ct);
+        Task.Run(() => { Log?.Invoke("PUT " + path); _client.UploadFile(source, path, canOverride: true); }, ct);
 
-    public Task DeleteFileAsync(string path, CancellationToken ct) => Task.Run(() => _client.DeleteFile(path), ct);
+    public Task DeleteFileAsync(string path, CancellationToken ct) => Task.Run(() => { Log?.Invoke("DELETE " + path); _client.DeleteFile(path); }, ct);
 
-    public Task DeleteDirectoryAsync(string path, CancellationToken ct) => Task.Run(() => _client.DeleteDirectory(path), ct);
+    public Task DeleteDirectoryAsync(string path, CancellationToken ct) => Task.Run(() => { Log?.Invoke("RMDIR " + path); _client.DeleteDirectory(path); }, ct);
 
-    public Task CreateDirectoryAsync(string path, CancellationToken ct) => Task.Run(() => _client.CreateDirectory(path), ct);
+    public Task CreateDirectoryAsync(string path, CancellationToken ct) => Task.Run(() => { Log?.Invoke("MKDIR " + path); _client.CreateDirectory(path); }, ct);
 
-    public Task RenameAsync(string from, string to, CancellationToken ct) => Task.Run(() => _client.RenameFile(from, to), ct);
+    public Task RenameAsync(string from, string to, CancellationToken ct) => Task.Run(() => { Log?.Invoke($"RENAME {from} -> {to}"); _client.RenameFile(from, to); }, ct);
 
     public Task SetLastWriteAsync(string path, DateTime time, CancellationToken ct) => Task.Run(() =>
     {
@@ -225,6 +287,7 @@ internal sealed class FtpRemoteClient : IRemoteClient
 {
     private readonly AsyncFtpClient _client;
     private readonly string _server;
+    private string? _certificate;
 
     public Action<string>? Log { get; set; }
 
@@ -257,6 +320,7 @@ internal sealed class FtpRemoteClient : IRemoteClient
         };
         _client.ValidateCertificate += (_, e) =>
         {
+            _certificate = Describe(e.Certificate, e.PolicyErrors);
             if (e.PolicyErrors == System.Net.Security.SslPolicyErrors.None)
             {
                 e.Accept = true;
@@ -271,6 +335,35 @@ internal sealed class FtpRemoteClient : IRemoteClient
     }
 
     public bool IsConnected => _client.IsConnected;
+
+    /// <summary>The certificate's subject, issuer, dates and fingerprint.</summary>
+    private static string Describe(X509Certificate? certificate, System.Net.Security.SslPolicyErrors errors)
+    {
+        if (certificate == null)
+            return "TLS certificate: none";
+        X509Certificate2 c = X509CertificateLoader.LoadCertificate(certificate.GetRawCertData());
+        return $"TLS certificate\nSubject: {c.Subject}\nIssuer: {c.Issuer}\n" +
+               $"Valid: {c.NotBefore:yyyy-MM-dd} to {c.NotAfter:yyyy-MM-dd}\n" +
+               $"SHA256:{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(c.RawData))}\n" +
+               (errors == System.Net.Security.SslPolicyErrors.None ? "Trusted by Windows" : "Not trusted by Windows: " + errors);
+    }
+
+    public string? Identity => _certificate == null ? null : $"{_certificate}\nServer: {_client.ServerType} ({_client.ServerOS})";
+
+    public async Task<string> SendCommandAsync(string command, CancellationToken ct)
+    {
+        FtpReply reply = await _client.Execute(command, ct);
+        string info = string.IsNullOrWhiteSpace(reply.InfoMessages) ? string.Empty : reply.InfoMessages.TrimEnd() + "\n";
+        return $"{info}{reply.Code} {reply.Message}".Trim();
+    }
+
+    public async Task<List<string>> RawListingAsync(string directory, CancellationToken ct)
+    {
+        var lines = new List<string>();
+        foreach (FtpListItem item in await _client.GetListing(directory, FtpListOption.AllFiles | FtpListOption.ForceList, ct))
+            lines.Add(item.Input ?? item.Name);
+        return lines;
+    }
 
     public async Task ConnectAsync(CancellationToken ct)
     {

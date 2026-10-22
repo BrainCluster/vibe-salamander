@@ -37,6 +37,16 @@ public sealed class FtpPlugin : IVibePlugin, ICommandContributor
                 ShowConnections(h);
                 return Task.CompletedTask;
             }, HostCommand: "ConnectFtp"),
+            new PluginCommand("disconnect", "Disconnect", null, DisconnectAsync),
+            new PluginCommand("bookmark", "Add bookmark...", null, AddBookmarkAsync),
+            new PluginCommand("log", "Show log", null, h =>
+            {
+                ShowLog(h);
+                return Task.CompletedTask;
+            }),
+            new PluginCommand("identity", "Show certificate / host key", null, ShowIdentityAsync),
+            new PluginCommand("command", "Send command...", null, SendCommandAsync),
+            new PluginCommand("raw", "Show raw listing", null, ShowRawListingAsync),
         };
         host.RegisterCommands(this);
     }
@@ -54,6 +64,187 @@ public sealed class FtpPlugin : IVibePlugin, ICommandContributor
     };
 
     private static readonly RemoteProtocol[] Protocols = { RemoteProtocol.Sftp, RemoteProtocol.Ftp, RemoteProtocol.FtpsExplicit, RemoteProtocol.FtpsImplicit };
+
+    // ---- the server tools (they work on the server the active panel shows) -------------------------------
+
+    /// <summary>The active panel's path when it shows an FTP / SFTP server; else says so and returns null.</summary>
+    private string? ServerPath(IPluginHost host)
+    {
+        string path = host.ActivePanel.Path;
+        if (_fileSystem != null && _fileSystem.CanHandle(path))
+            return path;
+        host.Notify(T("The active panel doesn't show an FTP or SFTP server."), isError: true);
+        return null;
+    }
+
+    private static string ServerName(string path) => RemotePath.Parse(path)?.ServerKey.Replace("%40", "@") ?? path;
+
+    /// <summary>Closes the connection; the panel goes to This PC (no question: that is what was asked for).</summary>
+    private async Task DisconnectAsync(IPluginHost host)
+    {
+        if (ServerPath(host) is not { } path)
+            return;
+        _fileSystem!.Disconnect(path);
+        await host.ActivePanel.NavigateAsync("thispc:");
+        if (host.InactivePanel.Path is { } other && RemotePath.Parse(other) is { } o && RemotePath.Parse(path) is { } p && o.ServerKey == p.ServerKey)
+            await host.InactivePanel.NavigateAsync("thispc:");
+        host.Notify(string.Format(T("Disconnected from {0}."), ServerName(path)));
+    }
+
+    /// <summary>The server and the directory shown, saved as a server in the Connections window.</summary>
+    private async Task AddBookmarkAsync(IPluginHost host)
+    {
+        if (ServerPath(host) is not { } path || RemotePath.Parse(path) is not { } where || _store == null)
+            return;
+        Connection? saved = _store.Find(where);
+        Connection bookmark = saved?.Clone() ?? new Connection
+        {
+            Protocol = where.Protocol,
+            Host = where.Host,
+            Port = where.Port,
+            User = where.User,
+        };
+        bookmark.InitialPath = where.Path;
+        string folder = where.IsRoot ? "/" : where.Name;
+        var name = new PluginField { Label = T("Name"), Value = $"{saved?.DisplayName ?? where.Host} – {folder}" };
+        if (!await host.Ui.EditFieldsAsync(T("Add Bookmark"), where.ToString().Replace("%40", "@"), new[] { name }))
+            return;
+        bookmark.Name = name.Value.Trim();
+        _store.Connections.Add(bookmark);
+        _store.SaveConnections();
+        if (_window is { IsClosed: false } window)
+            AddRow(window, bookmark);
+        host.Notify(string.Format(T("\"{0}\" was added to the FTP / SFTP connections."), bookmark.DisplayName));
+    }
+
+    /// <summary>The commands and answers of the server's connections, live.</summary>
+    private void ShowLog(IPluginHost host)
+    {
+        if (ServerPath(host) is not { } path)
+            return;
+        RemoteFileSystem.SessionLog? log = _fileSystem!.LogOf(path);
+        IPluginListWindow window = host.Ui.OpenListWindow(string.Format(T("Log: {0}"), ServerName(path)), new[]
+        {
+            new PluginColumn(T("Message"), 0, Monospace: true),
+        });
+        window.RowMenu = row => new[] { new PluginMenuItem(T("Copy"), "Ctrl+C", () => host.Ui.CopyToClipboard(row[0])) };
+        window.SetButtons(new[]
+        {
+            new PluginButton("copy", T("Copy all"), () => host.Ui.CopyToClipboard(string.Join("\r\n", window.Rows.Select(r => r[0])))),
+            new PluginButton("close", T("Close"), window.Close, IsDefault: true),
+        });
+        if (log == null)
+        {
+            window.SetStatus(T("Nothing was logged yet: the server isn't connected."));
+            return;
+        }
+        foreach (string line in log.Lines)
+            window.AddRow(new[] { line });
+        void Added(string line) => window.AddRow(new[] { line });
+        log.Added += Added;
+        window.Closed += (_, _) => log.Added -= Added;
+        window.SetStatus(T("New lines appear as they come."));
+    }
+
+    /// <summary>Who the server is: its SSH host key or TLS certificate (Salamander: Show Certificate).</summary>
+    private async Task ShowIdentityAsync(IPluginHost host)
+    {
+        if (ServerPath(host) is not { } path)
+            return;
+        string title = T("Certificate / Host Key");
+        try
+        {
+            string? identity = await Task.Run(() => _fileSystem!.IdentityAsync(path, CancellationToken.None));
+            await host.Ui.ShowMessageAsync(title, ServerName(path) + "\n\n" +
+                (identity ?? T("Plain FTP isn't encrypted: the server shows no certificate. FTPS (TLS) or SFTP connections are encrypted.")));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            await host.Ui.ShowMessageAsync(title, ex.Message);
+        }
+    }
+
+    /// <summary>A raw command (FTP: "SITE CHMOD 644 file"; SFTP: a shell command over SSH) and the answer.</summary>
+    private async Task SendCommandAsync(IPluginHost host)
+    {
+        if (ServerPath(host) is not { } path)
+            return;
+        bool sftp = RemotePath.Parse(path)?.Protocol == RemoteProtocol.Sftp;
+        var command = new PluginField
+        {
+            Label = T("Command"),
+            Value = _lastCommand,
+            Placeholder = sftp ? "ls -la" : "SITE CHMOD 644 file.txt",
+        };
+        string description = ServerName(path) + "\n" + (sftp
+            ? T("SFTP has no commands of its own: the command runs in the server's shell (SSH).")
+            : T("A command of the FTP protocol; the server's answer is shown."));
+        if (!await host.Ui.EditFieldsAsync(T("Send Command"), description, new[] { command }) || command.Value.Trim().Length == 0)
+            return;
+        _lastCommand = command.Value.Trim();
+        IPluginListWindow window = host.Ui.OpenListWindow(T("Send Command") + " – " + _lastCommand, new[]
+        {
+            new PluginColumn(T("Answer"), 0, Monospace: true),
+        });
+        window.SetButtons(new[]
+        {
+            new PluginButton("copy", T("Copy all"), () => host.Ui.CopyToClipboard(string.Join("\r\n", window.Rows.Select(r => r[0])))),
+            new PluginButton("close", T("Close"), window.Close, IsDefault: true),
+        });
+        window.SetStatus(T("Waiting for the server..."));
+        window.SetProgress(0);
+        try
+        {
+            string answer = await Task.Run(() => _fileSystem!.SendCommandAsync(path, _lastCommand, CancellationToken.None));
+            foreach (string line in answer.Replace("\r\n", "\n").Split('\n'))
+                window.AddRow(new[] { line });
+            window.SetStatus(T("Done. The panel is read again (the command may have changed something)."));
+            await host.ActivePanel.RefreshAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            window.AddRow(new[] { ex.Message });
+            window.SetStatus(T("The command failed."));
+        }
+        finally
+        {
+            window.SetProgress(null);
+        }
+    }
+
+    private string _lastCommand = string.Empty;
+
+    /// <summary>The directory listing exactly as the server sends it (to see what the panel makes of it).</summary>
+    private async Task ShowRawListingAsync(IPluginHost host)
+    {
+        if (ServerPath(host) is not { } path)
+            return;
+        IPluginListWindow window = host.Ui.OpenListWindow(string.Format(T("Raw Listing: {0}"), path.Replace("%40", "@")), new[]
+        {
+            new PluginColumn(T("Line"), 0, Monospace: true),
+        });
+        window.SetButtons(new[]
+        {
+            new PluginButton("copy", T("Copy all"), () => host.Ui.CopyToClipboard(string.Join("\r\n", window.Rows.Select(r => r[0])))),
+            new PluginButton("close", T("Close"), window.Close, IsDefault: true),
+        });
+        window.SetProgress(0);
+        try
+        {
+            List<string> lines = await Task.Run(() => _fileSystem!.RawListingAsync(path, CancellationToken.None));
+            foreach (string line in lines)
+                window.AddRow(new[] { line });
+            window.SetStatus(string.Format(T("{0} lines"), lines.Count));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            window.SetStatus(ex.Message);
+        }
+        finally
+        {
+            window.SetProgress(null);
+        }
+    }
 
     // ---- the Connections window -------------------------------------------------------------------------
 

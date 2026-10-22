@@ -32,8 +32,8 @@ public sealed partial class MainViewModel
         if (other.IsRemote && RemoteFileSystemProvider.SameServer(other.Path, serverPath))
             return true; // still in use there
         IPluginFileSystem? fs = RemoteProvider.FileSystemOf(serverPath);
-        if (fs == null)
-            return true;
+        if (fs == null || !SafeIsConnected(fs, serverPath))
+            return true; // nothing to disconnect (already disconnected)
         string server = RemoteFileSystemProvider.ServerOf(serverPath).Replace("%40", "@");
         if (!await _host.ConfirmAsync("Disconnect", Loc.F("Do you want to disconnect from {0}?", server), "Disconnect"))
         {
@@ -49,6 +49,35 @@ public sealed partial class MainViewModel
             _host.Notify(ex.Message);
         }
         return true;
+    }
+
+    private static bool SafeIsConnected(IPluginFileSystem fs, string path)
+    {
+        try
+        {
+            return fs.IsConnected(path);
+        }
+        catch (Exception)
+        {
+            return true;
+        }
+    }
+
+    /// <summary>F12 in a panel on a server: disconnects from it; the panels on it go to This PC.</summary>
+    private async Task DisconnectServerAsync(PaneViewModel p, IPluginFileSystem fs)
+    {
+        string server = p.Path;
+        try
+        {
+            fs.Disconnect(server);
+        }
+        catch (Exception ex)
+        {
+            _host.Notify(ex.Message);
+        }
+        foreach (PaneViewModel pane in new[] { Left, Right })
+            if (pane.IsRemote && RemoteFileSystemProvider.SameServer(pane.Path, server))
+                await pane.NavigateAsync(ThisPcProvider.RootPath);
     }
 
     /// <summary>Handles a command in a panel showing a server; true when it was handled here.</summary>
@@ -71,6 +100,9 @@ public sealed partial class MainViewModel
                 return true;
             case CommandId.CreateDirectory:
                 await CreateRemoteDirectoryAsync(p, fs);
+                return true;
+            case CommandId.DisconnectNetworkDrive:
+                await DisconnectServerAsync(p, fs);
                 return true;
             case CommandId.QuickRename:
                 await RenameRemoteAsync(p, fs);

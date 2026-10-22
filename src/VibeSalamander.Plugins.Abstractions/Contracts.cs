@@ -381,6 +381,12 @@ public interface IPluginFileSystem
 
     /// <summary>The panel leaves the server: its connection is closed (the next visit logs in again).</summary>
     void Disconnect(string path) { }
+
+    /// <summary>
+    /// True while the user is logged in to the path's server (the host then asks "Disconnect?" when a panel
+    /// leaves it); false after <see cref="Disconnect"/>.
+    /// </summary>
+    bool IsConnected(string path) => true;
 }
 
 /// <summary>One file or directory of a plugin file system.</summary>

@@ -25,6 +25,38 @@ internal sealed class RemoteFileSystem : IPluginFileSystem, IDisposable
         public IRemoteClient? Client { get; set; }
         public SemaphoreSlim Gate { get; } = new(1, 1);
         public DateTime LastUse { get; set; } = DateTime.UtcNow;
+        public SessionLog Log { get; } = new();
+    }
+
+    /// <summary>What happened on a server's connections: the commands and the answers (Show Log).</summary>
+    internal sealed class SessionLog
+    {
+        private const int MaxLines = 5000;
+        private readonly List<string> _lines = new();
+
+        /// <summary>A new line (any thread).</summary>
+        public event Action<string>? Added;
+
+        public void Add(string line)
+        {
+            string stamped = $"{DateTime.Now:HH:mm:ss}  {line}";
+            lock (_lines)
+            {
+                _lines.Add(stamped);
+                if (_lines.Count > MaxLines)
+                    _lines.RemoveRange(0, _lines.Count - MaxLines);
+            }
+            Added?.Invoke(stamped);
+        }
+
+        public List<string> Lines
+        {
+            get
+            {
+                lock (_lines)
+                    return _lines.ToList();
+            }
+        }
     }
 
     public RemoteFileSystem(IPluginHost host, ConnectionStore store)
@@ -132,11 +164,15 @@ internal sealed class RemoteFileSystem : IPluginFileSystem, IDisposable
         for (int attempt = 0; ; attempt++)
         {
             IRemoteClient client = RemoteClients.Create(session.Server, session.Credentials, Trust);
-            client.Log = log;
+            client.Log = line =>
+            {
+                session.Log.Add(line);
+                log?.Invoke(line);
+            };
             try
             {
                 await client.ConnectAsync(ct);
-                client.Log = null; // later commands of this connection don't go to the (closed) window
+                client.Log = session.Log.Add; // later commands go to the server's log only (the window may be closed)
                 return client;
             }
             catch (UnauthorizedAccessException ex) when (attempt < 3)
@@ -208,6 +244,39 @@ internal sealed class RemoteFileSystem : IPluginFileSystem, IDisposable
         if (trusted)
             _store.Trust(server + " " + description.Split(' ')[0], fingerprint);
         return trusted;
+    }
+
+    // ---- the server tools (FTP / SFTP menu) -----------------------------------------------------------
+
+    /// <summary>Logged in to the path's server (a panel shows it, or it was used since the last Disconnect).</summary>
+    public bool IsConnected(string path)
+    {
+        if (RemotePath.Parse(path) is not { } server)
+            return false;
+        lock (_sessions)
+            return _sessions.ContainsKey(server.ServerKey);
+    }
+
+    /// <summary>The log of the path's server, or null when there is no session.</summary>
+    public SessionLog? LogOf(string path)
+    {
+        if (RemotePath.Parse(path) is not { } server)
+            return null;
+        lock (_sessions)
+            return _sessions.TryGetValue(server.ServerKey, out Session? session) ? session.Log : null;
+    }
+
+    /// <summary>The server's SSH host key or TLS certificate (connecting when needed); null for plain FTP.</summary>
+    public Task<string?> IdentityAsync(string path, CancellationToken ct) =>
+        WithSessionAsync(ParseOrThrow(path), client => Task.FromResult(client.Identity), ct);
+
+    public Task<string> SendCommandAsync(string path, string command, CancellationToken ct) =>
+        WithSessionAsync(ParseOrThrow(path), client => client.SendCommandAsync(command, ct), ct);
+
+    public Task<List<string>> RawListingAsync(string path, CancellationToken ct)
+    {
+        RemotePath directory = ParseOrThrow(path);
+        return WithSessionAsync(directory, client => client.RawListingAsync(directory.Path, ct), ct);
     }
 
     /// <summary>The panel left the server: its connection and the password typed for it are let go.</summary>
