@@ -24,7 +24,7 @@ public sealed partial class FileRowTemplateSelector : DataTemplateSelector
     public DataTemplate? ThumbnailTemplate { get; set; }
     public DataTemplate? TileTemplate { get; set; }
 
-    /// <summary>The panel's view; drives (This PC) always use their own row template.</summary>
+    /// <summary>The panel's view; drives (This PC) use their own row template in the Detailed view.</summary>
     public ViewMode Mode { get; set; } = ViewMode.Detailed;
 
     /// <summary>A copy for another view (assigning a new selector makes the list re-template its items).</summary>
@@ -40,7 +40,7 @@ public sealed partial class FileRowTemplateSelector : DataTemplateSelector
     };
 
     protected override DataTemplate? SelectTemplateCore(object item) =>
-        item is FileItemViewModel { IsDrive: true } ? DriveTemplate : Mode switch
+        item is FileItemViewModel { IsDrive: true } && Mode == ViewMode.Detailed ? DriveTemplate : Mode switch
         {
             ViewMode.Brief => BriefTemplate,
             ViewMode.Icons => IconTemplate,
@@ -427,6 +427,10 @@ public sealed partial class FilePane : UserControl
 
     public Visibility HeaderVisibility(ViewMode mode, bool thisPc) =>
         mode == ViewMode.Detailed && !thisPc ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>The drive list's header: This PC in the Detailed view.</summary>
+    public Visibility ThisPcHeaderVisibility(ViewMode mode, bool thisPc) =>
+        mode == ViewMode.Detailed && thisPc ? Visibility.Visible : Visibility.Collapsed;
 
     // ---- Detailed view columns: resize (header grips) and choose (header right-click) -----------
 

@@ -369,9 +369,9 @@
                                  PointerReleased="ColumnGrip_PointerReleased" DoubleTapped="ColumnGrip_DoubleTapped" />
         </Grid>
 
-        <!-- header line (This PC) -->
+        <!-- header line (This PC, Detailed view) -->
         <Grid Grid.Row="2" Height="24" Padding="16,0,4,0"
-              Visibility="{x:Bind VisibleIf(ViewModel.IsThisPc), Mode=OneWay}">
+              Visibility="{x:Bind ThisPcHeaderVisibility(ViewModel.EffectiveViewMode, ViewModel.IsThisPc), Mode=OneWay}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="22" />
                 <ColumnDefinition Width="40" />

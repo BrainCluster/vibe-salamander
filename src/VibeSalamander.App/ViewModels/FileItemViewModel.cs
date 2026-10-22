@@ -265,7 +265,7 @@ public sealed class FileItemViewModel : BindableBase
     /// <summary>Called when the item becomes visible in a large view; loads the thumbnail once per size.</summary>
     public void EnsureLargeIcon(Services.ThumbnailCache cache, uint size)
     {
-        if (_largeIconSize >= size || Entry.IsUpDir || IsDrive)
+        if (_largeIconSize >= size || Entry.IsUpDir)
             return;
         _largeIconSize = size;
         _thumbnails = cache;

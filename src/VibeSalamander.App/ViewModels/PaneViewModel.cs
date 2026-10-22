@@ -128,8 +128,8 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         }
     }
 
-    /// <summary>The view actually shown: This PC always uses its drive list.</summary>
-    public ViewMode EffectiveViewMode => IsThisPc ? ViewMode.Detailed : _viewMode;
+    /// <summary>The view actually shown (This PC too: Detailed is its drive list with capacity bars).</summary>
+    public ViewMode EffectiveViewMode => _viewMode;
 
     /// <summary>Detailed view column widths/visibility of this panel.</summary>
     public ColumnLayout Columns { get; }
