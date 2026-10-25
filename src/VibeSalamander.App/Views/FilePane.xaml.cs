@@ -84,6 +84,9 @@ public sealed partial class FilePane : UserControl
         _main = main;
         viewModel.ListingChanged += (_, e) =>
         {
+            UpdateDrawnMode(); // This PC <-> a folder
+            if (_drawnActive && !e.SamePlace)
+                _drawn!.ResetScroll(); // another directory starts at the top, like a new ListView source
             if (e.SamePlace)
                 KeepScrollPosition(e.CaretIndex, focus: viewModel.IsActive);
             else
@@ -112,6 +115,7 @@ public sealed partial class FilePane : UserControl
     public void RefreshBindings()
     {
         Bindings.Update();
+        _drawn?.Invalidate();
         UpdateBreadcrumbForeground();
     }
 
@@ -125,6 +129,17 @@ public sealed partial class FilePane : UserControl
 
     private void ApplyCaret(int index, bool focus)
     {
+        if (_drawnActive && _drawn != null)
+        {
+            if (index >= 0 && index < (ViewModel?.Items.Count ?? 0))
+            {
+                SetDrawnCaret(index);
+                _drawn.ScrollIntoView(index);
+            }
+            if (focus && !IsRenaming)
+                FocusList();
+            return;
+        }
         if (index >= 0 && index < FileList.Items.Count)
         {
             FileList.SelectedIndex = index;
@@ -162,6 +177,19 @@ public sealed partial class FilePane : UserControl
     /// </summary>
     private void KeepScrollPosition(int index, bool focus)
     {
+        if (_drawnActive && _drawn != null)
+        {
+            // the drawn list keeps its scroll position by itself
+            if (index >= 0 && index < (ViewModel?.Items.Count ?? 0))
+            {
+                SetDrawnCaret(index);
+                if (!_drawn.IsRowShown(index))
+                    _drawn.ScrollIntoView(index);
+            }
+            if (focus && !IsRenaming)
+                FocusList();
+            return;
+        }
         ScrollViewer? scroller = TrackedScroller();
         if (scroller == null || index < 0 || index >= FileList.Items.Count)
         {
@@ -207,6 +235,11 @@ public sealed partial class FilePane : UserControl
             // a menu, flyout or dialog is open (user menu, lists, the user menu editor): don't take the focus away from it
             if (XamlRoot != null && VisualTreeHelper.GetOpenPopupsForXamlRoot(XamlRoot).Any(p => p.Child is MenuFlyoutPresenter or FlyoutPresenter or ContentDialog))
                 return;
+            if (_drawnActive && _drawn != null)
+            {
+                _drawn.Focus(FocusState.Programmatic);
+                return;
+            }
             int index = FileList.SelectedIndex;
             if (index >= 0 && FileList.ContainerFromIndex(index) is ListViewItem container)
                 container.Focus(FocusState.Programmatic);
@@ -250,18 +283,22 @@ public sealed partial class FilePane : UserControl
 
     private async void List_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
+        _slowClickTimer?.Stop();
+        if ((e.OriginalSource as FrameworkElement)?.DataContext is FileItemViewModel item && !item.IsRenaming)
+            await OpenDoubleTappedAsync(item); // (double-clicking inside the rename box selects a word)
+    }
+
+    private async Task OpenDoubleTappedAsync(FileItemViewModel item)
+    {
         if (ViewModel == null || _main == null)
             return;
-        _slowClickTimer?.Stop();
-        if ((e.OriginalSource as FrameworkElement)?.DataContext is not FileItemViewModel item || item.IsRenaming)
-            return; // double-clicking inside the rename box selects a word
         if (_main.Settings.Appearance.SingleClickOpens)
             return; // the first click already opened it
         int index = IndexOf(item);
         if (index < 0)
             return;
         _main.Activate(ViewModel);
-        ViewModel.CaretIndex = index;
+        SetCaretIndex(index);
         await _main.ExecuteAsync(CommandId.Open);
     }
 
@@ -273,25 +310,30 @@ public sealed partial class FilePane : UserControl
     /// <summary>Single click opens (Appearance) or a slow second click on the focused item renames (Panels).</summary>
     private async void List_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        if (ViewModel == null || _main == null || IsRenaming || e.PointerDeviceType != Microsoft.UI.Input.PointerDeviceType.Mouse)
+        if (e.PointerDeviceType == Microsoft.UI.Input.PointerDeviceType.Mouse &&
+            (e.OriginalSource as FrameworkElement)?.DataContext is FileItemViewModel item)
+            await ItemTappedAsync(item, onName: e.OriginalSource is TextBlock { Tag: "NameText" });
+    }
+
+    private async Task ItemTappedAsync(FileItemViewModel item, bool onName)
+    {
+        if (ViewModel == null || _main == null || IsRenaming)
             return;
         if (KeyboardState.CurrentModifiers() != KeyModifiers.None)
-            return;
-        if ((e.OriginalSource as FrameworkElement)?.DataContext is not FileItemViewModel item)
             return;
         int index = IndexOf(item);
         if (index < 0)
             return;
         if (_main.Settings.Appearance.SingleClickOpens)
         {
-            ViewModel.CaretIndex = index;
+            SetCaretIndex(index);
             await _main.ExecuteAsync(CommandId.Open);
             return;
         }
         if (!_main.Settings.Panels.SlowClickRename || index != _caretAtPress || item.Entry.IsUpDir || item.IsDrive)
             return;
         // like Explorer: only a click on the name itself renames (not the icon, size, date or empty space)
-        if (e.OriginalSource is not TextBlock { Tag: "NameText" })
+        if (!onName)
             return;
         // like Explorer: wait out the double-click time; a double-click cancels the rename
         if (_slowClickTimer == null)
@@ -420,6 +462,7 @@ public sealed partial class FilePane : UserControl
         if (ViewModel == null)
             return;
         PaneViewModel vm = ViewModel;
+        UpdateDrawnMode();
         ViewMode mode = vm.EffectiveViewMode;
         double briefWidth = mode == ViewMode.Brief ? BriefColumnWidth() : 0;
         double rowHeight = UiState.RowHeight; // density changes the Brief item height
@@ -670,7 +713,7 @@ public sealed partial class FilePane : UserControl
             return;
         _main.Activate(ViewModel);
         // the empty area below the items isn't focusable by itself: put the focus on the caret item
-        if (e.OriginalSource is DependencyObject source && IsInside(source, FileList) && !IsRenaming &&
+        if (e.OriginalSource is DependencyObject source && (IsInside(source, FileList) || (_drawn != null && IsInside(source, _drawn))) && !IsRenaming &&
             FindAncestor<TextBox>(source) == null)
             FocusList();
     }
@@ -704,7 +747,7 @@ public sealed partial class FilePane : UserControl
         int caret = ViewModel.CaretIndex;
         if (count == 0 || caret < 0)
             return;
-        int page = Math.Max(1, (int)(FileList.ActualHeight / Math.Max(1, UiState.RowHeight)) - 1);
+        int page = ListPageSize();
         int target = e.Key switch
         {
             VirtualKey.Up => caret - 1,
@@ -739,6 +782,255 @@ public sealed partial class FilePane : UserControl
             if (ReferenceEquals(items[i], item))
                 return i;
         return -1;
+    }
+
+    // ---- the drawn file list (Configuration → Panels → Experimental) ----------------------------
+
+    private DrawnFileList? _drawn;
+    private bool _drawnActive;
+    private bool _drawnFailed;
+    private int _drawnPressIndex = -1;
+
+    /// <summary>The list that shows the items now: the drawn one or the ListView.</summary>
+    private UIElement ListElement => _drawnActive && _drawn != null ? _drawn : FileList;
+
+    /// <summary>
+    /// The drawn list replaces the ListView in the Detailed view of folders when it is switched on (This PC and
+    /// the other views stay with the ListView). It is created the first time it is needed.
+    /// </summary>
+    private void UpdateDrawnMode()
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        bool want = _main.Settings.Panels.DrawnFileList && ViewModel.EffectiveViewMode == ViewMode.Detailed && !ViewModel.IsThisPc;
+        if (want && _drawn == null && !_drawnFailed)
+        {
+            try
+            {
+                _drawn = DrawnFileList.TryCreate();
+            }
+            catch (Exception)
+            {
+                _drawn = null; // Win2D isn't there: the ListView it is
+            }
+            if (_drawn == null)
+            {
+                _drawnFailed = true;
+            }
+            else
+            {
+                Grid.SetRow(_drawn, 3);
+                _drawn.Visibility = Visibility.Collapsed;
+                RootGrid.Children.Insert(RootGrid.Children.IndexOf(FileList) + 1, _drawn);
+                WireDrawn(_drawn);
+                _drawn.ApplyOptions();
+            }
+        }
+        want &= _drawn != null;
+        if (want == _drawnActive)
+            return;
+        bool hadFocus = XamlRoot != null && FocusManager.GetFocusedElement(XamlRoot) is DependencyObject focused &&
+                        (IsInside(focused, FileList) || (_drawn != null && IsInside(focused, _drawn)));
+        _renameTcs?.TrySetResult(null); // the rename box belongs to the list that goes away
+        _drawnActive = want;
+        FileList.Visibility = want ? Visibility.Collapsed : Visibility.Visible;
+        _drawn!.Visibility = want ? Visibility.Visible : Visibility.Collapsed;
+        if (want)
+        {
+            _drawn.Attach(ViewModel, _main.Icons);
+            int caret = ViewModel.CaretIndex;
+            IReadOnlyList<FileItemViewModel> items = ViewModel.Items;
+            for (int i = 0; i < items.Count; i++)
+                items[i].IsCaret = i == caret;
+            _drawn.ResetScroll();
+            _drawn.ScrollIntoView(caret);
+        }
+        else
+        {
+            _drawn.Detach();
+        }
+        if (hadFocus)
+            FocusList();
+    }
+
+    private void WireDrawn(DrawnFileList drawn)
+    {
+        UIElement surface = drawn.Surface;
+        surface.PointerPressed += Drawn_PointerPressed;
+        surface.Tapped += Drawn_Tapped;
+        surface.DoubleTapped += Drawn_DoubleTapped;
+        surface.RightTapped += Drawn_RightTapped;
+        surface.CanDrag = true;
+        surface.DragStarting += Drawn_DragStarting;
+        drawn.KeyDown += Drawn_KeyDown;
+        drawn.CharacterReceived += List_CharacterReceived;
+        drawn.GotFocus += List_GotFocus;
+    }
+
+    /// <summary>The caret moves in the drawn list: what the ListView's selection change does for the ListView.</summary>
+    private void SetDrawnCaret(int index)
+    {
+        if (ViewModel == null || index < 0 || index >= ViewModel.Items.Count)
+            return;
+        IReadOnlyList<FileItemViewModel> items = ViewModel.Items;
+        int old = ViewModel.CaretIndex;
+        if (old >= 0 && old < items.Count && old != index)
+            items[old].IsCaret = false;
+        items[index].IsCaret = true;
+        if (!KeyboardState.IsDown(KeyboardState.Shift))
+            _shiftAnchor = index;
+        if (old == index)
+            return;
+        _previousCaret = old;
+        _caretChangedAt = DateTime.UtcNow;
+        ViewModel.CaretIndex = index;
+        if (ViewModel.QuickSearch.Length > 0 && !_quickSearchMoving)
+            ViewModel.EndQuickSearch();
+    }
+
+    /// <summary>Moves the caret the way the visible list does it (the ListView selects the row).</summary>
+    private void SelectCaret(int index)
+    {
+        if (_drawnActive)
+            SetDrawnCaret(index);
+        else
+            FileList.SelectedIndex = index;
+    }
+
+    /// <summary>Sets the caret before a command (Open) without scrolling.</summary>
+    private void SetCaretIndex(int index)
+    {
+        if (_drawnActive)
+            SetDrawnCaret(index);
+        else if (ViewModel != null)
+            ViewModel.CaretIndex = index;
+    }
+
+    /// <summary>Where a menu for the row opens: below its start, on the row's element (or the drawn list).</summary>
+    private (FrameworkElement Element, Windows.Foundation.Point Point)? RowAnchor(FileItemViewModel item)
+    {
+        if (_drawnActive && _drawn != null)
+        {
+            int index = IndexOf(item);
+            if (index < 0)
+                return null;
+            Windows.Foundation.Rect row = _drawn.RowBounds(index);
+            if (row.Bottom <= 0 || row.Top >= _drawn.ViewportHeight)
+                return null; // scrolled out of sight
+            return (_drawn, new Windows.Foundation.Point(40, row.Bottom));
+        }
+        return FileList.ContainerFromItem(item) is ListViewItem container
+            ? (container, new Windows.Foundation.Point(40, container.ActualHeight))
+            : null;
+    }
+
+    /// <summary>How far PgUp / PgDn move the caret.</summary>
+    private int ListPageSize() => _drawnActive && _drawn != null
+        ? Math.Max(1, _drawn.VisibleRows - 1)
+        : Math.Max(1, (int)(FileList.ActualHeight / Math.Max(1, UiState.RowHeight)) - 1);
+
+    private void Drawn_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (ViewModel == null || _drawn == null)
+            return;
+        Microsoft.UI.Input.PointerPoint point = e.GetCurrentPoint(_drawn);
+        _drawn.Focus(FocusState.Pointer); // beside the rename box: it loses the focus, which confirms the new name
+        _drawnPressIndex = -1;
+        if (IsRenaming || !point.Properties.IsLeftButtonPressed)
+            return;
+        int index = _drawn.IndexAt(point.Position);
+        _drawnPressIndex = index;
+        _caretAtPress = ViewModel.CaretIndex;
+        if (index < 0)
+            return;
+        bool ctrl = KeyboardState.IsDown(KeyboardState.Control);
+        bool shift = KeyboardState.IsDown(KeyboardState.Shift);
+        if (ctrl && !shift)
+        {
+            ViewModel.ToggleMark(index); // Ctrl+click: mark / unmark one item
+        }
+        else if (shift && !ctrl)
+        {
+            // Shift+click: mark everything from the caret (before the click) to the clicked item
+            int anchor = _shiftAnchor >= 0 ? _shiftAnchor : ViewModel.CaretIndex;
+            if (anchor >= 0)
+                ViewModel.MarkRange(anchor, index, mark: true);
+        }
+        SetDrawnCaret(index);
+        _drawn.ScrollIntoView(index); // a row cut off at the edge comes into view, as in the ListView
+    }
+
+    private FileItemViewModel? DrawnItemAt(Windows.Foundation.Point point, out int index)
+    {
+        index = _drawn?.IndexAt(point) ?? -1;
+        return index >= 0 && ViewModel != null && index < ViewModel.Items.Count ? ViewModel.Items[index] : null;
+    }
+
+    private async void Drawn_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (_drawn == null || e.PointerDeviceType != Microsoft.UI.Input.PointerDeviceType.Mouse)
+            return;
+        Windows.Foundation.Point point = e.GetPosition(_drawn);
+        if (DrawnItemAt(point, out int index) is { } item)
+            await ItemTappedAsync(item, onName: _drawn.IsOnName(point, index));
+    }
+
+    private async void Drawn_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        _slowClickTimer?.Stop();
+        if (_drawn != null && DrawnItemAt(e.GetPosition(_drawn), out _) is { IsRenaming: false } item)
+            await OpenDoubleTappedAsync(item);
+    }
+
+    private void Drawn_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (_drawn == null)
+            return;
+        Windows.Foundation.Point point = e.GetPosition(_drawn);
+        ItemRightTapped(DrawnItemAt(point, out _), point);
+        e.Handled = true;
+    }
+
+    private void Drawn_DragStarting(UIElement sender, DragStartingEventArgs args)
+    {
+        if (ViewModel == null || _drawnPressIndex < 0 || _drawnPressIndex >= ViewModel.Items.Count ||
+            !FillDragData(new[] { ViewModel.Items[_drawnPressIndex] }, args.Data))
+        {
+            args.Cancel = true;
+            return;
+        }
+        args.AllowedOperations = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy |
+                                 Windows.ApplicationModel.DataTransfer.DataPackageOperation.Move;
+        args.DragUI.SetContentFromDataPackage(); // the file icon, not a picture of the whole list
+    }
+
+    /// <summary>Up / Down / PgUp / PgDn / Home / End (with Shift they mark, as in the ListView).</summary>
+    private void Drawn_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (ViewModel == null || _drawn == null || IsRenaming || e.Handled)
+            return;
+        List_PreviewKeyDown(sender, e);
+        if (e.Handled || KeyboardState.CurrentModifiers() != KeyModifiers.None)
+            return;
+        int count = ViewModel.Items.Count;
+        if (count == 0)
+            return;
+        int caret = ViewModel.CaretIndex;
+        int page = ListPageSize();
+        int target = e.Key switch
+        {
+            VirtualKey.Up => caret - 1,
+            VirtualKey.Down => caret + 1,
+            VirtualKey.PageUp => caret - page,
+            VirtualKey.PageDown => caret + page,
+            VirtualKey.Home => 0,
+            VirtualKey.End => count - 1,
+            _ => int.MinValue,
+        };
+        if (target == int.MinValue)
+            return;
+        e.Handled = true;
+        ApplyCaret(Math.Clamp(target, 0, count - 1), focus: false);
     }
 
     // ---- quick search ----------------------------------------------------------------------
@@ -806,29 +1098,34 @@ public sealed partial class FilePane : UserControl
 
     private void List_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
+        FileItemViewModel? item = (e.OriginalSource as FrameworkElement)?.DataContext as FileItemViewModel;
+        ItemRightTapped(item, e.GetPosition(FileList));
+        e.Handled = true;
+    }
+
+    /// <param name="position">Where it was clicked, relative to the list (<see cref="ListElement"/>).</param>
+    private void ItemRightTapped(FileItemViewModel? item, Windows.Foundation.Point position)
+    {
         if (ViewModel == null || _main == null)
             return;
         _main.Activate(ViewModel);
-        FileItemViewModel? item = (e.OriginalSource as FrameworkElement)?.DataContext as FileItemViewModel;
         if (item != null)
         {
             int index = IndexOf(item);
             if (index >= 0)
             {
-                FileList.SelectedIndex = index;
+                SelectCaret(index);
                 // Configuration → Panels: right-click marks (Norton style), Ctrl+right-click opens the menu
                 bool ctrl = KeyboardState.IsDown(KeyboardState.Control);
                 if (!_main.Settings.Panels.RightClickOpensMenu ? !ctrl : ctrl)
                 {
                     ViewModel.ToggleMark(index);
-                    e.Handled = true;
                     return;
                 }
             }
         }
         var (x, y) = ShellContextMenu.CursorPosition();
-        ShowContextMenu(item, e.GetPosition(FileList), x, y);
-        e.Handled = true;
+        ShowContextMenu(item, position, x, y);
     }
 
     /// <summary>A command menu (user menu, lists) at the caret item, or at the start of the address bar.</summary>
@@ -857,10 +1154,10 @@ public sealed partial class FilePane : UserControl
         menu.Closed += (_, _) => FocusList();
 
         FileItemViewModel? focused = ViewModel.FocusedItem;
-        if (atCaret && focused != null && FileList.ContainerFromItem(focused) is ListViewItem container)
-            menu.ShowAt(container, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+        if (atCaret && focused != null && RowAnchor(focused) is { } anchor)
+            menu.ShowAt(anchor.Element, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
             {
-                Position = new Windows.Foundation.Point(40, container.ActualHeight),
+                Position = anchor.Point,
                 ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
             });
         else
@@ -878,9 +1175,9 @@ public sealed partial class FilePane : UserControl
             return false;
         FileItemViewModel? item = ViewModel.FocusedItem;
         int x, y;
-        if (item != null && FileList.ContainerFromItem(item) is ListViewItem container && XamlRoot != null)
+        if (item != null && RowAnchor(item) is { } anchor && XamlRoot != null)
         {
-            var point = container.TransformToVisual(null).TransformPoint(new Windows.Foundation.Point(40, container.ActualHeight));
+            var point = anchor.Element.TransformToVisual(null).TransformPoint(anchor.Point);
             double scale = XamlRoot.RasterizationScale;
             (x, y) = ShellContextMenu.ClientToScreen(_main.WindowHandle, (int)(point.X * scale), (int)(point.Y * scale));
         }
@@ -902,10 +1199,10 @@ public sealed partial class FilePane : UserControl
         FileItemViewModel? item = ViewModel.FocusedItem;
         int x = 0, y = 0;
         var local = new Windows.Foundation.Point(40, 24);
-        if (item != null && FileList.ContainerFromItem(item) is ListViewItem container && XamlRoot != null)
+        if (item != null && RowAnchor(item) is { } anchor && XamlRoot != null)
         {
-            var point = container.TransformToVisual(null).TransformPoint(new Windows.Foundation.Point(40, container.ActualHeight));
-            local = container.TransformToVisual(FileList).TransformPoint(new Windows.Foundation.Point(40, container.ActualHeight));
+            var point = anchor.Element.TransformToVisual(null).TransformPoint(anchor.Point);
+            local = anchor.Element.TransformToVisual(ListElement).TransformPoint(anchor.Point);
             double scale = XamlRoot.RasterizationScale;
             (x, y) = ShellContextMenu.ClientToScreen(_main.WindowHandle, (int)(point.X * scale), (int)(point.Y * scale));
         }
@@ -1190,7 +1487,7 @@ public sealed partial class FilePane : UserControl
                 FocusList();
         };
         Loc.Translate(menu);
-        menu.ShowAt(FileList, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+        menu.ShowAt(ListElement, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
         {
             Position = position,
             ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
@@ -1311,31 +1608,60 @@ public sealed partial class FilePane : UserControl
     {
         if (ViewModel == null || IsRenaming)
             return null;
-        FileList.ScrollIntoView(item);
-        FileList.UpdateLayout();
-        if (FileList.ContainerFromItem(item) is null)
+        TextBox? box;
+        bool drawnEditor = _drawnActive && _drawn != null;
+        if (drawnEditor)
         {
-            // a list that was just reloaded (F7 / Shift+F4 on the new item) may realize the row a pass later
-            var layoutPass = new TaskCompletionSource();
-            if (DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => layoutPass.TrySetResult()))
-                await layoutPass.Task;
-            if (IsRenaming)
+            // the drawn list: a box of its own over the row's name and extension
+            int index = IndexOf(item);
+            if (index < 0)
                 return null;
+            _drawn!.ScrollIntoView(index);
+            box = new TextBox
+            {
+                Tag = "RenameBox",
+                MinHeight = 0,
+                MinWidth = 0,
+                Padding = new Thickness(2, 0, 2, 0),
+                BorderThickness = new Thickness(1),
+                VerticalContentAlignment = VerticalAlignment.Center,
+                IsSpellCheckEnabled = false,
+            };
+            box.KeyDown += RenameBox_KeyDown;
+            box.GotFocus += RenameBox_GotFocus;
+            box.LostFocus += RenameBox_LostFocus;
+            ViewModel.IsEditing = true; // hold back refreshes: a new listing would end the edit
+            item.IsRenaming = true;
+            _drawn.ShowEditor(box, index);
+        }
+        else
+        {
             FileList.ScrollIntoView(item);
             FileList.UpdateLayout();
-        }
-        if (FileList.ContainerFromItem(item) is not ListViewItem container)
-            return null;
+            if (FileList.ContainerFromItem(item) is null)
+            {
+                // a list that was just reloaded (F7 / Shift+F4 on the new item) may realize the row a pass later
+                var layoutPass = new TaskCompletionSource();
+                if (DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => layoutPass.TrySetResult()))
+                    await layoutPass.Task;
+                if (IsRenaming)
+                    return null;
+                FileList.ScrollIntoView(item);
+                FileList.UpdateLayout();
+            }
+            if (FileList.ContainerFromItem(item) is not ListViewItem container)
+                return null;
 
-        ViewModel.IsEditing = true; // hold back refreshes: rebuilding the rows would end the edit
-        item.IsRenaming = true;
-        container.UpdateLayout();
-        TextBox? box = FindDescendant<TextBox>(container, b => b.Tag as string == "RenameBox");
-        if (box == null)
-        {
-            item.IsRenaming = false;
-            ViewModel.IsEditing = false;
-            return null;
+            ViewModel.IsEditing = true; // hold back refreshes: rebuilding the rows would end the edit
+            item.IsRenaming = true;
+            container.UpdateLayout();
+            box = FindDescendant<TextBox>(container, b => b.Tag as string == "RenameBox");
+            if (box == null)
+            {
+                item.IsRenaming = false;
+                ViewModel.IsEditing = false;
+                return null;
+            }
         }
 
         _renameBox = box;
@@ -1380,6 +1706,8 @@ public sealed partial class FilePane : UserControl
             _renameBox = null;
             _renameTcs = null;
             item.IsRenaming = false;
+            if (drawnEditor)
+                _drawn?.HideEditor();
         }
         FocusList();
         // refreshes held back during the edit run now (the rename that follows reloads the panel anyway)
@@ -1460,29 +1788,30 @@ public sealed partial class FilePane : UserControl
             e.Cancel = true; // dragging from the empty part of a row draws a selection rectangle instead
             return;
         }
-        if (ViewModel == null || !ViewModel.IsLocalDisk || IsRenaming)
-        {
+        if (!FillDragData(e.Items.OfType<FileItemViewModel>(), e.Data))
             e.Cancel = true;
-            return;
-        }
+    }
+
+    /// <summary>The dragged files into the drag's data; false when there is nothing to drag.</summary>
+    private bool FillDragData(IEnumerable<FileItemViewModel> items, Windows.ApplicationModel.DataTransfer.DataPackage data)
+    {
+        if (ViewModel == null || !ViewModel.IsLocalDisk || IsRenaming)
+            return false;
         // the drag starts as soon as the mouse moves, also when it was already moving at the click;
         // very short drags (Configuration → Panels) are cancelled at the drop instead (TooShortDrag)
         _dragStartedAt = DateTime.UtcNow;
         _slowClickTimer?.Stop();
-        var dragged = e.Items.OfType<FileItemViewModel>().ToList();
+        var dragged = items.ToList();
         // dragging a marked item drags the whole selection (Salamander)
         if (dragged.Any(i => i.IsMarked))
             dragged = ViewModel.MarkedItems.ToList();
         var paths = dragged.Where(i => !i.Entry.IsUpDir && !i.IsDrive).Select(i => i.Entry.FullPath).ToList();
         if (paths.Count == 0)
-        {
-            e.Cancel = true;
-            return;
-        }
-        e.Data.RequestedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy |
-                                    Windows.ApplicationModel.DataTransfer.DataPackageOperation.Move;
-        e.Data.Properties[InternalPathsKey] = paths.ToArray();
-        e.Data.SetDataProvider(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems, async request =>
+            return false;
+        data.RequestedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy |
+                                  Windows.ApplicationModel.DataTransfer.DataPackageOperation.Move;
+        data.Properties[InternalPathsKey] = paths.ToArray();
+        data.SetDataProvider(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems, async request =>
         {
             var deferral = request.GetDeferral();
             try
@@ -1498,6 +1827,7 @@ public sealed partial class FilePane : UserControl
                 deferral.Complete();
             }
         });
+        return true;
     }
 
     /// <summary>When the last drag from a panel started (shared: drags go from one panel to the other).</summary>
@@ -1520,6 +1850,11 @@ public sealed partial class FilePane : UserControl
         // a ZIP or TAR shown in the panel takes files too (they are copied into the archive)
         if (ViewModel == null || _main == null || !(ViewModel.IsLocalDisk || ViewModel.IsRemote || _main.IsEditableArchive(ViewModel)))
             return null;
+        if (_drawnActive && _drawn != null && e.OriginalSource is DependencyObject source && IsInside(source, _drawn))
+        {
+            int index = _drawn.IndexAt(e.GetPosition(_drawn));
+            return index >= 0 && ViewModel.Items[index] is { Entry.IsDirectory: true, Entry.IsUpDir: false } row ? row.Entry.FullPath : ViewModel.Path;
+        }
         if ((e.OriginalSource as FrameworkElement)?.DataContext is FileItemViewModel { Entry.IsDirectory: true, Entry.IsUpDir: false } dir)
             return dir.Entry.FullPath;
         return ViewModel.Path;
@@ -1671,6 +2006,8 @@ public sealed partial class FilePane : UserControl
             else if (FileList.Resources.ContainsKey(key))
                 FileList.Resources.Remove(key);
         }
+        _drawn?.RefreshAccent();
+        _drawn?.ApplyOptions();
         // re-template the rows so the new resources and the thumbnail size are used
         _appliedView = (ViewMode)(-1);
         ApplyViewMode();

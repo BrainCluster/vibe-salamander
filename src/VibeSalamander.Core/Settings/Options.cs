@@ -136,6 +136,9 @@ public sealed class PanelOptions
     /// <summary>Clicking the name of the focused item again (slowly) starts Rename.</summary>
     public bool SlowClickRename { get; set; } = true;
 
+    /// <summary>Experimental: the Detailed view draws its rows itself (Win2D) instead of using a list control.</summary>
+    public bool DrawnFileList { get; set; }
+
     /// <summary>Drags released sooner than this (ms) are cancelled (protects against accidental drags).</summary>
     public int DragCancelMilliseconds { get; set; } = 150;
 
