@@ -361,7 +361,7 @@ internal sealed partial class Archiver : IArchiver
                 return items.Select(i =>
                 {
                     string root = Path.GetPathRoot(i.FullPath) ?? string.Empty;
-                    string name = i.FullPath[root.Length..].Trim('\').Replace('\', '/');
+                    string name = i.FullPath[root.Length..].Trim('\\').Replace('\\', '/');
                     return i with { EntryName = name.Length > 0 ? name : i.EntryName };
                 }).ToList();
             case PackPathMode.None:
