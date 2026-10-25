@@ -78,8 +78,11 @@ public sealed class PluginManager
 
     public static string AppPluginDirectory => Path.Combine(AppContext.BaseDirectory, "Plugins");
 
-    /// <summary>Archivers of the enabled plugins.</summary>
-    public IEnumerable<IArchiver> Archivers => _plugins.Where(p => p.Enabled && p.Error == null).SelectMany(p => p.Archivers);
+    /// <summary>
+    /// Archivers of the enabled plugins, the last loaded first: a plugin added to the Plugins folder (7-Zip) handles
+    /// the formats it shares with a built-in one.
+    /// </summary>
+    public IEnumerable<IArchiver> Archivers => _plugins.Where(p => p.Enabled && p.Error == null).Reverse().SelectMany(p => p.Archivers);
 
     /// <summary>Every format Pack can create, with its archiver (first plugin wins for the same id).</summary>
     public IReadOnlyList<(IArchiver Archiver, ArchiveFormat Format)> PackFormats =>
@@ -129,7 +132,7 @@ public sealed class PluginManager
 
     /// <summary>The plugin that unpacks the file (its menu shows in the file's right-click menu), or null.</summary>
     public PluginInfo? UnpackerPlugin(string path) =>
-        _plugins.FirstOrDefault(p => p.Enabled && p.Error == null && p.Host != null && p.Archivers.Any(a => SafeCanUnpack(a, path)));
+        _plugins.LastOrDefault(p => p.Enabled && p.Error == null && p.Host != null && p.Archivers.Any(a => SafeCanUnpack(a, path)));
 
     /// <summary>"backup.tar.gz" → "backup" (the archive's name without its archive extension).</summary>
     public string ArchiveBaseName(string path)
@@ -161,8 +164,7 @@ public sealed class PluginManager
     /// <summary>Loads and initializes everything (once, at startup).</summary>
     public void LoadAll(MainViewModel main, ICollection<string> disabled)
     {
-        // built-in; 7-Zip before Archives: it handles 7z (and the formats only it reads) when it is there
-        Add(new global::VibeSalamander.Plugins.SevenZip.SevenZipPlugin(), "Built-in", builtIn: true, main, disabled);
+        // built-in
         Add(new global::VibeSalamander.Plugins.Archive.ArchivePlugin(), "Built-in", builtIn: true, main, disabled);
         Add(new global::VibeSalamander.Plugins.Checksum.ChecksumPlugin(), "Built-in", builtIn: true, main, disabled);
         Add(new global::VibeSalamander.Plugins.Ftp.FtpPlugin(), "Built-in", builtIn: true, main, disabled);

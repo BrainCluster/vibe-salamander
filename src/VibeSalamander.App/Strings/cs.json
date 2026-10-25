@@ -38,6 +38,7 @@
   "0 = the default of the density (13 compact, 14 comfortable).": "0 = výchozí hodnota hustoty (13 kompaktní, 14 pohodlná).",
   "1 command": "1 příkaz",
   "1 item found": "Nalezena 1 položka",
+  "7-Zip wasn't found: 7z.exe belongs in the plugin's folder (the plugin download has it), or install 7-Zip from 7-zip.org.": "7-Zip nebyl nalezen: 7z.exe patří do složky doplňku (stažený doplněk ho obsahuje), nebo nainstalujte 7-Zip z 7-zip.org.",
   "7-Zip wasn't found: install it from 7-zip.org, or use a Vibe Salamander release (it comes with 7-Zip).": "7-Zip nebyl nalezen: nainstalujte ho z 7-zip.org, nebo použijte vydání Vibe Salamanderu (obsahuje 7-Zip).",
   "7-Zip's self-extractor (7z.sfx) wasn't found next to 7z.exe.": "Samorozbalovací modul 7-Zipu (7z.sfx) nebyl nalezen vedle 7z.exe.",
   "7-Zip: {0}": "7-Zip: {0}",

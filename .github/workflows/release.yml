@@ -101,10 +101,20 @@ jobs:
           Compress-Archive -Path publish/VibeSalamander -DestinationPath $zip
           "ZIP=$zip" >> $env:GITHUB_ENV
 
+      - name: 7-Zip plugin
+        shell: pwsh
+        run: |
+          ./build/publish-7zip-plugin.ps1 -Runtime ${{ matrix.rid }} -Output publish/plugin/7-Zip
+          $zip = "VibeSalamander-7-Zip-plugin-${{ needs.version.outputs.version }}-${{ matrix.rid }}.zip"
+          Compress-Archive -Path publish/plugin/7-Zip -DestinationPath $zip
+          "PLUGIN_ZIP=$zip" >> $env:GITHUB_ENV
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.rid }}
-          path: ${{ env.ZIP }}
+          path: |
+            ${{ env.ZIP }}
+            ${{ env.PLUGIN_ZIP }}
 
   release:
     needs: [ version, build ]

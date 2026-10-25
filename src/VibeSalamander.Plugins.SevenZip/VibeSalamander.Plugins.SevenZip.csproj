@@ -1,14 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Built-in plugin: archives through 7-Zip itself (7z.exe, LGPL). Packs 7z with all of 7-Zip's settings and
-       unpacks 7z and the formats only 7-Zip reads (CAB, WIM, MSI, CHM, ARJ, LZH, RPM, DEB, DMG, ...). The release
-       ships 7-Zip in "lib\7-Zip"; otherwise an installed 7-Zip is used. No UI framework. -->
+  <!-- A separate plugin (not built into the app): archives through 7-Zip itself (7z.exe, LGPL). Packs 7z with all of
+       7-Zip's settings and unpacks 7z and the formats only 7-Zip reads (CAB, WIM, MSI, CHM, ARJ, LZH, RPM, DEB, DMG, ...).
+       build\publish-7zip-plugin.ps1 makes its download: this assembly with 7z.exe, 7z.dll and 7z.sfx next to it, for
+       the Plugins folder. The host shares Core and the contracts, so they aren't copied. No UI framework. -->
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <RootNamespace>VibeSalamander.Plugins.SevenZip</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\VibeSalamander.Plugins.Abstractions\VibeSalamander.Plugins.Abstractions.csproj" />
+    <ProjectReference Include="..\VibeSalamander.Plugins.Abstractions\VibeSalamander.Plugins.Abstractions.csproj" Private="false" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="VibeSalamander.Core.Tests" />

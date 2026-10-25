@@ -33,6 +33,8 @@ VibeSalamander.sln
 │  │   └─ Settings/     JSON settings in %AppData%\VibeSalamander
 │  ├─ VibeSalamander.Plugins.Abstractions  plugin contracts (no UI deps)
 │  ├─ VibeSalamander.Plugins.Archive       built-in archive plugin (pack / unpack)
+│  ├─ VibeSalamander.Plugins.SevenZip      7-Zip plugin: NOT built in, a separate download with 7z.exe
+│  │                                       (build\publish-7zip-plugin.ps1), loaded from the Plugins folder
 │  └─ VibeSalamander.App                   WinUI 3 desktop app (unpackaged, self-contained WinAppSDK)
 │      ├─ ViewModels/   PaneViewModel, FileItemViewModel, MainViewModel
 │      ├─ Views/        FilePane (one panel), dialogs

@@ -38,6 +38,7 @@
  "0 = the default of the density (13 compact, 14 comfortable).": "0 = значение по умолчанию для плотности (13 — компактная, 14 — свободная).",
  "1 command": "1 команда",
  "1 item found": "Найден 1 элемент",
+ "7-Zip wasn't found: 7z.exe belongs in the plugin's folder (the plugin download has it), or install 7-Zip from 7-zip.org.": "7-Zip не найден: 7z.exe должен лежать в папке плагина (он есть в загрузке плагина), или установите 7-Zip с 7-zip.org.",
  "7-Zip wasn't found: install it from 7-zip.org, or use a Vibe Salamander release (it comes with 7-Zip).": "7-Zip не найден: установите его с 7-zip.org или используйте выпуск Vibe Salamander (в нём есть 7-Zip).",
  "7-Zip's self-extractor (7z.sfx) wasn't found next to 7z.exe.": "Модуль самораспаковки 7-Zip (7z.sfx) не найден рядом с 7z.exe.",
  "7-Zip: {0}": "7-Zip: {0}",

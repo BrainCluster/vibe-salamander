@@ -47,7 +47,7 @@ internal static class SevenZipTool
     private static string? _exe;
     private static bool _searched;
 
-    /// <summary>7z.exe: the one shipped with Vibe Salamander, else an installed 7-Zip; null when there is none.</summary>
+    /// <summary>7z.exe: the one in the plugin's folder, else an installed 7-Zip; null when there is none.</summary>
     public static string? Exe
     {
         get
@@ -55,7 +55,9 @@ internal static class SevenZipTool
             if (_searched)
                 return _exe;
             _searched = true;
-            var candidates = new List<string> { Path.Combine(AppContext.BaseDirectory, "7-Zip", "7z.exe") };
+            var candidates = new List<string>();
+            if (Path.GetDirectoryName(typeof(SevenZipTool).Assembly.Location) is { Length: > 0 } pluginFolder)
+                candidates.Add(Path.Combine(pluginFolder, "7z.exe"));
             foreach (string key in new[] { @"HKEY_CURRENT_USER\Software\7-Zip", @"HKEY_LOCAL_MACHINE\SOFTWARE\7-Zip" })
             {
                 foreach (string value in new[] { "Path64", "Path" })
@@ -96,7 +98,7 @@ internal static class SevenZipTool
     public static SevenZipResult Run(IEnumerable<string> arguments, string? workingDirectory = null, Action<int>? progress = null,
         IArchiveJob? job = null, CancellationToken cancellationToken = default)
     {
-        string exe = Exe ?? throw new InvalidOperationException("7-Zip isn't installed (and isn't in Vibe Salamander's folder).");
+        string exe = Exe ?? throw new InvalidOperationException("7-Zip isn't installed (and 7z.exe isn't in the plugin's folder).");
         var start = new ProcessStartInfo(exe)
         {
             UseShellExecute = false,

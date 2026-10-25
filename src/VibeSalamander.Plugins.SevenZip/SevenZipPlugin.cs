@@ -6,8 +6,9 @@ using System.Globalization;
 namespace VibeSalamander.Plugins.SevenZip;
 
 /// <summary>
-/// The built-in 7-Zip plugin (Salamander's 7-Zip plugin): 7z archives with all of 7-Zip's settings, and the
-/// formats only 7-Zip reads, through 7z.exe (shipped with Vibe Salamander, or an installed 7-Zip).
+/// The 7-Zip plugin (Salamander's 7-Zip plugin), a separate download: 7z archives with all of 7-Zip's settings,
+/// and the formats only 7-Zip reads, through 7z.exe in the plugin's folder (or an installed 7-Zip). Unzipped into
+/// %AppData%\VibeSalamander\Plugins (or the app's lib\Plugins) it is loaded at the next start.
 /// </summary>
 public sealed class SevenZipPlugin : IVibePlugin, ICommandContributor
 {
@@ -43,7 +44,7 @@ public sealed class SevenZipPlugin : IVibePlugin, ICommandContributor
             {
                 h.Notify(SevenZipTool.Exe is { } exe
                     ? string.Format(T("7-Zip: {0}"), exe)
-                    : T("7-Zip wasn't found: install it from 7-zip.org, or use a Vibe Salamander release (it comes with 7-Zip)."), SevenZipTool.Exe == null);
+                    : T("7-Zip wasn't found: 7z.exe belongs in the plugin's folder (the plugin download has it), or install 7-Zip from 7-zip.org."), SevenZipTool.Exe == null);
                 return Task.CompletedTask;
             }, SeparatorBefore: true),
         };
@@ -77,7 +78,7 @@ public sealed class SevenZipPlugin : IVibePlugin, ICommandContributor
     {
         if (SevenZipArchiver.Available)
             return true;
-        host.Notify(T("7-Zip wasn't found: install it from 7-zip.org, or use a Vibe Salamander release (it comes with 7-Zip)."), isError: true);
+        host.Notify(T("7-Zip wasn't found: 7z.exe belongs in the plugin's folder (the plugin download has it), or install 7-Zip from 7-zip.org."), isError: true);
         return false;
     }
 

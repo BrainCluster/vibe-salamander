@@ -38,6 +38,7 @@
   "0 = the default of the density (13 compact, 14 comfortable).": "0 = Standardwert der Dichte (13 kompakt, 14 komfortabel).",
   "1 command": "1 Befehl",
   "1 item found": "1 Element gefunden",
+  "7-Zip wasn't found: 7z.exe belongs in the plugin's folder (the plugin download has it), or install 7-Zip from 7-zip.org.": "7-Zip wurde nicht gefunden: 7z.exe gehört in den Ordner des Plugins (der Plugin-Download enthält es), oder installieren Sie 7-Zip von 7-zip.org.",
   "7-Zip wasn't found: install it from 7-zip.org, or use a Vibe Salamander release (it comes with 7-Zip).": "7-Zip wurde nicht gefunden: Installieren Sie es von 7-zip.org oder verwenden Sie ein Vibe-Salamander-Release (es enthält 7-Zip).",
   "7-Zip's self-extractor (7z.sfx) wasn't found next to 7z.exe.": "Das Selbstentpacker-Modul von 7-Zip (7z.sfx) wurde neben 7z.exe nicht gefunden.",
   "7-Zip: {0}": "7-Zip: {0}",
