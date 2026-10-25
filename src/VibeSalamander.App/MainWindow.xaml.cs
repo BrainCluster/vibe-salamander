@@ -384,25 +384,14 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     /// <summary>The thumbnail size of both panels; on the toolbar while either panel shows thumbnails.</summary>
     private Slider BuildThumbnailSlider()
     {
-        var slider = new Slider
-        {
-            Minimum = UiState.MinThumbnailSize,
-            Maximum = UiState.MaxThumbnailSize,
-            Value = UiState.ThumbnailSize,
-            StepFrequency = 4,
-            SmallChange = 4,
-            LargeChange = 32,
-            Width = 140,
-            Margin = new Thickness(8, 0, 8, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-            IsTabStop = false,
-        };
-        ToolTipService.SetToolTip(slider, "Thumbnail size");
-        slider.ValueChanged += (_, args) =>
+        Slider slider = ThumbnailSlider.Create(150, size =>
         {
             if (!_syncingThumbnailSlider)
-                SetThumbnailSize((int)Math.Round(args.NewValue));
-        };
+                SetThumbnailSize(size);
+        });
+        slider.Margin = new Thickness(8, 0, 8, 0);
+        slider.IsTabStop = false;
+        ToolTipService.SetToolTip(slider, "Thumbnail size");
         _thumbnailSlider = slider;
         return slider;
     }
