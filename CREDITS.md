@@ -92,7 +92,6 @@ Salamander application icon (`src/res/salamand.ico`),
 |---|---|---|
 | [.NET](https://github.com/dotnet/runtime) | MIT | runtime |
 | [Windows App SDK / WinUI 3](https://github.com/microsoft/WindowsAppSDK) | MIT | user interface |
-| [Win2D](https://github.com/microsoft/Win2D) | MIT | the drawn file list |
 | [SharpCompress](https://github.com/adamhathcock/sharpcompress) | MIT | archive plugin (zip, 7z, rar, tar, gz, bz2, xz, lz) |
 | [FluentFTP](https://github.com/robinrodricks/FluentFTP) | MIT | FTP / SFTP plugin (FTP, FTPS) |
 | [SSH.NET](https://github.com/sshnet/SSH.NET) | MIT | FTP / SFTP plugin (SFTP) |

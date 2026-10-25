@@ -203,11 +203,6 @@ public sealed partial class SettingsWindow
         page.Children.Add(Toggle("Sort by time: sort directories by name", null, p.SortDirectoriesByNameOnTimeSort, v => p.SortDirectoriesByNameOnTimeSort = v, display: true));
         page.Children.Add(Toggle("Treat directories as if they have extensions", "Also shows their extension in the Ext column.",
             p.DirectoriesHaveExtensions, v => p.DirectoriesHaveExtensions = v, display: true));
-
-        page.Children.Add(Section("Experimental"));
-        page.Children.Add(Toggle("Drawn file list (Detailed view)",
-            "The Detailed view draws its rows itself instead of using a list control: lighter and faster in large folders. Selecting with a mouse rectangle isn't available in it yet.",
-            p.DrawnFileList, v => p.DrawnFileList = v, display: true));
         return page;
     }
 
