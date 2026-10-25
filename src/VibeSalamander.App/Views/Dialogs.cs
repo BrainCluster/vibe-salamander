@@ -963,7 +963,22 @@ public sealed class Dialogs
         body.Children.Add(advancedPart);
         body.Children.Add(passwordError);
 
-        ContentDialog dialog = NewDialog("Pack", body);
+        // the Advanced part (7z has many settings) can be taller than the window: the dialog's content scrolls
+        var scroller = new ScrollViewer
+        {
+            Content = body,
+            MaxHeight = 560,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Padding = new Thickness(0, 0, 16, 0), // room for the scroll bar next to the fields
+        };
+        ContentDialog dialog = NewDialog("Pack", scroller);
+        dialog.Opened += (_, _) =>
+        {
+            if (dialog.XamlRoot is { } root)
+                scroller.MaxHeight = Math.Max(240, root.Size.Height - 220); // the title and the buttons stay visible
+        };
+        advancedPart.Expanding += (_, _) => dialog.DispatcherQueue.TryEnqueue(() => scroller.ChangeView(null, scroller.ScrollableHeight, null));
         dialog.PrimaryButtonText = "Pack";
         dialog.CloseButtonText = "Cancel";
         dialog.DefaultButton = ContentDialogButton.Primary;
