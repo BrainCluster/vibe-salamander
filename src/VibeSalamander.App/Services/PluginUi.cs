@@ -19,11 +19,14 @@ public sealed class PluginUi : IPluginUi
     private readonly DispatcherQueue _dispatcher;
     private readonly Func<ElementTheme> _theme;
     private readonly Dialogs _mainDialogs;
+    private readonly IntPtr _owner;
     private readonly List<PluginListWindow> _windows = new();
     private readonly List<PluginCanvasWindow> _canvasWindows = new();
 
-    public PluginUi(DispatcherQueue dispatcher, Func<ElementTheme> theme, Dialogs mainDialogs)
+    /// <param name="owner">The main window: plugin windows stay in front of it.</param>
+    public PluginUi(DispatcherQueue dispatcher, Func<ElementTheme> theme, Dialogs mainDialogs, IntPtr owner)
     {
+        _owner = owner;
         _dispatcher = dispatcher;
         _theme = theme;
         _mainDialogs = mainDialogs;
@@ -57,6 +60,7 @@ public sealed class PluginUi : IPluginUi
         PluginListWindow Create()
         {
             var window = new PluginListWindow(title, columns, _theme());
+            WindowOwner.Set(window, _owner);
             _windows.Add(window);
             window.Closed += (_, _) => _windows.Remove(window);
             window.Activate();
@@ -72,6 +76,7 @@ public sealed class PluginUi : IPluginUi
         PluginCanvasWindow Create()
         {
             var window = new PluginCanvasWindow(title, _theme());
+            WindowOwner.Set(window, _owner);
             _canvasWindows.Add(window);
             window.Closed += (_, _) => _canvasWindows.Remove(window);
             window.Activate();

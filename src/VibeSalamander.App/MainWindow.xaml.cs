@@ -26,7 +26,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     private PluginUi? _pluginUi;
 
     /// <summary>Windows and dialogs of plugins (Calculate / Verify Checksums).</summary>
-    public Plugins.IPluginUi PluginUi => _pluginUi ??= new PluginUi(DispatcherQueue, () => RootGrid.ActualTheme, Dialogs);
+    public Plugins.IPluginUi PluginUi => _pluginUi ??= new PluginUi(DispatcherQueue, () => RootGrid.ActualTheme, Dialogs, WindowHandle);
     private bool _wasMinimized;
 
     public MainWindow()
@@ -1570,6 +1570,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         if (_findWindow == null)
         {
             _findWindow = new FindWindow(directory, RootGrid.ActualTheme, _vm, FocusFoundItemAsync);
+            WindowOwner.Set(_findWindow, WindowHandle); // stays in front of the main window while open
             _findWindow.Closed += (_, _) =>
             {
                 _findWindow = null;

@@ -80,16 +80,7 @@ public sealed partial class SettingsWindow : Window
     /// Makes the main window the owner: an owned window is always above its owner (also when the owner
     /// is "always on top"), is minimized with it and has no taskbar button of its own.
     /// </summary>
-    public void SetOwner(IntPtr owner)
-    {
-        IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        SetWindowLongPtr(hwnd, GwlpHwndParent, owner);
-    }
-
-    private const int GwlpHwndParent = -8;
-
-    [System.Runtime.InteropServices.DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
-    private static extern IntPtr SetWindowLongPtr(IntPtr hwnd, int index, IntPtr value);
+    public void SetOwner(IntPtr owner) => Services.WindowOwner.Set(this, owner);
 
     /// <summary>Selects a page by its tag (see SettingsWindow.xaml, e.g. "General", "Confirmations", "Keyboard").</summary>
     public void ShowPage(string tag)
