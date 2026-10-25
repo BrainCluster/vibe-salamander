@@ -411,39 +411,62 @@ internal sealed class ZipBuilder
 
     /// <summary>
     /// A file entry from a stream. <paramref name="level"/> null = stored (no compression).
-    /// <paramref name="password"/>: encrypted with AES-256 (WinZip AE-1).
+    /// <paramref name="password"/>: encrypted with AES-256 (WinZip AE-1), or ZipCrypto when
+    /// <paramref name="encryption"/> says so (the source is then read twice: ZipCrypto needs the CRC first).
+    /// <paramref name="times"/>: the creation and last access times go into an NTFS extra field.
     /// </summary>
     public void AddFile(string name, Stream source, long expectedLength, DateTime lastWrite, CompressionLevel? level, string? password,
-        Action<int>? progress = null, Action? checkpoint = null)
+        Action<int>? progress = null, Action? checkpoint = null, ZipEncryption encryption = ZipEncryption.Aes256,
+        (DateTime Created, DateTime Accessed)? times = null)
     {
         bool utf8 = NeedsUtf8(name);
         byte[] nameBytes = utf8 ? Encoding.UTF8.GetBytes(name) : Encoding.ASCII.GetBytes(name);
         bool zip64 = expectedLength >= Zip64Threshold;
-        bool aes = password != null;
+        bool aes = password != null && encryption == ZipEncryption.Aes256;
+        bool zipCrypto = password != null && encryption == ZipEncryption.ZipCrypto;
         ushort method = (ushort)(level == null ? 0 : 8);
         (ushort date, ushort time) = Zip.ToDosTime(lastWrite);
-        byte[] aesExtra = aes ? AesExtra(method) : Array.Empty<byte>();
+        byte[] extra = (aes ? AesExtra(method) : Array.Empty<byte>())
+            .Concat(times is { } t ? NtfsExtra(lastWrite, t.Created, t.Accessed) : Array.Empty<byte>()).ToArray();
         var r = new ZipRecord
         {
             VersionMadeBy = 63,
             VersionNeeded = (ushort)(aes ? 51 : zip64 ? 45 : 20),
-            Flags = (ushort)((utf8 ? 0x800 : 0) | (aes ? 1 : 0)),
+            Flags = (ushort)((utf8 ? 0x800 : 0) | (aes || zipCrypto ? 1 : 0)),
             Method = aes ? Zip.AesMethod : method,
             Date = date,
             Time = time,
             ExternalAttributes = 0x20,
             NameBytes = nameBytes,
-            Extra = aesExtra,
+            Extra = extra,
             LocalHeaderOffset = _out.Position,
         };
-        WriteLocalHeader(r, aesExtra, zip64);
+        uint plainCrc = 0;
+        if (zipCrypto)
+        {
+            // ZipCrypto's header holds a byte of the CRC: read the file once for it
+            if (!source.CanSeek)
+                throw new NotSupportedException("ZipCrypto needs a file it can read twice.");
+            long start = source.Position;
+            var first = new System.IO.Hashing.Crc32();
+            int n;
+            while ((n = source.Read(_buffer, 0, _buffer.Length)) > 0)
+            {
+                checkpoint?.Invoke();
+                first.Append(_buffer.AsSpan(0, n));
+            }
+            plainCrc = first.GetCurrentHashAsUInt32();
+            source.Position = start;
+        }
+        WriteLocalHeader(r, extra, zip64);
         long dataStart = _out.Position;
 
         var crc = new System.IO.Hashing.Crc32();
         long total = 0;
         var sink = new NonClosingStream(_out);
-        WinZipAesEncryptStream? encryption = aes ? new WinZipAesEncryptStream(sink, password!) : null;
-        Stream target = (Stream?)encryption ?? sink;
+        Stream? encryptor = aes ? new WinZipAesEncryptStream(sink, password!)
+            : zipCrypto ? new ZipCryptoEncryptStream(sink, password!, plainCrc) : null;
+        Stream target = encryptor ?? sink;
         Stream compressor = level is CompressionLevel l ? new DeflateStream(target, l, leaveOpen: true) : target;
         int read;
         while ((read = source.Read(_buffer, 0, _buffer.Length)) > 0)
@@ -456,7 +479,9 @@ internal sealed class ZipBuilder
         }
         if (compressor != target)
             compressor.Dispose(); // the rest of the deflate data
-        encryption?.Dispose(); // the authentication code
+        encryptor?.Dispose(); // AES: the authentication code
+        if (zipCrypto && crc.GetCurrentHashAsUInt32() != plainCrc)
+            throw new IOException($"\"{name}\" changed while it was being packed.");
 
         long compressed = _out.Position - dataStart;
         if (!zip64 && (compressed >= 0xFFFFFFFF || total >= 0xFFFFFFFF))
@@ -485,6 +510,34 @@ internal sealed class ZipBuilder
         }
         _out.Position = end;
         _records.Add(r);
+    }
+
+    /// <summary>The NTFS extra field (0x000A): modification, last access and creation times as Windows file times.</summary>
+    private static byte[] NtfsExtra(DateTime modified, DateTime created, DateTime accessed)
+    {
+        byte[] extra = new byte[36];
+        Span<byte> e = extra;
+        BinaryPrimitives.WriteUInt16LittleEndian(e, 0x000A);
+        BinaryPrimitives.WriteUInt16LittleEndian(e[2..], 32);
+        // 4 reserved bytes, then attribute 1: three file times
+        BinaryPrimitives.WriteUInt16LittleEndian(e[8..], 0x0001);
+        BinaryPrimitives.WriteUInt16LittleEndian(e[10..], 24);
+        BinaryPrimitives.WriteInt64LittleEndian(e[12..], ToFileTime(modified));
+        BinaryPrimitives.WriteInt64LittleEndian(e[20..], ToFileTime(accessed));
+        BinaryPrimitives.WriteInt64LittleEndian(e[28..], ToFileTime(created));
+        return extra;
+    }
+
+    private static long ToFileTime(DateTime time)
+    {
+        try
+        {
+            return time.ToFileTimeUtc();
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return 0;
+        }
     }
 
     /// <summary>WinZip AES extra field: AE-1, "AE", AES-256, the real compression method.</summary>
@@ -624,6 +677,85 @@ internal sealed class ZipBuilder
         r.Comment.CopyTo(h[p..]);
         output.Write(header);
     }
+}
+
+/// <summary>
+/// The traditional PKWARE encryption ("ZipCrypto", ZIP 2.0): three keys stirred by CRC-32, a 12-byte header
+/// whose last byte is the CRC's high byte (to check the password). Weak, but Windows Explorer can open it.
+/// </summary>
+internal sealed class ZipCryptoEncryptStream : Stream
+{
+    private static readonly uint[] Table = BuildTable();
+    private readonly Stream _inner;
+    private uint _key0 = 0x12345678, _key1 = 0x23456789, _key2 = 0x34567890;
+    private readonly byte[] _buffer = new byte[1 << 16];
+
+    private static uint[] BuildTable()
+    {
+        var table = new uint[256];
+        for (uint i = 0; i < 256; i++)
+        {
+            uint c = i;
+            for (int k = 0; k < 8; k++)
+                c = (c & 1) != 0 ? 0xEDB88320 ^ (c >> 1) : c >> 1;
+            table[i] = c;
+        }
+        return table;
+    }
+
+    public ZipCryptoEncryptStream(Stream inner, string password, uint crc)
+    {
+        _inner = inner;
+        foreach (byte b in Encoding.UTF8.GetBytes(password))
+            Update(b);
+        byte[] header = RandomNumberGenerator.GetBytes(12);
+        header[11] = (byte)(crc >> 24);
+        Write(header, 0, header.Length);
+    }
+
+    private static uint Crc(uint crc, byte b) => (crc >> 8) ^ Table[(crc ^ b) & 0xFF];
+
+    private void Update(byte b)
+    {
+        _key0 = Crc(_key0, b);
+        _key1 = (_key1 + (_key0 & 0xFF)) * 134775813 + 1;
+        _key2 = Crc(_key2, (byte)(_key1 >> 24));
+    }
+
+    private byte Next()
+    {
+        uint temp = (_key2 | 2) & 0xFFFF;
+        return (byte)((temp * (temp ^ 1)) >> 8);
+    }
+
+    public override bool CanRead => false;
+    public override bool CanSeek => false;
+    public override bool CanWrite => true;
+    public override long Length => throw new NotSupportedException();
+    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+    public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+
+    public override void Write(ReadOnlySpan<byte> data)
+    {
+        while (data.Length > 0)
+        {
+            int n = Math.Min(data.Length, _buffer.Length);
+            for (int i = 0; i < n; i++)
+            {
+                byte plain = data[i];
+                _buffer[i] = (byte)(plain ^ Next());
+                Update(plain);
+            }
+            _inner.Write(_buffer, 0, n);
+            data = data[n..];
+        }
+    }
+
+    public override void Flush() => _inner.Flush();
+    public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
 }
 
 /// <summary>

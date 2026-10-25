@@ -401,7 +401,46 @@ public sealed record RemoteItem(string Name, string Path, bool IsDirectory, long
 /// <param name="Extension">Of new archives, with the dot: ".zip", ".tar.gz"</param>
 /// <param name="HasCompressionLevels">The compression level choice applies.</param>
 /// <param name="SupportsPassword">Archives of this format can be encrypted with a password (<see cref="PackRequest.Password"/>).</param>
-public sealed record ArchiveFormat(string Id, string DisplayName, string Extension, bool HasCompressionLevels, bool SupportsPassword = false);
+/// <param name="IsZip">
+/// A ZIP: the ZIP options of <see cref="PackRequest"/> apply (ZipCrypto, self-extracting, NTFS times).
+/// </param>
+public sealed record ArchiveFormat(string Id, string DisplayName, string Extension, bool HasCompressionLevels, bool SupportsPassword = false,
+    bool IsZip = false);
+
+/// <summary>Which part of the files' paths goes into the archive (7-Zip's "Path mode").</summary>
+public enum PackPathMode
+{
+    /// <summary>Relative to the panel's directory ("docs/a.txt").</summary>
+    Relative,
+    /// <summary>The whole path without the drive ("Users/me/docs/a.txt").</summary>
+    Full,
+    /// <summary>Only the file names, no directories ("a.txt").</summary>
+    None,
+}
+
+/// <summary>What happens when the archive exists already (7-Zip's "Update mode").</summary>
+public enum PackUpdateMode
+{
+    /// <summary>A new archive replaces it (asked first).</summary>
+    Replace,
+    /// <summary>All files go in; files of the same name in the archive are replaced.</summary>
+    AddAndReplace,
+    /// <summary>New files go in; files in the archive are replaced by newer ones only.</summary>
+    UpdateAndAdd,
+    /// <summary>Only files already in the archive, and only when newer.</summary>
+    Freshen,
+    /// <summary>Like UpdateAndAdd, and files no longer there are deleted from the archive.</summary>
+    Synchronize,
+}
+
+/// <summary>How a ZIP is encrypted.</summary>
+public enum ZipEncryption
+{
+    /// <summary>AES-256 (WinZip AE-1): strong; 7-Zip, WinRAR and Vibe Salamander open it, Windows Explorer can't.</summary>
+    Aes256,
+    /// <summary>The old ZIP 2.0 encryption: weak, but Windows Explorer opens it.</summary>
+    ZipCrypto,
+}
 
 public enum ArchiveCompression
 {
@@ -428,6 +467,23 @@ public sealed class PackRequest
 
     /// <summary>Encrypts the files with this password (formats with <see cref="ArchiveFormat.SupportsPassword"/>); null = not encrypted.</summary>
     public string? Password { get; init; }
+
+    /// <summary>ZIP: AES-256 or ZipCrypto (when there is a password).</summary>
+    public ZipEncryption Encryption { get; init; } = ZipEncryption.Aes256;
+
+    public PackPathMode PathMode { get; init; } = PackPathMode.Relative;
+
+    /// <summary>When the archive exists already (ZIP and TAR can be updated; others are replaced).</summary>
+    public PackUpdateMode UpdateMode { get; init; } = PackUpdateMode.Replace;
+
+    /// <summary>Splits the new archive into parts of this many bytes ("backup.zip.001", ".002", ...); 0 = one file.</summary>
+    public long VolumeSize { get; init; }
+
+    /// <summary>ZIP: a self-extracting archive (.exe) instead of the .zip.</summary>
+    public bool SelfExtracting { get; init; }
+
+    /// <summary>ZIP: the files' creation and last access times too (NTFS extra field).</summary>
+    public bool StoreNtfsTimes { get; init; }
 }
 
 /// <summary>Copying files and directories into an archive (F5 / F6 / drag and drop onto a panel showing the archive).</summary>
@@ -442,6 +498,17 @@ public sealed class ArchiveAddRequest
     public string TargetPath { get; init; } = string.Empty;
 
     public ArchiveCompression Compression { get; init; } = ArchiveCompression.Normal;
+
+    /// <summary>
+    /// Replace = ask about every name that exists (copying into a panel showing the archive); the others
+    /// decide by themselves (Alt+F5 onto an existing archive).
+    /// </summary>
+    public PackUpdateMode UpdateMode { get; init; } = PackUpdateMode.Replace;
+
+    public PackPathMode PathMode { get; init; } = PackPathMode.Relative;
+
+    /// <summary>For new files in a ZIP that isn't encrypted yet; null = not encrypted (an encrypted ZIP asks for its own).</summary>
+    public string? Password { get; init; }
 }
 
 /// <summary>Deleting files and directories from an archive (F8 in a panel showing the archive).</summary>

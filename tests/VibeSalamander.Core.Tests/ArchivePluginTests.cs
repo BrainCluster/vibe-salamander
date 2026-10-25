@@ -520,4 +520,99 @@ public sealed class ArchivePluginTests : IDisposable
         Assert.Equal("docs/a (3).txt", Archiver.UniqueEntryName("docs/a.txt", taken));
         Assert.Equal("b (2)", Archiver.UniqueEntryName("b", taken));
     }
+
+    [Fact]
+    public async Task Update_mode_replaces_only_newer_files_and_synchronize_deletes()
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackAsync(archiver, "zip", "update.zip");
+        string readme = Path.Combine(_root, "src", "readme.txt");
+        File.WriteAllText(readme, "newer");
+        File.SetLastWriteTime(readme, DateTime.Now.AddMinutes(5));
+        File.SetLastWriteTime(Path.Combine(_root, "src", "docs", "a.md"), DateTime.Now.AddYears(-5)); // older: stays
+
+        OperationResult result = await archiver.PackAsync(new PackRequest
+        {
+            Sources = new[] { readme },
+            BaseDirectory = Path.Combine(_root, "src"),
+            ArchivePath = archive,
+            FormatId = "zip",
+            UpdateMode = PackUpdateMode.Synchronize,
+        }, new FakeJob());
+        Assert.False(result.Cancelled);
+        using var zip = System.IO.Compression.ZipFile.OpenRead(archive);
+        var files = zip.Entries.Where(e => !e.FullName.EndsWith('/')).Select(e => e.FullName).ToList();
+        Assert.Equal(new[] { "readme.txt" }, files); // synchronize: what isn't packed now leaves the archive
+        using var reader = new StreamReader(zip.GetEntry("readme.txt")!.Open());
+        Assert.Equal("newer", reader.ReadToEnd());
+    }
+
+    [Fact]
+    public async Task Path_mode_none_keeps_only_file_names()
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = Path.Combine(_root, "flat.zip");
+        await archiver.PackAsync(new PackRequest
+        {
+            Sources = new[] { Path.Combine(_root, "src", "readme.txt"), Path.Combine(_root, "src", "docs") },
+            BaseDirectory = Path.Combine(_root, "src"),
+            ArchivePath = archive,
+            FormatId = "zip",
+            PathMode = PackPathMode.None,
+        }, new FakeJob());
+        using var zip = System.IO.Compression.ZipFile.OpenRead(archive);
+        Assert.Equal(new[] { "a.md", "data.bin", "readme.txt" }, zip.Entries.Select(e => e.FullName).OrderBy(n => n, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Split_archives_unpack_from_the_first_part()
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = Path.Combine(_root, "split.zip");
+        OperationResult packed = await archiver.PackAsync(new PackRequest
+        {
+            Sources = new[] { Path.Combine(_root, "src", "readme.txt"), Path.Combine(_root, "src", "docs") },
+            BaseDirectory = Path.Combine(_root, "src"),
+            ArchivePath = archive,
+            FormatId = "zip",
+            Compression = ArchiveCompression.Store,
+            VolumeSize = 100_000,
+        }, new FakeJob());
+        Assert.Equal("split.zip.001", packed.CreatedTopLevelNames.Single());
+        Assert.False(File.Exists(archive));
+        Assert.True(File.Exists(archive + ".004"));
+        Assert.True(archiver.CanUnpack(archive + ".001"));
+        Assert.False(archiver.CanEdit(archive + ".001"));
+        string target = Path.Combine(_root, "from-parts");
+        OperationResult result = await archiver.UnpackAsync(new UnpackRequest { ArchivePath = archive + ".001", TargetDirectory = target }, new FakeJob());
+        Assert.Equal(0, result.Failed);
+        AssertUnpacked(target);
+    }
+
+    [Fact]
+    public async Task ZipCrypto_archives_unpack_with_the_password()
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = Path.Combine(_root, "legacy.zip");
+        await archiver.PackAsync(new PackRequest
+        {
+            Sources = new[] { Path.Combine(_root, "src", "readme.txt"), Path.Combine(_root, "src", "docs") },
+            BaseDirectory = Path.Combine(_root, "src"),
+            ArchivePath = archive,
+            FormatId = "zip",
+            Password = "secret",
+            Encryption = ZipEncryption.ZipCrypto,
+            StoreNtfsTimes = true,
+        }, new FakeJob());
+        using (FileStream stream = File.OpenRead(archive))
+        {
+            var (records, _) = Zip.ReadDirectory(stream);
+            Assert.All(records.Where(r => !r.IsDirectory), r => Assert.True(r.IsEncrypted && r.Method != Zip.AesMethod));
+        }
+        string target = Path.Combine(_root, "legacy-out");
+        OperationResult result = await archiver.UnpackAsync(new UnpackRequest { ArchivePath = archive, TargetDirectory = target },
+            new FakeJob { Passwords = new() { "secret" } });
+        Assert.Equal(0, result.Failed);
+        AssertUnpacked(target);
+    }
 }

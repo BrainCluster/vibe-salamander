@@ -690,7 +690,68 @@ public sealed class Dialogs
         return (row, box);
     }
 
-    public sealed record PackAnswer(string ArchivePath, string FormatId, string Compression, bool DeleteSources, string? Password = null);
+    public sealed record PackAnswer(string ArchivePath, string FormatId, string Compression, bool DeleteSources, string? Password = null,
+        PackAdvanced? Advanced = null);
+
+    /// <summary>Pack's Advanced part (7-Zip's "Add to archive" options); the strings are the enum names of the plugin contracts.</summary>
+    public sealed record PackAdvanced(bool Open, string UpdateMode, string PathMode, string Volumes, string Encryption,
+        bool SelfExtracting, bool NtfsTimes)
+    {
+        /// <summary>Bytes of "700M", "4G", "1.5G", "650M - CD", "123456"; 0 = empty; -1 = not a size.</summary>
+        public static long ParseVolumeSize(string text)
+        {
+            string t = text.Trim();
+            int dash = t.IndexOf(" -", StringComparison.Ordinal);
+            if (dash > 0)
+                t = t[..dash];
+            t = t.Replace(" ", string.Empty);
+            if (t.Length == 0)
+                return 0;
+            long unit = 1;
+            char last = char.ToUpperInvariant(t[^1]);
+            if (last is 'K' or 'M' or 'G' or 'T')
+            {
+                unit = last switch { 'K' => 1L << 10, 'M' => 1L << 20, 'G' => 1L << 30, _ => 1L << 40 };
+                t = t[..^1];
+            }
+            else if (t.EndsWith("B", StringComparison.OrdinalIgnoreCase))
+            {
+                t = t[..^1];
+            }
+            if (!double.TryParse(t.Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double value) ||
+                value <= 0 || value * unit < 64 * 1024)
+                return -1;
+            return (long)(value * unit);
+        }
+    }
+
+    /// <summary>The choices of the Advanced part: (enum name, English text).</summary>
+    private static readonly (string Value, string Text)[] UpdateModes =
+    {
+        ("Replace", "Replace the archive (ask first)"), ("AddAndReplace", "Add and replace files"), ("UpdateAndAdd", "Update and add files"),
+        ("Freshen", "Freshen existing files"), ("Synchronize", "Synchronize files"),
+    };
+
+    private static readonly (string Value, string Text)[] PathModes =
+    {
+        ("Relative", "Relative paths"), ("Full", "Full paths (without the drive)"), ("None", "No paths (file names only)"),
+    };
+
+    private static readonly (string Value, string Text)[] EncryptionMethods =
+    {
+        ("Aes256", "AES-256 (strong)"), ("ZipCrypto", "ZipCrypto (Windows Explorer opens it; weak)"),
+    };
+
+    private static readonly string[] VolumePresets = { "10M", "100M", "1000M", "650M - CD", "700M - CD", "4092M - FAT", "4480M - DVD", "8128M - DVD DL", "23040M - BD" };
+
+    private static ComboBox Choices(string header, (string Value, string Text)[] choices, string selected)
+    {
+        var box = new ComboBox { Header = header, HorizontalAlignment = HorizontalAlignment.Stretch };
+        foreach (var (_, text) in choices)
+            box.Items.Add(Services.Loc.T(text));
+        box.SelectedIndex = Math.Max(0, Array.FindIndex(choices, c => c.Value == selected));
+        return box;
+    }
 
     /// <summary>
     /// Pack (Alt+F5): the archive's path and name (prefilled), its format and compression and "move to
@@ -698,7 +759,7 @@ public sealed class Dialogs
     /// Changing the format changes the extension in the name. Null when cancelled.
     /// </summary>
     public async Task<PackAnswer?> PackAsync(string what, string defaultPath, IReadOnlyList<Plugins.ArchiveFormat> formats,
-        string formatId, string compression, bool deleteSources)
+        string formatId, string compression, bool deleteSources, PackAdvanced advanced)
     {
         var (row, box) = PathRow(defaultPath, keepFileName: true);
         var format = new ComboBox { MinWidth = 200, Header = "Format" };
@@ -714,14 +775,72 @@ public sealed class Dialogs
         level.IsEnabled = formats[selected].HasCompressionLevels;
         var move = new CheckBox { Content = "Delete the files after packing (move to archive)", IsChecked = deleteSources };
 
-        // password (ZIP: AES-256): typed twice, shown only when asked for
-        var encrypt = new CheckBox { Content = "Encrypt with a password (AES-256)", IsEnabled = formats[selected].SupportsPassword };
+        // password (ZIP: AES-256 or ZipCrypto): typed twice, shown only when asked for
+        var encrypt = new CheckBox { Content = "Encrypt with a password", IsEnabled = formats[selected].SupportsPassword };
         var password = new PasswordBox { PlaceholderText = "Password", MinWidth = 200 };
         var repeat = new PasswordBox { PlaceholderText = "Repeat the password", MinWidth = 200 };
         var passwordError = new TextBlock { Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SystemFillColorCriticalBrush"], Visibility = Visibility.Collapsed, TextWrapping = TextWrapping.Wrap };
-        var passwords = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Visibility = Visibility.Collapsed };
-        passwords.Children.Add(password);
-        passwords.Children.Add(repeat);
+        var passwordBoxes = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        passwordBoxes.Children.Add(password);
+        passwordBoxes.Children.Add(repeat);
+        var showPassword = new CheckBox { Content = "Show the password" };
+        showPassword.Checked += (_, _) => password.PasswordRevealMode = repeat.PasswordRevealMode = PasswordRevealMode.Visible;
+        showPassword.Unchecked += (_, _) => password.PasswordRevealMode = repeat.PasswordRevealMode = PasswordRevealMode.Hidden;
+        var passwords = new StackPanel { Spacing = 4, Visibility = Visibility.Collapsed };
+        passwords.Children.Add(passwordBoxes);
+        passwords.Children.Add(showPassword);
+
+        // Advanced: 7-Zip's "Add to archive" options that fit these formats
+        var updateMode = Choices("When the archive exists", UpdateModes, advanced.UpdateMode);
+        var pathMode = Choices("Paths in the archive", PathModes, advanced.PathMode);
+        var volumes = new ComboBox { Header = "Split into volumes of", IsEditable = true, HorizontalAlignment = HorizontalAlignment.Stretch, PlaceholderText = "One file", Text = advanced.Volumes };
+        foreach (string preset in VolumePresets)
+            volumes.Items.Add(preset);
+        var encryption = Choices("Encryption method", EncryptionMethods, advanced.Encryption);
+        var selfExtracting = new CheckBox { Content = "Create a self-extracting archive (.exe)", IsChecked = advanced.SelfExtracting };
+        var ntfsTimes = new CheckBox { Content = "Store creation and last access times", IsChecked = advanced.NtfsTimes };
+        var advancedGrid = new Grid { ColumnSpacing = 12, RowSpacing = 10 };
+        advancedGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        advancedGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        for (int i = 0; i < 4; i++)
+            advancedGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        void Place(FrameworkElement element, int row, int column, int span = 1)
+        {
+            Grid.SetRow(element, row);
+            Grid.SetColumn(element, column);
+            Grid.SetColumnSpan(element, span);
+            advancedGrid.Children.Add(element);
+        }
+        Place(updateMode, 0, 0);
+        Place(pathMode, 0, 1);
+        Place(volumes, 1, 0);
+        Place(encryption, 1, 1);
+        Place(selfExtracting, 2, 0, 2);
+        Place(ntfsTimes, 3, 0, 2);
+        var advancedPart = new Expander
+        {
+            Header = "Advanced",
+            Content = advancedGrid,
+            IsExpanded = advanced.Open,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        };
+        // what applies to the chosen format and the other choices
+        void UpdateAdvanced()
+        {
+            Plugins.ArchiveFormat f = formats[Math.Max(0, format.SelectedIndex)];
+            bool encrypted = encrypt.IsChecked == true && f.SupportsPassword;
+            encryption.IsEnabled = f.IsZip && encrypted;
+            selfExtracting.IsEnabled = f.IsZip && !encrypted;
+            ntfsTimes.IsEnabled = f.IsZip;
+            volumes.IsEnabled = !(selfExtracting.IsEnabled && selfExtracting.IsChecked == true);
+        }
+        encrypt.Checked += (_, _) => UpdateAdvanced();
+        encrypt.Unchecked += (_, _) => UpdateAdvanced();
+        selfExtracting.Checked += (_, _) => UpdateAdvanced();
+        selfExtracting.Unchecked += (_, _) => UpdateAdvanced();
+        format.SelectionChanged += (_, _) => UpdateAdvanced();
+        UpdateAdvanced();
         encrypt.Checked += (_, _) =>
         {
             passwords.Visibility = Visibility.Visible;
@@ -732,9 +851,11 @@ public sealed class Dialogs
             passwords.Visibility = Visibility.Collapsed;
             passwordError.Visibility = Visibility.Collapsed;
         };
-        // null = fine; otherwise what is wrong with the password
+        // null = fine; otherwise what is wrong with the password (or the volume size)
         string? PasswordProblem()
         {
+            if (volumes.IsEnabled && PackAdvanced.ParseVolumeSize(volumes.Text ?? string.Empty) < 0)
+                return "The volume size is a number of bytes, or with K, M or G (like 700M or 4G), and at least 64K.";
             if (encrypt.IsChecked != true || !encrypt.IsEnabled)
                 return null;
             if (password.Password.Length == 0)
@@ -768,6 +889,7 @@ public sealed class Dialogs
         body.Children.Add(move);
         body.Children.Add(encrypt);
         body.Children.Add(passwords);
+        body.Children.Add(advancedPart);
         body.Children.Add(passwordError);
 
         ContentDialog dialog = NewDialog("Pack", body);
@@ -811,8 +933,16 @@ public sealed class Dialogs
         if ((!enter && result != ContentDialogResult.Primary) || string.IsNullOrWhiteSpace(box.Text) || format.SelectedIndex < 0)
             return null;
         bool encrypted = encrypt.IsChecked == true && formats[format.SelectedIndex].SupportsPassword && password.Password.Length > 0;
+        var chosenAdvanced = new PackAdvanced(
+            advancedPart.IsExpanded,
+            UpdateModes[Math.Max(0, updateMode.SelectedIndex)].Value,
+            PathModes[Math.Max(0, pathMode.SelectedIndex)].Value,
+            (volumes.Text ?? string.Empty).Trim(),
+            EncryptionMethods[Math.Max(0, encryption.SelectedIndex)].Value,
+            selfExtracting.IsChecked == true,
+            ntfsTimes.IsChecked == true);
         return new PackAnswer(box.Text.Trim(), formats[format.SelectedIndex].Id, levels[Math.Max(0, level.SelectedIndex)], move.IsChecked == true,
-            encrypted ? password.Password : null);
+            encrypted ? password.Password : null, chosenAdvanced);
     }
 
     public sealed record UnpackAnswer(string Target, string Mask, bool ToSubfolder);

@@ -17,7 +17,8 @@ internal sealed partial class Archiver
 {
     private static readonly HashSet<string> EditableKinds = new(StringComparer.OrdinalIgnoreCase) { "zip", "tar", "tar.gz", "tgz" };
 
-    public bool CanEdit(string archivePath) => KindOf(archivePath) is string kind && EditableKinds.Contains(kind);
+    public bool CanEdit(string archivePath) =>
+        WithoutPartNumber(archivePath) == archivePath && KindOf(archivePath) is string kind && EditableKinds.Contains(kind);
 
     public Task<OperationResult> AddAsync(ArchiveAddRequest request, IArchiveJob job) =>
         Task.Run(() => Edit(request.ArchivePath, job, request, null));
@@ -122,12 +123,22 @@ internal sealed partial class Archiver
                 string full = Path.GetFullPath(source).TrimEnd('\\');
                 Collect(full, Path.GetDirectoryName(full) ?? full, archivePath, collected, job, result);
             }
-            if (!PlanAdditions(plan, collected, target, existing, result))
+            collected = ApplyPathMode(collected, add.PathMode);
+            if (!PlanAdditions(plan, collected, target, existing, result, add.UpdateMode))
             {
                 result.Cancelled = true;
                 return result;
             }
-            if (zip && plan.Added.Any(i => !i.IsDirectory) && records!.Any(r => r.IsEncrypted))
+            if (add.UpdateMode == PackUpdateMode.Synchronize)
+            {
+                // files that are no longer there leave the archive too
+                var names = new HashSet<string>(collected.Where(i => !i.IsDirectory)
+                    .Select(i => target.Length > 0 ? target + "/" + i.EntryName : i.EntryName), StringComparer.OrdinalIgnoreCase);
+                plan.Deleted.AddRange(existing.Where(e => !e.IsDirectory && !names.Contains(e.Key)).Select(e => e.Key));
+            }
+            if (zip && add.Password != null && !records!.Any(r => r.IsEncrypted))
+                plan.Password = add.Password; // the first encrypted files of this ZIP
+            else if (zip && plan.Added.Any(i => !i.IsDirectory) && records!.Any(r => r.IsEncrypted))
             {
                 // new files in an encrypted ZIP get the archive's password
                 plan.Password = AskEditPassword(archivePath, records!, job);
@@ -161,7 +172,8 @@ internal sealed partial class Archiver
     }
 
     /// <summary>Names in the archive for the new items; asks about names that exist. False = cancelled.</summary>
-    private static bool PlanAdditions(EditPlan plan, List<PackItem> collected, string target, List<Existing> existing, OperationResult result)
+    private static bool PlanAdditions(EditPlan plan, List<PackItem> collected, string target, List<Existing> existing, OperationResult result,
+        PackUpdateMode mode = PackUpdateMode.Replace)
     {
         var files = new Dictionary<string, Existing>(StringComparer.OrdinalIgnoreCase);
         foreach (Existing e in existing.Where(e => !e.IsDirectory))
@@ -178,6 +190,8 @@ internal sealed partial class Archiver
                     name = to + name[from.Length..];
             if (item.IsDirectory)
             {
+                if (mode == PackUpdateMode.Freshen && !plan.ExistingDirectories.Contains(name))
+                    continue; // freshen adds nothing new
                 if (files.ContainsKey(name))
                 {
                     // a file of that name is in the way: the directory and its content get a free name
@@ -189,7 +203,21 @@ internal sealed partial class Archiver
                 plan.Added.Add(item with { EntryName = name });
                 continue;
             }
-            if (files.TryGetValue(name, out Existing? old) || plan.Added.Any(a => a.EntryName.Equals(name, StringComparison.OrdinalIgnoreCase)))
+            bool inArchive = files.TryGetValue(name, out Existing? old);
+            if (!inArchive && mode == PackUpdateMode.Freshen)
+                continue; // freshen: only files that are in the archive already
+            if (inArchive && mode != PackUpdateMode.Replace)
+            {
+                // the update modes decide by themselves: replace, or replace only with newer files (2 s: ZIP times)
+                bool newer = old!.LastWrite == DateTime.MinValue || item.LastWrite > old.LastWrite.AddSeconds(2);
+                if (mode != PackUpdateMode.AddAndReplace && !newer)
+                    continue; // the archive has it already: nothing to do (not skipped)
+                plan.Replaced.Add(name);
+                taken.Add(name);
+                plan.Added.Add(item with { EntryName = name });
+                continue;
+            }
+            if (inArchive || plan.Added.Any(a => a.EntryName.Equals(name, StringComparison.OrdinalIgnoreCase)))
             {
                 ConflictChoice choice = all ?? Wait(plan.Job.ResolveConflictAsync(new ConflictInfo(
                     item.FullPath, item.Size, item.LastWrite,

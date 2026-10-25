@@ -32,6 +32,14 @@ public sealed class ArchivePlugin : IVibePlugin, ICommandContributor
     public void Initialize(IPluginHost host)
     {
         _host = host;
+        try
+        {
+            _archiver.DataDirectory = host.GetDataDirectory(this); // the self-extractor, compiled once
+        }
+        catch (Exception)
+        {
+            // a temporary folder then
+        }
         host.RegisterArchiver(_archiver);
         Commands = new[]
         {

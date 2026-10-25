@@ -362,6 +362,27 @@ public sealed class PluginOptions
     /// <summary>Move to archive: the packed files are deleted when packing succeeded.</summary>
     public bool PackDeleteSources { get; set; }
 
+    /// <summary>Pack's Advanced part is open.</summary>
+    public bool PackAdvancedOpen { get; set; }
+
+    /// <summary>"Relative", "Full" or "None" (PackPathMode).</summary>
+    public string PackPathMode { get; set; } = "Relative";
+
+    /// <summary>"Replace", "AddAndReplace", "UpdateAndAdd", "Freshen" or "Synchronize" (PackUpdateMode).</summary>
+    public string PackUpdateMode { get; set; } = "Replace";
+
+    /// <summary>ZIP: "Aes256" or "ZipCrypto".</summary>
+    public string PackEncryption { get; set; } = "Aes256";
+
+    /// <summary>Split to volumes as typed ("700M"); "" = one file.</summary>
+    public string PackVolumes { get; set; } = string.Empty;
+
+    /// <summary>ZIP: make a self-extracting .exe.</summary>
+    public bool PackSelfExtracting { get; set; }
+
+    /// <summary>ZIP: store creation and last access times.</summary>
+    public bool PackNtfsTimes { get; set; }
+
     /// <summary>Unpack (Alt+F6) each archive into a directory named after it.</summary>
     public bool UnpackToSubfolder { get; set; } = true;
 

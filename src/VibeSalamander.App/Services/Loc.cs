@@ -288,6 +288,11 @@ public static class Loc
                 return;
             case ItemsControl: // ListView, GridView, ...: data
                 return;
+            case Expander expander:
+                if (Tr(expander.Header) is { } expanderHeader)
+                    expander.Header = expanderHeader;
+                Walk(expander.Content, depth + 1);
+                return;
             case ContentControl control: // Button, CheckBox, RadioButton, ScrollViewer, ...
                 if (control.Content is string s)
                     control.Content = T(s);

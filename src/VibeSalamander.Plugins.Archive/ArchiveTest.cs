@@ -55,7 +55,7 @@ internal static class ArchiveTest
     /// <summary>ZIP, 7-Zip, RAR (SharpCompress).</summary>
     private static void RunArchive(string path, string? password, Action<TestedFile> tested, Action<double> progress, CancellationToken ct)
     {
-        using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+        using Stream file = Archiver.OpenRead(path);
         IArchive archive;
         List<IArchiveEntry> entries;
         try
@@ -151,7 +151,7 @@ internal static class ArchiveTest
     /// <summary>TAR, also compressed: every file read to its end (TAR keeps no checksums of the data).</summary>
     private static void RunTar(string path, string kind, Action<TestedFile> tested, Action<double> progress, CancellationToken ct)
     {
-        using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+        using Stream file = Archiver.OpenRead(path);
         long length = Math.Max(1, file.Length);
         using Stream data = Archiver.OpenTarData(kind, file);
         using var reader = new TarReader(data, leaveOpen: true);
@@ -205,8 +205,8 @@ internal static class ArchiveTest
     /// <summary>One compressed file (notes.txt.gz): unpacked to its end.</summary>
     private static void RunSingle(string path, string kind, Action<TestedFile> tested, Action<double> progress, CancellationToken ct)
     {
-        string name = Path.GetFileName(path)[..^(kind.Length + 1)];
-        using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+        string name = Path.GetFileName(Archiver.WithoutPartNumber(path))[..^(kind.Length + 1)];
+        using Stream file = Archiver.OpenRead(path);
         long length = Math.Max(1, file.Length);
         string? problem = null;
         long read = 0;

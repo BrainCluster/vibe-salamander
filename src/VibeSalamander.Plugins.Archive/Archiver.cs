@@ -23,7 +23,7 @@ internal sealed partial class Archiver : IArchiver
 
     public IReadOnlyList<ArchiveFormat> PackFormats { get; } = new[]
     {
-        new ArchiveFormat("zip", "ZIP", ".zip", HasCompressionLevels: true, SupportsPassword: true),
+        new ArchiveFormat("zip", "ZIP", ".zip", HasCompressionLevels: true, SupportsPassword: true, IsZip: true),
         new ArchiveFormat("tar.gz", "TAR.GZ (gzip)", ".tar.gz", HasCompressionLevels: true),
         new ArchiveFormat("tar", "TAR (not compressed)", ".tar", HasCompressionLevels: false),
     };
@@ -61,7 +61,7 @@ internal sealed partial class Archiver : IArchiver
         var items = new List<ArchiveItem>();
         if (RandomAccess.Contains(kind))
         {
-            using var file = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+            using Stream file = OpenRead(archivePath);
             using IArchive archive = OpenRandomAccess(archivePath, file, new ReaderOptions { LeaveStreamOpen = true });
             foreach (IArchiveEntry entry in archive.Entries)
             {
@@ -72,12 +72,12 @@ internal sealed partial class Archiver : IArchiver
         }
         else if (kind is "gz" or "bz2" or "xz" or "lz")
         {
-            string name = Path.GetFileName(archivePath)[..^(kind.Length + 1)];
+            string name = Path.GetFileName(WithoutPartNumber(archivePath))[..^(kind.Length + 1)];
             items.Add(new ArchiveItem(name.Length > 0 ? name : "unpacked", false, 0, archiveTime));
         }
         else
         {
-            using var file = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+            using Stream file = OpenRead(archivePath);
             using Stream data = OpenTarData(kind, file);
             using var reader = new TarReader(data, leaveOpen: true);
             while (reader.GetNextEntry(copyData: false) is TarEntry entry)
@@ -99,7 +99,7 @@ internal sealed partial class Archiver : IArchiver
     /// name.r01, ...) is opened with all its volumes, otherwise files that continue in the next volume are
     /// "incomplete".
     /// </summary>
-    internal static IArchive OpenRandomAccess(string path, FileStream file, ReaderOptions options)
+    internal static IArchive OpenRandomAccess(string path, Stream file, ReaderOptions options)
     {
         if (path.EndsWith(".rar", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".cbr", StringComparison.OrdinalIgnoreCase))
         {
@@ -148,7 +148,7 @@ internal sealed partial class Archiver : IArchiver
     }
 
     /// <summary>The TAR data of a .tar / .tar.gz / .tar.bz2 / .tar.xz / .tar.lz file (the file itself stays open).</summary>
-    internal static Stream OpenTarData(string kind, FileStream file) => kind switch
+    internal static Stream OpenTarData(string kind, Stream file) => kind switch
     {
         "tar.gz" or "tgz" => new GZipStream(file, CompressionMode.Decompress, leaveOpen: true),
         "tar.bz2" or "tbz" or "tbz2" => SharpCompress.Compressors.BZip2.BZip2Stream.Create(
@@ -159,10 +159,36 @@ internal sealed partial class Archiver : IArchiver
         _ => new KeepOpenStream(file),
     };
 
+    /// <summary>
+    /// "backup.zip.001" → "backup.zip": the first part of an archive split into parts of equal size (7-Zip's
+    /// "Split to volumes"); other paths stay as they are.
+    /// </summary>
+    internal static string WithoutPartNumber(string path) =>
+        path.EndsWith(".001", StringComparison.Ordinal) && path.Length > 4 ? path[..^4] : path;
+
+    /// <summary>Reads an archive file, or all the parts of a split one (".001", ".002", ...) as one stream.</summary>
+    internal static Stream OpenRead(string path)
+    {
+        if (WithoutPartNumber(path) is var whole && whole != path)
+        {
+            var parts = new List<string>();
+            for (int i = 1; i < 10000; i++)
+            {
+                string part = $"{whole}.{i:000}";
+                if (!File.Exists(part))
+                    break;
+                parts.Add(part);
+            }
+            if (parts.Count > 1)
+                return new PartsStream(parts);
+        }
+        return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+    }
+
     /// <summary>The matching extension of UnpackExtensions ("tar.gz"), or null.</summary>
     internal string? KindOf(string path)
     {
-        string name = Path.GetFileName(path);
+        string name = Path.GetFileName(WithoutPartNumber(path));
         foreach (string ext in UnpackExtensions)
             if (name.Length > ext.Length + 1 && name.EndsWith("." + ext, StringComparison.OrdinalIgnoreCase))
                 return ext;
@@ -176,13 +202,32 @@ internal sealed partial class Archiver : IArchiver
     public Task<OperationResult> PackAsync(PackRequest request, IArchiveJob job) =>
         Task.Run(() => Pack(request, job));
 
-    private static OperationResult Pack(PackRequest request, IArchiveJob job)
+    /// <summary>Where the self-extractor is kept once compiled (the plugin's data directory).</summary>
+    public string? DataDirectory { get; set; }
+
+    private OperationResult Pack(PackRequest request, IArchiveJob job)
     {
         var result = new OperationResult();
         CancellationToken ct = job.Cancellation;
         string archivePath = Path.GetFullPath(request.ArchivePath);
+        bool zip = request.FormatId == "zip";
+        bool selfExtracting = zip && request.SelfExtracting && string.IsNullOrEmpty(request.Password);
 
-        // 1. what goes in (names relative to the panel's directory)
+        // 0. the archive exists and is to be updated (7-Zip's update modes): files go into it in place
+        if (request.UpdateMode != PackUpdateMode.Replace && !selfExtracting && File.Exists(archivePath) && CanEdit(archivePath))
+        {
+            return Edit(archivePath, job, new ArchiveAddRequest
+            {
+                ArchivePath = archivePath,
+                Sources = request.Sources,
+                Compression = request.Compression,
+                UpdateMode = request.UpdateMode,
+                PathMode = request.PathMode,
+                Password = request.Password,
+            }, null);
+        }
+
+        // 1. what goes in (names relative to the panel's directory, or as the path mode says)
         job.Report(new OperationProgress { Kind = OperationKind.Pack, Analyzing = true, CurrentSource = request.BaseDirectory });
         var items = new List<PackItem>();
         string baseDir = Path.GetFullPath(request.BaseDirectory);
@@ -191,21 +236,27 @@ internal sealed partial class Archiver : IArchiver
             ct.ThrowIfCancellationRequested();
             Collect(Path.GetFullPath(source), baseDir, archivePath, items, job, result);
         }
+        items = ApplyPathMode(items, request.PathMode);
+
+        // what is written in the end: the .exe of a self-extracting archive, else the archive (or its parts)
+        string finalPath = selfExtracting ? Path.ChangeExtension(archivePath, ".exe") : archivePath;
 
         // 2. the archive exists: overwrite, keep both or skip
-        if (File.Exists(archivePath))
+        if (File.Exists(finalPath) || (request.VolumeSize > 0 && File.Exists(finalPath + ".001")))
         {
-            var existing = new FileInfo(archivePath);
+            string existingPath = File.Exists(finalPath) ? finalPath : finalPath + ".001";
+            var existing = new FileInfo(existingPath);
             ConflictChoice choice = Wait(job.ResolveConflictAsync(new ConflictInfo(
                 request.Sources.Count == 1 ? request.Sources[0] : baseDir, items.Where(i => !i.IsDirectory).Sum(i => i.Size), DateTime.Now,
-                archivePath, existing.Length, existing.LastWriteTime, IsDirectory: false, TargetAttributes: existing.Attributes)));
+                existingPath, existing.Length, existing.LastWriteTime, IsDirectory: false, TargetAttributes: existing.Attributes)));
             switch (choice)
             {
                 case ConflictChoice.Skip or ConflictChoice.SkipAll:
                     result.Skipped++;
                     return result;
                 case ConflictChoice.Rename or ConflictChoice.RenameAll:
-                    archivePath = FileOperationEngine.UniqueName(archivePath);
+                    finalPath = FileOperationEngine.UniqueName(finalPath);
+                    archivePath = selfExtracting ? Path.ChangeExtension(finalPath, Path.GetExtension(archivePath)) : finalPath;
                     break;
                 case ConflictChoice.Cancel:
                     result.Cancelled = true;
@@ -222,7 +273,7 @@ internal sealed partial class Archiver : IArchiver
             switch (request.FormatId)
             {
                 case "zip":
-                    PackZip(items, temp, request.Compression, string.IsNullOrEmpty(request.Password) ? null : request.Password, job, tracker, result);
+                    PackZip(items, temp, request, job, tracker, result);
                     break;
                 case "tar":
                 case "tar.gz":
@@ -234,9 +285,27 @@ internal sealed partial class Archiver : IArchiver
                     throw new NotSupportedException($"The archive format \"{request.FormatId}\" can't be created.");
             }
             ct.ThrowIfCancellationRequested();
-            if (File.Exists(archivePath))
-                File.SetAttributes(archivePath, FileAttributes.Normal);
-            File.Move(temp, archivePath, overwrite: true);
+            if (selfExtracting)
+            {
+                // the ZIP becomes the data of the .exe
+                job.Report(new OperationProgress { Kind = OperationKind.Pack, Analyzing = true, CurrentSource = finalPath });
+                byte[] stub = SelfExtractor.GetStub(DataDirectory ?? Path.Combine(Path.GetTempPath(), "VibeSalamander"));
+                string name = Path.GetFileNameWithoutExtension(finalPath);
+                SelfExtractor.Make(temp, finalPath, stub, new SfxOptions { Title = name, Target = name }, _ => { }, ct);
+                TryDelete(temp);
+            }
+            else if (request.VolumeSize > 0 && new FileInfo(temp).Length > request.VolumeSize)
+            {
+                List<string> parts = Split(temp, archivePath, request.VolumeSize, ct);
+                TryDelete(temp);
+                finalPath = parts[0];
+            }
+            else
+            {
+                if (File.Exists(archivePath))
+                    File.SetAttributes(archivePath, FileAttributes.Normal);
+                File.Move(temp, archivePath, overwrite: true);
+            }
         }
         catch
         {
@@ -244,8 +313,74 @@ internal sealed partial class Archiver : IArchiver
             throw;
         }
         tracker.ReportTo(job, force: true);
-        result.CreatedTopLevelNames.Add(Path.GetFileName(archivePath));
+        result.CreatedTopLevelNames.Add(Path.GetFileName(finalPath));
         return result;
+    }
+
+    /// <summary>
+    /// 7-Zip's "Split to volumes": "backup.zip.001", ".002", ... of <paramref name="size"/> bytes each (the last one
+    /// smaller). Parts of an earlier split that are no longer needed are deleted. Returns the parts.
+    /// </summary>
+    internal static List<string> Split(string source, string archivePath, long size, CancellationToken ct)
+    {
+        var parts = new List<string>();
+        byte[] buffer = new byte[1 << 20];
+        using (var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16))
+        {
+            for (int index = 1; input.Position < input.Length; index++)
+            {
+                string part = $"{archivePath}.{index:000}";
+                parts.Add(part);
+                using var output = new FileStream(part, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16);
+                long left = Math.Min(size, input.Length - input.Position);
+                while (left > 0)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    int read = input.Read(buffer, 0, (int)Math.Min(buffer.Length, left));
+                    if (read <= 0)
+                        break;
+                    output.Write(buffer, 0, read);
+                    left -= read;
+                }
+            }
+        }
+        for (int index = parts.Count + 1; File.Exists($"{archivePath}.{index:000}"); index++)
+            TryDelete($"{archivePath}.{index:000}");
+        return parts;
+    }
+
+    /// <summary>
+    /// 7-Zip's "Path mode": Full = the path without the drive ("Users/me/docs/a.txt"); None = file names only (no
+    /// directories; the same name twice gets " (2)"). Relative leaves the names as they are.
+    /// </summary>
+    internal static List<PackItem> ApplyPathMode(List<PackItem> items, PackPathMode mode)
+    {
+        switch (mode)
+        {
+            case PackPathMode.Full:
+                return items.Select(i =>
+                {
+                    string root = Path.GetPathRoot(i.FullPath) ?? string.Empty;
+                    string name = i.FullPath[root.Length..].Trim('\').Replace('\', '/');
+                    return i with { EntryName = name.Length > 0 ? name : i.EntryName };
+                }).ToList();
+            case PackPathMode.None:
+                var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var files = new List<PackItem>();
+                foreach (PackItem item in items.Where(i => !i.IsDirectory))
+                {
+                    string name = Path.GetFileName(item.FullPath);
+                    if (!taken.Add(name))
+                    {
+                        name = UniqueEntryName(name, taken);
+                        taken.Add(name);
+                    }
+                    files.Add(item with { EntryName = name });
+                }
+                return files;
+            default:
+                return items;
+        }
     }
 
     /// <summary>Adds a file, or a directory with its content (not following junctions).</summary>
@@ -303,9 +438,10 @@ internal sealed partial class Archiver : IArchiver
         return relative.Replace('\\', '/');
     }
 
-    private static void PackZip(List<PackItem> items, string temp, ArchiveCompression compression, string? password, IArchiveJob job,
+    private static void PackZip(List<PackItem> items, string temp, PackRequest request, IArchiveJob job,
         ProgressTracker tracker, OperationResult result)
     {
+        string? password = string.IsNullOrEmpty(request.Password) ? null : request.Password;
         using var file = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16);
         var zip = new ZipBuilder(file);
         foreach (PackItem item in items)
@@ -322,7 +458,19 @@ internal sealed partial class Archiver : IArchiver
             using FileStream? source = OpenSource(item, job, result);
             if (source == null)
                 continue;
-            AddZipFile(zip, item.EntryName, source, item, compression, password, job, tracker);
+            (DateTime, DateTime)? times = null;
+            if (request.StoreNtfsTimes)
+            {
+                try
+                {
+                    times = (File.GetCreationTime(item.FullPath), File.GetLastAccessTime(item.FullPath));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // without them
+                }
+            }
+            AddZipFile(zip, item.EntryName, source, item, request.Compression, password, job, tracker, request.Encryption, times);
             tracker.ItemDone();
             result.Succeeded++;
         }
@@ -331,7 +479,8 @@ internal sealed partial class Archiver : IArchiver
 
     /// <summary>One file into a ZIP, with progress and pause / cancel checks.</summary>
     internal static void AddZipFile(ZipBuilder zip, string entryName, Stream source, PackItem item, ArchiveCompression compression,
-        string? password, IArchiveJob job, ProgressTracker tracker) =>
+        string? password, IArchiveJob job, ProgressTracker tracker, ZipEncryption encryption = ZipEncryption.Aes256,
+        (DateTime Created, DateTime Accessed)? times = null) =>
         zip.AddFile(entryName, source, item.Size, item.LastWrite,
             compression == ArchiveCompression.Store ? null : Level(compression), password,
             progress: read =>
@@ -343,7 +492,9 @@ internal sealed partial class Archiver : IArchiver
             {
                 job.WaitWhilePaused();
                 job.Cancellation.ThrowIfCancellationRequested();
-            });
+            },
+            encryption: encryption,
+            times: times);
 
     private static void PackTar(List<PackItem> items, string temp, bool gzip, ArchiveCompression compression, IArchiveJob job, ProgressTracker tracker, OperationResult result)
     {
@@ -469,7 +620,7 @@ internal sealed partial class Archiver : IArchiver
     /// <summary>ZIP, 7z, RAR: entries and sizes are known up front.</summary>
     private static void UnpackRandomAccess(UnpackState s)
     {
-        using var file = new FileStream(s.Request.ArchivePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+        using Stream file = OpenRead(s.Request.ArchivePath);
         IArchive archive;
         try
         {
@@ -530,7 +681,7 @@ internal sealed partial class Archiver : IArchiver
     /// </summary>
     private static void UnpackStreamed(UnpackState s)
     {
-        using var file = new FileStream(s.Request.ArchivePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+        using Stream file = OpenRead(s.Request.ArchivePath);
         s.Tracker = new ProgressTracker(OperationKind.Unpack, file.Length, 0);
         using Stream data = OpenTarData(s.Kind, file);
         using var reader = new TarReader(data, leaveOpen: true);
@@ -576,13 +727,13 @@ internal sealed partial class Archiver : IArchiver
     /// <summary>A single compressed file (notes.txt.gz → notes.txt).</summary>
     private static void UnpackSingleStream(UnpackState s, string kind)
     {
-        string archiveName = Path.GetFileName(s.Request.ArchivePath);
+        string archiveName = Path.GetFileName(WithoutPartNumber(s.Request.ArchivePath));
         string name = archiveName[..^(kind.Length + 1)];
         if (name.Length == 0)
             name = "unpacked";
         if (!s.Matches(name))
             return;
-        using var file = new FileStream(s.Request.ArchivePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+        using Stream file = OpenRead(s.Request.ArchivePath);
         s.Tracker = new ProgressTracker(OperationKind.Unpack, file.Length, 1);
         DateTime time = File.GetLastWriteTime(s.Request.ArchivePath);
         s.Extract(name, -1, time, () => kind switch

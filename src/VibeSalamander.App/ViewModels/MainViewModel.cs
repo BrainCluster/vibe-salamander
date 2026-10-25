@@ -1244,7 +1244,9 @@ public sealed partial class MainViewModel : BindableBase
         string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} items", items.Count);
 
         var answer = await _host.Dialogs.PackAsync(what, Path.Combine(directory, baseName + format.Extension),
-            formats.Select(f => f.Format).ToList(), format.Id, o.PackCompression, o.PackDeleteSources);
+            formats.Select(f => f.Format).ToList(), format.Id, o.PackCompression, o.PackDeleteSources,
+            new Views.Dialogs.PackAdvanced(o.PackAdvancedOpen, o.PackUpdateMode, o.PackPathMode, o.PackVolumes, o.PackEncryption,
+                o.PackSelfExtracting, o.PackNtfsTimes));
         _host.FocusPane(_active);
         if (answer == null)
             return;
@@ -1257,6 +1259,14 @@ public sealed partial class MainViewModel : BindableBase
         o.PackFormat = chosen.Id;
         o.PackCompression = answer.Compression;
         o.PackDeleteSources = answer.DeleteSources;
+        Views.Dialogs.PackAdvanced advanced = answer.Advanced ?? new Views.Dialogs.PackAdvanced(false, "Replace", "Relative", string.Empty, "Aes256", false, false);
+        o.PackAdvancedOpen = advanced.Open;
+        o.PackUpdateMode = advanced.UpdateMode;
+        o.PackPathMode = advanced.PathMode;
+        o.PackVolumes = advanced.Volumes;
+        o.PackEncryption = advanced.Encryption;
+        o.PackSelfExtracting = advanced.SelfExtracting;
+        o.PackNtfsTimes = advanced.NtfsTimes;
         SaveSettings();
 
         var sources = items.Select(i => i.Entry.FullPath).ToList();
@@ -1277,6 +1287,12 @@ public sealed partial class MainViewModel : BindableBase
                 FormatId = chosen.Id,
                 Compression = compression,
                 Password = password,
+                Encryption = Enum.TryParse(advanced.Encryption, out ZipEncryption chosenEncryption) ? chosenEncryption : ZipEncryption.Aes256,
+                PathMode = Enum.TryParse(advanced.PathMode, out PackPathMode chosenPathMode) ? chosenPathMode : PackPathMode.Relative,
+                UpdateMode = Enum.TryParse(advanced.UpdateMode, out PackUpdateMode chosenUpdateMode) ? chosenUpdateMode : PackUpdateMode.Replace,
+                VolumeSize = chosen.IsZip && advanced.SelfExtracting ? 0 : Math.Max(0, Views.Dialogs.PackAdvanced.ParseVolumeSize(advanced.Volumes)),
+                SelfExtracting = chosen.IsZip && advanced.SelfExtracting,
+                StoreNtfsTimes = chosen.IsZip && advanced.NtfsTimes,
             }, job));
             // move to archive: only when everything went in (and never when the archive is inside a packed directory)
             if (deleteSources && !result.Cancelled && result.Failed == 0 && result.Skipped == 0 &&
