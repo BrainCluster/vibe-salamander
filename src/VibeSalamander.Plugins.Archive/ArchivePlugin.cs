@@ -47,9 +47,11 @@ public sealed class ArchivePlugin : IVibePlugin, ICommandContributor
             {
                 Test(h);
                 return Task.CompletedTask;
-            }, HostCommand: "TestArchive"),
-            new PluginCommand("sfx", "Make self-extracting archive...", null, MakeSelfExtractingAsync, HostCommand: "MakeSelfExtractingArchive"),
-            new PluginCommand("comment", "Archive comment...", null, EditCommentAsync, HostCommand: "ArchiveComment"),
+            }, HostCommand: "TestArchive", AppliesTo: _archiver.CanUnpack, SeparatorBefore: true),
+            new PluginCommand("sfx", "Make self-extracting archive...", null, MakeSelfExtractingAsync, HostCommand: "MakeSelfExtractingArchive",
+                AppliesTo: path => IsZip(path) && Archiver.WithoutPartNumber(path) == path),
+            new PluginCommand("comment", "Archive comment...", null, EditCommentAsync, HostCommand: "ArchiveComment",
+                AppliesTo: path => IsZip(path) && Archiver.WithoutPartNumber(path) == path),
         };
         host.RegisterCommands(this);
     }

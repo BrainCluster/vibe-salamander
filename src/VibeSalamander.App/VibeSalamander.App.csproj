@@ -39,6 +39,7 @@
     <ProjectReference Include="..\VibeSalamander.Plugins.Checksum\VibeSalamander.Plugins.Checksum.csproj" />
     <ProjectReference Include="..\VibeSalamander.Plugins.Ftp\VibeSalamander.Plugins.Ftp.csproj" />
     <ProjectReference Include="..\VibeSalamander.Plugins.DiskMap\VibeSalamander.Plugins.DiskMap.csproj" />
+    <ProjectReference Include="..\VibeSalamander.Plugins.SevenZip\VibeSalamander.Plugins.SevenZip.csproj" />
   </ItemGroup>
 
   <ItemGroup>

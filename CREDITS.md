@@ -95,6 +95,7 @@ Salamander application icon (`src/res/salamand.ico`),
 | [SharpCompress](https://github.com/adamhathcock/sharpcompress) | MIT | archive plugin (zip, 7z, rar, tar, gz, bz2, xz, lz) |
 | [FluentFTP](https://github.com/robinrodricks/FluentFTP) | MIT | FTP / SFTP plugin (FTP, FTPS) |
 | [SSH.NET](https://github.com/sshnet/SSH.NET) | MIT | FTP / SFTP plugin (SFTP) |
+| [7-Zip](https://www.7-zip.org/) by Igor Pavlov | GNU LGPL (+ BSD 3-clause parts, unRAR restriction) | 7-Zip plugin: `lib\7-Zip` (7z.exe, 7z.dll, 7z.sfx) is the unchanged 7-Zip; its license is `lib\7-Zip\License.txt`, the source is at 7-zip.org |
 
 ## License
 

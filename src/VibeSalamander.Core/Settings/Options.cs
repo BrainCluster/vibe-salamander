@@ -383,6 +383,9 @@ public sealed class PluginOptions
     /// <summary>ZIP: store creation and last access times.</summary>
     public bool PackNtfsTimes { get; set; }
 
+    /// <summary>The last values of the formats' own settings ("7z.method" → "LZMA2").</summary>
+    public Dictionary<string, string> PackFormatOptions { get; set; } = new();
+
     /// <summary>Unpack (Alt+F6) each archive into a directory named after it.</summary>
     public bool UnpackToSubfolder { get; set; } = true;
 

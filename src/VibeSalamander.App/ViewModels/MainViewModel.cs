@@ -1246,7 +1246,7 @@ public sealed partial class MainViewModel : BindableBase
         var answer = await _host.Dialogs.PackAsync(what, Path.Combine(directory, baseName + format.Extension),
             formats.Select(f => f.Format).ToList(), format.Id, o.PackCompression, o.PackDeleteSources,
             new Views.Dialogs.PackAdvanced(o.PackAdvancedOpen, o.PackUpdateMode, o.PackPathMode, o.PackVolumes, o.PackEncryption,
-                o.PackSelfExtracting, o.PackNtfsTimes));
+                o.PackSelfExtracting, o.PackNtfsTimes, o.PackFormatOptions));
         _host.FocusPane(_active);
         if (answer == null)
             return;
@@ -1267,7 +1267,14 @@ public sealed partial class MainViewModel : BindableBase
         o.PackEncryption = advanced.Encryption;
         o.PackSelfExtracting = advanced.SelfExtracting;
         o.PackNtfsTimes = advanced.NtfsTimes;
+        if (advanced.FormatOptions != null)
+            o.PackFormatOptions = new Dictionary<string, string>(advanced.FormatOptions);
         SaveSettings();
+        // the chosen format's own settings, without the "7z." in front
+        string prefix = chosen.Id + ".";
+        var formatOptions = (chosen.Options ?? Array.Empty<PackOption>()).ToDictionary(
+            option => option.Id,
+            option => o.PackFormatOptions.TryGetValue(prefix + option.Id, out string? value) ? value : option.Default);
 
         var sources = items.Select(i => i.Entry.FullPath).ToList();
         string baseDirectory = _active.Path;
@@ -1293,6 +1300,7 @@ public sealed partial class MainViewModel : BindableBase
                 VolumeSize = chosen.IsZip && advanced.SelfExtracting ? 0 : Math.Max(0, Views.Dialogs.PackAdvanced.ParseVolumeSize(advanced.Volumes)),
                 SelfExtracting = chosen.IsZip && advanced.SelfExtracting,
                 StoreNtfsTimes = chosen.IsZip && advanced.NtfsTimes,
+                Options = formatOptions,
             }, job));
             // move to archive: only when everything went in (and never when the archive is inside a packed directory)
             if (deleteSources && !result.Cancelled && result.Failed == 0 && result.Skipped == 0 &&

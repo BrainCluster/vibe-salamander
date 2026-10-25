@@ -694,8 +694,9 @@ public sealed class Dialogs
         PackAdvanced? Advanced = null);
 
     /// <summary>Pack's Advanced part (7-Zip's "Add to archive" options); the strings are the enum names of the plugin contracts.</summary>
+    /// <param name="FormatOptions">The formats' own settings ("7z.method" → "LZMA2"): remembered for every format.</param>
     public sealed record PackAdvanced(bool Open, string UpdateMode, string PathMode, string Volumes, string Encryption,
-        bool SelfExtracting, bool NtfsTimes)
+        bool SelfExtracting, bool NtfsTimes, IReadOnlyDictionary<string, string>? FormatOptions = null)
     {
         /// <summary>Bytes of "700M", "4G", "1.5G", "650M - CD", "123456"; 0 = empty; -1 = not a size.</summary>
         public static long ParseVolumeSize(string text)
@@ -817,6 +818,74 @@ public sealed class Dialogs
         Place(encryption, 1, 1);
         Place(selfExtracting, 2, 0, 2);
         Place(ntfsTimes, 3, 0, 2);
+
+        // the chosen format's own settings (7z: method, dictionary, ...), built anew when the format changes
+        var formatValues = new Dictionary<string, string>(advanced.FormatOptions ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+        var formatGrid = new Grid { ColumnSpacing = 12, RowSpacing = 10 };
+        formatGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        formatGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        advancedGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        Place(formatGrid, 4, 0, 2);
+        var passwordOptions = new List<Control>();
+        void BuildFormatOptions()
+        {
+            formatGrid.Children.Clear();
+            formatGrid.RowDefinitions.Clear();
+            passwordOptions.Clear();
+            Plugins.ArchiveFormat f = formats[Math.Max(0, format.SelectedIndex)];
+            if (f.Options is not { Count: > 0 } options)
+                return;
+            int choice = 0, checks = 0;
+            int choiceRows = (options.Count(o => o.Kind == Plugins.PluginFieldKind.Choice) + 1) / 2;
+            foreach (Plugins.PackOption option in options)
+            {
+                string key = f.Id + "." + option.Id;
+                string value = formatValues.TryGetValue(key, out string? remembered) ? remembered : option.Default;
+                Control control;
+                int row, column = 0, span = 1;
+                if (option.Kind == Plugins.PluginFieldKind.Check)
+                {
+                    var check = new CheckBox { Content = Services.Loc.T(option.Label), IsChecked = value == "true" };
+                    check.Checked += (_, _) => formatValues[key] = "true";
+                    check.Unchecked += (_, _) => formatValues[key] = "false";
+                    control = check;
+                    row = choiceRows + checks++;
+                    span = 2;
+                }
+                else
+                {
+                    var box = new ComboBox { Header = Services.Loc.T(option.Label), HorizontalAlignment = HorizontalAlignment.Stretch };
+                    foreach (string c in option.Choices)
+                        box.Items.Add(Services.Loc.T(c));
+                    int index = option.Choices.ToList().IndexOf(value);
+                    box.SelectedIndex = index >= 0 ? index : Math.Max(0, option.Choices.ToList().IndexOf(option.Default));
+                    box.SelectionChanged += (_, _) =>
+                    {
+                        if (box.SelectedIndex >= 0)
+                            formatValues[key] = option.Choices[box.SelectedIndex];
+                    };
+                    control = box;
+                    row = choice / 2;
+                    column = choice % 2;
+                    choice++;
+                }
+                while (formatGrid.RowDefinitions.Count <= row)
+                    formatGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                Grid.SetRow(control, row);
+                Grid.SetColumn(control, column);
+                Grid.SetColumnSpan(control, span);
+                control.Tag = "NoLoc";
+                formatGrid.Children.Add(control);
+                if (option.NeedsPassword)
+                    passwordOptions.Add(control);
+            }
+        }
+        BuildFormatOptions();
+        format.SelectionChanged += (_, _) =>
+        {
+            BuildFormatOptions();
+            UpdateAdvanced();
+        };
         var advancedPart = new Expander
         {
             Header = "Advanced",
@@ -834,6 +903,8 @@ public sealed class Dialogs
             selfExtracting.IsEnabled = f.IsZip && !encrypted;
             ntfsTimes.IsEnabled = f.IsZip;
             volumes.IsEnabled = !(selfExtracting.IsEnabled && selfExtracting.IsChecked == true);
+            foreach (Control control in passwordOptions)
+                control.IsEnabled = encrypted;
         }
         encrypt.Checked += (_, _) => UpdateAdvanced();
         encrypt.Unchecked += (_, _) => UpdateAdvanced();
@@ -940,7 +1011,8 @@ public sealed class Dialogs
             (volumes.Text ?? string.Empty).Trim(),
             EncryptionMethods[Math.Max(0, encryption.SelectedIndex)].Value,
             selfExtracting.IsChecked == true,
-            ntfsTimes.IsChecked == true);
+            ntfsTimes.IsChecked == true,
+            formatValues);
         return new PackAnswer(box.Text.Trim(), formats[format.SelectedIndex].Id, levels[Math.Max(0, level.SelectedIndex)], move.IsChecked == true,
             encrypted ? password.Password : null, chosenAdvanced);
     }

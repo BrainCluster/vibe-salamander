@@ -335,8 +335,13 @@ public interface ICommandContributor
 /// The app command this plugin command answers to ("VerifyChecksums"): it then has a key in
 /// Configuration → Keyboard, and the shortcut shown in the menu follows it.
 /// </param>
+/// <param name="AppliesTo">
+/// For a file (full path): true when the command fits it; such commands also show in the file's right-click menu
+/// under the plugin's name (Test archive on an archive, ...). Null = only in the Plugins menu.
+/// </param>
+/// <param name="SeparatorBefore">A line above the command in the menus.</param>
 public sealed record PluginCommand(string Id, string MenuText, string? ShortcutText, Func<IPluginHost, Task> Execute,
-    string? HostCommand = null);
+    string? HostCommand = null, Func<string, bool>? AppliesTo = null, bool SeparatorBefore = false);
 
 // ---- file systems (FTP, SFTP, ...) ---------------------------------------------------------------
 
@@ -404,8 +409,17 @@ public sealed record RemoteItem(string Name, string Path, bool IsDirectory, long
 /// <param name="IsZip">
 /// A ZIP: the ZIP options of <see cref="PackRequest"/> apply (ZipCrypto, self-extracting, NTFS times).
 /// </param>
+/// <param name="Options">Settings of this format for Pack → Advanced (7z: method, dictionary, ...); their values go into <see cref="PackRequest.Options"/>.</param>
 public sealed record ArchiveFormat(string Id, string DisplayName, string Extension, bool HasCompressionLevels, bool SupportsPassword = false,
-    bool IsZip = false);
+    bool IsZip = false, IReadOnlyList<PackOption>? Options = null);
+
+/// <summary>
+/// A setting of one archive format in Pack → Advanced: a choice (<see cref="PluginFieldKind.Choice"/>) or a check box
+/// (<see cref="PluginFieldKind.Check"/>, value "true" / "false"). Label and choices are English (the app translates them).
+/// </summary>
+/// <param name="NeedsPassword">Only with a password (7z: encrypt file names).</param>
+public sealed record PackOption(string Id, string Label, PluginFieldKind Kind, IReadOnlyList<string> Choices, string Default,
+    bool NeedsPassword = false);
 
 /// <summary>Which part of the files' paths goes into the archive (7-Zip's "Path mode").</summary>
 public enum PackPathMode
@@ -484,6 +498,9 @@ public sealed class PackRequest
 
     /// <summary>ZIP: the files' creation and last access times too (NTFS extra field).</summary>
     public bool StoreNtfsTimes { get; init; }
+
+    /// <summary>The values of the format's <see cref="ArchiveFormat.Options"/> (by id); missing = the default.</summary>
+    public IReadOnlyDictionary<string, string> Options { get; init; } = new Dictionary<string, string>();
 }
 
 /// <summary>Copying files and directories into an archive (F5 / F6 / drag and drop onto a panel showing the archive).</summary>

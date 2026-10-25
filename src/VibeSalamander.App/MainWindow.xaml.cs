@@ -560,6 +560,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
                 sub.Items.Add(MenuItem("Unpack...", nameof(CommandId.Unpack), "\uE896"));
             foreach (Plugins.PluginCommand command in plugin.CommandContributors.SelectMany(c => c.Commands))
             {
+                if (command.SeparatorBefore && sub.Items.Count > 0 && sub.Items[^1] is not MenuFlyoutSeparator)
+                    sub.Items.Add(new MenuFlyoutSeparator());
                 CommandId hostCommand = CommandId.None;
                 bool isHostCommand = command.HostCommand != null && Enum.TryParse(command.HostCommand, out hostCommand);
                 string glyph = isHostCommand && CommandCatalog.Glyph(hostCommand) is { Length: > 0 } commandGlyph ? commandGlyph : pluginGlyph;

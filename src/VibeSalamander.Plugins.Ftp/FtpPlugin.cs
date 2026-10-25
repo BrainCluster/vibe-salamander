@@ -37,15 +37,15 @@ public sealed class FtpPlugin : IVibePlugin, ICommandContributor
                 ShowConnections(h);
                 return Task.CompletedTask;
             }, HostCommand: "ConnectFtp"),
-            new PluginCommand("disconnect", "Disconnect", null, DisconnectAsync),
+            new PluginCommand("disconnect", "Disconnect", null, DisconnectAsync, SeparatorBefore: true),
             new PluginCommand("bookmark", "Add bookmark...", null, AddBookmarkAsync),
             new PluginCommand("log", "Show log", null, h =>
             {
                 ShowLog(h);
                 return Task.CompletedTask;
-            }),
+            }, SeparatorBefore: true),
             new PluginCommand("identity", "Show certificate / host key", null, ShowIdentityAsync),
-            new PluginCommand("command", "Send command...", null, SendCommandAsync),
+            new PluginCommand("command", "Send command...", null, SendCommandAsync, SeparatorBefore: true),
             new PluginCommand("raw", "Show raw listing", null, ShowRawListingAsync),
         };
         host.RegisterCommands(this);

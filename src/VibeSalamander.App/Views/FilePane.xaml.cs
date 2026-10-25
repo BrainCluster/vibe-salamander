@@ -922,6 +922,62 @@ public sealed partial class FilePane : UserControl
     /// else. Shift (or Configuration → Panels) opens the Windows menu directly.
     /// </summary>
     /// <param name="position">Where to show it, relative to the list.</param>
+    /// <summary>
+    /// The archive's plugin in its right-click menu ("Archives ▸", "7-Zip ▸"): Unpack and the plugin's commands that fit
+    /// the file (Test archive, Archive comment, ...).
+    /// </summary>
+    private MenuFlyoutSubItem PluginSubmenu(Services.PluginInfo plugin, string path, PaneViewModel pane)
+    {
+        string pluginGlyph = plugin.IconGlyph is { Length: > 0 } own ? own : "\uF012";
+        var sub = new MenuFlyoutSubItem { Text = plugin.Name, Icon = new FontIcon { Glyph = pluginGlyph } };
+        var unpack = new MenuFlyoutItem { Text = Loc.T("Unpack..."), Icon = new FontIcon { Glyph = "\uE896" } };
+        if (_main!.KeyMap.GetShortcutText(CommandId.Unpack) is { Length: > 0 } unpackKeys)
+            unpack.KeyboardAcceleratorTextOverride = unpackKeys;
+        unpack.Click += async (_, _) =>
+        {
+            _main.Activate(pane);
+            await _main.ExecuteAsync(CommandId.Unpack);
+        };
+        sub.Items.Add(unpack);
+        foreach (Plugins.PluginCommand command in plugin.CommandContributors.SelectMany(c => c.Commands))
+        {
+            bool fits;
+            try
+            {
+                fits = command.AppliesTo?.Invoke(path) == true;
+            }
+            catch (Exception)
+            {
+                fits = false;
+            }
+            if (!fits)
+                continue;
+            if (command.SeparatorBefore && sub.Items[^1] is not MenuFlyoutSeparator)
+                sub.Items.Add(new MenuFlyoutSeparator());
+            CommandId hostCommand = CommandId.None;
+            bool isHostCommand = command.HostCommand != null && Enum.TryParse(command.HostCommand, out hostCommand);
+            string glyph = isHostCommand && CommandCatalog.Glyph(hostCommand) is { Length: > 0 } commandGlyph ? commandGlyph : pluginGlyph;
+            var entry = new MenuFlyoutItem { Text = Loc.T(command.MenuText), Icon = new FontIcon { Glyph = glyph } };
+            if ((isHostCommand ? _main.KeyMap.GetShortcutText(hostCommand) : command.ShortcutText) is { Length: > 0 } keys)
+                entry.KeyboardAcceleratorTextOverride = keys;
+            Plugins.PluginCommand c = command;
+            entry.Click += async (_, _) =>
+            {
+                _main.Activate(pane);
+                try
+                {
+                    await c.Execute(plugin.Host!);
+                }
+                catch (Exception ex)
+                {
+                    _main.Notify($"{plugin.Name}: {ex.Message}");
+                }
+            };
+            sub.Items.Add(entry);
+        }
+        return sub;
+    }
+
     /// <param name="screenX">Screen position for the Windows menu.</param>
     /// <param name="fromMouse">Shift+right-click opens the Windows menu (Shift+F10 is just the menu key).</param>
     private void ShowContextMenu(FileItemViewModel? item, Windows.Foundation.Point position, int screenX, int screenY, bool fromMouse = true)
@@ -1067,6 +1123,8 @@ public sealed partial class FilePane : UserControl
             Add(several ? "Pack into archive..." : "Pack...", "\uE7B8", CommandId.Pack);
             if (_main.Plugins.FindUnpacker(item.Entry.FullPath) != null)
                 Add("Unpack...", "\uE896", CommandId.Unpack);
+            if (!several && archive && _main.Plugins.UnpackerPlugin(item.Entry.FullPath) is { } owner)
+                menu.Items.Add(PluginSubmenu(owner, item.Entry.FullPath, pane));
             Add("Copy path", "\uE8C8", CommandId.CopyFullNameAsText);
             Separator();
             Add("Properties", "\uE90F", CommandId.Properties);
