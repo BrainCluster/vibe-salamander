@@ -387,6 +387,24 @@ public sealed partial class FilePane : UserControl
         }
     }
 
+    /// <summary>
+    /// The Thumbnails view was left: its pictures are let go at once (rows scrolled past keep theirs until they are
+    /// recycled, and the kept ones fill the cache), and the memory goes back to Windows. Icons and Tiles load their
+    /// smaller pictures again.
+    /// </summary>
+    private void ReleaseThumbnails()
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        foreach (FileItemViewModel item in ViewModel.Items)
+            item.ReleaseLargeIcon();
+        PaneViewModel other = ReferenceEquals(ViewModel, _main.Left) ? _main.Right : _main.Left;
+        if (other.EffectiveViewMode != ViewMode.Thumbnails)
+            _main.Thumbnails.Clear(); // the other panel doesn't show thumbnails either: nothing to keep them for
+        // a moment later: the list lets go of the thumbnail rows when it re-templates them for the new view
+        MemoryCleanup.Schedule(trimWorkingSet: true);
+    }
+
     private static ItemsPanelTemplate PanelTemplate(string panel) =>
         (ItemsPanelTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(
             "<ItemsPanelTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'>" + panel + "</ItemsPanelTemplate>");
@@ -428,7 +446,10 @@ public sealed partial class FilePane : UserControl
             (mode != ViewMode.Thumbnails || thumbnailSize == _appliedThumbnailSize))
             return;
         bool modeChanged = mode != _appliedView;
+        ViewMode previous = _appliedView;
         _appliedView = mode;
+        if (modeChanged && previous == ViewMode.Thumbnails)
+            ReleaseThumbnails();
         _appliedBriefWidth = briefWidth;
         _appliedRowHeight = rowHeight;
         _appliedThumbnailSize = thumbnailSize;

@@ -15,10 +15,13 @@ namespace VibeSalamander.Services;
 public static class MemoryCleanup
 {
     private static DispatcherQueueTimer? _timer;
+    private static bool _trimScheduled;
 
     /// <summary>A cleanup a moment from now (calls close together make one cleanup).</summary>
-    public static void Schedule()
+    /// <param name="trimWorkingSet">Also hand the unused pages back to Windows (Task Manager shows the drop).</param>
+    public static void Schedule(bool trimWorkingSet = false)
     {
+        _trimScheduled |= trimWorkingSet;
         DispatcherQueue? dispatcher = DispatcherQueue.GetForCurrentThread();
         if (dispatcher == null)
             return;
@@ -27,7 +30,12 @@ public static class MemoryCleanup
             _timer = dispatcher.CreateTimer();
             _timer.IsRepeating = false;
             _timer.Interval = TimeSpan.FromSeconds(2);
-            _timer.Tick += (_, _) => _ = Task.Run(() => Collect(trimWorkingSet: false));
+            _timer.Tick += (_, _) =>
+            {
+                bool trim = _trimScheduled;
+                _trimScheduled = false;
+                _ = Task.Run(() => Collect(trim));
+            };
         }
         _timer.Stop();
         _timer.Start(); // after the user has settled in the new folder
