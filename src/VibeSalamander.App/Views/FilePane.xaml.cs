@@ -402,7 +402,7 @@ public sealed partial class FilePane : UserControl
         if (other.EffectiveViewMode != ViewMode.Thumbnails)
             _main.Thumbnails.Clear(); // the other panel doesn't show thumbnails either: nothing to keep them for
         // a moment later: the list lets go of the thumbnail rows when it re-templates them for the new view
-        MemoryCleanup.Schedule(trimWorkingSet: true);
+        MemoryCleanup.Schedule();
     }
 
     private static ItemsPanelTemplate PanelTemplate(string panel) =>

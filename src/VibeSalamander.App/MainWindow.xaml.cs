@@ -97,14 +97,14 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
                 MessageBeep(0);
         };
 
-        // minimized: thumbnails are dropped and unused memory goes back to Windows
+        // minimized: the kept thumbnails are dropped and freed memory goes back to Windows
         AppWindow.Changed += (_, _) =>
         {
             bool minimized = AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized };
             if (minimized && !_wasMinimized)
             {
                 _vm.Thumbnails.Clear();
-                MemoryCleanup.Trim();
+                MemoryCleanup.CollectNow();
             }
             _wasMinimized = minimized;
         };

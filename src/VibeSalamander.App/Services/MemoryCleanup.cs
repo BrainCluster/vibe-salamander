@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Runtime;
-using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
 
 namespace VibeSalamander.Services;
@@ -15,13 +14,10 @@ namespace VibeSalamander.Services;
 public static class MemoryCleanup
 {
     private static DispatcherQueueTimer? _timer;
-    private static bool _trimScheduled;
 
     /// <summary>A cleanup a moment from now (calls close together make one cleanup).</summary>
-    /// <param name="trimWorkingSet">Also hand the unused pages back to Windows (Task Manager shows the drop).</param>
-    public static void Schedule(bool trimWorkingSet = false)
+    public static void Schedule()
     {
-        _trimScheduled |= trimWorkingSet;
         DispatcherQueue? dispatcher = DispatcherQueue.GetForCurrentThread();
         if (dispatcher == null)
             return;
@@ -30,21 +26,21 @@ public static class MemoryCleanup
             _timer = dispatcher.CreateTimer();
             _timer.IsRepeating = false;
             _timer.Interval = TimeSpan.FromSeconds(2);
-            _timer.Tick += (_, _) =>
-            {
-                bool trim = _trimScheduled;
-                _trimScheduled = false;
-                _ = Task.Run(() => Collect(trim));
-            };
+            _timer.Tick += (_, _) => _ = Task.Run(Collect);
         }
         _timer.Stop();
         _timer.Start(); // after the user has settled in the new folder
     }
 
-    /// <summary>A cleanup now, and the unused pages handed back to Windows (the window was minimized).</summary>
-    public static void Trim() => _ = Task.Run(() => Collect(trimWorkingSet: true));
+    /// <summary>A cleanup now (the window was minimized: nobody notices the pause).</summary>
+    public static void CollectNow() => _ = Task.Run(Collect);
 
-    private static void Collect(bool trimWorkingSet)
+    /// <summary>
+    /// Collects and compacts, so freed memory goes back to Windows. The pages still in use stay in the working set:
+    /// trimming them as well would only make Task Manager's number smaller, and the app would fault them back in
+    /// (a small stutter) as soon as it is used again.
+    /// </summary>
+    private static void Collect()
     {
         try
         {
@@ -52,19 +48,10 @@ public static class MemoryCleanup
             GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
             GC.WaitForPendingFinalizers(); // WinRT objects let go of their native parts here
             GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
-            if (trimWorkingSet)
-                SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
         }
         catch (Exception)
         {
             // only a cleanup: nothing to report
         }
     }
-
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GetCurrentProcess();
-
-    [DllImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetProcessWorkingSetSize(IntPtr process, nint minimum, nint maximum);
 }
