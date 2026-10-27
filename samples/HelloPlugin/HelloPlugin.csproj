@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    An example plugin (see the wiki: Writing plugins). Build it, copy HelloPlugin.dll into
+    %AppData%\VibeSalamander\Plugins\HelloPlugin\ and restart Vibe Salamander: Plugins → Hello.
+
+    Inside this repository it references the plugin contracts project. A plugin of your own, outside it,
+    references the two DLLs from Vibe Salamander's lib folder instead (Private=false: the app shares them):
+
+      <Reference Include="VibeSalamander.Plugins.Abstractions">
+        <HintPath>C:\Tools\VibeSalamander\lib\VibeSalamander.Plugins.Abstractions.dll</HintPath>
+        <Private>false</Private>
+      </Reference>
+      <Reference Include="VibeSalamander.Core">
+        <HintPath>C:\Tools\VibeSalamander\lib\VibeSalamander.Core.dll</HintPath>
+        <Private>false</Private>
+      </Reference>
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Abstractions\VibeSalamander.Plugins.Abstractions.csproj" Private="false" />
+  </ItemGroup>
+</Project>

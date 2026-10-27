@@ -64,6 +64,9 @@ jobs:
       - name: Build the starter
         run: dotnet build src/VibeSalamander.Launcher/VibeSalamander.Launcher.csproj -c Release
 
+      - name: Build the example plugin
+        run: dotnet build samples/HelloPlugin/HelloPlugin.csproj -c Release
+
   build:
     needs: version
     if: needs.version.outputs.release == 'true'
