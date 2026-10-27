@@ -336,11 +336,40 @@ public sealed partial class SettingsWindow : Window
             ("Brief", ViewMode.Brief), ("Detailed", ViewMode.Detailed), ("Icons", ViewMode.Icons),
             ("Thumbnails", ViewMode.Thumbnails), ("Tiles", ViewMode.Tiles),
         };
+        bool modern = _vm.Settings.ViewStyle == ViewStyle.Modern;
+        page.Children.Add(Section("Folder views"));
+        page.Children.Add(Choice("Views", "Classic: each panel has one view, for every folder and This PC. Modern (like File Explorer): This PC opens in Tiles, " +
+            "folders of pictures and videos in Thumbnails, and the view you choose in a folder is remembered for it.", new[]
+        {
+            ("Classic", ViewStyle.Classic),
+            ("Modern", ViewStyle.Modern),
+        }, _vm.Settings.ViewStyle, v =>
+        {
+            _vm.Settings.ViewStyle = v;
+            _vm.Left.ApplyViewStyle();
+            _vm.Right.ApplyViewStyle();
+            _vm.SaveSettings();
+            Render(_currentPage); // the panels' View label says what it means now
+        }));
+        if (modern)
+        {
+            var forget = IconButton("\uE74D", "Forget", "Forget the views chosen in folders");
+            forget.Click += (_, _) =>
+            {
+                _vm.Settings.FolderViews.Clear();
+                _vm.Left.ApplyViewStyle();
+                _vm.Right.ApplyViewStyle();
+                _vm.SaveSettings();
+            };
+            page.Children.Add(Card("Remembered folder views", "Folders open in their automatic view again.", forget));
+        }
         foreach (var (title, pane) in new[] { ("Left panel", _vm.Left), ("Right panel", _vm.Right) })
         {
             PaneViewModel p = pane;
             page.Children.Add(Section(title));
-            page.Children.Add(Choice("View", "Alt+1…5", views, p.ViewMode, v => p.ViewMode = v));
+            page.Children.Add(modern
+                ? Choice("View of other folders", "Folders without a view of their own that aren't mostly pictures or videos.", views, p.DefaultView, v => p.DefaultView = v)
+                : Choice("View", "Alt+1…5", views, p.DefaultView, v => p.DefaultView = v));
             foreach (DetailColumn column in Enum.GetValues<DetailColumn>())
             {
                 DetailColumn c = column;

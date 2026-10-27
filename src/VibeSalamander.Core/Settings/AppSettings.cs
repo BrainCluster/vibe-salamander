@@ -69,6 +69,12 @@ public sealed class AppSettings
     /// <summary>Column widths of the Find window's results (dragged at the column headers).</summary>
     public FindColumnWidths FindColumns { get; set; } = new();
 
+    /// <summary>Classic: one view per panel; Modern: views per folder, like Explorer (Configuration → Views).</summary>
+    public ViewStyle ViewStyle { get; set; } = ViewStyle.Classic;
+
+    /// <summary>Modern views: the view chosen in each folder, by <see cref="Panels.FolderViews.Key"/>.</summary>
+    public Dictionary<string, FolderView> FolderViews { get; set; } = new();
+
     /// <summary>List of Opened Files (Alt+F11), most recent first.</summary>
     public List<string> OpenedFiles { get; set; } = new();
 

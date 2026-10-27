@@ -98,8 +98,9 @@ public sealed class PaneViewModel : BindableBase, IDisposable
     private List<string> _rememberedSelection = new();
 
     public PaneViewModel(string name, FileSystemRegistry registry, DispatcherQueue dispatcher, IconCache icons,
-                         PanelSettings settings, Func<bool> showHidden)
+                         PanelSettings settings, Func<bool> showHidden, Func<AppSettings> appSettings)
     {
+        _appSettings = appSettings;
         Name = name;
         _registry = registry;
         _dispatcher = dispatcher;
@@ -108,6 +109,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         _sortMode = settings.SortMode;
         _sortDescending = settings.SortDescending;
         _viewMode = Enum.IsDefined(settings.ViewMode) ? settings.ViewMode : ViewMode.Detailed;
+        _defaultView = _viewMode;
         settings.Columns ??= new ColumnSettings();
         Columns = new ColumnLayout(settings.Columns);
         _provider = registry.Find(ThisPcProvider.RootPath)!;
@@ -115,18 +117,68 @@ public sealed class PaneViewModel : BindableBase, IDisposable
 
     // ---- view ----------------------------------------------------------------------------------
 
+    private readonly Func<AppSettings> _appSettings;
     private ViewMode _viewMode;
 
-    /// <summary>Brief / Detailed / Icons / Thumbnails / Tiles (Alt+1…5).</summary>
+    /// <summary>
+    /// The panel's own view: in the Classic views the view of every folder, in the Modern views the view of folders
+    /// that have none of their own (and aren't picture folders). Kept in the settings.
+    /// </summary>
+    private ViewMode _defaultView;
+
+    private bool IsModernViews => _appSettings().ViewStyle == ViewStyle.Modern;
+
+    /// <summary>
+    /// Brief / Detailed / Icons / Thumbnails / Tiles (Alt+1…5): the view chosen by the user. Modern views remember it
+    /// for the folder; Classic views use it everywhere.
+    /// </summary>
     public ViewMode ViewMode
     {
         get => _viewMode;
         set
         {
-            if (SetProperty(ref _viewMode, value))
-                OnPropertyChanged(nameof(EffectiveViewMode));
+            if (IsModernViews)
+                FolderViews.Remember(_appSettings().FolderViews, IsThisPc ? ThisPcProvider.RootPath : _path, value);
+            else
+                _defaultView = value;
+            ShowView(value);
         }
     }
+
+    /// <summary>The panel's view of Configuration → Views (see <see cref="_defaultView"/>).</summary>
+    public ViewMode DefaultView
+    {
+        get => _defaultView;
+        set
+        {
+            _defaultView = value;
+            ApplyViewStyle();
+        }
+    }
+
+    private void ShowView(ViewMode view)
+    {
+        if (SetProperty(ref _viewMode, view, nameof(ViewMode)))
+            OnPropertyChanged(nameof(EffectiveViewMode));
+    }
+
+    /// <summary>The view this folder gets: Classic = the panel's view; Modern = its remembered view, else by its files.</summary>
+    private ViewMode ViewForHere()
+    {
+        if (!IsModernViews)
+            return _defaultView;
+        if (FolderViews.Recall(_appSettings().FolderViews, IsThisPc ? ThisPcProvider.RootPath : _path) is ViewMode remembered)
+            return remembered;
+        if (IsThisPc)
+            return ViewMode.Tiles; // like Explorer's This PC
+        // pictures and videos as thumbnails, like Explorer (not inside archives or on servers: they'd have to be unpacked or downloaded)
+        if (_provider.IsLocalDisk && FolderViews.IsPictureFolder(_entries))
+            return ViewMode.Thumbnails;
+        return _defaultView;
+    }
+
+    /// <summary>Classic or Modern views were switched (Configuration → Views): the panel shows the view it now gets here.</summary>
+    public void ApplyViewStyle() => ShowView(ViewForHere());
 
     /// <summary>The view actually shown (This PC too: Detailed is its drive list with capacity bars).</summary>
     public ViewMode EffectiveViewMode => _viewMode;
@@ -654,6 +706,9 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         OnPropertyChanged(nameof(DisplayPath));
         _entries = listing.Entries;
         _hiddenCount = listing.HiddenCount;
+        // another folder: its view (Modern views), before its rows are made so they get the new view's templates
+        if (!string.Equals(listing.Path, _lastListedPath, StringComparison.OrdinalIgnoreCase))
+            ShowView(ViewForHere());
         FreeSpaceText = listing.FreeSpace is long free ? Loc.F("{0} free", Formats.ShortSize(free)) : string.Empty;
         Error = listing.Error == null ? null : Loc.T(listing.Error);
         if (navigated)
@@ -791,7 +846,7 @@ public sealed class PaneViewModel : BindableBase, IDisposable
         settings.Path = IsThisPc ? ThisPcProvider.RootPath : _path;
         settings.SortMode = _sortMode;
         settings.SortDescending = _sortDescending;
-        settings.ViewMode = _viewMode;
+        settings.ViewMode = _defaultView;
     }
 
     // ---- drives ------------------------------------------------------------------------------

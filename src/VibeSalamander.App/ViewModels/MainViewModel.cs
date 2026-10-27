@@ -134,8 +134,8 @@ public sealed partial class MainViewModel : BindableBase
         Settings.Toolbar ??= CommandCatalog.DefaultToolbar();
         KeyMap = KeyMap.Create(Settings.KeyBindings);
 
-        Left = new PaneViewModel("Left", Registry, dispatcher, Icons, Settings.Left, () => Settings.ShowHidden);
-        Right = new PaneViewModel("Right", Registry, dispatcher, Icons, Settings.Right, () => Settings.ShowHidden);
+        Left = new PaneViewModel("Left", Registry, dispatcher, Icons, Settings.Left, () => Settings.ShowHidden, () => Settings);
+        Right = new PaneViewModel("Right", Registry, dispatcher, Icons, Settings.Right, () => Settings.ShowHidden, () => Settings);
         _active = Settings.RightPanelActive ? Right : Left;
         _active.IsActive = true;
         Settings.UserMenu ??= UserMenu.CreateDefaults();
