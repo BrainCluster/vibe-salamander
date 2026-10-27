@@ -1,0 +1,46 @@
+# Publishes docs/wiki to the repository's GitHub wiki whenever it changes on main. The wiki is generated:
+# edit the pages in docs/wiki, not on GitHub (changes made there are replaced by the next publish).
+# The wiki has to exist first: create any first page once on GitHub (Wiki → Create the first page).
+name: Wiki
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'docs/wiki/**', '.github/workflows/wiki.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wiki
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          url="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+          if ! git clone --quiet --depth 1 "$url" wiki; then
+            echo "::error::The wiki isn't there yet. Open the repository's Wiki tab, create the first page (any text), then run this workflow again."
+            exit 1
+          fi
+          # the wiki becomes exactly docs/wiki
+          find wiki -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r docs/wiki/. wiki/
+          cd wiki
+          git add -A
+          if git diff --cached --quiet; then
+            echo "The wiki is up to date."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet -m "From docs/wiki at ${GITHUB_SHA::7}"
+          git push --quiet origin HEAD
+          echo "Published: https://github.com/${GITHUB_REPOSITORY}/wiki"

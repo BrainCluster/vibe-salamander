@@ -220,12 +220,18 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
     [Fact]
     public async Task Progress_never_counts_a_file_twice()
     {
+        Directory.CreateDirectory(P("src"));
         File.WriteAllBytes(P(@"src\a.bin"), new byte[2_000_000]);
         File.WriteAllBytes(P(@"src\b.bin"), new byte[1_000_000]);
         var reports = new List<OperationProgress>();
         var progress = new SyncProgress(p => { lock (reports) reports.Add(p); });
 
-        await new FileOperationEngine(new Callbacks(), progress).CopyAsync(new[] { P("src") }, P("dst") + "\\");
+        string target = Directory.CreateDirectory(P("dst")).FullName;
+        var callbacks = new Callbacks();
+        await new FileOperationEngine(callbacks, progress).CopyAsync(new[] { P("src") }, target);
+
+        Assert.Empty(callbacks.Errors);
+        Assert.Equal(1_000_000, new FileInfo(P(@"dst\src\b.bin")).Length);
 
         OperationProgress last = reports[^1];
         Assert.Equal(3_000_000, last.TotalBytes);

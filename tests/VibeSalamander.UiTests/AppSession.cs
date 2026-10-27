@@ -190,12 +190,31 @@ public sealed class AppSession : IDisposable
         AutomationElement top = Retry(() => bar.FindFirstDescendant(cf => cf.ByName(menu)), "the menu " + menu);
         top.Click();
         Thread.Sleep(600);
-        foreach (string item in items)
+        for (int i = 0; i < items.Length; i++)
         {
+            string item = items[i];
             AutomationElement entry = Retry(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(item).And(cf.ByControlType(ControlType.MenuItem))),
                 "the menu item " + item);
             entry.Click();
             Thread.Sleep(700);
+            // a click that lands while the menu is still opening is lost: the menu stays open, so click once more
+            if (i == items.Length - 1 && StillThere(entry))
+            {
+                entry.Click();
+                Thread.Sleep(700);
+            }
+        }
+    }
+
+    private static bool StillThere(AutomationElement element)
+    {
+        try
+        {
+            return !element.IsOffscreen;
+        }
+        catch (Exception)
+        {
+            return false; // the menu closed: the element is gone
         }
     }
 
