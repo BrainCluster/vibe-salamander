@@ -229,7 +229,7 @@ public sealed partial class MainViewModel
             string name = Path.GetFileName(target.TrimEnd('\\'));
             if (string.IsNullOrEmpty(name))
                 name = target.TrimEnd('\\').Replace(":", string.Empty); // a drive
-            string link = UniquePath(pane.Path, name + " - Shortcut", ".lnk");
+            string link = NewItemNames.UniquePath(pane.Path, name + " - Shortcut", ".lnk");
             try
             {
                 ShellLink.Create(target, link);
@@ -263,7 +263,7 @@ public sealed partial class MainViewModel
                 if (created.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
                     await pane.NavigateAsync(pane.Path, Path.GetFileName(created), addToHistory: false); // the Create Shortcut wizard names it
                 else
-                    await CreatedItemRenameAsync(pane, created, allowSubdirectories: Directory.Exists(created));
+                    await Files.CreatedItemRenameAsync(pane, created, allowSubdirectories: Directory.Exists(created));
                 return;
             }
             await Task.Delay(100);

@@ -173,19 +173,19 @@ public sealed partial class MainViewModel
     /// <summary>Opening, copying, moving, deleting, renaming, archives, the clipboard.</summary>
     private void AddFileCommands(CommandTable t)
     {
-        t.Add(CommandId.QuickRename, _ => RenameAsync());
+        t.Add(CommandId.QuickRename, _ => Files.RenameAsync());
         t.AddSync(CommandId.View, _ => ViewFile());
         t.AddSync(CommandId.Edit, _ => EditFile());
-        t.Add(CommandId.EditNewFile, _ => EditNewFileAsync());
-        t.AddSync(CommandId.OpenWith, _ => OpenWith());
-        t.Add(CommandId.Copy, _ => CopyOrMoveAsync(move: false));
-        t.Add(CommandId.Move, _ => CopyOrMoveAsync(move: true));
-        t.Add(CommandId.Delete, _ => DeleteAsync(permanent: false));
-        t.Add(CommandId.DeletePermanently, _ => DeleteAsync(permanent: true));
-        t.Add(CommandId.CreateDirectory, _ => CreateDirectoryAsync());
-        t.AddSync(CommandId.Properties, _ => ShowProperties());
-        t.Add(CommandId.ChangeAttributes, _ => ChangeAttributesAsync());
-        t.Add(CommandId.ChangeCase, _ => ChangeCaseAsync());
+        t.Add(CommandId.EditNewFile, _ => Files.EditNewFileAsync());
+        t.AddSync(CommandId.OpenWith, _ => Files.OpenWith());
+        t.Add(CommandId.Copy, _ => Files.CopyOrMoveAsync(move: false));
+        t.Add(CommandId.Move, _ => Files.CopyOrMoveAsync(move: true));
+        t.Add(CommandId.Delete, _ => Files.DeleteAsync(permanent: false));
+        t.Add(CommandId.DeletePermanently, _ => Files.DeleteAsync(permanent: true));
+        t.Add(CommandId.CreateDirectory, _ => Files.CreateDirectoryAsync());
+        t.AddSync(CommandId.Properties, _ => Files.ShowProperties());
+        t.Add(CommandId.ChangeAttributes, _ => Files.ChangeAttributesAsync());
+        t.Add(CommandId.ChangeCase, _ => Files.ChangeCaseAsync());
         t.AddSync(CommandId.ContextMenu, p => _host.ShowContextMenu(p));
         t.AddSync(CommandId.Security, p => ShowSecurity(p));
         t.Add(CommandId.Email, p => EmailAsync(p));
@@ -194,9 +194,9 @@ public sealed partial class MainViewModel
         t.Add(CommandId.NtfsEncrypt, p => NtfsAsync(p, NtfsAction.Encrypt));
         t.Add(CommandId.NtfsDecrypt, p => NtfsAsync(p, NtfsAction.Decrypt));
 
-        t.Add(CommandId.ClipboardCut, _ => ClipboardSetAsync(cut: true));
-        t.Add(CommandId.ClipboardCopy, _ => ClipboardSetAsync(cut: false));
-        t.Add(CommandId.ClipboardPaste, _ => ClipboardPasteAsync());
+        t.Add(CommandId.ClipboardCut, _ => Files.ClipboardSetAsync(cut: true));
+        t.Add(CommandId.ClipboardCopy, _ => Files.ClipboardSetAsync(cut: false));
+        t.Add(CommandId.ClipboardPaste, _ => Files.ClipboardPasteAsync());
         t.Add(CommandId.PasteShortcut, p => PasteShortcutsAsync(p));
         t.Add(CommandId.NewMenu, p => NewFromShellMenuAsync(p));
         t.AddSync(CommandId.CopyFullNameAsText, p => CopyText(string.Join(Environment.NewLine, p.GetOperationItems().Select(i => i.Entry.FullPath))));
@@ -278,6 +278,23 @@ public sealed partial class MainViewModel
         t.Add(CommandId.ErrorLog, p => ShowErrorLogAsync(p));
         t.AddSync(CommandId.Exit, _ => _host.Exit());
     }
+
+    private FileCommands? _fileCommands;
+
+    /// <summary>Copy, move, delete, rename, new folder / file, attributes, case, the clipboard (FileCommands).</summary>
+    internal FileCommands Files => _fileCommands ??= new FileCommands(this, _host, _callbacks);
+
+    /// <summary>Copies or moves in the transfer panel (drag and drop, paste); see FileCommands.TransferAsync.</summary>
+    public Task TransferAsync(IReadOnlyList<string> sources, string target, bool move) => Files.TransferAsync(sources, target, move);
+
+    /// <summary>Confirmations → Drag and Drop operations.</summary>
+    public Task<bool> ConfirmDropAsync(IReadOnlyList<string> paths, string target, bool move) => Files.ConfirmDropAsync(paths, target, move);
+
+    /// <summary>Confirmations → "The directory doesn't exist. Do you want to create it?" Creates it when confirmed.</summary>
+    public Task<bool> CreateMissingDirectoryAsync(string path) => Files.CreateMissingDirectoryAsync(path);
+
+    /// <summary>Moves the panel's caret (after deleting into the Recycle Bin, Alt+Up / Alt+Down, ...).</summary>
+    internal void RequestCaretMove(PaneViewModel pane, int index) => CaretMoveRequested?.Invoke(this, (pane, index));
 
     /// <summary>Raised when the caret should move (Insert marks and moves down).</summary>
     public event EventHandler<(PaneViewModel Pane, int Index)>? CaretMoveRequested;

@@ -248,7 +248,7 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>Copy / move from a disk panel (or dropped, or pasted) onto a server.</summary>
-    private void UploadToRemote(IReadOnlyList<string> sources, IPluginFileSystem fs, string targetDirectory, bool move)
+    internal void UploadToRemote(IReadOnlyList<string> sources, IPluginFileSystem fs, string targetDirectory, bool move)
     {
         if (sources.Count == 0)
             return;

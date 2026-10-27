@@ -86,11 +86,11 @@ public sealed partial class MainViewModel
     public bool IsEditableArchive(PaneViewModel p) => EditableArchive(p) != null;
 
     /// <summary>Where the panel is in an archive that can be changed (ZIP, TAR), or null.</summary>
-    private static ArchiveLocation? EditableArchive(PaneViewModel p) =>
+    internal static ArchiveLocation? EditableArchive(PaneViewModel p) =>
         p.Archive is { } location && SafeCanEdit(location.Archiver, location.ArchivePath) ? location : null;
 
     /// <summary>The archive (that can be changed) a target path points into, or null.</summary>
-    private ArchiveLocation? EditableArchiveAt(string path) =>
+    internal ArchiveLocation? EditableArchiveAt(string path) =>
         ArchiveProvider.Locate(path) is { } location && SafeCanEdit(location.Archiver, location.ArchivePath) ? location : null;
 
     private static bool SafeCanEdit(IArchiver archiver, string path)
@@ -109,7 +109,7 @@ public sealed partial class MainViewModel
     /// F5 / F6 / drag and drop / paste into a panel showing a ZIP or TAR: the files go into the archive (in
     /// the transfer panel). Moving deletes the originals only when everything went in.
     /// </summary>
-    private void AddToArchive(IReadOnlyList<string> sources, ArchiveLocation location, bool move)
+    internal void AddToArchive(IReadOnlyList<string> sources, ArchiveLocation location, bool move)
     {
         if (sources.Count == 0)
             return;

@@ -55,13 +55,6 @@ public sealed partial class MainViewModel
 
     // ---- phase 2 helpers -------------------------------------------------------------------
 
-    private Task ReportProblemsAsync(OperationResult? result)
-    {
-        if (result != null && result.Failed > 0)
-            _host.Notify(Loc.F("Items that could not be processed: {0}.", result.Failed));
-        return Task.CompletedTask;
-    }
-
     /// <summary>Help → Error Log: the panel goes to the log folder, on the newest log (Enter opens it).</summary>
     private async Task ShowErrorLogAsync(PaneViewModel pane)
     {
@@ -79,47 +72,13 @@ public sealed partial class MainViewModel
         return Task.CompletedTask;
     }
 
-    private Task RefreshAllAsync() => Task.WhenAll(Left.RefreshAsync(), Right.RefreshAsync());
+    internal Task RefreshAllAsync() => Task.WhenAll(Left.RefreshAsync(), Right.RefreshAsync());
 
     private async Task FilterAsync()
     {
         string? mask = await _host.Dialogs.FilterAsync(_active.Filter);
         if (mask != null)
             _active.Filter = mask;
-    }
-
-    private void OpenWith()
-    {
-        FileItemViewModel? item = _active.FocusedItem;
-        if (item != null && !item.Entry.IsDirectory)
-            ShellOperations.OpenWith(_host.WindowHandle, item.Entry.FullPath);
-    }
-
-    private async Task ChangeAttributesAsync()
-    {
-        var items = _active.GetOperationItems();
-        if (items.Count == 0)
-            return;
-        AttributeChange? change = await _host.Dialogs.AttributesAsync(items.Select(i => i.Entry).ToList());
-        if (change == null)
-            return;
-        var result = await NameAndAttributeOperations.ChangeAttributesAsync(items.Select(i => i.Entry.FullPath).ToList(), change, _callbacks);
-        await _active.RefreshAsync();
-        await ReportProblemsAsync(result);
-    }
-
-    private async Task ChangeCaseAsync()
-    {
-        var items = _active.GetOperationItems();
-        if (items.Count == 0)
-            return;
-        var options = await _host.Dialogs.ChangeCaseAsync(items.Any(i => i.Entry.IsDirectory));
-        if (options is not { } o)
-            return;
-        var result = await NameAndAttributeOperations.ChangeCaseAsync(items.Select(i => i.Entry.FullPath).ToList(),
-            o.Mode, o.Part, o.Recursive, _callbacks);
-        await _active.RefreshAsync();
-        await ReportProblemsAsync(result);
     }
 
     private async Task GoToShortcutTargetAsync()
@@ -159,55 +118,11 @@ public sealed partial class MainViewModel
     {
         int index = pane.FindMarked(direction);
         if (index >= 0)
-            CaretMoveRequested?.Invoke(this, (pane, index));
-    }
-
-    private async Task ClipboardSetAsync(bool cut)
-    {
-        var items = _active.GetOperationItems();
-        if (items.Count == 0)
-            return;
-        await FileClipboard.SetFilesAsync(items.Select(i => i.Entry.FullPath).ToList(), cut);
-    }
-
-    private async Task ClipboardPasteAsync()
-    {
-        if (!_active.IsLocalDisk)
-            return;
-        var (paths, move) = await FileClipboard.GetFilesAsync();
-        if (paths.Count == 0)
-            return;
-        string target = _active.Path.EndsWith('\\') ? _active.Path : _active.Path + "\\";
-        await TransferAsync(paths, target, move);
-        if (move)
-            Clipboard.Clear(); // cut + paste moves once, like Explorer
-    }
-
-    /// <summary>
-    /// F7: creates "New Folder" in the panel and lets you name it in place, like Explorer (Esc keeps the
-    /// name). Typing a path such as "a\b\c" creates the nested directories, as Salamander's F7 does.
-    /// </summary>
-    private async Task CreateDirectoryAsync()
-    {
-        PaneViewModel pane = _active;
-        if (!pane.IsLocalDisk)
-            return;
-        string path = UniquePath(pane.Path, "New Folder", string.Empty);
-        Directory.CreateDirectory(path);
-        await CreatedItemRenameAsync(pane, path, allowSubdirectories: true);
+            RequestCaretMove(pane, index);
     }
 
     /// <summary>Shift+F7: type a path straight into the address bar.</summary>
     private void ChangeDirectory() => _host.EditPath(_active);
-
-    private void ShowProperties()
-    {
-        var items = _active.GetOperationItems();
-        if (items.Count > 0)
-            ShellOperations.ShowProperties(_host.WindowHandle, items[0].Entry.FullPath);
-        else if (_active.FocusedItem?.Drive is { } drive)
-            ShellOperations.ShowProperties(_host.WindowHandle, drive.Root);
-    }
 
     /// <summary>Executes the command line text in the active panel's directory.</summary>
     public async Task RunCommandLineAsync(string text)
