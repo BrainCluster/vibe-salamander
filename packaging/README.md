@@ -8,7 +8,8 @@ scoop install vibe-salamander
 ```
 
 **winget**: each release gets its manifests in `winget/<version>/` (made by the release workflow with
-`build/package-manifests.sh`, like the Scoop file). To publish a version in the winget catalog:
+`build/package-manifests.sh`, like the Scoop file). The **winget** workflow (`.github/workflows/winget.yml`) submits each release by itself once the repository
+has the secret `WINGET_TOKEN` (a classic GitHub token with the `public_repo` scope). By hand instead:
 
 ```powershell
 winget install wingetcreate

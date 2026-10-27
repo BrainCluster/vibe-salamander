@@ -1,0 +1,60 @@
+# Submits each release to the winget catalog (a pull request to microsoft/winget-pkgs, made by wingetcreate
+# from packaging/winget/<version>). Runs after "Build and release" and by hand (Actions → winget → Run workflow).
+# Needs the repository secret WINGET_TOKEN: a classic GitHub token of the account that submits, with the
+# "public_repo" scope (wingetcreate forks winget-pkgs into that account and opens the pull request from it).
+name: winget
+
+on:
+  workflow_run:
+    workflows: [ "Build and release" ]
+    types: [ completed ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to submit (empty: the one in Directory.Build.props)'
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: winget
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main # the release run commits the manifests after it started
+
+      - name: Submit
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if (-not $env:WINGET_TOKEN) {
+            "::notice::No WINGET_TOKEN secret: nothing submitted (see the comment at the top of .github/workflows/winget.yml)."
+            exit 0
+          }
+          $version = $env:INPUT_VERSION
+          if (-not $version) { $version = ([xml](Get-Content Directory.Build.props)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1 }
+          $folder = "packaging/winget/$version"
+          if (-not (Test-Path $folder)) {
+            "No manifests for $version yet (the release makes them)."
+            exit 0
+          }
+          $id = "BrainCluster.VibeSalamander"
+          # already in the catalog, or a pull request for it open: nothing to do
+          gh api "repos/microsoft/winget-pkgs/contents/manifests/b/BrainCluster/VibeSalamander/$version" --silent 2>$null
+          if ($LASTEXITCODE -eq 0) { "$id $version is in the catalog already."; exit 0 }
+          $open = gh pr list --repo microsoft/winget-pkgs --state open --search "$id $version in:title" --json url --jq '.[].url'
+          if ($open) { "A pull request is open already: $open"; exit 0 }
+
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe submit --token $env:WINGET_TOKEN --prtitle "New version: $id version $version" $folder
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
