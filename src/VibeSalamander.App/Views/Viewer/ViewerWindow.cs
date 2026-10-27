@@ -398,7 +398,7 @@ internal sealed partial class ViewerWindow : Window
                 _ = Guarded(ShowTreeAsync);
                 break;
             case ViewerMode.Preview:
-                _ = Guarded(ShowPreviewAsync);
+                _ = Guarded(() => ShowPreviewAsync());
                 break;
             case ViewerMode.Image:
                 _ = Guarded(ShowImageAsync);
