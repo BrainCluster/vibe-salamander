@@ -148,4 +148,7 @@ public enum CommandId
     TestArchive,
     MakeSelfExtractingArchive,
     ArchiveComment,
+
+    // Help → Error Log
+    ErrorLog,
 }

@@ -104,9 +104,9 @@ public sealed class PluginManager
                 if (fs.CanHandle(path))
                     return fs;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // a broken plugin must not break the panel
+                Core.Diagnostics.ErrorLog.Exception("Plugin " + fs.GetType().Name, ex); // a broken plugin must not break the panel
             }
         }
         return null;
@@ -121,8 +121,9 @@ public sealed class PluginManager
         {
             return archiver.CanBrowse(path);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Core.Diagnostics.ErrorLog.Exception("Plugin " + archiver.GetType().Name, ex);
             return false;
         }
     }
@@ -155,8 +156,9 @@ public sealed class PluginManager
         {
             return archiver.CanUnpack(path);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Core.Diagnostics.ErrorLog.Exception("Plugin " + archiver.GetType().Name, ex);
             return false; // a broken plugin must not break the panel
         }
     }
@@ -229,7 +231,10 @@ public sealed class PluginManager
         {
             // not a .NET assembly, or one that doesn't fit this version: show it only if it was meant as a plugin
             if (Path.GetFileNameWithoutExtension(file).Equals(Path.GetFileName(Path.GetDirectoryName(file)), StringComparison.OrdinalIgnoreCase))
+            {
+                Core.Diagnostics.ErrorLog.Exception("Plugin " + file, ex);
                 _plugins.Add(new PluginInfo { Id = file, Name = Path.GetFileNameWithoutExtension(file), Source = file, Error = ex.Message });
+            }
             return;
         }
         foreach (Type type in types)
@@ -240,6 +245,7 @@ public sealed class PluginManager
             }
             catch (Exception ex)
             {
+                Core.Diagnostics.ErrorLog.Exception("Plugin " + type.FullName, ex);
                 _plugins.Add(new PluginInfo { Id = type.FullName ?? file, Name = type.Name, Source = file, Error = ex.InnerException?.Message ?? ex.Message });
             }
         }
@@ -285,6 +291,7 @@ public sealed class PluginManager
         }
         catch (Exception ex)
         {
+            Core.Diagnostics.ErrorLog.Exception("Plugin " + info.Name, ex);
             info.Error = ex.Message;
             info.Archivers.Clear();
             info.CommandContributors.Clear();

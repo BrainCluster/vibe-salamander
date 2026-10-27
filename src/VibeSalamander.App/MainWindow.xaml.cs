@@ -1520,8 +1520,13 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
 
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _notificationTimer;
 
-    public void Notify(string message, bool isError = true)
+    public void Notify(string message, bool isError = true) => Notify(message, isError, log: true);
+
+    /// <param name="log">Errors go to the error log too (Help → Error Log); false when it is already logged.</param>
+    public void Notify(string message, bool isError, bool log)
     {
+        if (isError && log)
+            Core.Diagnostics.ErrorLog.Error("Shown", message);
         Notification.Severity = isError ? InfoBarSeverity.Error : InfoBarSeverity.Informational;
         Notification.Title = isError ? Loc.T("Couldn't do that") : string.Empty;
         Notification.Message = Loc.T(message);

@@ -240,6 +240,7 @@
             <MenuBarItem Title="Help">
                 <MenuFlyoutItem Text="Contents" Tag="Help" Click="Menu_Click" KeyboardAcceleratorTextOverride="F1" />
                 <MenuFlyoutItem Text="Keyboard Shortcuts" Click="Shortcuts_Click" />
+                <MenuFlyoutItem Text="Error Log" Tag="ErrorLog" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="About Vibe Salamander" Tag="About" Click="Menu_Click" />
             </MenuBarItem>

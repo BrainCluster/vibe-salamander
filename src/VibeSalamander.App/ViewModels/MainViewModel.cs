@@ -530,11 +530,13 @@ public sealed partial class MainViewModel : BindableBase
                     ShellOperations.Open("https://github.com/BrainCluster/vibe-salamander");
                     break;
                 case CommandId.About: _host.ShowAbout(); break;
+                case CommandId.ErrorLog: await ShowErrorLogAsync(p); break;
                 case CommandId.Exit: _host.Exit(); break;
             }
         }
         catch (Exception ex)
         {
+            Core.Diagnostics.ErrorLog.Exception(CommandCatalog.DisplayName(command), ex); // with the details the message leaves out
             _host.Notify(ex.Message);
         }
         OnPropertyChanged(nameof(WindowTitle));
@@ -2055,6 +2057,17 @@ public sealed partial class MainViewModel : BindableBase
         if (result != null && result.Failed > 0)
             _host.Notify(Loc.F("Items that could not be processed: {0}.", result.Failed));
         return Task.CompletedTask;
+    }
+
+    /// <summary>Help → Error Log: the panel goes to the log folder, on the newest log (Enter opens it).</summary>
+    private async Task ShowErrorLogAsync(PaneViewModel pane)
+    {
+        if (Core.Diagnostics.ErrorLog.NewestFile() is not { } newest)
+        {
+            _host.Notify("No errors have been logged.", isError: false);
+            return;
+        }
+        await pane.NavigateAsync(Core.Diagnostics.ErrorLog.Folder, Path.GetFileName(newest));
     }
 
     public Task ShowErrorAsync(string message)

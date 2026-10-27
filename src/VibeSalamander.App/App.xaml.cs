@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using System.Reflection;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
+using VibeSalamander.Core.Diagnostics;
 using VibeSalamander.Core.Settings;
 
 namespace VibeSalamander;
@@ -14,6 +16,25 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        string version = typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "?";
+        ErrorLog.Start(version);
+        // an error nothing caught in the window (usually in an event handler): logged and reported, the program goes on
+        UnhandledException += App_UnhandledException;
+        // one on another thread ends the program: at least the log knows why, and the next start says so
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => ErrorLog.Crash("Unhandled exception", e.ExceptionObject as Exception);
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            ErrorLog.Exception("Background task", e.Exception);
+            e.SetObserved();
+        };
+    }
+
+    private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        ErrorLog.Exception("Unhandled exception", e.Exception ?? new InvalidOperationException(e.Message));
+        e.Handled = true;
+        string message = e.Exception?.Message is { Length: > 0 } m ? m : e.Message;
+        _window?.Notify(Services.Loc.F("Something went wrong: {0} The details are in the error log (Help → Error Log).", message), isError: true, log: false);
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -44,6 +65,9 @@ public partial class App : Application
         }
         _window = new MainWindow();
         _window.Activate();
+        if (ErrorLog.TakeCrashNotice())
+            _window.Notify("Vibe Salamander closed because of an error the last time it ran. The details are in the error log (Help → Error Log).",
+                isError: false);
     }
 
     /// <summary>After a restart: registers as the single instance when the closing one has exited.</summary>

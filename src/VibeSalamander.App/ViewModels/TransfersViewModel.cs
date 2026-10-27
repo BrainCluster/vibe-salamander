@@ -494,8 +494,11 @@ public sealed class TransfersViewModel : BindableBase
         public Task<ConflictChoice> ResolveConflictAsync(ConflictInfo conflict) =>
             AskAsync(() => _dialogs.ConflictAsync(conflict, _item.Title), ConflictChoice.Cancel);
 
-        public Task<ErrorChoice> ResolveErrorAsync(OperationError error) =>
-            AskAsync(() => _dialogs.ErrorAsync(error, _item.Title), ErrorChoice.Cancel);
+        public Task<ErrorChoice> ResolveErrorAsync(OperationError error)
+        {
+            Core.Diagnostics.ErrorLog.Error(_item.Title, $"{error.Path}: {error.Message}");
+            return AskAsync(() => _dialogs.ErrorAsync(error, _item.Title), ErrorChoice.Cancel);
+        }
 
         public Task<string?> AskPasswordAsync(string archivePath, bool wrongPassword) =>
             AskAsync<string?>(() => _dialogs.PasswordAsync(archivePath, wrongPassword, _item.Title), null);
