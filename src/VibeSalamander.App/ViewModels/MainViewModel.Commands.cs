@@ -203,8 +203,8 @@ public sealed partial class MainViewModel
         t.AddSync(CommandId.CopyNameAsText, p => CopyText(string.Join(Environment.NewLine, p.GetOperationItems().Select(i => i.Entry.Name))));
         t.AddSync(CommandId.CopyPathAsText, p => CopyText(p.IsLocalDisk ? p.Path : p.DisplayPath));
 
-        t.Add(CommandId.Pack, _ => PackAsync());
-        t.Add(CommandId.Unpack, _ => UnpackAsync());
+        t.Add(CommandId.Pack, _ => Archives.PackAsync());
+        t.Add(CommandId.Unpack, _ => Archives.UnpackAsync());
         foreach (CommandId pluginCommand in new[]
                  {
                      CommandId.CalculateChecksums, CommandId.VerifyChecksums, CommandId.ConnectFtp, CommandId.DiskMap,
@@ -280,6 +280,11 @@ public sealed partial class MainViewModel
     }
 
     private FileCommands? _fileCommands;
+    private ArchiveCommands? _archiveCommands;
+
+    /// <summary>Pack and Unpack (ArchiveCommands).</summary>
+    internal ArchiveCommands Archives => _archiveCommands ??= new ArchiveCommands(this, _host);
+
 
     /// <summary>Copy, move, delete, rename, new folder / file, attributes, case, the clipboard (FileCommands).</summary>
     internal FileCommands Files => _fileCommands ??= new FileCommands(this, _host, _callbacks);
