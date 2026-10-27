@@ -8,4 +8,9 @@
   <ItemGroup>
     <InternalsVisibleTo Include="VibeSalamander.Core.Tests" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- the viewer and the editor: Markdown pages, YAML trees -->
+    <PackageReference Include="Markdig" Version="0.40.0" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+  </ItemGroup>
 </Project>
