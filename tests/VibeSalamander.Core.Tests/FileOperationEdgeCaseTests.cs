@@ -217,6 +217,22 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         Assert.Equal(48L * 1024 * 1024, new FileInfo(big).Length);
     }
 
+    [Fact]
+    public async Task Progress_never_counts_a_file_twice()
+    {
+        File.WriteAllBytes(P(@"src.bin"), new byte[2_000_000]);
+        File.WriteAllBytes(P(@"src.bin"), new byte[1_000_000]);
+        var reports = new List<OperationProgress>();
+        var progress = new SyncProgress(p => { lock (reports) reports.Add(p); });
+
+        await new FileOperationEngine(new Callbacks(), progress).CopyAsync(new[] { P("src") }, P("dst") + "\\");
+
+        OperationProgress last = reports[^1];
+        Assert.Equal(3_000_000, last.TotalBytes);
+        Assert.Equal(3_000_000, last.TotalBytesDone); // was 6,000,000: each finished file counted twice
+        Assert.All(reports, r => Assert.True(r.TotalBytesDone <= r.TotalBytes, $"{r.TotalBytesDone} of {r.TotalBytes}"));
+    }
+
     // ---- targets in the way ------------------------------------------------------------------------------
 
     [Fact]

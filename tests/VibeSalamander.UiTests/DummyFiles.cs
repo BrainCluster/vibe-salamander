@@ -20,9 +20,12 @@ public sealed class DummyFiles : IDisposable
     public string Target => Path.Combine(Root, "Target");
     public string Many => Path.Combine(Root, "Many files");
 
-    public DummyFiles()
+    /// <param name="root">Where (the documentation pictures use a short path like C:\Demo); a new temp folder when null.</param>
+    public DummyFiles(string? root = null)
     {
-        Root = Path.Combine(Path.GetTempPath(), "vibe-ui-" + Guid.NewGuid().ToString("N")[..8]);
+        Root = root ?? Path.Combine(Path.GetTempPath(), "vibe-ui-" + Guid.NewGuid().ToString("N")[..8]);
+        if (Directory.Exists(Root))
+            new DummyFilesCleaner(Root).Dispose(); // left over from an earlier run
         Directory.CreateDirectory(Root);
         var time = new DateTime(2026, 3, 14, 9, 26, 53);
 
@@ -99,13 +102,19 @@ public sealed class DummyFiles : IDisposable
         bitmap.Save(path, path.EndsWith(".png", StringComparison.Ordinal) ? ImageFormat.Png : ImageFormat.Jpeg);
     }
 
+    public void Dispose() => new DummyFilesCleaner(Root).Dispose();
+}
+
+/// <summary>Deletes a dummy files folder (read-only files too); what can't be deleted on a build machine stays.</summary>
+internal sealed class DummyFilesCleaner(string root) : IDisposable
+{
     public void Dispose()
     {
         try
         {
-            foreach (string file in Directory.EnumerateFiles(Root, "*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 }))
+            foreach (string file in Directory.EnumerateFiles(root, "*", new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 }))
                 File.SetAttributes(file, FileAttributes.Normal);
-            Directory.Delete(Root, recursive: true);
+            Directory.Delete(root, recursive: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

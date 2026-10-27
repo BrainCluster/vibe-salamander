@@ -30,6 +30,9 @@ public sealed class FileOperationEngine : IPausable
     public EngineOptions Options { get; set; } = new();
     private bool _skipAllErrors;
     private long _totalBytes, _doneBytes, _currentDone, _currentTotal;
+
+    /// <summary>A file is being copied: its bytes so far count toward the total (once it's done they are in _doneBytes).</summary>
+    private bool _inFile;
     private int _itemsTotal, _itemsDone;
     private string _currentSource = string.Empty, _currentTarget = string.Empty;
     private readonly Stopwatch _clock = new();
@@ -301,6 +304,7 @@ public sealed class FileOperationEngine : IPausable
         _currentTarget = target;
         _currentDone = 0;
         _currentTotal = step.Size;
+        _inFile = true;
         Report(force: true);
 
         bool overwrite = false;
@@ -691,6 +695,7 @@ public sealed class FileOperationEngine : IPausable
         _problemsBefore.Clear();
         _skipAllErrors = false;
         _totalBytes = _doneBytes = _currentDone = _currentTotal = 0;
+        _inFile = false;
         _itemsTotal = _itemsDone = 0;
         _clock.Restart();
         Report(force: true, analyzing: true);
@@ -705,7 +710,8 @@ public sealed class FileOperationEngine : IPausable
     private void Done(long bytes)
     {
         _doneBytes += bytes;
-        _currentDone = _currentTotal;
+        _currentDone = _currentTotal; // the file's own bar shows it full
+        _inFile = false; // ...but its bytes are counted once, in _doneBytes
         _itemsDone++;
         Report(force: false);
     }
@@ -722,7 +728,7 @@ public sealed class FileOperationEngine : IPausable
             return;
         _lastReportTicks = now;
 
-        long done = _doneBytes + _currentDone;
+        long done = _doneBytes + (_inFile ? _currentDone : 0);
         double seconds = _clock.Elapsed.TotalSeconds;
         double speed = seconds > 0.5 ? done / seconds : 0;
         TimeSpan? remaining = speed > 0 && _totalBytes > done ? TimeSpan.FromSeconds((_totalBytes - done) / speed) : null;

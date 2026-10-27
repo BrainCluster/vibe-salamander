@@ -240,6 +240,8 @@ public sealed class AppSession : IDisposable
             }
         }
         Thread.Sleep(500);
+        Window.SetForeground(); // the keys go to the main window again
+        Thread.Sleep(300);
     }
 
     // ---- the mouse ---------------------------------------------------------------------------------------

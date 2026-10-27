@@ -13,7 +13,7 @@ namespace VibeSalamander.UiTests;
 /// </summary>
 public sealed class DocumentationScreenshots : IDisposable
 {
-    private readonly DummyFiles _files = new();
+    private readonly DummyFiles _files = new(@"C:\Demo"); // a short, tidy path in the address bar
 
     public void Dispose() => _files.Dispose();
 
