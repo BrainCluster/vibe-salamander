@@ -88,7 +88,7 @@ internal sealed partial class ViewerWindow
         _imageScroller = new ScrollViewer
         {
             ZoomMode = ZoomMode.Enabled,
-            MinZoomFactor = 0.02f,
+            MinZoomFactor = 0.1f, // WinUI refuses less than 0.1
             MaxZoomFactor = 32f,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
