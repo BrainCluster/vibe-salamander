@@ -253,7 +253,7 @@ internal sealed class ArchivePanelCommands
                     Selected = new[] { file },
                 };
                 if (!_main.RunProgramRule(Settings.Viewers, opened, context))
-                    ShellOperations.Open(file, directory);
+                    _main.ViewWithoutRules(file);
             }
             return result;
         });

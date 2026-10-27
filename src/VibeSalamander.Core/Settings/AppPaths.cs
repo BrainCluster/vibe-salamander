@@ -19,6 +19,11 @@ public static class AppPaths
     public static string Home => Override ??
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VibeSalamander");
 
+    /// <summary>The web view's own data (the viewer's previews, the editor): cache, not settings.</summary>
+    public static string WebView => Override is { } home
+        ? Path.Combine(home, "WebView2")
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VibeSalamander", "WebView2");
+
     /// <summary>The error logs.</summary>
     public static string Logs => Override is { } home
         ? Path.Combine(home, "Logs")

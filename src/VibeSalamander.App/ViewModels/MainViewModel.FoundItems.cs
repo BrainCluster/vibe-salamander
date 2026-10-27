@@ -28,11 +28,11 @@ public sealed partial class MainViewModel
 
     /// <summary>F3 on a found file: Configuration → Viewers, else the associated program.</summary>
     public void ViewFoundFile(FileEntry entry) =>
-        RunFoundFile(entry, Settings.Viewers, () => ShellOperations.Open(entry.FullPath, Path.GetDirectoryName(entry.FullPath)));
+        RunFoundFile(entry, Settings.Viewers, () => ViewWithoutRules(entry.FullPath));
 
     /// <summary>F4 on a found file: Configuration → Editors, else the "edit" verb.</summary>
     public void EditFoundFile(FileEntry entry) =>
-        RunFoundFile(entry, Settings.Editors, () => ShellOperations.Edit(entry.FullPath));
+        RunFoundFile(entry, Settings.Editors, () => EditWithoutRules(entry.FullPath));
 
     internal void RunFoundFile(FileEntry entry, IEnumerable<ProgramRule> rules, Action fallback)
     {

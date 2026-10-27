@@ -14,3 +14,6 @@ TestResults/
 *.binlog
 publish/
 build/publish/
+
+# the editor (Monaco) is downloaded by the build
+src/VibeSalamander.App/Assets/Monaco/

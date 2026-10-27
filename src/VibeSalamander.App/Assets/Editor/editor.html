@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Vibe Salamander Authors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- The built-in editor's page: Monaco (the editor of Visual Studio Code) talking to the app through messages. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body, #editor { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+</style>
+</head>
+<body>
+<div id="editor"></div>
+<script src="../Monaco/vs/loader.js"></script>
+<script>
+  "use strict";
+  require.config({ paths: { vs: "../Monaco/vs" } });
+
+  let editor = null;
+  let loading = false;
+  let textTimer = 0;
+  const send = (message) => window.chrome.webview.postMessage(message);
+
+  function sendText(id) {
+    send({ type: "text", id: id || 0, text: editor.getValue(), version: editor.getModel().getAlternativeVersionId() });
+  }
+
+  function scheduleText() {
+    clearTimeout(textTimer);
+    textTimer = setTimeout(() => sendText(0), 350);
+  }
+
+  function handle(m) {
+    const model = editor.getModel();
+    switch (m.type) {
+      case "load":
+        loading = true;
+        monaco.editor.setModelLanguage(model, m.language || "plaintext");
+        model.setValue(m.text);
+        model.setEOL(m.eol === "LF" ? monaco.editor.EndOfLineSequence.LF : monaco.editor.EndOfLineSequence.CRLF);
+        loading = false;
+        editor.setPosition({ lineNumber: m.line || 1, column: 1 });
+        editor.revealLineInCenter(m.line || 1);
+        editor.focus();
+        send({ type: "loaded", version: model.getAlternativeVersionId() });
+        sendText(0);
+        break;
+      case "options":
+        editor.updateOptions(m.options);
+        if (m.theme) monaco.editor.setTheme(m.theme);
+        break;
+      case "language":
+        monaco.editor.setModelLanguage(model, m.language);
+        break;
+      case "eol":
+        model.pushEOL(m.eol === "LF" ? monaco.editor.EndOfLineSequence.LF : monaco.editor.EndOfLineSequence.CRLF);
+        break;
+      case "markers":
+        monaco.editor.setModelMarkers(model, "vibe", (m.markers || []).map(x => ({
+          severity: monaco.MarkerSeverity.Error,
+          message: x.message,
+          startLineNumber: Math.max(1, x.line), startColumn: Math.max(1, x.column),
+          endLineNumber: Math.max(1, x.line), endColumn: Math.max(1, x.column) + 1,
+        })));
+        break;
+      case "getText":
+        sendText(m.id);
+        break;
+      case "replaceAll":
+        // as one edit: Ctrl+Z brings the text back
+        editor.pushUndoStop();
+        editor.executeEdits("vibe", [{ range: model.getFullModelRange(), text: m.text }]);
+        editor.pushUndoStop();
+        break;
+      case "command":
+        editor.focus();
+        editor.trigger("vibe", m.id, null);
+        break;
+      case "reveal":
+        editor.setPosition({ lineNumber: m.line, column: m.column || 1 });
+        editor.revealLineInCenter(m.line);
+        editor.focus();
+        break;
+      case "focus":
+        editor.focus();
+        break;
+    }
+  }
+
+  require(["vs/editor/editor.main"], function () {
+    // the app checks JSON, XML and YAML itself (one kind of problem list for all three)
+    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({ validate: false, allowComments: true });
+    editor = monaco.editor.create(document.getElementById("editor"), {
+      value: "",
+      language: "plaintext",
+      automaticLayout: true,
+      fontFamily: "'Cascadia Mono', Consolas, 'Courier New', monospace",
+      fontSize: 14,
+      minimap: { enabled: true },
+      wordWrap: "off",
+      renderWhitespace: "selection",
+      bracketPairColorization: { enabled: true },
+      guides: { bracketPairs: true, indentation: true },
+      smoothScrolling: true,
+      mouseWheelZoom: true,
+      folding: true,
+      showFoldingControls: "mouseover",
+      unicodeHighlight: { ambiguousCharacters: false },
+      scrollBeyondLastLine: false,
+      fixedOverflowWidgets: true,
+    });
+    editor.onDidChangeModelContent(() => {
+      if (loading) return;
+      send({ type: "changed", version: editor.getModel().getAlternativeVersionId() });
+      scheduleText();
+    });
+    editor.onDidChangeCursorPosition(e => send({ type: "cursor", line: e.position.lineNumber, column: e.position.column }));
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => send({ type: "key", key: "save" }));
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS, () => send({ type: "key", key: "saveAs" }));
+    editor.addCommand(monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF, () => send({ type: "key", key: "format" }));
+    editor.addCommand(monaco.KeyCode.F3 | monaco.KeyMod.CtrlCmd, () => send({ type: "key", key: "viewer" }));
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV, () => send({ type: "key", key: "preview" }));
+    window.chrome.webview.addEventListener("message", e => handle(e.data));
+    send({ type: "ready" });
+  });
+</script>
+</body>
+</html>

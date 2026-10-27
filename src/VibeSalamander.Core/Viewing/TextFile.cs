@@ -284,6 +284,25 @@ public sealed class TextFile : IDisposable
         return text.TrimEnd('\n', '\r');
     }
 
+    /// <summary>
+    /// True when the line is a piece of a longer line (it doesn't end with a line break and isn't the last): copied
+    /// text joins it with the next one.
+    /// </summary>
+    public bool IsPiece(long line)
+    {
+        if (line >= LineCount - 1)
+            return false;
+        var ranges = LineRanges(line, 1);
+        if (ranges.Count == 0)
+            return false;
+        int unit = Encoding.UnitSize;
+        byte[] last = ReadBytes(ranges[0].End - unit, unit);
+        if (last.Length < unit)
+            return false;
+        int value = unit == 1 ? last[0] : Encoding.IsBigEndian ? last[^1] : last[0];
+        return value != '\n';
+    }
+
     /// <summary>Raw bytes (the hex view); fewer at the end of the file.</summary>
     public byte[] ReadBytes(long offset, int count)
     {

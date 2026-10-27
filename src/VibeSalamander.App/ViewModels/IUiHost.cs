@@ -44,6 +44,12 @@ public interface IUiHost
     /// <summary>Ctrl+F1: volume details in a flyout at the pane's address bar.</summary>
     void ShowDriveInformation(PaneViewModel pane);
     void ShowFindWindow(string directory);
+
+    /// <summary>The built-in viewer (F3) on a file; <paramref name="siblings"/> are the files the viewer can go through.</summary>
+    void OpenViewer(string path, IReadOnlyList<string> siblings);
+
+    /// <summary>The built-in editor (F4) on a file; <paramref name="afterSave"/> runs after each save (to send a copy back).</summary>
+    void OpenEditor(string path, Func<string, Task>? afterSave = null);
     Task<string?> EditNameInPlaceAsync(PaneViewModel pane, FileItemViewModel item, bool selectWholeName = false);
     void ShowContextMenu(PaneViewModel pane);
 

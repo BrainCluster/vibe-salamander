@@ -101,6 +101,9 @@ public sealed class AppSettings
     public HistoryOptions History { get; set; } = new();
     public PluginOptions Plugins { get; set; } = new();
 
+    /// <summary>The built-in viewer (F3) and editor (F4).</summary>
+    public ViewerOptions Viewer { get; set; } = new();
+
     /// <summary>Viewers (F3) by file mask, first match wins; no match = the default Windows app.</summary>
     public List<ProgramRule> Viewers { get; set; } = new();
 

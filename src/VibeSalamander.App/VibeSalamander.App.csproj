@@ -51,4 +51,32 @@
     <!-- translations (Configuration → General → Language) -->
     <Content Include="Strings\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!--
+    The built-in editor is Monaco (the editor of Visual Studio Code, MIT). It isn't kept in the repository: the first
+    build downloads it from npm (registry.npmjs.org) into Assets\Monaco (ignored by git); Windows' tar unpacks it.
+  -->
+  <PropertyGroup>
+    <MonacoVersion>0.52.2</MonacoVersion>
+    <MonacoFolder>$(MSBuildProjectDirectory)\Assets\Monaco</MonacoFolder>
+    <MonacoDownload>$(MSBuildProjectDirectory)\obj\monaco-$(MonacoVersion)</MonacoDownload>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Assets\Editor\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="DownloadMonaco" Condition="!Exists('$(MonacoFolder)\vs\loader.js')">
+    <DownloadFile SourceUrl="https://registry.npmjs.org/monaco-editor/-/monaco-editor-$(MonacoVersion).tgz" DestinationFolder="$(MonacoDownload)" Retries="3" />
+    <MakeDir Directories="$(MonacoDownload)\package-files" />
+    <Exec Command="tar -xzf &quot;$(MonacoDownload)\monaco-editor-$(MonacoVersion).tgz&quot; -C &quot;$(MonacoDownload)\package-files&quot;" />
+    <ItemGroup>
+      <MonacoFiles Include="$(MonacoDownload)\package-files\package\min\vs\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(MonacoFiles)" DestinationFiles="@(MonacoFiles->'$(MonacoFolder)\vs\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="$(MonacoDownload)\package-files\package\LICENSE" DestinationFolder="$(MonacoFolder)" />
+  </Target>
+  <Target Name="IncludeMonaco" BeforeTargets="AssignTargetPaths" DependsOnTargets="DownloadMonaco">
+    <ItemGroup>
+      <Content Include="$(MonacoFolder)\**\*" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 </Project>

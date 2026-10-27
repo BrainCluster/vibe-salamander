@@ -95,6 +95,10 @@ Salamander application icon (`src/res/salamand.ico`),
 | [SharpCompress](https://github.com/adamhathcock/sharpcompress) | MIT | archive plugin (zip, 7z, rar, tar, gz, bz2, xz, lz) |
 | [FluentFTP](https://github.com/robinrodricks/FluentFTP) | MIT | FTP / SFTP plugin (FTP, FTPS) |
 | [SSH.NET](https://github.com/sshnet/SSH.NET) | MIT | FTP / SFTP plugin (SFTP) |
+| [Monaco Editor](https://github.com/microsoft/monaco-editor) | MIT | the built-in editor (F4); downloaded by the build, its LICENSE is in Assets\Monaco |
+| [Markdig](https://github.com/xoofx/markdig) | BSD 2-clause | Markdown in the viewer and the editor's preview |
+| [YamlDotNet](https://github.com/aaubry/YamlDotNet) | MIT | YAML trees and checks |
+| [Microsoft Edge WebView2](https://learn.microsoft.com/microsoft-edge/webview2/) | Microsoft (part of Windows) | the previews and the editor |
 | [7-Zip](https://www.7-zip.org/) by Igor Pavlov | GNU LGPL (+ BSD 3-clause parts, unRAR restriction) | the separate 7-Zip plugin download: its 7z.exe, 7z.dll and 7z.sfx are the unchanged 7-Zip, with 7-Zip's License.txt; the source is at 7-zip.org |
 
 ## License

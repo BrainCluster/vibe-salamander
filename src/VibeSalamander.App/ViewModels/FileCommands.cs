@@ -304,7 +304,7 @@ internal sealed class FileCommands
         await File.WriteAllTextAsync(path, string.Empty);
         string? final = await CreatedItemRenameAsync(pane, path, allowSubdirectories: false);
         if (final != null && File.Exists(final))
-            ShellOperations.Edit(final);
+            _main.EditWithoutRules(final);
     }
 
     /// <summary>Focuses a just created item and starts the in-place rename on it. Returns its final path.</summary>

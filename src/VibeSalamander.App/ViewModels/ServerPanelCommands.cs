@@ -342,6 +342,14 @@ internal sealed class ServerPanelCommands
         await p.NavigateAsync(p.Path, newName, addToHistory: false);
     }
 
+    /// <summary>The built-in editor saved a file opened from a server: the server gets it back (in the transfer panel).</summary>
+    private Task UploadSavedAsync(string saved, IPluginFileSystem fs, string directory)
+    {
+        _main.Transfers.EnqueueJob(OperationKind.Copy, new[] { saved }, directory, job =>
+            Task.Run(() => fs.UploadAsync(new[] { saved }, directory, job)));
+        return Task.CompletedTask;
+    }
+
     /// <summary>Enter / F3 / F4 on a file on a server: downloads it into a temporary folder and opens it.</summary>
     public Task OpenCopyAsync(PaneViewModel p, FileItemViewModel item, IEnumerable<ProgramRule> rules)
     {
@@ -362,9 +370,9 @@ internal sealed class ServerPanelCommands
                 _main.RunFoundFile(entry, rules, () =>
                 {
                     if (editor)
-                        ShellOperations.Edit(file);
+                        _main.EditWithoutRules(file, saved => UploadSavedAsync(saved, fs, p.Path));
                     else
-                        ShellOperations.Open(file, directory);
+                        _main.ViewWithoutRules(file);
                 });
             }
             return result;

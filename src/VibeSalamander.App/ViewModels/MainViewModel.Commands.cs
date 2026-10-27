@@ -361,12 +361,12 @@ public sealed partial class MainViewModel
 
     private void ViewFile()
     {
-        // no internal viewer: F3 uses a configured viewer for the file's mask, else the associated program
+        // Configuration → Viewers by file mask first, then the built-in viewer (or the Windows app)
         FileItemViewModel? item = _active.FocusedItem;
-        if (item != null && !item.Entry.IsDirectory)
+        if (item != null && !item.Entry.IsDirectory && !item.Entry.IsUpDir && !item.IsDrive)
         {
             if (!RunProgramRule(Settings.Viewers, item))
-                ShellOperations.Open(item.Entry.FullPath, _active.Path);
+                ViewWithoutRules(item.Entry.FullPath, SiblingFiles(_active));
             RememberRecent(Settings.OpenedFiles, item.Entry.FullPath);
         }
     }
@@ -374,11 +374,44 @@ public sealed partial class MainViewModel
     private void EditFile()
     {
         FileItemViewModel? item = _active.FocusedItem;
-        if (item != null && !item.Entry.IsDirectory)
+        if (item != null && !item.Entry.IsDirectory && !item.Entry.IsUpDir && !item.IsDrive)
         {
             if (!RunProgramRule(Settings.Editors, item))
-                ShellOperations.Edit(item.Entry.FullPath);
+                EditWithoutRules(item.Entry.FullPath);
             RememberRecent(Settings.OpenedFiles, item.Entry.FullPath);
         }
     }
+
+    /// <summary>The built-in viewer, or (switched off in Configuration → Viewers) the file's Windows app.</summary>
+    internal void ViewWithoutRules(string path, IReadOnlyList<string>? siblings = null)
+    {
+        if (Settings.Viewer.UseBuiltInViewer)
+            _host.OpenViewer(path, siblings ?? new[] { path });
+        else
+            ShellOperations.Open(path, Path.GetDirectoryName(path));
+    }
+
+    /// <summary>The built-in editor, or (switched off in Configuration → Editors) Windows' "edit" for the file.</summary>
+    internal void EditWithoutRules(string path, Func<string, Task>? afterSave = null)
+    {
+        if (Settings.Viewer.UseBuiltInEditor)
+            _host.OpenEditor(path, afterSave);
+        else
+            ShellOperations.Edit(path);
+    }
+
+    /// <summary>F4 for a file (from the viewer): Configuration → Editors, then the built-in editor.</summary>
+    public void EditFile(string path)
+    {
+        if (!File.Exists(path))
+            return;
+        var info = new FileInfo(path);
+        RunFoundFile(new FileEntry(info.Name, path, false, info.Length, info.LastWriteTime, info.Attributes), Settings.Editors, () => EditWithoutRules(path));
+    }
+
+    /// <summary>The files of a panel on a disk, in its order (the viewer goes through them).</summary>
+    private static IReadOnlyList<string> SiblingFiles(PaneViewModel pane) =>
+        pane.IsLocalDisk
+            ? pane.Items.Where(i => !i.Entry.IsDirectory && !i.Entry.IsUpDir && !i.IsDrive).Select(i => i.Entry.FullPath).ToList()
+            : Array.Empty<string>();
 }

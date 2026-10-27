@@ -392,3 +392,49 @@ public sealed class PluginOptions
     /// <summary>Files to unpack.</summary>
     public string UnpackMask { get; set; } = "*.*";
 }
+
+/// <summary>A window's place on the screen (0 width: not remembered yet).</summary>
+public sealed class WindowPlacement
+{
+    public int Left { get; set; }
+    public int Top { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public bool Maximized { get; set; }
+}
+
+/// <summary>Configuration → Viewers / Editors: the built-in viewer (F3) and editor (F4).</summary>
+public sealed class ViewerOptions
+{
+    /// <summary>F3 opens the built-in viewer (Configuration → Viewers rules still come first); off: the Windows app.</summary>
+    public bool UseBuiltInViewer { get; set; } = true;
+
+    /// <summary>F4 opens the built-in editor (Configuration → Editors rules still come first); off: Windows' "edit".</summary>
+    public bool UseBuiltInEditor { get; set; } = true;
+
+    public bool WordWrap { get; set; }
+    public bool LineNumbers { get; set; } = true;
+    public double FontSize { get; set; } = 13;
+
+    /// <summary>Previews (Markdown, notebooks, web pages) may load pictures and styles from the internet.</summary>
+    public bool AllowRemoteContent { get; set; }
+
+    /// <summary>Web pages in the viewer may run their scripts.</summary>
+    public bool AllowScripts { get; set; }
+
+    /// <summary>The picture viewer's side panel with the photo's details.</summary>
+    public bool ShowImageDetails { get; set; }
+
+    public WindowPlacement ViewerWindow { get; set; } = new();
+
+    // the editor
+    public bool EditorWordWrap { get; set; }
+    public bool EditorMinimap { get; set; } = true;
+    public double EditorFontSize { get; set; } = 14;
+    public bool EditorPreview { get; set; } = true;
+
+    /// <summary>Saving keeps the previous version as "name.ext.bak".</summary>
+    public bool EditorBackup { get; set; }
+
+    public WindowPlacement EditorWindow { get; set; } = new();
+}

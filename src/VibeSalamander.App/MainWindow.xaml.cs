@@ -351,6 +351,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         }
         _findWindow?.Close();
         _settingsWindow?.Close();
+        CloseViewers();
         _vm.Transfers.CancelAll();
         _vm.SaveSettings(onExit: true);
         _pluginUi?.CloseAll();
