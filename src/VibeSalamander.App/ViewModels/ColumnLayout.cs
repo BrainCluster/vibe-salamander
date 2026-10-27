@@ -51,9 +51,16 @@ public sealed class ColumnLayout : BindableBase
         DetailColumn.Ext => _settings.ExtWidth,
         DetailColumn.Size => _settings.SizeWidth,
         DetailColumn.Date => _settings.DateWidth,
-        DetailColumn.Time => _settings.TimeWidth,
+        DetailColumn.Time => Math.Max(_settings.TimeWidth, MinTimeWidth),
         _ => _settings.AttrWidth,
     };
+
+    /// <summary>
+    /// 12-hour times ("9:26:53 PM", English and others) are longer than 24-hour ones: the Time column is never
+    /// narrower than they need (it would cut off the hour).
+    /// </summary>
+    private static double MinTimeWidth =>
+        System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.LongTimePattern.Contains('t') ? Math.Round(90 * UiState.FontSize / 13) : 0;
 
     public bool IsVisible(DetailColumn c) => c switch
     {

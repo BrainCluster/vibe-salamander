@@ -87,7 +87,8 @@ public sealed class AppSession : IDisposable
     public List<string> Items(bool left = true)
     {
         var names = new List<string>();
-        foreach (AutomationElement item in List(left).FindAllChildren(cf => cf.ByControlType(ControlType.ListItem)))
+        // descendants: This PC puts its drives in groups
+        foreach (AutomationElement item in List(left).FindAllDescendants(cf => cf.ByControlType(ControlType.ListItem)))
         {
             string name = item.Name;
             if (string.IsNullOrEmpty(name))
@@ -122,6 +123,7 @@ public sealed class AppSession : IDisposable
             }
             Thread.Sleep(200);
         }
+        Screenshot("FAILED - " + string.Concat(what.Split(Path.GetInvalidFileNameChars())));
         throw new TimeoutException($"Waited {seconds} s for: {what}");
     }
 
@@ -132,9 +134,15 @@ public sealed class AppSession : IDisposable
         return value!;
     }
 
-    /// <summary>A window of this app with this title (Find, Configuration).</summary>
+    /// <summary>A window on the desktop whose title starts with this (Find, Configuration).</summary>
     public Window OtherWindow(string titleStart) => Retry(() =>
-        App.GetAllTopLevelWindows(Automation).FirstOrDefault(w => w.Title.StartsWith(titleStart, StringComparison.OrdinalIgnoreCase)), "the window " + titleStart);
+        Automation.GetDesktop().FindAllChildren()
+            .FirstOrDefault(w => (w.Name ?? string.Empty).StartsWith(titleStart, StringComparison.OrdinalIgnoreCase))?.AsWindow(), "the window " + titleStart);
+
+    /// <summary>A text shown in the main window that starts with this (the information line, notifications).</summary>
+    public string? TextStartingWith(string start) =>
+        Window.FindAllDescendants(cf => cf.ByControlType(ControlType.Text))
+            .Select(t => t.Name ?? string.Empty).FirstOrDefault(n => n.StartsWith(start, StringComparison.Ordinal));
 
     // ---- the keyboard ------------------------------------------------------------------------------------
 

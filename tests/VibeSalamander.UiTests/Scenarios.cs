@@ -115,9 +115,12 @@ public sealed class Scenarios : IDisposable
         app.Press(VirtualKeyShort.INSERT); // mark and move down
         app.Press(VirtualKeyShort.INSERT);
         AppSession.Screenshot("20 marked items");
+        AppSession.WaitUntil(() => app.TextStartingWith("Selected:") != null, "the information line about the 2 marked files");
         app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F10, settleMs: 1200);
         AppSession.Screenshot("21 context menu");
-        app.Press(VirtualKeyShort.ESCAPE);
+        app.Press(VirtualKeyShort.ESCAPE, settleMs: 800);
+        // the keyboard's context menu works on the marked items: they stay marked
+        AppSession.WaitUntil(() => app.TextStartingWith("Selected:") != null, "the 2 files still marked after Shift+F10", seconds: 3);
         NoErrors(app);
     }
 
@@ -143,7 +146,7 @@ public sealed class Scenarios : IDisposable
         using AppSession app = Start();
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the documents");
         app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F7, settleMs: 1500);
-        var find = app.OtherWindow("Find");
+        var find = app.OtherWindow("Find Files");
         AppSession.Screenshot("30 find window");
         find.Close();
         NoErrors(app);

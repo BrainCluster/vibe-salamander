@@ -206,7 +206,8 @@ public sealed partial class FilePane
             return;
         }
         // like Explorer: a right-click on an unmarked item works on that item, not on the marked ones
-        if (item != null && !item.IsMarked && !item.Entry.IsUpDir && pane.MarkedItems.Count > 0)
+        // (Shift+F10 and the Menu key work on the marked items: the caret is just where the menu opens)
+        if (fromMouse && item != null && !item.IsMarked && !item.Entry.IsUpDir && pane.MarkedItems.Count > 0)
         {
             pane.RememberSelection();
             pane.MarkAll(false);

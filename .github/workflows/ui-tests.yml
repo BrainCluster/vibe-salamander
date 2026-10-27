@@ -39,6 +39,15 @@ jobs:
           Set-DisplayResolution -Width 1920 -Height 1080 -Force
           Get-CimInstance Win32_VideoController | Select-Object CurrentHorizontalResolution, CurrentVerticalResolution
 
+      - name: Thumbnails on (Windows Server shows only icons)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $advanced = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+          Set-ItemProperty $advanced -Name IconsOnly -Value 0 -Type DWord
+          Remove-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name DisableThumbnails -ErrorAction SilentlyContinue
+          Remove-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name DisableThumbnails -ErrorAction SilentlyContinue
+
       - name: Build the app
         run: dotnet build src/VibeSalamander.App/VibeSalamander.App.csproj -c Release -p:Platform=x64
 
