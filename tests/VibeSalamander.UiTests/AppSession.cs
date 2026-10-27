@@ -243,21 +243,21 @@ public sealed class AppSession : IDisposable
     /// </summary>
     public static void Drag(System.Drawing.Point from, System.Drawing.Point to, Action? whileOver = null)
     {
-        Mouse.MoveTo(from);
-        Thread.Sleep(300);
-        Mouse.Down(MouseButton.Left);
-        Thread.Sleep(300);
-        for (int i = 1; i <= 10; i++)
+        double speed = Mouse.MovePixelsPerMillisecond;
+        Mouse.MovePixelsPerMillisecond = 0.4; // FlaUI moves the pointer smoothly, like a hand
+        try
         {
-            Mouse.MoveTo(new System.Drawing.Point(from.X + i * 2, from.Y + i));
-            Thread.Sleep(30);
+            Mouse.MoveTo(from);
+            Thread.Sleep(300);
+            Mouse.Down(MouseButton.Left);
+            Thread.Sleep(300);
+            Mouse.MoveTo(new System.Drawing.Point(from.X + 30, from.Y + 12)); // past the drag threshold
+            Thread.Sleep(500);
+            Mouse.MoveTo(to);
         }
-        Thread.Sleep(300);
-        var start = new System.Drawing.Point(from.X + 20, from.Y + 10);
-        for (int step = 1; step <= 40; step++)
+        finally
         {
-            Mouse.MoveTo(new System.Drawing.Point(start.X + (to.X - start.X) * step / 40, start.Y + (to.Y - start.Y) * step / 40));
-            Thread.Sleep(40);
+            Mouse.MovePixelsPerMillisecond = speed;
         }
         for (int i = 0; i < 6; i++)
         {
