@@ -17,7 +17,7 @@ using VibeSalamander.Services;
 
 namespace VibeSalamander.ViewModels;
 
-// MainViewModel: running commands (every CommandId goes through ExecuteAsync).
+// MainViewModel: running commands (every CommandId goes through ExecuteAsync and its handler in the CommandTable).
 public sealed partial class MainViewModel
 {
     // ---- command dispatch --------------------------------------------------------------------
@@ -36,163 +36,23 @@ public sealed partial class MainViewModel
         _ => true,
     };
 
+    private CommandTable? _commandTable;
+
+    /// <summary>The handler of every command (built on first use).</summary>
+    private CommandTable CommandHandlers => _commandTable ??= BuildCommandTable();
+
     public async Task ExecuteAsync(CommandId command)
     {
         PaneViewModel p = _active;
         try
         {
+            // inside an archive or on a server, the plugin's file system handles the file commands first
             if (p.IsArchive && await ArchiveCommandAsync(p, command))
                 return;
             if (p.IsRemote && await RemoteCommandAsync(p, command))
                 return;
-            switch (command)
-            {
-                case CommandId.ChangeDriveLeft: Activate(Left); _host.ShowDriveMenu(Left); break;
-                case CommandId.ChangeDriveRight: Activate(Right); _host.ShowDriveMenu(Right); break;
-                case CommandId.GoBack: await p.GoBackAsync(); break;
-                case CommandId.GoForward: await p.GoForwardAsync(); break;
-                case CommandId.ParentDirectory: await p.GoUpAsync(); break;
-                case CommandId.RootDirectory: await p.GoToRootAsync(); break;
-                case CommandId.ThisPc: await p.NavigateAsync(ThisPcProvider.RootPath); break;
-                case CommandId.PathFromOtherPanel: await p.NavigateAsync(Inactive.Path); break;
-                case CommandId.OpenInOtherPanel: await OpenInOtherPanelAsync(); break;
-                case CommandId.Refresh: await p.RefreshAsync(); await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync()); break;
-                case CommandId.SwitchPanel: Activate(Inactive); _host.FocusPane(_active); break;
-                case CommandId.SwapPanels: await SwapPanelsAsync(); break;
-                case CommandId.MaximizePanel: _maximized = _maximized == null ? p : null; _host.SetPanelMaximized(_maximized); break;
-                case CommandId.SortByName: p.SetSort(SortMode.Name); break;
-                case CommandId.SortByExtension: p.SetSort(SortMode.Extension); break;
-                case CommandId.SortBySize: p.SetSort(SortMode.Size); break;
-                case CommandId.SortByDate: p.SetSort(SortMode.Date); break;
-                case CommandId.SortByAttributes: p.SetSort(SortMode.Attributes); break;
-                case CommandId.ToggleHiddenFiles:
-                    Settings.ShowHidden = !Settings.ShowHidden;
-                    await Task.WhenAll(Left.RefreshAsync(), Right.RefreshAsync());
-                    break;
-
-                case CommandId.Filter: await FilterAsync(); break;
-
-                // phase 3
-                case CommandId.ViewBrief: p.ViewMode = ViewMode.Brief; break;
-                case CommandId.ViewDetailed: p.ViewMode = ViewMode.Detailed; break;
-                case CommandId.ViewIcons: p.ViewMode = ViewMode.Icons; break;
-                case CommandId.ViewThumbnails: p.ViewMode = ViewMode.Thumbnails; break;
-                case CommandId.ViewTiles: p.ViewMode = ViewMode.Tiles; break;
-                case CommandId.CalculateOccupiedSpace: await CalculateOccupiedSpaceAsync(p, p.GetOperationItems()); break;
-
-                // phase 3B
-                case CommandId.CompareDirectories: await CompareDirectoriesAsync(); break;
-                case CommandId.UserMenu: ShowUserMenu(p); break;
-                case CommandId.EditUserMenu: await EditUserMenuAsync(); break;
-                case CommandId.SaveSelection: SaveSelection(p); break;
-                case CommandId.LoadSelection: LoadSelection(p); break;
-                case CommandId.HideSelectedNames: HideNames(p, selected: true); break;
-                case CommandId.HideUnselectedNames: HideNames(p, selected: false); break;
-                case CommandId.ShowHiddenNames: ShowHiddenNames(p); break;
-                case CommandId.MakeFileList: MakeFileList(p); break;
-                case CommandId.PasteShortcut: await PasteShortcutsAsync(p); break;
-                case CommandId.NewMenu: await NewFromShellMenuAsync(p); break;
-                case CommandId.NtfsCompress: await NtfsAsync(p, NtfsAction.Compress); break;
-                case CommandId.NtfsUncompress: await NtfsAsync(p, NtfsAction.Uncompress); break;
-                case CommandId.NtfsEncrypt: await NtfsAsync(p, NtfsAction.Encrypt); break;
-                case CommandId.NtfsDecrypt: await NtfsAsync(p, NtfsAction.Decrypt); break;
-                case CommandId.Security: ShowSecurity(p); break;
-                case CommandId.Email: await EmailAsync(p); break;
-                case CommandId.OpenedFilesList: ShowOpenedFiles(p); break;
-                case CommandId.WorkingDirectoriesList: ShowWorkingDirectories(p); break;
-                case CommandId.ConnectNetworkDrive:
-                    if (NetworkDrives.ShowConnectDialog(_host.WindowHandle))
-                        await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
-                    break;
-                case CommandId.DisconnectNetworkDrive:
-                    if (NetworkDrives.ShowDisconnectDialog(_host.WindowHandle))
-                        await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
-                    break;
-                case CommandId.SharedDirectories: await ShowSharesAsync(p); break;
-                case CommandId.Configuration: _host.ShowConfiguration(); break;
-                case CommandId.PluginsManager: _host.ShowConfigurationPage("Plugins"); break;
-                case CommandId.CalculateDirectorySizes:
-                    await CalculateOccupiedSpaceAsync(p, p.Items.Where(i => i.Entry.IsDirectory && !i.Entry.IsUpDir && !i.IsDrive).ToList());
-                    break;
-                case CommandId.DriveInformation: _host.ShowDriveInformation(p); break;
-                case >= CommandId.GoToHotPath0 and <= CommandId.GoToHotPath9: await GoToHotPathAsync(command - CommandId.GoToHotPath0); break;
-                case >= CommandId.SetHotPath0 and <= CommandId.SetHotPath9: SetHotPath(command - CommandId.SetHotPath0); break;
-                case CommandId.OpenWith: OpenWith(); break;
-                case CommandId.ContextMenu: _host.ShowContextMenu(p); break;
-                case CommandId.ChangeAttributes: await ChangeAttributesAsync(); break;
-                case CommandId.ChangeCase: await ChangeCaseAsync(); break;
-                case CommandId.GoToShortcutTarget: await GoToShortcutTargetAsync(); break;
-                case CommandId.FindFiles: _host.ShowFindWindow(p.IsLocalDisk ? p.Path : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)); break;
-                case CommandId.SelectByMask: await MarkByMaskAsync(mark: true); break;
-                case CommandId.UnselectByMask: await MarkByMaskAsync(mark: false); break;
-                case CommandId.RestoreSelection: p.RestoreSelection(); break;
-                case CommandId.SelectSameExtension: p.MarkSame(byExtension: true, mark: true); break;
-                case CommandId.UnselectSameExtension: p.MarkSame(byExtension: true, mark: false); break;
-                case CommandId.SelectSameName: p.MarkSame(byExtension: false, mark: true); break;
-                case CommandId.UnselectSameName: p.MarkSame(byExtension: false, mark: false); break;
-                case CommandId.GoToPreviousSelected: MoveToMarked(p, -1); break;
-                case CommandId.GoToNextSelected: MoveToMarked(p, +1); break;
-                case CommandId.ClipboardCut: await ClipboardSetAsync(cut: true); break;
-                case CommandId.ClipboardCopy: await ClipboardSetAsync(cut: false); break;
-                case CommandId.ClipboardPaste: await ClipboardPasteAsync(); break;
-
-                case CommandId.Open: await p.OpenFocusedAsync(); break;
-                case CommandId.QuickRename: await RenameAsync(); break;
-                case CommandId.View: ViewFile(); break;
-                case CommandId.Edit: EditFile(); break;
-                case CommandId.EditNewFile: await EditNewFileAsync(); break;
-                case CommandId.Copy: await CopyOrMoveAsync(move: false); break;
-                case CommandId.Move: await CopyOrMoveAsync(move: true); break;
-                case CommandId.Pack: await PackAsync(); break;
-                case CommandId.CalculateChecksums or CommandId.VerifyChecksums or CommandId.ConnectFtp or CommandId.DiskMap
-                    or CommandId.TestArchive or CommandId.MakeSelfExtractingArchive or CommandId.ArchiveComment: await RunPluginHostCommandAsync(command); break;
-                case CommandId.MountImage:
-                    if (p.FocusedItem is { Entry.IsDirectory: false } diskImage && p.IsLocalDisk && DiskImages.IsDiskImage(diskImage.Entry.FullPath))
-                        await MountImageAsync(p, diskImage.Entry.FullPath);
-                    break;
-                case CommandId.UnmountImage:
-                    if (ImageDriveOf(p) is { } imageRoot)
-                        await UnmountImageAsync(imageRoot);
-                    else
-                        _host.Notify("Focus a mounted disk image (a drive in This PC, or a panel on it) to unmount it.", isError: false);
-                    break;
-                case CommandId.Unpack: await UnpackAsync(); break;
-                case CommandId.Delete: await DeleteAsync(permanent: false); break;
-                case CommandId.DeletePermanently: await DeleteAsync(permanent: true); break;
-                case CommandId.Properties: ShowProperties(); break;
-                case CommandId.CreateDirectory: await CreateDirectoryAsync(); break;
-                case CommandId.ChangeDirectory: ChangeDirectory(); break;
-                case CommandId.OpenActiveFolder: if (p.IsLocalDisk) ShellOperations.OpenInExplorer(p.Path); else ShellOperations.OpenInExplorer("shell:MyComputerFolder"); break;
-                case CommandId.CommandShell: if (p.IsLocalDisk) ShellOperations.OpenCommandShell(p.Path); break;
-
-                case CommandId.ToggleMark: p.ToggleMark(p.CaretIndex); break;
-                case CommandId.ToggleMarkAndMoveDown: p.ToggleMark(p.CaretIndex); MoveCaret(p, +1); break;
-                case CommandId.SelectAll: p.MarkAll(true); break;
-                case CommandId.UnselectAll: p.MarkAll(false); break;
-                case CommandId.InvertSelection: p.InvertMarks(); break;
-
-                case CommandId.CopyFullNameAsText: CopyText(string.Join(Environment.NewLine, p.GetOperationItems().Select(i => i.Entry.FullPath))); break;
-                case CommandId.CopyNameAsText: CopyText(string.Join(Environment.NewLine, p.GetOperationItems().Select(i => i.Entry.Name))); break;
-                case CommandId.CopyPathAsText: CopyText(p.IsLocalDisk ? p.Path : p.DisplayPath); break;
-
-                case CommandId.ToggleDensity:
-                    Settings.Density = Settings.Density == Density.Compact ? Density.Comfortable : Density.Compact;
-                    _host.ApplyDensity();
-                    break;
-                case CommandId.AlwaysOnTop:
-                    if (!Settings.AlwaysOnTop && Settings.Confirm.AlwaysOnTop &&
-                        !await _host.ConfirmAsync("Always on Top", "Do you want to keep the Vibe Salamander window on top of all other windows?", "Turn On"))
-                        break;
-                    Settings.AlwaysOnTop = !Settings.AlwaysOnTop;
-                    _host.ApplyAlwaysOnTop(Settings.AlwaysOnTop);
-                    break;
-                case CommandId.Help:
-                    ShellOperations.Open("https://github.com/BrainCluster/vibe-salamander");
-                    break;
-                case CommandId.About: _host.ShowAbout(); break;
-                case CommandId.ErrorLog: await ShowErrorLogAsync(p); break;
-                case CommandId.Exit: _host.Exit(); break;
-            }
+            if (CommandHandlers.TryGet(command, out Func<PaneViewModel, Task> run))
+                await run(p);
         }
         catch (Exception ex)
         {
@@ -200,6 +60,223 @@ public sealed partial class MainViewModel
             _host.Notify(ex.Message);
         }
         OnPropertyChanged(nameof(WindowTitle));
+    }
+
+    private CommandTable BuildCommandTable()
+    {
+        var table = new CommandTable();
+        AddNavigationCommands(table);
+        AddViewCommands(table);
+        AddSelectionCommands(table);
+        AddFileCommands(table);
+        AddToolCommands(table);
+        AddWindowCommands(table);
+        return table;
+    }
+
+    /// <summary>Drives, folders, history, hot paths, the panels.</summary>
+    private void AddNavigationCommands(CommandTable t)
+    {
+        t.AddSync(CommandId.ChangeDriveLeft, _ => { Activate(Left); _host.ShowDriveMenu(Left); });
+        t.AddSync(CommandId.ChangeDriveRight, _ => { Activate(Right); _host.ShowDriveMenu(Right); });
+        t.Add(CommandId.GoBack, p => p.GoBackAsync());
+        t.Add(CommandId.GoForward, p => p.GoForwardAsync());
+        t.Add(CommandId.ParentDirectory, p => p.GoUpAsync());
+        t.Add(CommandId.RootDirectory, p => p.GoToRootAsync());
+        t.Add(CommandId.ThisPc, p => p.NavigateAsync(ThisPcProvider.RootPath));
+        t.Add(CommandId.PathFromOtherPanel, p => p.NavigateAsync(Inactive.Path));
+        t.Add(CommandId.OpenInOtherPanel, _ => OpenInOtherPanelAsync());
+        t.Add(CommandId.Refresh, async p =>
+        {
+            await p.RefreshAsync();
+            await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
+        });
+        t.AddSync(CommandId.SwitchPanel, _ => { Activate(Inactive); _host.FocusPane(_active); });
+        t.Add(CommandId.SwapPanels, _ => SwapPanelsAsync());
+        t.AddSync(CommandId.MaximizePanel, p =>
+        {
+            _maximized = _maximized == null ? p : null;
+            _host.SetPanelMaximized(_maximized);
+        });
+        for (int i = 0; i <= 9; i++)
+        {
+            int number = i;
+            t.Add(CommandId.GoToHotPath0 + number, _ => GoToHotPathAsync(number));
+            t.AddSync(CommandId.SetHotPath0 + number, _ => SetHotPath(number));
+        }
+        t.Add(CommandId.Open, p => p.OpenFocusedAsync());
+        t.AddSync(CommandId.ChangeDirectory, _ => ChangeDirectory());
+        t.Add(CommandId.GoToShortcutTarget, _ => GoToShortcutTargetAsync());
+        t.AddSync(CommandId.OpenActiveFolder, p =>
+        {
+            if (p.IsLocalDisk)
+                ShellOperations.OpenInExplorer(p.Path);
+            else
+                ShellOperations.OpenInExplorer("shell:MyComputerFolder");
+        });
+        t.AddSync(CommandId.CommandShell, p =>
+        {
+            if (p.IsLocalDisk)
+                ShellOperations.OpenCommandShell(p.Path);
+        });
+    }
+
+    /// <summary>Views, sorting, what the panels show.</summary>
+    private void AddViewCommands(CommandTable t)
+    {
+        t.AddSync(CommandId.SortByName, p => p.SetSort(SortMode.Name));
+        t.AddSync(CommandId.SortByExtension, p => p.SetSort(SortMode.Extension));
+        t.AddSync(CommandId.SortBySize, p => p.SetSort(SortMode.Size));
+        t.AddSync(CommandId.SortByDate, p => p.SetSort(SortMode.Date));
+        t.AddSync(CommandId.SortByAttributes, p => p.SetSort(SortMode.Attributes));
+        t.AddSync(CommandId.ViewBrief, p => p.ViewMode = ViewMode.Brief);
+        t.AddSync(CommandId.ViewDetailed, p => p.ViewMode = ViewMode.Detailed);
+        t.AddSync(CommandId.ViewIcons, p => p.ViewMode = ViewMode.Icons);
+        t.AddSync(CommandId.ViewThumbnails, p => p.ViewMode = ViewMode.Thumbnails);
+        t.AddSync(CommandId.ViewTiles, p => p.ViewMode = ViewMode.Tiles);
+        t.Add(CommandId.ToggleHiddenFiles, async _ =>
+        {
+            Settings.ShowHidden = !Settings.ShowHidden;
+            await Task.WhenAll(Left.RefreshAsync(), Right.RefreshAsync());
+        });
+        t.Add(CommandId.Filter, _ => FilterAsync());
+        t.AddSync(CommandId.HideSelectedNames, p => HideNames(p, selected: true));
+        t.AddSync(CommandId.HideUnselectedNames, p => HideNames(p, selected: false));
+        t.AddSync(CommandId.ShowHiddenNames, p => ShowHiddenNames(p));
+    }
+
+    /// <summary>Marking (the Salamander selection).</summary>
+    private void AddSelectionCommands(CommandTable t)
+    {
+        t.AddSync(CommandId.ToggleMark, p => p.ToggleMark(p.CaretIndex));
+        t.AddSync(CommandId.ToggleMarkAndMoveDown, p =>
+        {
+            p.ToggleMark(p.CaretIndex);
+            MoveCaret(p, +1);
+        });
+        t.AddSync(CommandId.SelectAll, p => p.MarkAll(true));
+        t.AddSync(CommandId.UnselectAll, p => p.MarkAll(false));
+        t.AddSync(CommandId.InvertSelection, p => p.InvertMarks());
+        t.Add(CommandId.SelectByMask, _ => MarkByMaskAsync(mark: true));
+        t.Add(CommandId.UnselectByMask, _ => MarkByMaskAsync(mark: false));
+        t.AddSync(CommandId.RestoreSelection, p => p.RestoreSelection());
+        t.AddSync(CommandId.SelectSameExtension, p => p.MarkSame(byExtension: true, mark: true));
+        t.AddSync(CommandId.UnselectSameExtension, p => p.MarkSame(byExtension: true, mark: false));
+        t.AddSync(CommandId.SelectSameName, p => p.MarkSame(byExtension: false, mark: true));
+        t.AddSync(CommandId.UnselectSameName, p => p.MarkSame(byExtension: false, mark: false));
+        t.AddSync(CommandId.GoToPreviousSelected, p => MoveToMarked(p, -1));
+        t.AddSync(CommandId.GoToNextSelected, p => MoveToMarked(p, +1));
+        t.AddSync(CommandId.SaveSelection, p => SaveSelection(p));
+        t.AddSync(CommandId.LoadSelection, p => LoadSelection(p));
+    }
+
+    /// <summary>Opening, copying, moving, deleting, renaming, archives, the clipboard.</summary>
+    private void AddFileCommands(CommandTable t)
+    {
+        t.Add(CommandId.QuickRename, _ => RenameAsync());
+        t.AddSync(CommandId.View, _ => ViewFile());
+        t.AddSync(CommandId.Edit, _ => EditFile());
+        t.Add(CommandId.EditNewFile, _ => EditNewFileAsync());
+        t.AddSync(CommandId.OpenWith, _ => OpenWith());
+        t.Add(CommandId.Copy, _ => CopyOrMoveAsync(move: false));
+        t.Add(CommandId.Move, _ => CopyOrMoveAsync(move: true));
+        t.Add(CommandId.Delete, _ => DeleteAsync(permanent: false));
+        t.Add(CommandId.DeletePermanently, _ => DeleteAsync(permanent: true));
+        t.Add(CommandId.CreateDirectory, _ => CreateDirectoryAsync());
+        t.AddSync(CommandId.Properties, _ => ShowProperties());
+        t.Add(CommandId.ChangeAttributes, _ => ChangeAttributesAsync());
+        t.Add(CommandId.ChangeCase, _ => ChangeCaseAsync());
+        t.AddSync(CommandId.ContextMenu, p => _host.ShowContextMenu(p));
+        t.AddSync(CommandId.Security, p => ShowSecurity(p));
+        t.Add(CommandId.Email, p => EmailAsync(p));
+        t.Add(CommandId.NtfsCompress, p => NtfsAsync(p, NtfsAction.Compress));
+        t.Add(CommandId.NtfsUncompress, p => NtfsAsync(p, NtfsAction.Uncompress));
+        t.Add(CommandId.NtfsEncrypt, p => NtfsAsync(p, NtfsAction.Encrypt));
+        t.Add(CommandId.NtfsDecrypt, p => NtfsAsync(p, NtfsAction.Decrypt));
+
+        t.Add(CommandId.ClipboardCut, _ => ClipboardSetAsync(cut: true));
+        t.Add(CommandId.ClipboardCopy, _ => ClipboardSetAsync(cut: false));
+        t.Add(CommandId.ClipboardPaste, _ => ClipboardPasteAsync());
+        t.Add(CommandId.PasteShortcut, p => PasteShortcutsAsync(p));
+        t.Add(CommandId.NewMenu, p => NewFromShellMenuAsync(p));
+        t.AddSync(CommandId.CopyFullNameAsText, p => CopyText(string.Join(Environment.NewLine, p.GetOperationItems().Select(i => i.Entry.FullPath))));
+        t.AddSync(CommandId.CopyNameAsText, p => CopyText(string.Join(Environment.NewLine, p.GetOperationItems().Select(i => i.Entry.Name))));
+        t.AddSync(CommandId.CopyPathAsText, p => CopyText(p.IsLocalDisk ? p.Path : p.DisplayPath));
+
+        t.Add(CommandId.Pack, _ => PackAsync());
+        t.Add(CommandId.Unpack, _ => UnpackAsync());
+        foreach (CommandId pluginCommand in new[]
+                 {
+                     CommandId.CalculateChecksums, CommandId.VerifyChecksums, CommandId.ConnectFtp, CommandId.DiskMap,
+                     CommandId.TestArchive, CommandId.MakeSelfExtractingArchive, CommandId.ArchiveComment,
+                 })
+        {
+            CommandId command = pluginCommand;
+            t.Add(command, _ => RunPluginHostCommandAsync(command));
+        }
+        t.Add(CommandId.MountImage, async p =>
+        {
+            if (p.FocusedItem is { Entry.IsDirectory: false } diskImage && p.IsLocalDisk && DiskImages.IsDiskImage(diskImage.Entry.FullPath))
+                await MountImageAsync(p, diskImage.Entry.FullPath);
+        });
+        t.Add(CommandId.UnmountImage, async p =>
+        {
+            if (ImageDriveOf(p) is { } imageRoot)
+                await UnmountImageAsync(imageRoot);
+            else
+                _host.Notify("Focus a mounted disk image (a drive in This PC, or a panel on it) to unmount it.", isError: false);
+        });
+    }
+
+    /// <summary>Find, compare, sizes, lists, the user menu, network drives.</summary>
+    private void AddToolCommands(CommandTable t)
+    {
+        t.AddSync(CommandId.FindFiles, p => _host.ShowFindWindow(p.IsLocalDisk ? p.Path : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)));
+        t.Add(CommandId.CompareDirectories, _ => CompareDirectoriesAsync());
+        t.Add(CommandId.CalculateOccupiedSpace, p => CalculateOccupiedSpaceAsync(p, p.GetOperationItems()));
+        t.Add(CommandId.CalculateDirectorySizes, p =>
+            CalculateOccupiedSpaceAsync(p, p.Items.Where(i => i.Entry.IsDirectory && !i.Entry.IsUpDir && !i.IsDrive).ToList()));
+        t.AddSync(CommandId.DriveInformation, p => _host.ShowDriveInformation(p));
+        t.AddSync(CommandId.UserMenu, p => ShowUserMenu(p));
+        t.Add(CommandId.EditUserMenu, _ => EditUserMenuAsync());
+        t.AddSync(CommandId.MakeFileList, p => MakeFileList(p));
+        t.AddSync(CommandId.OpenedFilesList, p => ShowOpenedFiles(p));
+        t.AddSync(CommandId.WorkingDirectoriesList, p => ShowWorkingDirectories(p));
+        t.Add(CommandId.ConnectNetworkDrive, async _ =>
+        {
+            if (NetworkDrives.ShowConnectDialog(_host.WindowHandle))
+                await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
+        });
+        t.Add(CommandId.DisconnectNetworkDrive, async _ =>
+        {
+            if (NetworkDrives.ShowDisconnectDialog(_host.WindowHandle))
+                await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
+        });
+        t.Add(CommandId.SharedDirectories, p => ShowSharesAsync(p));
+    }
+
+    /// <summary>The window, Configuration, help.</summary>
+    private void AddWindowCommands(CommandTable t)
+    {
+        t.AddSync(CommandId.ToggleDensity, _ =>
+        {
+            Settings.Density = Settings.Density == Density.Compact ? Density.Comfortable : Density.Compact;
+            _host.ApplyDensity();
+        });
+        t.Add(CommandId.AlwaysOnTop, async _ =>
+        {
+            if (!Settings.AlwaysOnTop && Settings.Confirm.AlwaysOnTop &&
+                !await _host.ConfirmAsync("Always on Top", "Do you want to keep the Vibe Salamander window on top of all other windows?", "Turn On"))
+                return;
+            Settings.AlwaysOnTop = !Settings.AlwaysOnTop;
+            _host.ApplyAlwaysOnTop(Settings.AlwaysOnTop);
+        });
+        t.AddSync(CommandId.Configuration, _ => _host.ShowConfiguration());
+        t.AddSync(CommandId.PluginsManager, _ => _host.ShowConfigurationPage("Plugins"));
+        t.AddSync(CommandId.Help, _ => ShellOperations.Open("https://github.com/BrainCluster/vibe-salamander"));
+        t.AddSync(CommandId.About, _ => _host.ShowAbout());
+        t.Add(CommandId.ErrorLog, p => ShowErrorLogAsync(p));
+        t.AddSync(CommandId.Exit, _ => _host.Exit());
     }
 
     /// <summary>Raised when the caret should move (Insert marks and moves down).</summary>
