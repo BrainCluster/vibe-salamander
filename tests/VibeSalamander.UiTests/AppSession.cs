@@ -181,16 +181,106 @@ public sealed class AppSession : IDisposable
         Press(VirtualKeyShort.ESCAPE);
     }
 
-    /// <summary>Opens a menu of the menu bar and chooses an item.</summary>
-    public void Menu(string menu, string item)
+    /// <summary>Opens a menu of the menu bar and chooses an item, through submenus ("Plugins", "Disk Map", "Show disk map").</summary>
+    public void Menu(string menu, params string[] items)
     {
         AutomationElement bar = Retry(() => Window.FindFirstDescendant(cf => cf.ByAutomationId("MainMenu")), "the menu bar");
         AutomationElement top = Retry(() => bar.FindFirstDescendant(cf => cf.ByName(menu)), "the menu " + menu);
         top.Click();
+        Thread.Sleep(600);
+        foreach (string item in items)
+        {
+            AutomationElement entry = Retry(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(item).And(cf.ByControlType(ControlType.MenuItem))),
+                "the menu item " + item);
+            entry.Click();
+            Thread.Sleep(700);
+        }
+    }
+
+    /// <summary>A button of the main window (in a dialog) with this text, once it's there.</summary>
+    public AutomationElement Button(string name, double seconds = 10) => Retry(() =>
+        Window.FindFirstDescendant(cf => cf.ByName(name).And(cf.ByControlType(ControlType.Button))), "the button " + name, seconds);
+
+    /// <summary>Waits for the button and clicks it.</summary>
+    public void Click(string button, int settleMs = 600)
+    {
+        Button(button).Click();
+        Thread.Sleep(settleMs);
+    }
+
+    /// <summary>A text of the main window with exactly this content, or null.</summary>
+    public AutomationElement? Text(string text) =>
+        Window.FindFirstDescendant(cf => cf.ByName(text).And(cf.ByControlType(ControlType.Text)));
+
+    /// <summary>The row of an item in a panel (it must be visible).</summary>
+    public AutomationElement Row(string name, bool left = true) => Retry(() =>
+        List(left).FindAllDescendants(cf => cf.ByControlType(ControlType.ListItem))
+            .FirstOrDefault(i => string.Equals(i.Name, name, StringComparison.OrdinalIgnoreCase)), "the row " + name);
+
+    /// <summary>Closes the app's other windows (Find, Configuration, plugin windows).</summary>
+    public void CloseOtherWindows()
+    {
+        foreach (AutomationElement w in Window.FindAllChildren(cf => cf.ByControlType(ControlType.Window)))
+        {
+            try
+            {
+                w.AsWindow().Close();
+            }
+            catch (Exception)
+            {
+                // closed already
+            }
+        }
         Thread.Sleep(500);
-        AutomationElement entry = Retry(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(item).And(cf.ByControlType(ControlType.MenuItem))), "the menu item " + item);
-        entry.Click();
+    }
+
+    // ---- the mouse ---------------------------------------------------------------------------------------
+
+    /// <summary>Drags with the mouse like a hand would (pressed, moved in steps, held a moment, released).</summary>
+    public static void Drag(System.Drawing.Point from, System.Drawing.Point to)
+    {
+        Mouse.MoveTo(from);
+        Thread.Sleep(250);
+        Mouse.Down(MouseButton.Left);
+        Thread.Sleep(200);
+        for (int step = 1; step <= 25; step++)
+        {
+            Mouse.MoveTo(new System.Drawing.Point(from.X + (to.X - from.X) * step / 25, from.Y + (to.Y - from.Y) * step / 25));
+            Thread.Sleep(30);
+        }
+        Thread.Sleep(600); // longer than "cancel drags shorter than" (150 ms)
+        Mouse.Up(MouseButton.Left);
         Thread.Sleep(800);
+    }
+
+    /// <summary>A point on the name of a row (where a drag starts: the empty part of a row starts a selection rectangle).</summary>
+    public System.Drawing.Point OnName(string name, bool left = true)
+    {
+        System.Drawing.Rectangle r = Row(name, left).BoundingRectangle;
+        return new System.Drawing.Point(r.Left + 50, r.Top + r.Height / 2);
+    }
+
+    /// <summary>The empty part of a panel below its items.</summary>
+    public System.Drawing.Point EmptyArea(bool left = true)
+    {
+        System.Drawing.Rectangle r = List(left).BoundingRectangle;
+        return new System.Drawing.Point(r.Left + r.Width / 2, r.Bottom - 60);
+    }
+
+    public static void DoubleClick(System.Drawing.Point at)
+    {
+        Mouse.MoveTo(at);
+        Thread.Sleep(150);
+        Mouse.DoubleClick();
+        Thread.Sleep(800);
+    }
+
+    public static void RightClick(System.Drawing.Point at)
+    {
+        Mouse.MoveTo(at);
+        Thread.Sleep(150);
+        Mouse.RightClick();
+        Thread.Sleep(1000);
     }
 
     // ---- what to look at -----------------------------------------------------------------------------------
