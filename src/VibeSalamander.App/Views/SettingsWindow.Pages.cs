@@ -768,9 +768,32 @@ public sealed partial class SettingsWindow
     {
         AppSettings s = _vm.Settings;
         List<ProgramRule> rules = viewers ? s.Viewers : s.Editors;
+        ViewerOptions v = s.Viewer;
         StackPanel page = Page(viewers ? "Viewers" : "Editors", viewers
-            ? "F3 opens files with the first matching viewer below. Files that match no rule open in their default Windows app (there is no internal viewer)."
-            : "F4 opens files with the first matching editor below. Files that match no rule open with the Windows \"Edit\" command (or Notepad).");
+            ? "F3 opens files with the first matching viewer below. Files that match no rule open in the built-in viewer."
+            : "F4 opens files with the first matching editor below. Files that match no rule open in the built-in editor.");
+        if (viewers)
+        {
+            page.Children.Add(Toggle("Use the built-in viewer", "Text and hex for files of any size, JSON / XML / YAML trees, Markdown, notebooks, web pages, pictures, PDFs, audio and video. Off: files open in their default Windows app.",
+                v.UseBuiltInViewer, on => v.UseBuiltInViewer = on));
+            page.Children.Add(Toggle("Wrap long lines", "W in the viewer.", v.WordWrap, on => v.WordWrap = on));
+            page.Children.Add(Toggle("Show line numbers", null, v.LineNumbers, on => v.LineNumbers = on));
+            page.Children.Add(Number("Font size", null, v.FontSize, 8, 40, n => v.FontSize = n));
+            page.Children.Add(Toggle("Show picture details", "Size, camera and date beside pictures.", v.ShowImageDetails, on => v.ShowImageDetails = on));
+            page.Children.Add(Toggle("Load pictures and styles from the internet", "In Markdown and web pages. Off: nothing is loaded from the internet.", v.AllowRemoteContent, on => v.AllowRemoteContent = on));
+            page.Children.Add(Toggle("Run scripts in web pages", "Off is safer: pages are shown without their scripts.", v.AllowScripts, on => v.AllowScripts = on));
+        }
+        else
+        {
+            page.Children.Add(Toggle("Use the built-in editor", "Syntax colors, checking of JSON / XML / YAML while typing, formatting, folding, find and replace, a live preview of Markdown and HTML. Off: files open with the Windows \"Edit\" command (or Notepad).",
+                v.UseBuiltInEditor, on => v.UseBuiltInEditor = on));
+            page.Children.Add(Toggle("Wrap long lines", null, v.EditorWordWrap, on => v.EditorWordWrap = on));
+            page.Children.Add(Toggle("Show the minimap", null, v.EditorMinimap, on => v.EditorMinimap = on));
+            page.Children.Add(Number("Font size", null, v.EditorFontSize, 8, 40, n => v.EditorFontSize = n));
+            page.Children.Add(Toggle("Show the preview of Markdown and HTML", null, v.EditorPreview, on => v.EditorPreview = on));
+            page.Children.Add(Toggle("Keep a backup when saving", "The previous version is kept as name.ext.bak.", v.EditorBackup, on => v.EditorBackup = on));
+        }
+        page.Children.Add(Section(viewers ? "Other viewers" : "Other editors"));
 
         var list = new ListView { Height = 220, Width = 300, SelectionMode = ListViewSelectionMode.Single };
         var masks = new TextBox { Header = "File masks", Width = 380, PlaceholderText = "*.txt;*.log" };
