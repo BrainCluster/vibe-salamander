@@ -23,6 +23,9 @@ public sealed class FileOperationEngine : IPausable
     private ConflictChoice? _mergeForAll;
     private readonly List<string> _skippedDirectories = new();
 
+    /// <summary>Failed + skipped items when a directory was started (a moved link is removed only when nothing in it went wrong).</summary>
+    private readonly Dictionary<string, int> _problemsBefore = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Confirmations and options from the configuration (set before starting an operation).</summary>
     public EngineOptions Options { get; set; } = new();
     private bool _skipAllErrors;
@@ -79,7 +82,8 @@ public sealed class FileOperationEngine : IPausable
 
     private abstract record Step(string Source);
     private sealed record CreateDirStep(string Source, string Target) : Step(Source);
-    private sealed record FinishDirStep(string Source, string Target, bool DeleteSource) : Step(Source);
+    /// <param name="IsLink">The source is a junction or symbolic link: a move removes the link itself (its folder stays).</param>
+    private sealed record FinishDirStep(string Source, string Target, bool DeleteSource, bool IsLink = false) : Step(Source);
     private sealed record CopyFileStep(string Source, string Target, long Size, bool DeleteSource) : Step(Source);
     private sealed record RenameStep(string Source, string Target, bool IsDirectory) : Step(Source);
     private sealed record DeleteStep(string Source, bool IsDirectory) : Step(Source);
@@ -92,7 +96,10 @@ public sealed class FileOperationEngine : IPausable
         try
         {
             target = Path.GetFullPath(target);
-            bool intoDirectory = target.EndsWith('\\') || Directory.Exists(target) || sources.Count > 1;
+            // one item renamed to its own name in other capitals ("folder" → "FOLDER"): the "existing directory" is itself
+            bool caseRename = sources.Count == 1 && !target.EndsWith('\\') &&
+                              string.Equals(Path.GetFullPath(sources[0]).TrimEnd('\\'), target, StringComparison.OrdinalIgnoreCase);
+            bool intoDirectory = !caseRename && (target.EndsWith('\\') || Directory.Exists(target) || sources.Count > 1);
             target = target.TrimEnd('\\');
             if (target.Length == 2 && target[1] == ':')
                 target += "\\";
@@ -111,6 +118,14 @@ public sealed class FileOperationEngine : IPausable
                 }
 
                 string dest = intoDirectory ? Path.Combine(target, Path.GetFileName(source)) : target;
+                if (string.Equals(source, dest, StringComparison.OrdinalIgnoreCase) && move &&
+                    !string.Equals(Path.GetFileName(source), Path.GetFileName(dest), StringComparison.Ordinal))
+                {
+                    // the same item with its name in other capitals ("a.txt" → "A.txt"): a rename
+                    result.CreatedTopLevelNames.Add(Path.GetFileName(dest));
+                    steps.Add(new RenameStep(source, dest, isDir));
+                    continue;
+                }
                 if (string.Equals(source, dest, StringComparison.OrdinalIgnoreCase))
                 {
                     if (!await HandleErrorAsync(source, move ? "Cannot move an item onto itself." : "Cannot copy an item onto itself.", result))
@@ -131,7 +146,7 @@ public sealed class FileOperationEngine : IPausable
                 }
                 else if (isDir)
                 {
-                    if (!await PlanDirectoryAsync(source, dest, move, steps, result))
+                    if (!await PlanDirectoryAsync(source, dest, move, steps, result, new List<string>()))
                         return Cancelled(result);
                 }
                 else
@@ -171,9 +186,22 @@ public sealed class FileOperationEngine : IPausable
         return result;
     }
 
-    private async Task<bool> PlanDirectoryAsync(string source, string dest, bool move, List<Step> steps, OperationResult result)
+    /// <param name="deleteSources">A move: the source items go once copied (not inside a link: its folder is elsewhere).</param>
+    /// <param name="chain">The real folders being copied above this one (to recognize a link that points back up).</param>
+    private async Task<bool> PlanDirectoryAsync(string source, string dest, bool deleteSources, List<Step> steps, OperationResult result,
+        List<string> chain)
     {
         _ct.ThrowIfCancellationRequested();
+        // a junction or symbolic link: its content is copied, but a move only removes the link, never the files of the
+        // folder it points to (that folder is somewhere else and isn't part of what is moved)
+        bool isLink = IsLink(source, out string real);
+        if (chain.Exists(ancestor => IsSameOrInside(ancestor, real)))
+        {
+            // it points at a folder being copied: copying it would never end ("Application Data" in a user profile)
+            return await HandleErrorAsync(source, "The link points back to a folder that is being copied: it was left out.", result);
+        }
+        chain.Add(real);
+        bool childrenDeleted = deleteSources && !isLink;
         steps.Add(new CreateDirStep(source, dest));
         _currentSource = source;
         Report(force: false, analyzing: true);
@@ -223,18 +251,46 @@ public sealed class FileOperationEngine : IPausable
 
             if (isDirectory)
             {
-                if (!await PlanDirectoryAsync(child, childDest, move, steps, result))
+                if (!await PlanDirectoryAsync(child, childDest, childrenDeleted, steps, result, chain))
                     return false;
             }
             else
             {
-                steps.Add(new CopyFileStep(child, childDest, size, move));
+                steps.Add(new CopyFileStep(child, childDest, size, childrenDeleted));
                 _totalBytes += size;
             }
         }
-        steps.Add(new FinishDirStep(source, dest, move));
+        chain.RemoveAt(chain.Count - 1);
+        steps.Add(new FinishDirStep(source, dest, deleteSources, isLink));
         return true;
     }
+
+    /// <summary>True for a junction or symbolic link to a directory; <paramref name="real"/> is the folder it leads to.</summary>
+    private static bool IsLink(string directory, out string real)
+    {
+        real = directory;
+        try
+        {
+            if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) == 0)
+                return false;
+            FileSystemInfo? target = new DirectoryInfo(directory).ResolveLinkTarget(returnFinalTarget: true);
+            if (target == null)
+                return false; // another kind of reparse point (OneDrive placeholders, deduplicated files): an ordinary folder
+            string resolved = target.FullName;
+            if (resolved.StartsWith(@"\\?\", StringComparison.Ordinal) && !resolved.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
+                resolved = resolved[4..];
+            real = Path.GetFullPath(resolved).TrimEnd('\\');
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true; // a reparse point that can't be read: like a link, never deleted through
+        }
+    }
+
+    private static bool IsSameOrInside(string path, string folder) =>
+        string.Equals(path, folder, StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith(folder.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
 
     // ---- steps -------------------------------------------------------------------------------
 
@@ -276,15 +332,20 @@ public sealed class FileOperationEngine : IPausable
             }
         }
 
+        bool copied = false;
         while (true)
         {
             try
             {
-                if (overwrite)
-                    ClearReadOnly(target);
-                CopyOneFile(step.Source, target, overwrite);
-                if (Options.ClearReadOnlyFromCd && IsOnCdRom(step.Source))
-                    ClearReadOnly(target);
+                if (!copied)
+                {
+                    if (overwrite)
+                        PrepareOverwrite(target);
+                    CopyOneFile(step.Source, target, overwrite);
+                    copied = true; // a Retry after the source couldn't be deleted (a move) doesn't copy again
+                    if (Options.ClearReadOnlyFromCd && IsOnCdRom(step.Source))
+                        ClearReadOnly(target);
+                }
                 if (step.DeleteSource)
                 {
                     ClearReadOnly(step.Source);
@@ -316,6 +377,7 @@ public sealed class FileOperationEngine : IPausable
         _currentTarget = step.Target;
         _currentDone = _currentTotal = 0;
         Report(force: false);
+        _problemsBefore[step.Source] = result.Failed + result.Skipped;
         if (Directory.Exists(step.Target))
         {
             _itemsDone++;
@@ -346,6 +408,9 @@ public sealed class FileOperationEngine : IPausable
                 if (choice == ErrorChoice.Retry) continue;
                 if (choice == ErrorChoice.Cancel) return false;
                 result.Failed++;
+                // its content has nowhere to go: one error for the directory, not one for every file in it
+                // (and a move keeps the source)
+                _skippedDirectories.Add(step.Target.TrimEnd('\\') + "\\");
                 break;
             }
         }
@@ -365,7 +430,15 @@ public sealed class FileOperationEngine : IPausable
                 if (attr != 0)
                     File.SetAttributes(step.Target, File.GetAttributes(step.Target) | attr);
             }
-            if (step.DeleteSource && Directory.Exists(step.Source) && !Directory.EnumerateFileSystemEntries(step.Source).Any())
+            if (step.DeleteSource && step.IsLink)
+            {
+                // a moved link: everything it showed was copied, so the link goes (the folder it points to stays);
+                // after a problem inside it the link stays too
+                bool problems = _problemsBefore.TryGetValue(step.Source, out int before) && result.Failed + result.Skipped > before;
+                if (!problems)
+                    Directory.Delete(step.Source); // removes only the link
+            }
+            else if (step.DeleteSource && Directory.Exists(step.Source) && !Directory.EnumerateFileSystemEntries(step.Source).Any())
             {
                 ClearReadOnly(step.Source);
                 Directory.Delete(step.Source);
@@ -468,7 +541,15 @@ public sealed class FileOperationEngine : IPausable
     private void PlanDelete(string directory, List<DeleteStep> steps)
     {
         _ct.ThrowIfCancellationRequested();
-        var attr = File.GetAttributes(directory);
+        FileAttributes attr;
+        try
+        {
+            attr = File.GetAttributes(directory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            attr = FileAttributes.ReparsePoint; // unreadable: not gone into; its delete step reports the problem
+        }
         if ((attr & FileAttributes.ReparsePoint) == 0) // junctions/symlinks: delete the link, not the target's content
         {
             try
@@ -607,6 +688,7 @@ public sealed class FileOperationEngine : IPausable
         _conflictForAll = null;
         _mergeForAll = null;
         _skippedDirectories.Clear();
+        _problemsBefore.Clear();
         _skipAllErrors = false;
         _totalBytes = _doneBytes = _currentDone = _currentTotal = 0;
         _itemsTotal = _itemsDone = 0;
@@ -686,6 +768,25 @@ public sealed class FileOperationEngine : IPausable
             }
         }
         return _cdRootIsCd;
+    }
+
+    /// <summary>
+    /// Before overwriting: Windows refuses to copy over a read-only, hidden or system file. The copy then gets the
+    /// source's attributes.
+    /// </summary>
+    private static void PrepareOverwrite(string path)
+    {
+        try
+        {
+            FileAttributes attr = File.GetAttributes(path);
+            const FileAttributes blocking = FileAttributes.ReadOnly | FileAttributes.Hidden | FileAttributes.System;
+            if ((attr & blocking) != 0)
+                File.SetAttributes(path, attr & ~blocking);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // the copy reports the real problem
+        }
     }
 
     private static void ClearReadOnly(string path)
