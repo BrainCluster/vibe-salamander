@@ -229,7 +229,9 @@ public sealed class MoreScenarios : IDisposable
 
     // ---- the mouse ------------------------------------------------------------------------------------------
 
-    [UiFact]
+    // WinUI doesn't start a drag from simulated mouse input on the test machine (the press reaches the row, no drag
+    // begins, with stepped or smooth movement): drag and drop stays on the manual checklist
+    [UiFact(Skip = "WinUI doesn't start drags from simulated mouse input on the test machine")]
     public void Drag_a_file_to_the_other_panel()
     {
         using AppSession app = Start(s => s.Confirm.DragAndDrop = false);
