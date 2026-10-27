@@ -122,7 +122,7 @@ public sealed class EntryComparer : IComparer<FileEntry>
             result = Mode switch
             {
                 SortMode.Extension => _strings.Compare(x.Extension, y.Extension),
-                SortMode.Size => x.Size.CompareTo(y.Size),
+                SortMode.Size => y.Size.CompareTo(x.Size), // largest first (what sorting by size is usually for); again: smallest first
                 SortMode.Date => CompareTimes(x, y),
                 SortMode.Attributes => ((int)x.Attributes).CompareTo((int)y.Attributes),
                 _ => 0,

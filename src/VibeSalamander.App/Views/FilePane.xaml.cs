@@ -137,5 +137,5 @@ public sealed partial class FilePane : UserControl
     }
 
     public string SortGlyph(SortMode mode, bool descending, string column) =>
-        mode.ToString() == column ? (descending ? "\uE70D" : "\uE70E") : string.Empty;
+        mode.ToString() == column ? (descending ^ (mode == SortMode.Size) ? "\uE70D" : "\uE70E") : string.Empty; // size: largest first points down
 }

@@ -102,8 +102,9 @@ public class ComparerTests
     [Fact]
     public void SizeSort_OrdersFiles()
     {
-        var sorted = new EntryComparer(SortMode.Size, false).Sort(new[] { File("big", 100), File("small", 1) });
-        Assert.Equal("small", sorted[0].Name);
+        var sorted = new EntryComparer(SortMode.Size, false).Sort(new[] { File("small", 1), File("big", 100) });
+        Assert.Equal("big", sorted[0].Name); // largest first
+        Assert.Equal("small", new EntryComparer(SortMode.Size, true).Sort(sorted)[0].Name); // the second time: smallest first
     }
 }
 

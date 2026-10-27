@@ -93,8 +93,8 @@ public sealed class MoreScenarios : IDisposable
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F6, settleMs: 1000);
         AppSession.Screenshot("64 sorted by size");
         List<string> bySize = app.Items();
-        Assert.True(bySize.IndexOf("notes.md") < bySize.IndexOf("report.txt") && bySize.IndexOf("report.txt") < bySize.IndexOf("data.bin"),
-            "smallest first: " + string.Join(", ", bySize));
+        Assert.True(bySize.IndexOf("data.bin") < bySize.IndexOf("report.txt") && bySize.IndexOf("report.txt") < bySize.IndexOf("notes.md"),
+            "largest first: " + string.Join(", ", bySize));
         Assert.True(bySize.IndexOf("Projects") < bySize.IndexOf("notes.md"), "folders stay on top: " + string.Join(", ", bySize));
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F3, settleMs: 1000);
         List<string> byName = app.Items();
