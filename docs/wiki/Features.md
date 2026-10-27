@@ -46,7 +46,7 @@
 - **JSON, XML and YAML as a tree**, with a problem shown at its line when the file is broken.
 - **Markdown, Jupyter notebooks and web pages rendered**: tables, task lists, code, pictures next to the file and
   notebook outputs. Nothing is loaded from the internet and no script runs unless you allow it.
-- **Pictures**: JPEG, PNG, GIF, WebP, HEIC, AVIF, JPEG XL, SVG and camera RAW (with Windows' free extensions), zoom,
+- **Pictures**: JPEG, PNG, GIF, WebP, HEIC, AVIF, JPEG XL, SVG and camera RAW (with Windows' free extensions), zoom (also with the mouse wheel),
   rotate (R), and details: size, camera, lens, exposure, date taken, location.
 - **PDFs**, page by page, and **audio and video** with their details.
 - Ctrl+PgUp / Ctrl+PgDn (or ← / → for pictures) go to the previous or next file of the folder; Ctrl+1…7 switch between

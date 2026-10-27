@@ -76,6 +76,30 @@ internal sealed partial class ViewerWindow
         scroller.ChangeView(null, null, (float)zoom, disableAnimation: true);
     }
 
+    private ulong _lastWheel;
+
+    private void WheelZoom(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (_imageScroller is not { } scroller || _mode != ViewerMode.Image)
+            return;
+        Microsoft.UI.Input.PointerPoint point = e.GetCurrentPoint(scroller);
+        e.Handled = true;
+        if (point.Timestamp == _lastWheel)
+            return; // the same turn of the wheel, seen by the picture and then by the ScrollViewer
+        _lastWheel = point.Timestamp;
+        int delta = point.Properties.MouseWheelDelta;
+        if (delta == 0 || point.Properties.IsHorizontalMouseWheel)
+            return;
+        double old = scroller.ZoomFactor;
+        double zoom = Math.Clamp(old * Math.Pow(1.2, delta / 120.0), scroller.MinZoomFactor, scroller.MaxZoomFactor);
+        if (Math.Abs(zoom - old) < 0.0001)
+            return;
+        // keep the spot under the pointer where it is
+        double x = (scroller.HorizontalOffset + point.Position.X) / old * zoom - point.Position.X;
+        double y = (scroller.VerticalOffset + point.Position.Y) / old * zoom - point.Position.Y;
+        scroller.ChangeView(Math.Max(0, x), Math.Max(0, y), (float)zoom, disableAnimation: true);
+    }
+
     private void EnsureImageHost()
     {
         if (_imageHost != null)
@@ -98,6 +122,11 @@ internal sealed partial class ViewerWindow
             IsTabStop = true,
         };
         _imageScroller.ViewChanged += (_, _) => UpdateImageStatus();
+        // the mouse wheel zooms pictures (around the pointer) instead of scrolling them; the content sees the wheel
+        // first (so the ScrollViewer doesn't scroll), the ScrollViewer catches it where there is no picture
+        _imageFrame.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        _imageFrame.PointerWheelChanged += WheelZoom;
+        _imageScroller.AddHandler(UIElement.PointerWheelChangedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(WheelZoom), handledEventsToo: true);
         _details = new StackPanel { Spacing = 6, Padding = new Thickness(16), Width = 280 };
         _detailsScroller = new ScrollViewer { Content = _details, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         _imageHost = new Grid();

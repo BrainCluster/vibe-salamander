@@ -86,7 +86,7 @@ each menu item shows its current key.
 | W | Wrap long lines |
 | Ctrl+1 … Ctrl+7 | Switch view (rendered, text, hex, …) |
 | Ctrl+PgUp / Ctrl+PgDn | Previous / next file of the folder |
-| ← / → , + / − , 0 , R | Pictures: previous / next, zoom, fit, rotate |
+| ← / → , + / − or the mouse wheel, 0 , R | Pictures: previous / next, zoom, fit, rotate |
 | F4 | Edit the file |
 
 ## Editor (F4)
