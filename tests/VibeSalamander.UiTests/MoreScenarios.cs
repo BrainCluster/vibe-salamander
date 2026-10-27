@@ -329,6 +329,10 @@ public sealed class MoreScenarios : IDisposable
         {
             Thread.Sleep(1000);
             AppSession.Screenshot("83 comfortable small window");
+            // in a narrow panel the names still show (other columns step aside)
+            var name = app.Row("report.txt").FindFirstDescendant(cf => cf.ByName("report").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text)));
+            Assert.NotNull(name);
+            Assert.True(name!.BoundingRectangle.Width >= 30, $"the name column is {name.BoundingRectangle.Width} px wide");
             NoErrors(app);
         }
     }

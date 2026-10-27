@@ -132,6 +132,7 @@ public sealed partial class FilePane
     {
         if (_appliedView == ViewMode.Detailed && FileList.ItemsPanelRoot is ItemsWrapGrid wrap)
             wrap.ItemWidth = DetailedRowWidth();
+        ViewModel?.Columns.SetPanelWidth(e.NewSize.Width); // a narrow panel leaves columns out before the name
     }
 
     /// <summary>Switches the list's layout and item templates to the panel's view.</summary>
