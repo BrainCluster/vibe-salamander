@@ -213,190 +213,47 @@ public sealed partial class FilePane
             pane.MarkAll(false);
         }
 
+        ContextMenuFacts facts = ContextMenuFactsFor(pane, item);
         var menu = new MenuFlyout();
-        void Add(string text, string glyph, CommandId command, bool bold = false)
+        foreach (ContextMenuEntry entry in ContextMenuPlan.For(facts))
         {
-            var entry = new MenuFlyoutItem { Text = text, Icon = new FontIcon { Glyph = glyph } };
-            if (bold)
-                entry.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
-            if (_main.KeyMap.GetShortcutText(command) is { Length: > 0 } keys)
-                entry.KeyboardAcceleratorTextOverride = keys;
-            entry.Click += async (_, _) =>
+            switch (entry.Kind)
             {
-                _main.Activate(pane);
-                await _main.ExecuteAsync(command);
-            };
-            menu.Items.Add(entry);
-        }
-        void Separator()
-        {
-            if (menu.Items.Count > 0 && menu.Items[^1] is not MenuFlyoutSeparator)
-                menu.Items.Add(new MenuFlyoutSeparator());
-        }
-
-        bool onItem = item != null && !item.Entry.IsUpDir;
-        bool local = pane.IsLocalDisk;
-        if (item?.Drive != null)
-        {
-            // This PC: a drive
-            Add("Open", "\uE8DA", CommandId.Open, bold: true);
-            Add("Open in other panel", "\uE8A7", CommandId.OpenInOtherPanel);
-            if (Core.Interop.DiskImages.IsMountedImage(item!.Drive!.Root))
-                Add("Unmount", "\uE711", CommandId.UnmountImage);
-            Separator();
-            Add("Drive information", "\uE946", CommandId.DriveInformation);
-            Add("Properties", "\uE90F", CommandId.Properties);
-        }
-        else if (onItem && pane.IsRemote)
-        {
-            // on a server (FTP, SFTP): copies go through the transfer panel
-            bool directory = item!.Entry.IsDirectory;
-            Add("Open", directory ? "\uE8DA" : "\uE8E5", CommandId.Open, bold: true);
-            if (!directory)
-            {
-                Add("View", "\uE890", CommandId.View);
-                Add("Edit", "\uE70F", CommandId.Edit);
-            }
-            Separator();
-            Add("Copy to other panel...", "\uE8C8", CommandId.Copy);
-            Add("Move to other panel...", "\uE8DE", CommandId.Move);
-            Add("Rename", "\uE8AC", CommandId.QuickRename);
-            Add("Delete", "\uE74D", CommandId.Delete);
-            Separator();
-            Add("Copy name as text", "\uE8C8", CommandId.CopyNameAsText);
-            Add("Copy path", "\uE8C8", CommandId.CopyFullNameAsText);
-        }
-        else if (onItem && pane.IsArchive)
-        {
-            // inside an archive: ZIP and TAR also move out and delete, the others are read-only
-            bool directory = item!.Entry.IsDirectory;
-            bool editable = _main.IsEditableArchive(pane);
-            Add("Open", directory ? "\uE8DA" : "\uE8E5", CommandId.Open, bold: true);
-            Separator();
-            Add("Copy out to other panel...", "\uE8C8", CommandId.Copy);
-            if (editable)
-                Add("Move out to other panel...", "\uE8DE", CommandId.Move);
-            Add("Copy name as text", "\uE8C8", CommandId.CopyNameAsText);
-            if (editable)
-            {
-                Separator();
-                Add("Delete", "\uE74D", CommandId.Delete);
-            }
-        }
-        else if (onItem)
-        {
-            int count = pane.MarkedItems.Count;
-            bool several = count > 1;
-            bool directory = item!.Entry.IsDirectory;
-            bool archive = !directory && _main.ArchiveProvider.CanHandle(item.Entry.FullPath);
-            bool image = !directory && !archive && Core.Interop.DiskImages.IsDiskImage(item.Entry.FullPath);
-            if (image && _main.Settings.General.MountDiskImages)
-                Add("Mount", "\uE958", CommandId.MountImage, bold: true);
-            else
-                Add(archive ? "Open archive" : "Open", directory || archive ? "\uE8DA" : "\uE8E5", CommandId.Open, bold: true);
-            if (image && !_main.Settings.General.MountDiskImages)
-                Add("Mount", "\uE958", CommandId.MountImage);
-            if (directory || archive)
-                Add("Open in other panel", "\uE8A7", CommandId.OpenInOtherPanel);
-            if (!directory && !several)
-            {
-                Add("Open with...", "\uE7AC", CommandId.OpenWith);
-                Add("Edit", "\uE70F", CommandId.Edit);
-            }
-            if (!directory && !several && local && Core.Interop.ScriptRunner.HostOf(item.Entry.FullPath) is var host && host != Core.Interop.ScriptHost.None)
-            {
-                // scripts: run in a console window that stays open
-                string script = item.Entry.FullPath;
-                var run = new MenuFlyoutItem
-                {
-                    Text = host == Core.Interop.ScriptHost.PowerShell ? "Run with PowerShell" : "Run in cmd",
-                    Icon = new FontIcon { Glyph = "\uE756" },
-                };
-                run.Click += (_, _) =>
-                {
-                    try
+                case ContextMenuEntryKind.Command:
+                    menu.Items.Add(CommandItem(entry, pane));
+                    break;
+                case ContextMenuEntryKind.Separator:
+                    menu.Items.Add(new MenuFlyoutSeparator());
+                    break;
+                case ContextMenuEntryKind.ViewSubmenu:
+                    menu.Items.Add(ViewSubmenu(pane));
+                    break;
+                case ContextMenuEntryKind.SortSubmenu:
+                    menu.Items.Add(SortSubmenu(pane));
+                    break;
+                case ContextMenuEntryKind.ArchivePluginSubmenu:
+                    if (item != null && _main.Plugins.UnpackerPlugin(item.Entry.FullPath) is { } owner)
+                        menu.Items.Add(PluginSubmenu(owner, item.Entry.FullPath, pane));
+                    break;
+                case ContextMenuEntryKind.RunScript:
+                    if (item != null)
+                        menu.Items.Add(RunScriptItem(item.Entry.FullPath, facts.Script));
+                    break;
+                case ContextMenuEntryKind.WindowsMenu:
+                    var windows = new MenuFlyoutItem
                     {
-                        Core.Interop.ScriptRunner.Run(script);
-                    }
-                    catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+                        Text = "Windows context menu",
+                        Icon = new FontIcon { Glyph = "\uE712" },
+                        KeyboardAcceleratorTextOverride = "Shift+right-click",
+                    };
+                    windows.Click += (_, _) =>
                     {
-                        _main.Notify(Loc.F("\"{0}\" could not be run: {1}", Path.GetFileName(script), ex.Message));
-                    }
-                };
-                menu.Items.Add(run);
+                        // after this menu has closed: the Windows menu is modal
+                        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => ShowShellMenu(item, screenX, screenY));
+                    };
+                    menu.Items.Add(windows);
+                    break;
             }
-            Separator();
-            Add("Cut", "\uE8C6", CommandId.ClipboardCut);
-            Add("Copy", "\uE8C8", CommandId.ClipboardCopy);
-            Add("Paste", "\uE77F", CommandId.ClipboardPaste);
-            Separator();
-            Add(several ? $"Copy {count} items to other panel..." : "Copy to other panel...", "\uE8C8", CommandId.Copy);
-            Add(several ? $"Move {count} items to other panel..." : "Move to other panel...", "\uE8DE", CommandId.Move);
-            if (!several)
-                Add("Rename", "\uE8AC", CommandId.QuickRename);
-            Add(several ? $"Delete {count} items" : "Delete", "\uE74D", CommandId.Delete);
-            Separator();
-            Add(several ? "Pack into archive..." : "Pack...", "\uE7B8", CommandId.Pack);
-            if (_main.Plugins.FindUnpacker(item.Entry.FullPath) != null)
-                Add("Unpack...", "\uE896", CommandId.Unpack);
-            if (!several && archive && _main.Plugins.UnpackerPlugin(item.Entry.FullPath) is { } owner)
-                menu.Items.Add(PluginSubmenu(owner, item.Entry.FullPath, pane));
-            Add("Copy path", "\uE8C8", CommandId.CopyFullNameAsText);
-            Separator();
-            Add("Properties", "\uE90F", CommandId.Properties);
-        }
-        else if (local)
-        {
-            // the directory itself (empty area or "..")
-            Add("New folder", "\uE8F4", CommandId.CreateDirectory);
-            Add("New text document", "\uE8A5", CommandId.EditNewFile);
-            Add("New (Windows)...", "\uE710", CommandId.NewMenu);
-            Separator();
-            Add("Paste", "\uE77F", CommandId.ClipboardPaste);
-            Add("Paste shortcut", "\uE71B", CommandId.PasteShortcut);
-            Separator();
-            menu.Items.Add(ViewSubmenu(pane));
-            menu.Items.Add(SortSubmenu(pane));
-            Add("Refresh", "\uE72C", CommandId.Refresh);
-            Add("Select all", "\uE8B3", CommandId.SelectAll);
-            Separator();
-            Add("Open in Explorer", "\uEC50", CommandId.OpenActiveFolder);
-            Add("Command prompt here", "\uE756", CommandId.CommandShell);
-            if (pane.Path.Length >= 2 && pane.Path[1] == ':' && Core.Interop.DiskImages.IsMountedImage(pane.Path[..2] + "\\"))
-            {
-                Separator();
-                Add($"Unmount {pane.Path[..2].ToUpperInvariant()}", "\uE711", CommandId.UnmountImage);
-            }
-        }
-        else
-        {
-            if (pane.IsRemote)
-            {
-                Add("New folder", "\uE8F4", CommandId.CreateDirectory);
-                Add("Paste", "\uE77F", CommandId.ClipboardPaste);
-                Separator();
-            }
-            menu.Items.Add(ViewSubmenu(pane));
-            menu.Items.Add(SortSubmenu(pane));
-            Add("Refresh", "\uE72C", CommandId.Refresh);
-        }
-
-        // everything else: the Windows menu (not for archives - their items aren't files on disk)
-        if (!pane.IsArchive && (local || item?.Drive != null))
-        {
-            Separator();
-            var windows = new MenuFlyoutItem
-            {
-                Text = "Windows context menu",
-                Icon = new FontIcon { Glyph = "\uE712" },
-                KeyboardAcceleratorTextOverride = "Shift+right-click",
-            };
-            windows.Click += (_, _) =>
-            {
-                // after this menu has closed: the Windows menu is modal
-                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => ShowShellMenu(item, screenX, screenY));
-            };
-            menu.Items.Add(windows);
         }
         if (menu.Items.Count == 0)
             return;
@@ -411,6 +268,98 @@ public sealed partial class FilePane
             Position = position,
             ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
         });
+    }
+
+    /// <summary>What the context menu depends on (the menu itself is decided by Core's ContextMenuPlan).</summary>
+    private ContextMenuFacts ContextMenuFactsFor(PaneViewModel pane, FileItemViewModel? item)
+    {
+        bool onItem = item != null && !item.Entry.IsUpDir;
+        bool local = pane.IsLocalDisk;
+        bool offersWindowsMenu = !pane.IsArchive && (local || item?.Drive != null); // archive items aren't files on disk
+        if (item?.Drive is { } drive)
+            return new ContextMenuFacts
+            {
+                Target = ContextMenuTarget.Drive,
+                IsMountedImageDrive = Core.Interop.DiskImages.IsMountedImage(drive.Root),
+                OffersWindowsMenu = offersWindowsMenu,
+            };
+        if (onItem && pane.IsRemote)
+            return new ContextMenuFacts { Target = ContextMenuTarget.RemoteItem, IsDirectory = item!.Entry.IsDirectory, OffersWindowsMenu = offersWindowsMenu };
+        if (onItem && pane.IsArchive)
+            return new ContextMenuFacts
+            {
+                Target = ContextMenuTarget.ArchiveItem,
+                IsDirectory = item!.Entry.IsDirectory,
+                EditableArchive = _main!.IsEditableArchive(pane),
+                OffersWindowsMenu = offersWindowsMenu,
+            };
+        if (onItem)
+        {
+            string path = item!.Entry.FullPath;
+            bool directory = item.Entry.IsDirectory;
+            int count = pane.MarkedItems.Count;
+            bool archive = !directory && _main!.ArchiveProvider.CanHandle(path);
+            return new ContextMenuFacts
+            {
+                Target = ContextMenuTarget.Item,
+                IsDirectory = directory,
+                MarkedCount = count,
+                IsArchiveFile = archive,
+                IsDiskImage = !directory && !archive && Core.Interop.DiskImages.IsDiskImage(path),
+                MountDiskImages = _main!.Settings.General.MountDiskImages,
+                Script = !directory && count <= 1 && local ? Core.Interop.ScriptRunner.HostOf(path) : Core.Interop.ScriptHost.None,
+                CanUnpack = _main.Plugins.FindUnpacker(path) != null,
+                HasArchivePlugin = count <= 1 && archive && _main.Plugins.UnpackerPlugin(path) != null,
+                OffersWindowsMenu = offersWindowsMenu,
+            };
+        }
+        string? imageDrive = pane.Path.Length >= 2 && pane.Path[1] == ':' && Core.Interop.DiskImages.IsMountedImage(pane.Path[..2] + "\\")
+            ? pane.Path[..2] : null;
+        return new ContextMenuFacts
+        {
+            Target = local ? ContextMenuTarget.LocalFolder : ContextMenuTarget.OtherFolder,
+            MountedImageDrive = local ? imageDrive : null,
+            IsRemotePanel = pane.IsRemote,
+            OffersWindowsMenu = offersWindowsMenu,
+        };
+    }
+
+    private MenuFlyoutItem CommandItem(ContextMenuEntry entry, PaneViewModel pane)
+    {
+        var item = new MenuFlyoutItem { Text = entry.Text, Icon = new FontIcon { Glyph = entry.Glyph } };
+        if (entry.Bold)
+            item.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+        if (_main!.KeyMap.GetShortcutText(entry.Command) is { Length: > 0 } keys)
+            item.KeyboardAcceleratorTextOverride = keys;
+        CommandId command = entry.Command;
+        item.Click += async (_, _) =>
+        {
+            _main.Activate(pane);
+            await _main.ExecuteAsync(command);
+        };
+        return item;
+    }
+
+    /// <summary>Runs a script in a console window that stays open.</summary>
+    private MenuFlyoutItem RunScriptItem(string script, Core.Interop.ScriptHost host)
+    {
+        var run = new MenuFlyoutItem
+        {
+            Text = host == Core.Interop.ScriptHost.PowerShell ? "Run with PowerShell" : "Run in cmd",
+            Icon = new FontIcon { Glyph = "\uE756" },
+        };
+        run.Click += (_, _) =>
+        {
+            try
+            {
+                Core.Interop.ScriptRunner.Run(script);
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+            {
+                _main?.Notify(Loc.F("\"{0}\" could not be run: {1}", Path.GetFileName(script), ex.Message));
+            }
+        };
+        return run;
     }
 
     private MenuFlyoutSubItem ViewSubmenu(PaneViewModel pane)
