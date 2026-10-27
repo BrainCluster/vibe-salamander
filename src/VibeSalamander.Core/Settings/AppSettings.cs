@@ -171,7 +171,7 @@ public static class SettingsStore
     };
 
     public static string Directory =>
-        System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VibeSalamander");
+        AppPaths.Home;
 
     public static string FilePath => System.IO.Path.Combine(Directory, "settings.json");
 

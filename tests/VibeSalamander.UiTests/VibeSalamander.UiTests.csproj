@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Starts the built app on dummy files and drives it like a user (UI Automation), with screenshots.
+       Needs a desktop: GitHub's Windows runners (.github/workflows/ui-tests.yml) or a Windows PC.
+       Without the app built (VIBE_APP_EXE or the Release x64 build) every test is skipped. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="xunit" Version="2.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.*" />
+    <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VibeSalamander.Core\VibeSalamander.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

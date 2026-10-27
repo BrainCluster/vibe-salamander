@@ -33,8 +33,7 @@ public static class ErrorLog
     private static int _repeats;
 
     /// <summary>The folder of the logs.</summary>
-    public static string Folder => _folder ??= Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VibeSalamander", "Logs");
+    public static string Folder => _folder ??= Settings.AppPaths.Logs;
 
     /// <summary>At start: the program's version for the session header; old logs are deleted.</summary>
     /// <param name="folder">Another folder than the usual one (tests).</param>

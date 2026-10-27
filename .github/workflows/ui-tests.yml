@@ -1,0 +1,92 @@
+# Every push to main: Vibe Salamander is started on dummy files and used like a user would (keys, menus, dialogs),
+# with a screenshot of every step. The screenshots and the results go to the "ui-screenshots" branch (one commit,
+# replaced each run): open its README on GitHub to look through them.
+name: UI tests
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ui-tests
+  cancel-in-progress: true
+
+jobs:
+  ui:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-ui-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-
+
+      - name: A larger screen
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Set-DisplayResolution -Width 1920 -Height 1080 -Force
+          Get-CimInstance Win32_VideoController | Select-Object CurrentHorizontalResolution, CurrentVerticalResolution
+
+      - name: Build the app
+        run: dotnet build src/VibeSalamander.App/VibeSalamander.App.csproj -c Release -p:Platform=x64
+
+      - name: UI tests
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/VibeSalamander.App/bin -Recurse -Filter VibeSalamander.exe | Select-Object -First 1
+          $env:VIBE_APP_EXE = $exe.FullName
+          $env:VIBE_SCREENSHOTS = Join-Path $env:RUNNER_TEMP "ui-screenshots"
+          dotnet test tests/VibeSalamander.UiTests/VibeSalamander.UiTests.csproj -c Release `
+            --logger "trx;LogFileName=ui.trx" --results-directory (Join-Path $env:RUNNER_TEMP "ui-results") --blame-hang-timeout 10m
+
+      - name: Publish the screenshots (branch ui-screenshots)
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $shots = Join-Path $env:RUNNER_TEMP "ui-screenshots"
+          New-Item -ItemType Directory -Force $shots | Out-Null
+          $lines = @("# UI test run", "", "Commit ${{ github.sha }}, $(Get-Date -Format 'yyyy-MM-dd HH:mm') UTC, run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})", "")
+          $trx = Get-ChildItem (Join-Path $env:RUNNER_TEMP "ui-results") -Recurse -Filter *.trx -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($trx) {
+            [xml]$x = Get-Content $trx.FullName
+            $ns = @{ t = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010" }
+            $lines += "| Test | Result |", "|---|---|"
+            $failures = @()
+            foreach ($r in (Select-Xml -Xml $x -XPath "//t:UnitTestResult" -Namespace $ns)) {
+              $n = $r.Node
+              $name = ($n.testName -split '\.')[-1] -replace '_', ' '
+              $lines += "| $name | $($n.outcome) |"
+              $msg = $n.Output.ErrorInfo.Message
+              if ($msg) { $failures += "### $name", "", '```', $msg.Trim(), '```', "" }
+            }
+            $lines += ""
+            if ($failures) { $lines += "## Failures", "" ; $lines += $failures }
+          } else {
+            $lines += "No test results (the tests didn't run).", ""
+          }
+          $lines += "## Screenshots", ""
+          foreach ($png in (Get-ChildItem $shots -Filter *.png | Sort-Object Name)) {
+            $lines += "### $($png.BaseName)", "", "![$($png.BaseName)](<$($png.Name)>)", ""
+          }
+          Set-Content -Path (Join-Path $shots "README.md") -Value $lines -Encoding utf8
+          Set-Location $shots
+          git init -q -b ui-screenshots
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "UI test screenshots for ${{ github.sha }}"
+          git push -q --force "https://x-access-token:$env:GH_TOKEN@github.com/${{ github.repository }}.git" ui-screenshots

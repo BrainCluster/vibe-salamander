@@ -74,7 +74,7 @@ public sealed class PluginManager
 
     /// <summary>Plugin folder in the user's profile (Plugins Manager → Open plugins folder).</summary>
     public static string UserPluginDirectory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VibeSalamander", "Plugins");
+        Path.Combine(Core.Settings.AppPaths.Home, "Plugins");
 
     public static string AppPluginDirectory => Path.Combine(AppContext.BaseDirectory, "Plugins");
 
