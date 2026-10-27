@@ -1,3 +1,6 @@
 * text=auto eol=crlf
 *.ico binary
 *.png binary
+*.gif binary
+# shell scripts run on Linux build machines
+*.sh text eol=lf
