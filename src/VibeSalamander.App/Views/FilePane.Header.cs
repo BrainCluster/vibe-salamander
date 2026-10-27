@@ -300,13 +300,7 @@ public sealed partial class FilePane
         });
     }
 
-    private static bool IsInside(DependencyObject element, DependencyObject container)
-    {
-        for (DependencyObject? d = element; d != null; d = VisualTreeHelper.GetParent(d))
-            if (ReferenceEquals(d, container))
-                return true;
-        return false;
-    }
+    private static bool IsInside(DependencyObject element, DependencyObject container) => VisualTree.IsInside(element, container);
 
     private async void PathEditor_KeyDown(object sender, KeyRoutedEventArgs e)
     {
