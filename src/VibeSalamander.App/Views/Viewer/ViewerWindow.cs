@@ -152,8 +152,9 @@ internal sealed partial class ViewerWindow : Window
         _titleBar.Children.Add(titleContent);
         _root.Children.Add(_titleBar);
 
-        // toolbar: the modes, then what fits the mode, then the file
-        foreach (ViewerMode mode in Enum.GetValues<ViewerMode>())
+        // toolbar: the modes (in ViewerModes.For's order, so Ctrl+1 is the first button shown), then what fits the
+        // mode, then the file
+        foreach (ViewerMode mode in new[] { ViewerMode.Image, ViewerMode.Pdf, ViewerMode.Media, ViewerMode.Preview, ViewerMode.Tree, ViewerMode.Text, ViewerMode.Hex })
         {
             var button = new AppBarToggleButton { Label = Loc.T(ModeName(mode)), Icon = new FontIcon { Glyph = ModeGlyph(mode) } };
             ViewerMode m = mode;
@@ -394,22 +395,38 @@ internal sealed partial class ViewerWindow : Window
                 ShowTextMode(mode);
                 break;
             case ViewerMode.Tree:
-                _ = ShowTreeAsync();
+                _ = Guarded(ShowTreeAsync);
                 break;
             case ViewerMode.Preview:
-                _ = ShowPreviewAsync();
+                _ = Guarded(ShowPreviewAsync);
                 break;
             case ViewerMode.Image:
-                _ = ShowImageAsync();
+                _ = Guarded(ShowImageAsync);
                 break;
             case ViewerMode.Pdf:
-                _ = ShowPdfAsync();
+                _ = Guarded(ShowPdfAsync);
                 break;
             case ViewerMode.Media:
-                _ = ShowMediaAsync();
+                _ = Guarded(ShowMediaAsync);
                 break;
         }
         UpdateStatus();
+    }
+
+    /// <summary>Runs a mode's loading; anything it didn't expect is shown in the window (and logged), never lost.</summary>
+    private async Task Guarded(Func<Task> show)
+    {
+        string path = _path;
+        try
+        {
+            await show();
+        }
+        catch (Exception ex)
+        {
+            VibeSalamander.Core.Diagnostics.ErrorLog.Exception("Viewer: " + Path.GetFileName(path), ex);
+            if (path == _path && !_closed)
+                ShowMessage(Loc.F("\"{0}\" can't be shown: {1}", Path.GetFileName(path), ex.Message));
+        }
     }
 
     /// <summary>Leaving a mode stops what it was doing (a video playing).</summary>

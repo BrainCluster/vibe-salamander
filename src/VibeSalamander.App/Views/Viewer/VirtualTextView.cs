@@ -204,7 +204,9 @@ internal sealed class VirtualTextView : UserControl
         // the gutter fits the largest line number
         bool labels = ShowLabels && _source.Label(0) != null;
         int digits = labels ? Math.Max(3, (_source.Label(Math.Max(0, count - 1)) ?? string.Empty).Length) : 0;
-        _gutterWidth = labels ? digits * _charWidth + GutterGap : 0;
+        // a little slack: digits can be drawn a bit wider than the measured character
+        double labelWidth = Math.Ceiling(digits * _charWidth * 1.08) + 6;
+        _gutterWidth = labels ? labelWidth + GutterGap : 6;
         _gutterLine.Visibility = labels ? Visibility.Visible : Visibility.Collapsed;
         _gutterLine.Height = _canvas.ActualHeight;
         _gutterLine.Background = (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"];
@@ -230,7 +232,7 @@ internal sealed class VirtualTextView : UserControl
             row.Height = _rowHeight;
 
             label.Text = labels && i < texts.Count ? _source.Label(index) ?? string.Empty : string.Empty;
-            label.Width = Math.Max(0, _gutterWidth - GutterGap);
+            label.Width = labels ? labelWidth : 0;
             Canvas.SetLeft(label, 0);
             Canvas.SetTop(label, i * _rowHeight);
 

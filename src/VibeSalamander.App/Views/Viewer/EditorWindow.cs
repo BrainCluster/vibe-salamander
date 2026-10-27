@@ -190,6 +190,8 @@ internal sealed partial class EditorWindow : Window
         _body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0) });
         _body.Children.Add(_web);
+        // the first activation would put the keyboard on the toolbar's first button: the text gets it
+        _web.Loaded += (_, _) => DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, FocusText);
         Grid.SetRow(_body, 3);
         _root.Children.Add(_body);
 
@@ -281,6 +283,15 @@ internal sealed partial class EditorWindow : Window
             _infoBar.ActionButton = button;
         }
         _infoBar.IsOpen = true;
+    }
+
+    /// <summary>The keyboard goes to the text (not the toolbar): the WebView gets the focus, then Monaco inside it.</summary>
+    private void FocusText()
+    {
+        if (_web.Visibility != Visibility.Visible)
+            return;
+        _web.Focus(FocusState.Programmatic);
+        Post(new { type = "focus" });
     }
 
     private void UpdateTitle()
@@ -487,6 +498,7 @@ internal sealed partial class EditorWindow : Window
                 _version = _savedVersion = m.GetProperty("version").GetInt32();
                 _otherChange = false;
                 UpdateTitle();
+                FocusText();
                 break;
             case "changed":
                 _version = m.GetProperty("version").GetInt32();
