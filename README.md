@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/hero-light.png" alt="Vibe Salamander: documents in the left panel, photo thumbnails in the right panel">
+  <img src="docs/images/hero-dark.png" alt="Vibe Salamander: documents in the left panel, photo thumbnails in the right panel">
 </p>
 
 Vibe Salamander keeps what made Salamander great (two panels, the classic keyboard shortcuts, the menus, speed
@@ -78,7 +78,7 @@ The full list, with pictures: [Features](https://github.com/BrainCluster/vibe-sa
 
 | | |
 |---|---|
-| ![Dark theme](docs/images/hero-dark.png) | ![Tokyo Night color scheme](docs/images/scheme-tokyo-night.png) |
+| ![Find results](docs/images/find-results.png) | ![Tokyo Night color scheme](docs/images/scheme-tokyo-night.png) |
 | ![Transfer panel](docs/images/transfer-panel.png) | ![Disk Map](docs/images/disk-map-sunburst.png) |
 
 ## Plugins

@@ -3,7 +3,7 @@
 Ten minutes to the essentials. If you have used Altap Salamander, Total Commander or Norton Commander, most of
 this will feel familiar: the keys are Salamander's.
 
-![The main window](images/hero-light.png)
+![The main window](images/hero-dark.png)
 
 ## The window
 

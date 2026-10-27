@@ -23,6 +23,7 @@ public sealed class DocumentationScreenshots : IDisposable
         {
             s.Left.Path = _files.Documents;
             s.Right.Path = _files.Photos;
+            s.Theme = AppTheme.Dark; // the pictures are all in the dark theme
             configure?.Invoke(s);
         }, prepareHome);
         AppSession.WaitUntil(() => app.Items().Count > 3, "the panels");
@@ -36,15 +37,6 @@ public sealed class DocumentationScreenshots : IDisposable
     public void Hero_pictures()
     {
         using (AppSession app = Start(s => s.Right.ViewMode = ViewMode.Thumbnails))
-        {
-            app.GoTo("report.txt");
-            Doc("hero light");
-        }
-        using (AppSession app = Start(s =>
-        {
-            s.Theme = AppTheme.Dark;
-            s.Right.ViewMode = ViewMode.Thumbnails;
-        }))
         {
             app.GoTo("report.txt");
             Doc("hero dark");

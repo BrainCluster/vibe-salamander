@@ -3,7 +3,7 @@
 A fast, keyboard-first **dual-pane file manager** for Windows: a modern spiritual successor to
 [Altap / Open Salamander](https://github.com/OpenSalamander/salamander), with a native Windows 11 look.
 
-![Vibe Salamander with documents on the left and photo thumbnails on the right](images/hero-light.png)
+![Vibe Salamander with documents on the left and photo thumbnails on the right](images/hero-dark.png)
 
 **New here?** [Installation](Installation) → [Getting started](Getting-Started) (ten minutes to the essentials).
 
