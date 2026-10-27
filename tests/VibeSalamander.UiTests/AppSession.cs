@@ -208,6 +208,14 @@ public sealed class AppSession : IDisposable
         Thread.Sleep(settleMs);
     }
 
+    /// <summary>Clicks something with this name anywhere on the desktop (a tab of a plugin window, a page of Configuration).</summary>
+    public void ClickNamed(string name, int settleMs = 1200)
+    {
+        AutomationElement element = Retry(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(name)), "something named " + name);
+        element.Click();
+        Thread.Sleep(settleMs);
+    }
+
     /// <summary>A text of the main window with exactly this content, or null.</summary>
     public AutomationElement? Text(string text) =>
         Window.FindFirstDescendant(cf => cf.ByName(text).And(cf.ByControlType(ControlType.Text)));
@@ -302,10 +310,13 @@ public sealed class AppSession : IDisposable
 
     // ---- what to look at -----------------------------------------------------------------------------------
 
-    /// <summary>A picture of the whole screen (the window with its menus and dialogs, and other windows of the app).</summary>
-    public static string Screenshot(string name)
+    /// <summary>
+    /// A picture of the screen (the window with its menus and dialogs, and other windows of the app); without the
+    /// taskbar when <paramref name="workArea"/> (pictures for the documentation).
+    /// </summary>
+    public static string Screenshot(string name, bool workArea = false)
     {
-        Rectangle screen = System.Windows.Forms.Screen.PrimaryScreen!.Bounds;
+        Rectangle screen = workArea ? System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea : System.Windows.Forms.Screen.PrimaryScreen!.Bounds;
         using var bitmap = new Bitmap(screen.Width, screen.Height);
         using (Graphics g = Graphics.FromImage(bitmap))
             g.CopyFromScreen(screen.Location, Point.Empty, screen.Size);
