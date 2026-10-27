@@ -1,15 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-using Microsoft.UI.Dispatching;
 using Windows.ApplicationModel.DataTransfer;
-using VibeSalamander.Core;
 using VibeSalamander.Core.Commands;
 using VibeSalamander.Core.FileSystem;
-using VibeSalamander.Core.Formatting;
 using VibeSalamander.Core.Interop;
 using VibeSalamander.Core.Operations;
-using VibeSalamander.Core.Panels;
 using VibeSalamander.Core.Settings;
 using VibeSalamander.Core.Tools;
 using VibeSalamander.Plugins;
@@ -17,60 +13,59 @@ using VibeSalamander.Services;
 
 namespace VibeSalamander.ViewModels;
 
-// MainViewModel: inside archives (the panel shows an archive's content).
-public sealed partial class MainViewModel
+/// <summary>
+/// A panel that shows an archive's content: F5 / Alt+F6 copy the selected items out, F3 / F4 open a temporary copy.
+/// In ZIP and TAR archives F6 moves out, F8 deletes and Ctrl+V pastes in; other changes say what can be done instead
+/// (Core's PanelCommandRules decides). Files also go into an archive from other panels (F5, drag and drop, paste).
+/// Everything that takes time runs in the transfer panel.
+/// </summary>
+internal sealed class ArchivePanelCommands
 {
-    // ---- inside archives (the panel shows an archive's content) --------------------------------
+    private readonly MainViewModel _main;
+    private readonly IUiHost _host;
 
-    /// <summary>
-    /// Commands that work differently in an archive: F5 / Alt+F6 copy the selected items out, F3 / F4
-    /// open a temporary copy. In ZIP and TAR archives F6 moves out, F8 deletes and Ctrl+V pastes in;
-    /// other commands (and every change of 7-Zip and RAR archives) say what can be done instead.
-    /// Returns true when the command was handled here.
-    /// </summary>
-    private async Task<bool> ArchiveCommandAsync(PaneViewModel p, CommandId command)
+    public ArchivePanelCommands(MainViewModel main, IUiHost host)
     {
-        ArchiveLocation? editable = EditableArchive(p);
-        switch (command)
+        _main = main;
+        _host = host;
+    }
+
+    private AppSettings Settings => _main.Settings;
+    private PaneViewModel Inactive => _main.Inactive;
+
+    /// <summary>Folder for files opened from archives and servers (emptied when the app closes).</summary>
+    public static string TempRoot => Path.Combine(Path.GetTempPath(), "VibeSalamander", "FromArchives");
+
+    /// <summary>Runs the command when it works differently in an archive; true when it was handled here.</summary>
+    public async Task<bool> TryHandleAsync(PaneViewModel p, CommandId command)
+    {
+        ArchiveLocation? editable = Editable(p);
+        switch (PanelCommandRules.InArchive(command, editable != null))
         {
-            case CommandId.Copy:
-            case CommandId.Unpack:
-                await CopyFromArchiveAsync(p, move: false);
+            case ArchivePanelAction.CopyOut:
+                await CopyOutAsync(p, move: false);
                 return true;
-            case CommandId.Move when editable != null:
-                await CopyFromArchiveAsync(p, move: true);
+            case ArchivePanelAction.MoveOut:
+                await CopyOutAsync(p, move: true);
                 return true;
-            case CommandId.Delete when editable != null:
-            case CommandId.DeletePermanently when editable != null:
-                await DeleteFromArchiveAsync(p, editable);
+            case ArchivePanelAction.Delete:
+                await DeleteAsync(p, editable!);
                 return true;
-            case CommandId.ClipboardPaste when editable != null:
+            case ArchivePanelAction.PasteIn:
                 var (paths, cut) = await FileClipboard.GetFilesAsync();
                 if (paths.Count > 0)
                 {
-                    AddToArchive(paths, editable, cut);
+                    Add(paths, editable!, cut);
                     if (cut)
                         Clipboard.Clear();
                 }
                 return true;
-            case CommandId.View:
-            case CommandId.Edit:
+            case ArchivePanelAction.OpenCopy:
                 if (p.FocusedItem is { Entry.IsDirectory: false, Entry.IsUpDir: false } item)
-                    await OpenFromArchiveAsync(p, item);
+                    await OpenCopyAsync(p, item);
                 return true;
-            case CommandId.Move:
-            case CommandId.Delete:
-            case CommandId.DeletePermanently:
-            case CommandId.QuickRename:
-            case CommandId.CreateDirectory:
-            case CommandId.EditNewFile:
-            case CommandId.ChangeAttributes:
-            case CommandId.ChangeCase:
-            case CommandId.ClipboardCut:
-            case CommandId.ClipboardCopy:
-            case CommandId.ClipboardPaste:
-            case CommandId.Pack:
-            case CommandId.NewMenu:
+            case ArchivePanelAction.ExplainEditable:
+            case ArchivePanelAction.ExplainReadOnly:
                 string name = p.Archive is { } location ? Path.GetFileName(location.ArchivePath) : "The archive";
                 if (editable != null)
                     _host.Notify(Loc.F("In \"{0}\" files can be copied in and out (F5, F6) and deleted (F8).", name), isError: false);
@@ -82,16 +77,15 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>True when the panel shows a ZIP or TAR that files can be copied into and deleted from.</summary>
-    public bool IsEditableArchive(PaneViewModel p) => EditableArchive(p) != null;
+    // ---- which archives can be changed ------------------------------------------------------------------------
 
     /// <summary>Where the panel is in an archive that can be changed (ZIP, TAR), or null.</summary>
-    internal static ArchiveLocation? EditableArchive(PaneViewModel p) =>
+    public static ArchiveLocation? Editable(PaneViewModel p) =>
         p.Archive is { } location && SafeCanEdit(location.Archiver, location.ArchivePath) ? location : null;
 
     /// <summary>The archive (that can be changed) a target path points into, or null.</summary>
-    internal ArchiveLocation? EditableArchiveAt(string path) =>
-        ArchiveProvider.Locate(path) is { } location && SafeCanEdit(location.Archiver, location.ArchivePath) ? location : null;
+    public ArchiveLocation? EditableAt(string path) =>
+        _main.ArchiveProvider.Locate(path) is { } location && SafeCanEdit(location.Archiver, location.ArchivePath) ? location : null;
 
     private static bool SafeCanEdit(IArchiver archiver, string path)
     {
@@ -105,19 +99,21 @@ public sealed partial class MainViewModel
         }
     }
 
+    // ---- in and out ---------------------------------------------------------------------------------------------
+
     /// <summary>
-    /// F5 / F6 / drag and drop / paste into a panel showing a ZIP or TAR: the files go into the archive (in
-    /// the transfer panel). Moving deletes the originals only when everything went in.
+    /// F5 / F6 / drag and drop / paste into a panel showing a ZIP or TAR: the files go into the archive (in the
+    /// transfer panel). Moving deletes the originals only when everything went in.
     /// </summary>
-    internal void AddToArchive(IReadOnlyList<string> sources, ArchiveLocation location, bool move)
+    public void Add(IReadOnlyList<string> sources, ArchiveLocation location, bool move)
     {
         if (sources.Count == 0)
             return;
-        _active.RememberSelection();
-        _active.MarkAll(false);
+        _main.Active.RememberSelection();
+        _main.Active.MarkAll(false);
         var compression = Enum.TryParse(Settings.Plugins.PackCompression, out ArchiveCompression c) ? c : ArchiveCompression.Normal;
         string display = ArchiveFileSystemProvider.Combine(location.ArchivePath, location.InnerPath);
-        Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, sources, display, async job =>
+        _main.Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, sources, display, async job =>
         {
             OperationResult result = await Task.Run(() => location.Archiver.AddAsync(new ArchiveAddRequest
             {
@@ -127,8 +123,7 @@ public sealed partial class MainViewModel
                 Compression = compression,
             }, job));
             // never delete a directory the archive itself is in
-            if (move && !result.Cancelled && result.Failed == 0 && result.Skipped == 0 &&
-                !sources.Any(src => location.ArchivePath.StartsWith(src.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)))
+            if (move && PanelCommandRules.Completed(result) && !PanelCommandRules.IsInsideAny(location.ArchivePath, sources))
             {
                 var engine = new FileOperationEngine(new JobCallbacks(job));
                 OperationResult deleted = await engine.DeleteAsync(sources, job.Cancellation);
@@ -139,7 +134,7 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>F8 in a ZIP or TAR: deletes the selected files and directories from the archive (in the transfer panel).</summary>
-    private async Task DeleteFromArchiveAsync(PaneViewModel p, ArchiveLocation location)
+    private async Task DeleteAsync(PaneViewModel p, ArchiveLocation location)
     {
         var items = p.GetOperationItems().Where(i => !i.Entry.IsUpDir).ToList();
         if (items.Count == 0)
@@ -151,7 +146,7 @@ public sealed partial class MainViewModel
         var inner = items.Select(i => location.ItemPath(i.Entry.Name)).ToList();
         p.RememberSelection();
         p.MarkAll(false);
-        Transfers.EnqueueJob(OperationKind.Delete, items.Select(i => i.Entry.FullPath).ToList(), null, job =>
+        _main.Transfers.EnqueueJob(OperationKind.Delete, items.Select(i => i.Entry.FullPath).ToList(), null, job =>
             Task.Run(() => location.Archiver.DeleteAsync(new ArchiveDeleteRequest
             {
                 ArchivePath = location.ArchivePath,
@@ -161,10 +156,10 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>
-    /// F5 in an archive: unpacks the selected files and directories into a directory (the other panel by
-    /// default). F6 (ZIP, TAR) then deletes them from the archive, when everything came out.
+    /// F5 in an archive: unpacks the selected files and directories into a directory (the other panel by default).
+    /// F6 (ZIP, TAR) then deletes them from the archive, when everything came out.
     /// </summary>
-    private async Task CopyFromArchiveAsync(PaneViewModel p, bool move)
+    private async Task CopyOutAsync(PaneViewModel p, bool move)
     {
         if (p.Archive is not { } location)
             return;
@@ -172,11 +167,9 @@ public sealed partial class MainViewModel
         if (items.Count == 0)
             return;
         string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} items", items.Count);
-        string defaultTarget = Inactive.IsLocalDisk ? Inactive.Path : string.Empty;
-        if (defaultTarget.Length > 0 && !defaultTarget.EndsWith('\\'))
-            defaultTarget += "\\";
+        string defaultTarget = CopyTargetRules.DefaultTarget(Inactive.Path, Inactive.IsLocalDisk);
         string target;
-        if (!Settings.AskCopyMoveTarget && Inactive.IsLocalDisk)
+        if (!PanelCommandRules.AskForTargetOnDisk(Settings.AskCopyMoveTarget, Inactive.IsLocalDisk))
         {
             target = defaultTarget;
         }
@@ -190,11 +183,11 @@ public sealed partial class MainViewModel
             if (a.DontAskAgain)
             {
                 Settings.AskCopyMoveTarget = false;
-                SaveSettings();
+                _main.SaveSettings();
             }
         }
         string directory = PathUtil.Resolve(Inactive.IsLocalDisk ? Inactive.Path : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), target);
-        if (ArchiveProvider.CanHandle(directory) || !Path.IsPathRooted(directory))
+        if (_main.ArchiveProvider.CanHandle(directory) || !Path.IsPathRooted(directory))
         {
             _host.Notify("Files can only be copied out of an archive into a directory on disk.");
             return;
@@ -206,7 +199,7 @@ public sealed partial class MainViewModel
         var inner = items.Select(i => location.ItemPath(i.Entry.Name)).ToList();
         p.RememberSelection();
         p.MarkAll(false);
-        Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, items.Select(i => i.Entry.FullPath).ToList(), directory, async job =>
+        _main.Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, items.Select(i => i.Entry.FullPath).ToList(), directory, async job =>
         {
             OperationResult result = await Task.Run(() => location.Archiver.UnpackAsync(new UnpackRequest
             {
@@ -215,7 +208,7 @@ public sealed partial class MainViewModel
                 Items = inner,
                 BasePath = location.InnerPath,
             }, job));
-            if (move && !result.Cancelled && result.Failed == 0 && result.Skipped == 0)
+            if (move && PanelCommandRules.Completed(result))
             {
                 OperationResult deleted = await Task.Run(() => location.Archiver.DeleteAsync(new ArchiveDeleteRequest
                 {
@@ -229,18 +222,15 @@ public sealed partial class MainViewModel
         });
     }
 
-    /// <summary>Folder for files opened from archives (emptied when the app closes).</summary>
-    public static string ArchiveTempRoot => Path.Combine(Path.GetTempPath(), "VibeSalamander", "FromArchives");
-
     /// <summary>Enter / F3 on a file in an archive: unpacks it into a temporary folder and opens it.</summary>
-    private async Task OpenFromArchiveAsync(PaneViewModel p, FileItemViewModel item)
+    public Task OpenCopyAsync(PaneViewModel p, FileItemViewModel item)
     {
         if (p.Archive is not { } location || item.Entry.IsDirectory)
-            return;
-        string directory = Path.Combine(ArchiveTempRoot, Guid.NewGuid().ToString("N")[..8]);
+            return Task.CompletedTask;
+        string directory = Path.Combine(TempRoot, Guid.NewGuid().ToString("N")[..8]);
         string file = Path.Combine(directory, item.Entry.Name);
         string inner = location.ItemPath(item.Entry.Name);
-        Transfers.EnqueueJob(OperationKind.Unpack, new[] { item.Entry.FullPath }, directory, async job =>
+        _main.Transfers.EnqueueJob(OperationKind.Unpack, new[] { item.Entry.FullPath }, directory, async job =>
         {
             OperationResult result = await Task.Run(() => location.Archiver.UnpackAsync(new UnpackRequest
             {
@@ -253,28 +243,30 @@ public sealed partial class MainViewModel
             if (!result.Cancelled && File.Exists(file))
             {
                 FileItemViewModel opened = new(new FileEntry(item.Entry.Name, file, false, item.Entry.Size, item.Entry.LastWrite, FileAttributes.ReadOnly), p.Columns);
+                PaneViewModel other = p == _main.Left ? _main.Right : _main.Left;
                 // the rule's $(FullName) / $(Path) must be the temporary copy, not the path inside the archive
                 var context = new UserMenuContext
                 {
                     Path = directory,
-                    OtherPath = (p == Left ? Right : Left).IsLocalDisk ? (p == Left ? Right : Left).Path : string.Empty,
+                    OtherPath = other.IsLocalDisk ? other.Path : string.Empty,
                     FullName = file,
                     Selected = new[] { file },
                 };
-                if (!RunProgramRule(Settings.Viewers, opened, context))
+                if (!_main.RunProgramRule(Settings.Viewers, opened, context))
                     ShellOperations.Open(file, directory);
             }
             return result;
         });
+        return Task.CompletedTask;
     }
 
-    /// <summary>At exit: removes the temporary copies of files opened from archives (best effort).</summary>
-    public static void CleanArchiveTemp()
+    /// <summary>At exit: removes the temporary copies of files opened from archives and servers (best effort).</summary>
+    public static void CleanTemp()
     {
         try
         {
-            if (Directory.Exists(ArchiveTempRoot))
-                Directory.Delete(ArchiveTempRoot, recursive: true);
+            if (Directory.Exists(TempRoot))
+                Directory.Delete(TempRoot, recursive: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

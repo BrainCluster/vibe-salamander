@@ -45,7 +45,7 @@ internal sealed class FileCommands
 
         string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} items", items.Count);
         // the other panel, also when it shows a ZIP or TAR (the files go into the archive)
-        bool otherUsable = Inactive.IsLocalDisk || Inactive.IsRemote || MainViewModel.EditableArchive(Inactive) != null;
+        bool otherUsable = Inactive.IsLocalDisk || Inactive.IsRemote || ArchivePanelCommands.Editable(Inactive) != null;
         string defaultTarget = CopyTargetRules.DefaultTarget(Inactive.Path, otherUsable);
 
         string target;
@@ -71,13 +71,13 @@ internal sealed class FileCommands
         var sources = items.Select(i => i.Entry.FullPath).ToList();
         if (_main.RemoteProvider.FileSystemOf(resolved) is { } remote)
         {
-            _main.UploadToRemote(sources, remote, resolved, move);
+            _main.ServerPanels.Upload(sources, remote, resolved, move);
             return;
         }
         if (!Directory.Exists(resolved) && _main.ArchiveProvider.Locate(resolved) is { } archive)
         {
-            if (_main.EditableArchiveAt(resolved) is { } editable)
-                _main.AddToArchive(sources, editable, move);
+            if (_main.ArchivePanels.EditableAt(resolved) is { } editable)
+                _main.ArchivePanels.Add(sources, editable, move);
             else
                 _host.Notify($"\"{Path.GetFileName(archive.ArchivePath)}\" is open read-only: copy files out with F5, or unpack it with Alt+F6 from its folder.", isError: false);
             return;
@@ -101,12 +101,12 @@ internal sealed class FileCommands
             return Task.CompletedTask;
         if (_main.RemoteProvider.FileSystemOf(target) is { } remote)
         {
-            _main.UploadToRemote(sources, remote, target, move); // dropped or pasted onto an FTP / SFTP panel
+            _main.ServerPanels.Upload(sources, remote, target, move); // dropped or pasted onto an FTP / SFTP panel
             return Task.CompletedTask;
         }
-        if (!Directory.Exists(target) && _main.EditableArchiveAt(target) is { } archive)
+        if (!Directory.Exists(target) && _main.ArchivePanels.EditableAt(target) is { } archive)
         {
-            _main.AddToArchive(sources, archive, move); // dropped or pasted onto a ZIP / TAR panel
+            _main.ArchivePanels.Add(sources, archive, move); // dropped or pasted onto a ZIP / TAR panel
             return Task.CompletedTask;
         }
         // like Salamander, the marks are cleared once the operation is started; Ctrl+W brings them back

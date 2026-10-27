@@ -69,12 +69,12 @@ public sealed partial class MainViewModel : BindableBase
             pane.ArchiveFileOpenRequested += async (_, item) =>
             {
                 if (p.IsRemote)
-                    await OpenFromRemoteAsync(p, item, Settings.Viewers);
+                    await ServerPanels.OpenCopyAsync(p, item, Settings.Viewers);
                 else
-                    await OpenFromArchiveAsync(p, item);
+                    await ArchivePanels.OpenCopyAsync(p, item);
             };
             pane.DiskImageOpenRequested += async (_, path) => await OpenDiskImageAsync(p, path);
-            pane.LeavingServer = ConfirmLeaveServerAsync;
+            pane.LeavingServer = (leaving, serverPath) => ServerPanels.ConfirmLeaveAsync(leaving, serverPath);
         }
 
         Settings.General ??= new GeneralOptions();
@@ -161,6 +161,9 @@ public sealed partial class MainViewModel : BindableBase
         }
         Notify(Loc.F("\"{0}\" needs a plugin that is not enabled (Plugins → Plugins Manager).", CommandCatalog.DisplayName(command)));
     }
+
+    /// <summary>Plugin file systems (FTP, SFTP) in the panels.</summary>
+    public RemoteFileSystemProvider RemoteProvider { get; }
 
     /// <summary>Archives as directories (Enter on an archive).</summary>
     public ArchiveFileSystemProvider ArchiveProvider { get; }

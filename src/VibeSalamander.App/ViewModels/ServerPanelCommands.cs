@@ -6,32 +6,95 @@ using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Interop;
 using VibeSalamander.Core.Operations;
 using VibeSalamander.Core.Settings;
-using VibeSalamander.Core.Tools;
 using VibeSalamander.Plugins;
 using VibeSalamander.Services;
 
 namespace VibeSalamander.ViewModels;
 
 /// <summary>
-/// Panels showing a plugin file system (FTP, SFTP): F5 / F6 copy and move to the other panel (download),
-/// files from a disk panel, drag and drop or Ctrl+V go up (upload), F8 deletes, F7 makes a directory,
-/// F2 renames, Enter / F3 / F4 open a temporary copy. Everything that takes time runs in the transfer panel.
+/// Panels showing a plugin file system (FTP, SFTP): F5 / F6 copy and move to the other panel (download), files from a
+/// disk panel, drag and drop or Ctrl+V go up (upload), F8 deletes, F7 makes a directory, F2 renames, Enter / F3 / F4
+/// open a temporary copy, F12 disconnects. Core's PanelCommandRules decides what each command does here; everything
+/// that takes time runs in the transfer panel.
 /// </summary>
-public sealed partial class MainViewModel
+internal sealed class ServerPanelCommands
 {
-    /// <summary>Plugin file systems (FTP, SFTP) in the panels.</summary>
-    public RemoteFileSystemProvider RemoteProvider { get; }
+    private readonly MainViewModel _main;
+    private readonly IUiHost _host;
+
+    public ServerPanelCommands(MainViewModel main, IUiHost host)
+    {
+        _main = main;
+        _host = host;
+    }
+
+    private AppSettings Settings => _main.Settings;
+    private PaneViewModel Inactive => _main.Inactive;
+    private RemoteFileSystemProvider Servers => _main.RemoteProvider;
+
+    /// <summary>Runs the command when it works differently on a server; true when it was handled here.</summary>
+    public async Task<bool> TryHandleAsync(PaneViewModel p, CommandId command)
+    {
+        if (Servers.FileSystemOf(p.Path) is not { } fs)
+            return false;
+        switch (PanelCommandRules.OnServer(command))
+        {
+            case ServerPanelAction.Download:
+                await DownloadAsync(p, fs, move: false);
+                return true;
+            case ServerPanelAction.DownloadAndDelete:
+                await DownloadAsync(p, fs, move: true);
+                return true;
+            case ServerPanelAction.Delete:
+                await DeleteAsync(p, fs);
+                return true;
+            case ServerPanelAction.CreateDirectory:
+                await CreateDirectoryAsync(p, fs);
+                return true;
+            case ServerPanelAction.Disconnect:
+                await DisconnectAsync(p, fs);
+                return true;
+            case ServerPanelAction.Rename:
+                await RenameAsync(p, fs);
+                return true;
+            case ServerPanelAction.View:
+                if (p.FocusedItem is { Entry.IsDirectory: false, Entry.IsUpDir: false } viewed)
+                    await OpenCopyAsync(p, viewed, Settings.Viewers);
+                return true;
+            case ServerPanelAction.Edit:
+                if (p.FocusedItem is { Entry.IsDirectory: false, Entry.IsUpDir: false } edited)
+                    await OpenCopyAsync(p, edited, Settings.Editors);
+                return true;
+            case ServerPanelAction.PasteUp:
+                var (paths, cut) = await FileClipboard.GetFilesAsync();
+                if (paths.Count > 0)
+                {
+                    Upload(paths, fs, p.Path, cut);
+                    if (cut)
+                        Windows.ApplicationModel.DataTransfer.Clipboard.Clear();
+                }
+                return true;
+            case ServerPanelAction.Explain:
+                _host.Notify(Loc.F("On {0} files can be copied (F5, F6), deleted (F8), renamed (F2) and opened; new directories with F7.",
+                    fs.DisplayName), isError: false);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    // ---- connection ---------------------------------------------------------------------------------------------
 
     /// <summary>
-    /// A panel leaves a server: "Disconnect from ...?" Yes closes the connection (unless the other panel
-    /// is on the same server, then nothing is asked); No keeps the panel where it is.
+    /// A panel leaves a server: "Disconnect from ...?" Yes closes the connection (unless the other panel is on the
+    /// same server, then nothing is asked); No keeps the panel where it is.
     /// </summary>
-    private async Task<bool> ConfirmLeaveServerAsync(PaneViewModel pane, string serverPath)
+    public async Task<bool> ConfirmLeaveAsync(PaneViewModel pane, string serverPath)
     {
-        PaneViewModel other = pane == Left ? Right : Left;
+        PaneViewModel other = pane == _main.Left ? _main.Right : _main.Left;
         if (other.IsRemote && RemoteFileSystemProvider.SameServer(other.Path, serverPath))
             return true; // still in use there
-        IPluginFileSystem? fs = RemoteProvider.FileSystemOf(serverPath);
+        IPluginFileSystem? fs = Servers.FileSystemOf(serverPath);
         if (fs == null || !SafeIsConnected(fs, serverPath))
             return true; // nothing to disconnect (already disconnected)
         string server = RemoteFileSystemProvider.ServerOf(serverPath).Replace("%40", "@");
@@ -64,7 +127,7 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>F12 in a panel on a server: disconnects from it; the panels on it go to This PC.</summary>
-    private async Task DisconnectServerAsync(PaneViewModel p, IPluginFileSystem fs)
+    private async Task DisconnectAsync(PaneViewModel p, IPluginFileSystem fs)
     {
         string server = p.Path;
         try
@@ -75,90 +138,29 @@ public sealed partial class MainViewModel
         {
             _host.Notify(ex.Message);
         }
-        foreach (PaneViewModel pane in new[] { Left, Right })
+        foreach (PaneViewModel pane in new[] { _main.Left, _main.Right })
             if (pane.IsRemote && RemoteFileSystemProvider.SameServer(pane.Path, server))
                 await pane.NavigateAsync(ThisPcProvider.RootPath);
     }
 
-    /// <summary>Handles a command in a panel showing a server; true when it was handled here.</summary>
-    private async Task<bool> RemoteCommandAsync(PaneViewModel p, CommandId command)
-    {
-        if (RemoteProvider.FileSystemOf(p.Path) is not { } fs)
-            return false;
-        switch (command)
-        {
-            case CommandId.Copy:
-            case CommandId.Unpack:
-                await DownloadFromRemoteAsync(p, fs, move: false);
-                return true;
-            case CommandId.Move:
-                await DownloadFromRemoteAsync(p, fs, move: true);
-                return true;
-            case CommandId.Delete:
-            case CommandId.DeletePermanently:
-                await DeleteRemoteAsync(p, fs);
-                return true;
-            case CommandId.CreateDirectory:
-                await CreateRemoteDirectoryAsync(p, fs);
-                return true;
-            case CommandId.DisconnectNetworkDrive:
-                await DisconnectServerAsync(p, fs);
-                return true;
-            case CommandId.QuickRename:
-                await RenameRemoteAsync(p, fs);
-                return true;
-            case CommandId.View:
-                if (p.FocusedItem is { Entry.IsDirectory: false, Entry.IsUpDir: false } viewed)
-                    await OpenFromRemoteAsync(p, viewed, Settings.Viewers);
-                return true;
-            case CommandId.Edit:
-                if (p.FocusedItem is { Entry.IsDirectory: false, Entry.IsUpDir: false } edited)
-                    await OpenFromRemoteAsync(p, edited, Settings.Editors);
-                return true;
-            case CommandId.ClipboardPaste:
-                var (paths, cut) = await FileClipboard.GetFilesAsync();
-                if (paths.Count > 0)
-                {
-                    UploadToRemote(paths, fs, p.Path, cut);
-                    if (cut)
-                        Windows.ApplicationModel.DataTransfer.Clipboard.Clear();
-                }
-                return true;
-            case CommandId.EditNewFile:
-            case CommandId.ChangeAttributes:
-            case CommandId.ChangeCase:
-            case CommandId.ClipboardCut:
-            case CommandId.ClipboardCopy:
-            case CommandId.Pack:
-            case CommandId.NewMenu:
-            case CommandId.CommandShell:
-            case CommandId.OpenActiveFolder:
-                _host.Notify(Loc.F("On {0} files can be copied (F5, F6), deleted (F8), renamed (F2) and opened; new directories with F7.",
-                    fs.DisplayName), isError: false);
-                return true;
-            default:
-                return false;
-        }
-    }
+    // ---- down and up ----------------------------------------------------------------------------------------------
 
     /// <summary>F5 / F6 on a server: downloads the selected items into a directory (the other panel by default).</summary>
-    private async Task DownloadFromRemoteAsync(PaneViewModel p, IPluginFileSystem fs, bool move)
+    private async Task DownloadAsync(PaneViewModel p, IPluginFileSystem fs, bool move)
     {
         var items = p.GetOperationItems().Where(i => !i.Entry.IsUpDir).ToList();
         if (items.Count == 0)
             return;
-        if (Inactive.IsRemote && RemoteProvider.FileSystemOf(Inactive.Path) is { } other)
+        if (Inactive.IsRemote && Servers.FileSystemOf(Inactive.Path) is { } other)
         {
             // server to server: through a temporary folder here
-            await CopyBetweenServersAsync(p, fs, items, other, Inactive.Path, move);
+            CopyBetweenServers(p, fs, items, other, Inactive.Path, move);
             return;
         }
         string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} items", items.Count);
-        string defaultTarget = Inactive.IsLocalDisk ? Inactive.Path : string.Empty;
-        if (defaultTarget.Length > 0 && !defaultTarget.EndsWith('\\'))
-            defaultTarget += "\\";
+        string defaultTarget = CopyTargetRules.DefaultTarget(Inactive.Path, Inactive.IsLocalDisk);
         string target;
-        if (!Settings.AskCopyMoveTarget && Inactive.IsLocalDisk)
+        if (!PanelCommandRules.AskForTargetOnDisk(Settings.AskCopyMoveTarget, Inactive.IsLocalDisk))
         {
             target = defaultTarget;
         }
@@ -172,16 +174,16 @@ public sealed partial class MainViewModel
             if (a.DontAskAgain)
             {
                 Settings.AskCopyMoveTarget = false;
-                SaveSettings();
+                _main.SaveSettings();
             }
         }
         string directory = PathUtil.Resolve(Inactive.IsLocalDisk ? Inactive.Path : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), target);
-        if (RemoteProvider.FileSystemOf(directory) is { } targetFs)
+        if (Servers.FileSystemOf(directory) is { } targetFs)
         {
-            await CopyBetweenServersAsync(p, fs, items, targetFs, directory, move);
+            CopyBetweenServers(p, fs, items, targetFs, directory, move);
             return;
         }
-        if (ArchiveProvider.CanHandle(directory) || !Path.IsPathRooted(directory))
+        if (_main.ArchiveProvider.CanHandle(directory) || !Path.IsPathRooted(directory))
         {
             _host.Notify("Files can only be downloaded into a directory on disk.");
             return;
@@ -193,12 +195,12 @@ public sealed partial class MainViewModel
         var remote = items.Select(i => RemoteFileSystemProvider.ItemOf(i.Entry)).ToList();
         p.RememberSelection();
         p.MarkAll(false);
-        Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, remote.Select(r => r.Path).ToList(), directory, async job =>
+        _main.Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, remote.Select(r => r.Path).ToList(), directory, async job =>
         {
             Directory.CreateDirectory(directory);
             OperationResult result = await Task.Run(() => fs.DownloadAsync(remote, directory, job));
             // moving: deleted on the server only when everything came down
-            if (move && !result.Cancelled && result.Failed == 0 && result.Skipped == 0)
+            if (move && PanelCommandRules.Completed(result))
             {
                 OperationResult deleted = await Task.Run(() => fs.DeleteAsync(remote, job));
                 result.Failed += deleted.Failed;
@@ -208,14 +210,14 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>From one server to another (or another folder of the same one): down into a temporary folder, then up.</summary>
-    private Task CopyBetweenServersAsync(PaneViewModel p, IPluginFileSystem fs, List<FileItemViewModel> items,
+    private void CopyBetweenServers(PaneViewModel p, IPluginFileSystem fs, List<FileItemViewModel> items,
         IPluginFileSystem targetFs, string targetDirectory, bool move)
     {
         var remote = items.Select(i => RemoteFileSystemProvider.ItemOf(i.Entry)).ToList();
         string temp = Path.Combine(Path.GetTempPath(), "VibeSalamander", "Transfer", Guid.NewGuid().ToString("N")[..8]);
         p.RememberSelection();
         p.MarkAll(false);
-        Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, remote.Select(r => r.Path).ToList(), targetDirectory, async job =>
+        _main.Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, remote.Select(r => r.Path).ToList(), targetDirectory, async job =>
         {
             try
             {
@@ -225,7 +227,7 @@ public sealed partial class MainViewModel
                     return down;
                 var local = Directory.EnumerateFileSystemEntries(temp).ToList();
                 OperationResult up = await Task.Run(() => targetFs.UploadAsync(local, targetDirectory, job));
-                if (move && !up.Cancelled && up.Failed == 0 && up.Skipped == 0 && down.Skipped == 0)
+                if (move && PanelCommandRules.Completed(up) && down.Skipped == 0)
                 {
                     OperationResult deleted = await Task.Run(() => fs.DeleteAsync(remote, job));
                     up.Failed += deleted.Failed;
@@ -244,21 +246,20 @@ public sealed partial class MainViewModel
                 }
             }
         });
-        return Task.CompletedTask;
     }
 
     /// <summary>Copy / move from a disk panel (or dropped, or pasted) onto a server.</summary>
-    internal void UploadToRemote(IReadOnlyList<string> sources, IPluginFileSystem fs, string targetDirectory, bool move)
+    public void Upload(IReadOnlyList<string> sources, IPluginFileSystem fs, string targetDirectory, bool move)
     {
         if (sources.Count == 0)
             return;
         targetDirectory = targetDirectory.TrimEnd('\\');
-        _active.RememberSelection();
-        _active.MarkAll(false);
-        Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, sources, targetDirectory, async job =>
+        _main.Active.RememberSelection();
+        _main.Active.MarkAll(false);
+        _main.Transfers.EnqueueJob(move ? OperationKind.Move : OperationKind.Copy, sources, targetDirectory, async job =>
         {
             OperationResult result = await Task.Run(() => fs.UploadAsync(sources, targetDirectory, job));
-            if (move && !result.Cancelled && result.Failed == 0 && result.Skipped == 0)
+            if (move && PanelCommandRules.Completed(result))
             {
                 var engine = new FileOperationEngine(new JobCallbacks(job));
                 OperationResult deleted = await engine.DeleteAsync(sources, job.Cancellation);
@@ -268,8 +269,10 @@ public sealed partial class MainViewModel
         });
     }
 
+    // ---- delete, new directory, rename, open -------------------------------------------------------------------
+
     /// <summary>F8 on a server: deletes the selected files and directories (there is no Recycle Bin there).</summary>
-    private async Task DeleteRemoteAsync(PaneViewModel p, IPluginFileSystem fs)
+    private async Task DeleteAsync(PaneViewModel p, IPluginFileSystem fs)
     {
         var items = p.GetOperationItems().Where(i => !i.Entry.IsUpDir).ToList();
         if (items.Count == 0)
@@ -283,22 +286,23 @@ public sealed partial class MainViewModel
         var remote = items.Select(i => RemoteFileSystemProvider.ItemOf(i.Entry)).ToList();
         p.RememberSelection();
         p.MarkAll(false);
-        Transfers.EnqueueJob(OperationKind.Delete, remote.Select(r => r.Path).ToList(), null, job =>
+        _main.Transfers.EnqueueJob(OperationKind.Delete, remote.Select(r => r.Path).ToList(), null, job =>
             Task.Run(() => fs.DeleteAsync(remote, job)));
     }
 
     /// <summary>F7 on a server: asks for the name and creates the directory (a path "a/b" creates both).</summary>
-    private async Task CreateRemoteDirectoryAsync(PaneViewModel p, IPluginFileSystem fs)
+    private async Task CreateDirectoryAsync(PaneViewModel p, IPluginFileSystem fs)
     {
         string? name = await _host.Dialogs.InputAsync("Create Directory", Loc.T("Name of the new directory:"));
         _host.FocusPane(p);
         if (name == null)
             return;
         string directory = p.Path;
-        string first = name.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? name;
+        string[] parts = ServerNames.PathParts(name);
+        string first = parts.FirstOrDefault() ?? name;
         try
         {
-            foreach (string part in name.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries))
+            foreach (string part in parts)
             {
                 directory = fs.Combine(directory, part);
                 await Task.Run(() => fs.CreateDirectoryAsync(directory, CancellationToken.None));
@@ -312,7 +316,7 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>F2 on a server: the name is edited in its row, then renamed on the server.</summary>
-    private async Task RenameRemoteAsync(PaneViewModel p, IPluginFileSystem fs)
+    private async Task RenameAsync(PaneViewModel p, IPluginFileSystem fs)
     {
         FileItemViewModel? item = p.FocusedItem;
         if (item == null || item.Entry.IsUpDir)
@@ -320,9 +324,9 @@ public sealed partial class MainViewModel
         string? newName = await _host.EditNameInPlaceAsync(p, item);
         if (string.IsNullOrWhiteSpace(newName) || newName == item.Entry.Name)
             return;
-        if (newName.IndexOfAny(new[] { '/', '\\' }) >= 0)
+        if (ServerNames.RenameProblem(newName) is { } problem)
         {
-            _host.Notify(Loc.T("The name can't contain '/' or '\\'."));
+            _host.Notify(Loc.T(problem));
             return;
         }
         string from = RemoteFileSystemProvider.ItemOf(item.Entry).Path;
@@ -339,15 +343,15 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>Enter / F3 / F4 on a file on a server: downloads it into a temporary folder and opens it.</summary>
-    private Task OpenFromRemoteAsync(PaneViewModel p, FileItemViewModel item, IEnumerable<ProgramRule> rules)
+    public Task OpenCopyAsync(PaneViewModel p, FileItemViewModel item, IEnumerable<ProgramRule> rules)
     {
-        if (RemoteProvider.FileSystemOf(p.Path) is not { } fs || item.Entry.IsDirectory)
+        if (Servers.FileSystemOf(p.Path) is not { } fs || item.Entry.IsDirectory)
             return Task.CompletedTask;
         RemoteItem remote = RemoteFileSystemProvider.ItemOf(item.Entry);
-        string directory = Path.Combine(ArchiveTempRoot, Guid.NewGuid().ToString("N")[..8]);
+        string directory = Path.Combine(ArchivePanelCommands.TempRoot, Guid.NewGuid().ToString("N")[..8]);
         string file = Path.Combine(directory, item.Entry.Name);
         bool editor = ReferenceEquals(rules, Settings.Editors);
-        Transfers.EnqueueJob(OperationKind.Copy, new[] { remote.Path }, directory, async job =>
+        _main.Transfers.EnqueueJob(OperationKind.Copy, new[] { remote.Path }, directory, async job =>
         {
             Directory.CreateDirectory(directory);
             OperationResult result = await Task.Run(() => fs.DownloadAsync(new[] { remote }, directory, job));
@@ -355,7 +359,7 @@ public sealed partial class MainViewModel
             if (!result.Cancelled && File.Exists(file))
             {
                 var entry = new FileEntry(item.Entry.Name, file, false, item.Entry.Size, item.Entry.LastWrite, FileAttributes.Normal);
-                RunFoundFile(entry, rules, () =>
+                _main.RunFoundFile(entry, rules, () =>
                 {
                     if (editor)
                         ShellOperations.Edit(file);

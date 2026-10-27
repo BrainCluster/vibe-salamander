@@ -34,7 +34,7 @@ public sealed partial class MainViewModel
     public void EditFoundFile(FileEntry entry) =>
         RunFoundFile(entry, Settings.Editors, () => ShellOperations.Edit(entry.FullPath));
 
-    private void RunFoundFile(FileEntry entry, IEnumerable<ProgramRule> rules, Action fallback)
+    internal void RunFoundFile(FileEntry entry, IEnumerable<ProgramRule> rules, Action fallback)
     {
         if (entry.IsDirectory)
             return;
@@ -60,7 +60,7 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>Configuration → Viewers / Editors: the first rule whose masks match starts its program.</summary>
-    private bool RunProgramRule(IEnumerable<ProgramRule> rules, FileItemViewModel item, UserMenuContext? fileContext = null)
+    internal bool RunProgramRule(IEnumerable<ProgramRule> rules, FileItemViewModel item, UserMenuContext? fileContext = null)
     {
         foreach (ProgramRule rule in rules)
         {

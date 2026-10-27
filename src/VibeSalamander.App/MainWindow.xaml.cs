@@ -355,7 +355,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         _vm.SaveSettings(onExit: true);
         _pluginUi?.CloseAll();
         _vm.Plugins.ShutdownAll();
-        MainViewModel.CleanArchiveTemp();
+        ArchivePanelCommands.CleanTemp();
         _vm.Left.Dispose();
         _vm.Right.Dispose();
     }

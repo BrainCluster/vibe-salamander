@@ -26,7 +26,7 @@ public sealed partial class MainViewModel
     {
         CommandId.Copy => _active.IsLocalDisk || _active.IsArchive || _active.IsRemote,
         CommandId.Move or CommandId.Delete or CommandId.DeletePermanently or CommandId.ClipboardPaste =>
-            _active.IsLocalDisk || _active.IsRemote || EditableArchive(_active) != null,
+            _active.IsLocalDisk || _active.IsRemote || ArchivePanelCommands.Editable(_active) != null,
         CommandId.QuickRename or CommandId.CreateDirectory when _active.IsRemote => true,
         CommandId.QuickRename or CommandId.CreateDirectory or CommandId.EditNewFile or
         CommandId.ChangeAttributes or CommandId.ChangeCase or CommandId.ClipboardCut or
@@ -47,9 +47,9 @@ public sealed partial class MainViewModel
         try
         {
             // inside an archive or on a server, the plugin's file system handles the file commands first
-            if (p.IsArchive && await ArchiveCommandAsync(p, command))
+            if (p.IsArchive && await ArchivePanels.TryHandleAsync(p, command))
                 return;
-            if (p.IsRemote && await RemoteCommandAsync(p, command))
+            if (p.IsRemote && await ServerPanels.TryHandleAsync(p, command))
                 return;
             if (CommandHandlers.TryGet(command, out Func<PaneViewModel, Task> run))
                 await run(p);
@@ -281,6 +281,18 @@ public sealed partial class MainViewModel
 
     private FileCommands? _fileCommands;
     private ArchiveCommands? _archiveCommands;
+    private ArchivePanelCommands? _archivePanels;
+    private ServerPanelCommands? _serverPanels;
+
+    /// <summary>Commands in a panel that shows an archive's content (ArchivePanelCommands).</summary>
+    internal ArchivePanelCommands ArchivePanels => _archivePanels ??= new ArchivePanelCommands(this, _host);
+
+    /// <summary>Commands in a panel that shows a server (ServerPanelCommands).</summary>
+    internal ServerPanelCommands ServerPanels => _serverPanels ??= new ServerPanelCommands(this, _host);
+
+    /// <summary>True when the panel shows a ZIP or TAR that files can be copied into and deleted from.</summary>
+    public bool IsEditableArchive(PaneViewModel p) => ArchivePanelCommands.Editable(p) != null;
+
 
     /// <summary>Pack and Unpack (ArchiveCommands).</summary>
     internal ArchiveCommands Archives => _archiveCommands ??= new ArchiveCommands(this, _host);
