@@ -12,7 +12,7 @@ using VibeSalamander.Services;
 namespace VibeSalamander.ViewModels;
 
 /// <summary>One row of a panel. The ListView selection is the caret; <see cref="IsMarked"/> is the Salamander selection.</summary>
-public sealed class FileItemViewModel : BindableBase
+public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
 {
     private bool _isMarked;
     private ImageSource? _icon;

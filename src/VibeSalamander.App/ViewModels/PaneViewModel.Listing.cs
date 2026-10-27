@@ -45,18 +45,8 @@ public sealed partial class PaneViewModel
     public int MarkNames(IReadOnlyCollection<string> names)
     {
         RememberSelection(); // the previous marks come back with Restore Selection (Ctrl+W)
-        var set = new HashSet<string>(names, StringComparer.OrdinalIgnoreCase);
-        int found = 0;
-        foreach (FileItemViewModel item in _items)
-        {
-            if (item.Entry.IsUpDir || item.IsDrive)
-                continue;
-            bool mark = set.Contains(item.Entry.Name);
-            item.IsMarked = mark;
-            if (mark)
-                found++;
-        }
-        OnPropertyChanged(nameof(InfoText));
+        int found = Core.Panels.Marking.SetNames(_items, names);
+        NotifyMarksChanged();
         return found;
     }
 
