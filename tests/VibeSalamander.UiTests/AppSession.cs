@@ -51,10 +51,12 @@ public sealed class AppSession : IDisposable
     public UIA3Automation Automation { get; } = new();
     public Window Window { get; private set; }
 
-    public AppSession(Action<AppSettings> configure)
+    /// <param name="prepareHome">Called with the settings folder before the app starts (to put a plugin into it).</param>
+    public AppSession(Action<AppSettings> configure, Action<string>? prepareHome = null)
     {
         Home = Path.Combine(Path.GetTempPath(), "vibe-ui-home-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(Home);
+        prepareHome?.Invoke(Home);
         var settings = new AppSettings { WindowMaximized = true, ShowHidden = true };
         settings.General.Language = "en";
         settings.General.SingleInstance = false;

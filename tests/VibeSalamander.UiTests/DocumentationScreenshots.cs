@@ -17,14 +17,14 @@ public sealed class DocumentationScreenshots : IDisposable
 
     public void Dispose() => _files.Dispose();
 
-    private AppSession Start(Action<AppSettings>? configure = null)
+    private AppSession Start(Action<AppSettings>? configure = null, Action<string>? prepareHome = null)
     {
         var app = new AppSession(s =>
         {
             s.Left.Path = _files.Documents;
             s.Right.Path = _files.Photos;
             configure?.Invoke(s);
-        });
+        }, prepareHome);
         AppSession.WaitUntil(() => app.Items().Count > 3, "the panels");
         Thread.Sleep(1500); // icons and thumbnails
         return app;
@@ -51,6 +51,21 @@ public sealed class DocumentationScreenshots : IDisposable
         }
         using (AppSession app = Start(s => s.Colors.Scheme = "TokyoNight"))
             Doc("scheme tokyo night");
+    }
+
+    /// <summary>The five views of the photo panel, for the README's animation.</summary>
+    [UiFact]
+    public void Views()
+    {
+        using AppSession app = Start();
+        app.Press(VirtualKeyShort.TAB, settleMs: 500); // the photos panel
+        var keys = new[] { VirtualKeyShort.KEY_1, VirtualKeyShort.KEY_2, VirtualKeyShort.KEY_3, VirtualKeyShort.KEY_4, VirtualKeyShort.KEY_5 };
+        string[] names = { "brief", "detailed", "icons", "thumbnails", "tiles" };
+        for (int i = 0; i < keys.Length; i++)
+        {
+            app.Press(VirtualKeyShort.ALT, keys[i], settleMs: 2000);
+            Doc("view " + names[i]);
+        }
     }
 
     [UiFact]
@@ -155,12 +170,7 @@ public sealed class DocumentationScreenshots : IDisposable
     public void Archive_dialogs()
     {
         using AppSession app = Start(s => s.Right.Path = _files.Target);
-        app.GoTo("archive.zip");
-        app.Menu("Plugins", "Archives", "Test archive");
-        Thread.Sleep(2500);
-        Doc("test archive");
-        app.CloseOtherWindows();
-
+        // the Pack dialog first: after a plugin window has closed, the keys don't always reach the panel again
         app.GoTo("report.txt");
         app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F5, settleMs: 1500);
         Doc("pack");
@@ -173,6 +183,37 @@ public sealed class DocumentationScreenshots : IDisposable
         {
             // no Advanced part for this format
         }
-        app.Press(VirtualKeyShort.ESCAPE);
+        app.Press(VirtualKeyShort.ESCAPE, settleMs: 800);
+
+        app.GoTo("archive.zip");
+        app.Menu("Plugins", "Archives", "Test archive");
+        Thread.Sleep(2500);
+        Doc("test archive");
+        app.CloseOtherWindows();
+    }
+
+    /// <summary>The example plugin (samples/HelloPlugin) for the wiki's Writing plugins page; VIBE_HELLO_PLUGIN is its DLL.</summary>
+    [UiFact]
+    public void Example_plugin()
+    {
+        string? dll = Environment.GetEnvironmentVariable("VIBE_HELLO_PLUGIN");
+        if (dll is null || !File.Exists(dll))
+            return; // not built on this machine
+        using AppSession app = Start(prepareHome: home =>
+        {
+            string folder = Directory.CreateDirectory(Path.Combine(home, "Plugins", "HelloPlugin")).FullName;
+            File.Copy(dll, Path.Combine(folder, "HelloPlugin.dll"));
+        });
+        app.Menu("Plugins", "Hello");
+        Thread.Sleep(800);
+        Doc("hello menu");
+        app.Press(VirtualKeyShort.ESCAPE, settleMs: 400);
+        app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
+
+        app.Menu("Plugins", "Hello", "Largest files here...");
+        app.OtherWindow("Largest files");
+        Thread.Sleep(2000);
+        Doc("hello largest files");
+        app.CloseOtherWindows();
     }
 }

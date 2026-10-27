@@ -51,9 +51,15 @@ jobs:
       - name: Build the app
         run: dotnet build src/VibeSalamander.App/VibeSalamander.App.csproj -c Release -p:Platform=x64
 
+      - name: Build the example plugin (pictures for the wiki)
+        continue-on-error: true
+        run: dotnet build samples/HelloPlugin/HelloPlugin.csproj -c Release
+
       - name: UI tests
         shell: pwsh
         run: |
+          $hello = Get-ChildItem samples/HelloPlugin/bin -Recurse -Filter HelloPlugin.dll -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($hello) { $env:VIBE_HELLO_PLUGIN = $hello.FullName }
           $exe = Get-ChildItem src/VibeSalamander.App/bin -Recurse -Filter VibeSalamander.exe | Select-Object -First 1
           $env:VIBE_APP_EXE = $exe.FullName
           $env:VIBE_SCREENSHOTS = Join-Path $env:RUNNER_TEMP "ui-screenshots"

@@ -220,8 +220,8 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
     [Fact]
     public async Task Progress_never_counts_a_file_twice()
     {
-        File.WriteAllBytes(P(@"src.bin"), new byte[2_000_000]);
-        File.WriteAllBytes(P(@"src.bin"), new byte[1_000_000]);
+        File.WriteAllBytes(P(@"src\a.bin"), new byte[2_000_000]);
+        File.WriteAllBytes(P(@"src\b.bin"), new byte[1_000_000]);
         var reports = new List<OperationProgress>();
         var progress = new SyncProgress(p => { lock (reports) reports.Add(p); });
 
