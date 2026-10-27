@@ -104,7 +104,7 @@ PackageUrl: ${repo}
 License: GPL-3.0-or-later
 LicenseUrl: ${repo}/blob/main/LICENSE
 Copyright: Copyright (c) 2026 Vibe Salamander Authors
-ShortDescription: Fast, keyboard-first dual-pane file manager: a modern spiritual successor to Altap / Open Salamander.
+ShortDescription: "Fast, keyboard-first dual-pane file manager: a modern spiritual successor to Altap / Open Salamander."
 Description: |-
   Vibe Salamander is a dual-pane file manager for Windows with Salamander's keyboard model, a Windows 11 look,
   five views, a background transfer panel, archives (ZIP, 7z, RAR, TAR...), FTP / SFTP, checksums, a disk map,

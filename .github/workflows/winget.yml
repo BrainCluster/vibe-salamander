@@ -56,5 +56,6 @@ jobs:
           if ($open) { "A pull request is open already: $open"; exit 0 }
 
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-          .\wingetcreate.exe submit --token $env:WINGET_TOKEN --prtitle "New version: $id version $version" $folder
+          $env:WINGET_CREATE_GITHUB_TOKEN = $env:WINGET_TOKEN # read from the environment: never on the command line or in the log
+          .\wingetcreate.exe submit --prtitle "New version: $id version $version" (Resolve-Path $folder).Path
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
