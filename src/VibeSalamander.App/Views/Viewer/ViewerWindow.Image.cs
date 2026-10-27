@@ -22,7 +22,7 @@ internal sealed partial class ViewerWindow
 {
     private ScrollViewer? _imageScroller;
     private Image? _image;
-    private Grid? _imageFrame;
+    private PanFrame? _imageFrame;
     private Grid? _imageHost;
     private StackPanel? _details;
     private ScrollViewer? _detailsScroller;
@@ -77,6 +77,52 @@ internal sealed partial class ViewerWindow
     }
 
     private ulong _lastWheel;
+    private bool _panning;
+    private Windows.Foundation.Point _panFrom;
+    private double _panH, _panV;
+
+    /// <summary>The picture is larger than the window, so there is something to drag.</summary>
+    private bool CanPan => _imageScroller is { } s && (s.ScrollableWidth > 0.5 || s.ScrollableHeight > 0.5);
+
+    private void PanStart(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (_imageScroller is not { } scroller || _imageFrame == null || !CanPan)
+            return;
+        Microsoft.UI.Input.PointerPoint point = e.GetCurrentPoint(scroller);
+        if (point.PointerDeviceType != Microsoft.UI.Input.PointerDeviceType.Mouse || !point.Properties.IsLeftButtonPressed)
+            return; // touch and pens pan by themselves
+        _panning = _imageFrame.CapturePointer(e.Pointer);
+        _panFrom = point.Position;
+        _panH = scroller.HorizontalOffset;
+        _panV = scroller.VerticalOffset;
+        _imageFrame.SetPanCursor(true, _panning);
+        scroller.Focus(FocusState.Pointer);
+        e.Handled = true;
+    }
+
+    private void PanMove(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (!_panning || _imageScroller is not { } scroller)
+            return;
+        Windows.Foundation.Point now = e.GetCurrentPoint(scroller).Position;
+        scroller.ChangeView(_panH - (now.X - _panFrom.X), _panV - (now.Y - _panFrom.Y), null, disableAnimation: true);
+        e.Handled = true;
+    }
+
+    private void PanEnd(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (!_panning)
+            return;
+        _imageFrame?.ReleasePointerCapture(e.Pointer);
+        PanStop();
+        e.Handled = true;
+    }
+
+    private void PanStop()
+    {
+        _panning = false;
+        _imageFrame?.SetPanCursor(CanPan, false);
+    }
 
     private void WheelZoom(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
@@ -107,7 +153,7 @@ internal sealed partial class ViewerWindow
         _image = new Image { Stretch = Stretch.None, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         _image.ImageFailed += (_, e) => ShowImageProblem(e.ErrorMessage);
         _image.ImageOpened += (_, _) => FitImage();
-        _imageFrame = new Grid { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        _imageFrame = new PanFrame { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         _imageFrame.Children.Add(_image);
         _imageScroller = new ScrollViewer
         {
@@ -127,6 +173,12 @@ internal sealed partial class ViewerWindow
         _imageFrame.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         _imageFrame.PointerWheelChanged += WheelZoom;
         _imageScroller.AddHandler(UIElement.PointerWheelChangedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(WheelZoom), handledEventsToo: true);
+        // a picture larger than the window is dragged with the mouse
+        _imageFrame.PointerPressed += PanStart;
+        _imageFrame.PointerMoved += PanMove;
+        _imageFrame.PointerReleased += PanEnd;
+        _imageFrame.PointerCaptureLost += (_, _) => PanStop();
+        _imageScroller.ViewChanged += (_, _) => _imageFrame.SetPanCursor(CanPan, _panning);
         _details = new StackPanel { Spacing = 6, Padding = new Thickness(16), Width = 280 };
         _detailsScroller = new ScrollViewer { Content = _details, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         _imageHost = new Grid();
@@ -377,5 +429,25 @@ internal sealed partial class ViewerWindow
             _image.Source = null; // the decoded picture is let go
         _imagePath = null;
         _imageWidth = _imageHeight = 0;
+    }
+}
+
+/// <summary>The picture's frame: shows a hand over a picture that can be dragged.</summary>
+internal sealed class PanFrame : Grid
+{
+    private bool? _shown;
+
+    public void SetPanCursor(bool canPan, bool dragging)
+    {
+        bool? want = canPan ? dragging : null;
+        if (want == _shown)
+            return;
+        _shown = want;
+        ProtectedCursor = want switch
+        {
+            true => Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.SizeAll),
+            false => Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Hand),
+            null => null,
+        };
     }
 }
