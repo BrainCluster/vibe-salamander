@@ -93,8 +93,9 @@ public sealed class MoreScenarios : IDisposable
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F6, settleMs: 1000);
         AppSession.Screenshot("64 sorted by size");
         List<string> bySize = app.Items();
-        Assert.True(bySize.IndexOf("data.bin") < bySize.IndexOf("report.txt") && bySize.IndexOf("report.txt") < bySize.IndexOf("notes.md"),
-            "largest first: " + string.Join(", ", bySize));
+        Assert.True(bySize.IndexOf("notes.md") < bySize.IndexOf("report.txt") && bySize.IndexOf("report.txt") < bySize.IndexOf("data.bin"),
+            "smallest first: " + string.Join(", ", bySize));
+        Assert.True(bySize.IndexOf("Projects") < bySize.IndexOf("notes.md"), "folders stay on top: " + string.Join(", ", bySize));
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F3, settleMs: 1000);
         List<string> byName = app.Items();
         Assert.True(byName.IndexOf("budget 2026.csv") < byName.IndexOf("report.txt"), "by name: " + string.Join(", ", byName));
@@ -216,7 +217,8 @@ public sealed class MoreScenarios : IDisposable
         string output = Path.Combine(_files.Target, "out");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A); // the whole path in the dialog, replaced by typing
         app.Type(output);
-        app.Press(VirtualKeyShort.ENTER);
+        app.Press(VirtualKeyShort.ENTER, settleMs: 1000);
+        app.Click("Create"); // "The target directory doesn't exist. Do you want to create it?" (Confirmations)
         AppSession.WaitUntil(() => Directory.Exists(output) &&
             Directory.EnumerateFiles(output, "notes.md", SearchOption.AllDirectories).Any() &&
             Directory.EnumerateFiles(output, "budget 2026.csv", SearchOption.AllDirectories).Any(), "both files unpacked", seconds: 20);
@@ -231,9 +233,9 @@ public sealed class MoreScenarios : IDisposable
     public void Drag_a_file_to_the_other_panel()
     {
         using AppSession app = Start(s => s.Confirm.DragAndDrop = false);
-        AppSession.Drag(app.OnName("report.txt"), app.EmptyArea(left: false));
+        AppSession.Drag(app.OnName("report.txt"), app.EmptyArea(left: false), () => AppSession.Screenshot("73 dragging"));
         AppSession.WaitUntil(() => File.Exists(Target("report.txt")), "report.txt dropped into the target");
-        AppSession.Screenshot("73 after drag and drop");
+        AppSession.Screenshot("73 after drag and drop (2)");
         NoErrors(app);
     }
 

@@ -236,21 +236,38 @@ public sealed class AppSession : IDisposable
 
     // ---- the mouse ---------------------------------------------------------------------------------------
 
-    /// <summary>Drags with the mouse like a hand would (pressed, moved in steps, held a moment, released).</summary>
-    public static void Drag(System.Drawing.Point from, System.Drawing.Point to)
+    /// <summary>
+    /// Drags with the mouse like a hand would: pressed, a few small moves to start the drag, across in steps, a moment
+    /// over the target moving a little (the target follows the pointer), released. <paramref name="whileOver"/> runs
+    /// while the pointer is over the target (a screenshot of the drag).
+    /// </summary>
+    public static void Drag(System.Drawing.Point from, System.Drawing.Point to, Action? whileOver = null)
     {
         Mouse.MoveTo(from);
-        Thread.Sleep(250);
+        Thread.Sleep(300);
         Mouse.Down(MouseButton.Left);
-        Thread.Sleep(200);
-        for (int step = 1; step <= 25; step++)
+        Thread.Sleep(300);
+        for (int i = 1; i <= 10; i++)
         {
-            Mouse.MoveTo(new System.Drawing.Point(from.X + (to.X - from.X) * step / 25, from.Y + (to.Y - from.Y) * step / 25));
+            Mouse.MoveTo(new System.Drawing.Point(from.X + i * 2, from.Y + i));
             Thread.Sleep(30);
         }
-        Thread.Sleep(600); // longer than "cancel drags shorter than" (150 ms)
+        Thread.Sleep(300);
+        var start = new System.Drawing.Point(from.X + 20, from.Y + 10);
+        for (int step = 1; step <= 40; step++)
+        {
+            Mouse.MoveTo(new System.Drawing.Point(start.X + (to.X - start.X) * step / 40, start.Y + (to.Y - start.Y) * step / 40));
+            Thread.Sleep(40);
+        }
+        for (int i = 0; i < 6; i++)
+        {
+            Mouse.MoveTo(new System.Drawing.Point(to.X + (i % 2 == 0 ? 4 : -4), to.Y));
+            Thread.Sleep(120);
+        }
+        whileOver?.Invoke();
+        Thread.Sleep(400);
         Mouse.Up(MouseButton.Left);
-        Thread.Sleep(800);
+        Thread.Sleep(1000);
     }
 
     /// <summary>A point on the name of a row (where a drag starts: the empty part of a row starts a selection rectangle).</summary>
