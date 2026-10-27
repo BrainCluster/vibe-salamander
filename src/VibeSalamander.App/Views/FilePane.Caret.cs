@@ -33,6 +33,7 @@ public sealed partial class FilePane
     // where the list was scrolled to (kept up to date by the ScrollViewer)
     private double _scrollX, _scrollY;
     private bool _scrollTracked;
+    private ScrollViewer? _listScroller;
 
     private ScrollViewer? TrackedScroller()
     {

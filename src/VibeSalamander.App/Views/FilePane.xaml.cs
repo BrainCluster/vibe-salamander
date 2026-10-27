@@ -69,11 +69,11 @@ public sealed partial class FilePane : UserControl
         FileList.AddHandler(TappedEvent, new TappedEventHandler(List_Tapped), handledEventsToo: true);
         // any click inside the panel makes it the active one (also on the empty area below the items)
         RootGrid.AddHandler(PointerPressedEvent, new PointerEventHandler(Pane_PointerPressed), handledEventsToo: true);
-        // mouse rectangle selection: moves and the release arrive handled when they start on an item
-        FileList.AddHandler(PointerMovedEvent, new PointerEventHandler(Marquee_PointerMoved), handledEventsToo: true);
-        FileList.AddHandler(PointerReleasedEvent, new PointerEventHandler(Marquee_PointerReleased), handledEventsToo: true);
-        FileList.AddHandler(PointerCaptureLostEvent, new PointerEventHandler(Marquee_CaptureLost), handledEventsToo: true);
+        // mouse rectangle selection (it stops the slow-click rename timer when a rectangle starts)
+        _marquee = new MarqueeSelection(FileList, MarqueeLayer, Marquee, () => ViewModel, TrackedScroller, () => _slowClickTimer?.Stop());
     }
+
+    private readonly MarqueeSelection _marquee;
 
     public PaneViewModel? ViewModel { get; private set; }
     private MainViewModel? _main;

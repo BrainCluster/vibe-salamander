@@ -23,7 +23,7 @@ public sealed partial class FilePane
 
     private void List_DragItemsStarting(object sender, DragItemsStartingEventArgs e)
     {
-        if (_marqueeCandidate || _marqueeActive)
+        if (_marquee.IsBusy)
         {
             e.Cancel = true; // dragging from the empty part of a row draws a selection rectangle instead
             return;
@@ -37,11 +37,8 @@ public sealed partial class FilePane
         // very short drags (Configuration → Panels) are cancelled at the drop instead (TooShortDrag)
         _dragStartedAt = DateTime.UtcNow;
         _slowClickTimer?.Stop();
-        var dragged = e.Items.OfType<FileItemViewModel>().ToList();
         // dragging a marked item drags the whole selection (Salamander)
-        if (dragged.Any(i => i.IsMarked))
-            dragged = ViewModel.MarkedItems.ToList();
-        var paths = dragged.Where(i => !i.Entry.IsUpDir && !i.IsDrive).Select(i => i.Entry.FullPath).ToList();
+        List<string> paths = DropRules.DraggedPaths(e.Items.OfType<FileItemViewModel>().ToList(), ViewModel.MarkedItems);
         if (paths.Count == 0)
         {
             e.Cancel = true;
@@ -75,12 +72,9 @@ public sealed partial class FilePane
     /// A drag from a panel released sooner than Configuration → Panels → "Cancel drag-and-drop operations
     /// shorter than" after it started: accidental, nothing is dropped.
     /// </summary>
-    private bool TooShortDrag(DragEventArgs e)
-    {
-        int minimum = _main?.Settings.Panels.DragCancelMilliseconds ?? 0;
-        return minimum > 0 && e.DataView.Properties.ContainsKey(InternalPathsKey) &&
-               (DateTime.UtcNow - _dragStartedAt).TotalMilliseconds < minimum;
-    }
+    private bool TooShortDrag(DragEventArgs e) =>
+        DropRules.IsTooShort(_main?.Settings.Panels.DragCancelMilliseconds ?? 0, e.DataView.Properties.ContainsKey(InternalPathsKey),
+            DateTime.UtcNow - _dragStartedAt);
 
     /// <summary>Drop target: the directory under the pointer, or the panel's directory.</summary>
     private string? DropTarget(DragEventArgs e)
@@ -97,15 +91,14 @@ public sealed partial class FilePane
     /// Explorer rules: Shift = move, Ctrl = copy, otherwise move within a drive and copy across drives.
     /// Into an archive files are copied unless Shift is held.
     /// </summary>
-    private bool DecideMove(DragEventArgs e, string target)
-    {
-        if (KeyboardState.IsDown(KeyboardState.Shift))
-            return true;
-        if (KeyboardState.IsDown(KeyboardState.Control) || ViewModel?.IsArchive == true || ViewModel?.IsRemote == true)
-            return false;
-        return e.DataView.Properties.TryGetValue(InternalPathsKey, out object? value) && value is string[] { Length: > 0 } internalPaths &&
-               string.Equals(Path.GetPathRoot(internalPaths[0]), Path.GetPathRoot(target), StringComparison.OrdinalIgnoreCase);
-    }
+    private bool DecideMove(DragEventArgs e, string target) =>
+        DropRules.IsMove(
+            shift: KeyboardState.IsDown(KeyboardState.Shift),
+            ctrl: KeyboardState.IsDown(KeyboardState.Control),
+            intoArchiveOrServer: ViewModel?.IsArchive == true || ViewModel?.IsRemote == true,
+            firstSource: e.DataView.Properties.TryGetValue(InternalPathsKey, out object? value) && value is string[] { Length: > 0 } internalPaths
+                ? internalPaths[0] : null,
+            target);
 
     private void Root_DragOver(object sender, DragEventArgs e)
     {
@@ -138,7 +131,7 @@ public sealed partial class FilePane
                 paths = (await e.DataView.GetStorageItemsAsync()).Select(i => i.Path).Where(p => !string.IsNullOrEmpty(p)).ToList();
             bool move = DecideMove(e, target);
             // dropping into the directory the items already are in does nothing
-            if (paths.Count == 0 || paths.All(p => string.Equals(Path.GetDirectoryName(p), target, StringComparison.OrdinalIgnoreCase)))
+            if (DropRules.ChangesNothing(paths, target))
                 return;
             _main.Activate(ViewModel);
             if (!await _main.ConfirmDropAsync(paths, target, move))

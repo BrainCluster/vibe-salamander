@@ -201,6 +201,15 @@ internal static class VisualTree
         return null;
     }
 
+    /// <summary>The element itself or its nearest parent of type T.</summary>
+    public static T? FindAncestor<T>(DependencyObject? element) where T : DependencyObject
+    {
+        for (DependencyObject? d = element; d != null; d = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(d))
+            if (d is T t)
+                return t;
+        return null;
+    }
+
     /// <summary>True when <paramref name="element"/> is <paramref name="container"/> or inside it.</summary>
     public static bool IsInside(DependencyObject element, DependencyObject container)
     {

@@ -71,7 +71,7 @@ public sealed partial class FilePane
     {
         if (ViewModel == null || IsRenaming || !e.GetCurrentPoint(FileList).Properties.IsLeftButtonPressed)
             return;
-        MarqueePressed(e);
+        _marquee.Pressed(e);
         bool ctrl = KeyboardState.IsDown(KeyboardState.Control);
         bool shift = KeyboardState.IsDown(KeyboardState.Shift);
         if ((e.OriginalSource as FrameworkElement)?.DataContext is not FileItemViewModel item)
@@ -107,13 +107,7 @@ public sealed partial class FilePane
             FocusList();
     }
 
-    private static T? FindAncestor<T>(DependencyObject? element) where T : DependencyObject
-    {
-        for (DependencyObject? d = element; d != null; d = VisualTreeHelper.GetParent(d))
-            if (d is T t)
-                return t;
-        return null;
-    }
+    private static T? FindAncestor<T>(DependencyObject? element) where T : DependencyObject => VisualTree.FindAncestor<T>(element);
 
     /// <summary>
     /// Shift+Up/Down/PgUp/PgDn/Home/End mark while moving, like Salamander: each item the caret leaves is
