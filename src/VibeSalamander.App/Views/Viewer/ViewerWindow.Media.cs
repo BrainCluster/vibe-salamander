@@ -8,6 +8,7 @@ using Windows.Media.Core;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
 using VibeSalamander.Core.Formatting;
+using VibeSalamander.Core.Viewing;
 using VibeSalamander.Services;
 
 namespace VibeSalamander.Views.Viewer;

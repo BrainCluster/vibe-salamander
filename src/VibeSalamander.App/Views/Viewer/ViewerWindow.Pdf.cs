@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Data.Pdf;
 using Windows.Storage;
 using Windows.Storage.Streams;
+using VibeSalamander.Core.Viewing;
 using VibeSalamander.Services;
 
 namespace VibeSalamander.Views.Viewer;
