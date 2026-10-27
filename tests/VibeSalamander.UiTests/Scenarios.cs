@@ -196,7 +196,11 @@ public sealed class Scenarios : IDisposable
     {
         using AppSession app = Start(s => s.General.Language = "hr");
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the documents");
-        app.Press(VirtualKeyShort.F5, settleMs: 1000);
+        app.GoTo("report.txt");
+        app.Press(VirtualKeyShort.F5, settleMs: 500);
+        AppSession.WaitUntil(() => app.Window.FindFirstDescendant(cf => cf.ByName("Kopiraj").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))) != null,
+            "the copy dialog in Croatian (its Kopiraj button)");
+        Thread.Sleep(500);
         AppSession.Screenshot("42 croatian copy dialog");
         app.Press(VirtualKeyShort.ESCAPE);
         NoErrors(app);
