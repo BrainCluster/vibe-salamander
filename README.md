@@ -62,6 +62,11 @@ folder). A Windows 11 address bar, drive bars, hot paths, history, filters, live
 **transfer panel**, queued or in parallel, with pause, resume and cancel. One question when a file exists, and
 notifications instead of dialogs.
 
+**View and edit.** F3 views any file: text and hex of any size, JSON / XML / YAML as trees, Markdown, notebooks
+and web pages rendered, pictures (WebP, HEIC, AVIF, JPEG XL, RAW), PDFs, audio and video. F4 edits in the editor of
+Visual Studio Code: syntax colors, JSON / XML / YAML checked while typing, formatting, a live Markdown preview and
+safe saving, also in archives and on FTP / SFTP servers.
+
 **Archives and more** (plugins). ZIP, TAR, 7z, RAR and more: pack, unpack, browse and edit archives like folders,
 test them, make self-extracting ones. **FTP, FTPS and SFTP** servers in the panels. **Checksums** (CRC32 to
 SHA-512). **Disk Map**: what takes the space, four ways. Disk images (.iso, .img, .vhd, .vhdx) mount as drives.

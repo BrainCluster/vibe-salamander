@@ -29,11 +29,40 @@
   notifications that close themselves rather than dialogs you have to click away.
 - Careful with links: folder links and junctions are copied as links, never followed into loops, and a move
   never deletes what a link points to.
-- Files open in their Windows apps (F3), Open with (Alt+F3), and per-mask viewers and editors.
+- F3 views and F4 edits in the built-in viewer and editor (below); Open with (Alt+F3), and per-mask viewers and
+  editors of your own.
 - Right-click: a short *Vibe* menu with the most useful commands, and the full Windows context menu one click away.
 - New folders and files are created and named in place.
 
 ![The transfer panel](images/transfer-panel.png)
+
+## View and edit
+
+**The viewer (F3)** opens anything, whatever its size:
+
+- **Text and hex** for files of any size: a multi-gigabyte log opens at once and is indexed while you read. Encodings
+  (UTF-8/16, ANSI, OEM and more) are detected and can be switched; find text, whole words, regular expressions or hex
+  bytes (Ctrl+F, F3 / Shift+F3); go to a line or an offset (Ctrl+G); wrap (W) and line numbers.
+- **JSON, XML and YAML as a tree**, with a problem shown at its line when the file is broken.
+- **Markdown, Jupyter notebooks and web pages rendered**: tables, task lists, code, pictures next to the file and
+  notebook outputs. Nothing is loaded from the internet and no script runs unless you allow it.
+- **Pictures**: JPEG, PNG, GIF, WebP, HEIC, AVIF, JPEG XL, SVG and camera RAW (with Windows' free extensions), zoom,
+  rotate (R), and details: size, camera, lens, exposure, date taken, location.
+- **PDFs**, page by page, and **audio and video** with their details.
+- Ctrl+PgUp / Ctrl+PgDn (or ← / → for pictures) go to the previous or next file of the folder; Ctrl+1…7 switch between
+  the views a file has; F4 edits it.
+
+**The editor (F4)** is the editor of Visual Studio Code (Monaco):
+
+- Syntax colors for more than 70 languages, folding, multiple cursors, the minimap and the command palette (F1).
+- **JSON, XML and YAML are checked while you type**: problems are underlined and the first one is in the status line;
+  Format (Shift+Alt+F) tidies JSON and XML.
+- **A live preview** of Markdown and HTML beside the text.
+- Find and replace (Ctrl+F, Ctrl+H) with regular expressions; go to line (Ctrl+G).
+- The encoding and line endings are kept, or chosen when saving; characters the encoding can't hold are pointed out.
+- **Safe saving**: the file is written next to the original and swapped in only when complete, with an optional
+  backup (.bak). Changes made by another program are noticed, and closing never loses unsaved work silently.
+- Files in archives and on FTP / SFTP servers are edited too: saving sends them back.
 
 ## Find, compare and measure
 

@@ -16,6 +16,9 @@ public enum ArchivePanelAction
     PasteIn,
     OpenCopy,
 
+    /// <summary>F4 in an archive that can be changed: edit a copy, and saving puts it back into the archive.</summary>
+    EditCopy,
+
     /// <summary>A change this archive allows only in other ways: say what can be done (copy in and out, delete).</summary>
     ExplainEditable,
 
@@ -54,6 +57,7 @@ public static class PanelCommandRules
         CommandId.Move when editable => ArchivePanelAction.MoveOut,
         CommandId.Delete or CommandId.DeletePermanently when editable => ArchivePanelAction.Delete,
         CommandId.ClipboardPaste when editable => ArchivePanelAction.PasteIn,
+        CommandId.Edit when editable => ArchivePanelAction.EditCopy,
         CommandId.View or CommandId.Edit => ArchivePanelAction.OpenCopy,
         CommandId.Move or CommandId.Delete or CommandId.DeletePermanently or CommandId.QuickRename or CommandId.CreateDirectory or
         CommandId.EditNewFile or CommandId.ChangeAttributes or CommandId.ChangeCase or CommandId.ClipboardCut or

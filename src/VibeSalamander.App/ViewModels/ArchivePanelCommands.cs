@@ -64,6 +64,10 @@ internal sealed class ArchivePanelCommands
                 if (p.FocusedItem is { Entry.IsDirectory: false, Entry.IsUpDir: false } item)
                     await OpenCopyAsync(p, item);
                 return true;
+            case ArchivePanelAction.EditCopy:
+                if (p.FocusedItem is { Entry.IsDirectory: false, Entry.IsUpDir: false } edited)
+                    await OpenCopyAsync(p, edited, edit: true);
+                return true;
             case ArchivePanelAction.ExplainEditable:
             case ArchivePanelAction.ExplainReadOnly:
                 string name = p.Archive is { } location ? Path.GetFileName(location.ArchivePath) : "The archive";
@@ -222,8 +226,11 @@ internal sealed class ArchivePanelCommands
         });
     }
 
-    /// <summary>Enter / F3 on a file in an archive: unpacks it into a temporary folder and opens it.</summary>
-    public Task OpenCopyAsync(PaneViewModel p, FileItemViewModel item)
+    /// <summary>
+    /// Enter / F3 on a file in an archive: unpacks it into a temporary folder and opens it. F4 in a ZIP or TAR
+    /// (<paramref name="edit"/>): the copy opens in the editor, and each save puts it back into the archive.
+    /// </summary>
+    public Task OpenCopyAsync(PaneViewModel p, FileItemViewModel item, bool edit = false)
     {
         if (p.Archive is not { } location || item.Entry.IsDirectory)
             return Task.CompletedTask;
@@ -240,7 +247,13 @@ internal sealed class ArchivePanelCommands
                 BasePath = location.InnerPath,
             }, job));
             // back on the UI thread: open it with its program (Configuration → Viewers, else the default app)
-            if (!result.Cancelled && File.Exists(file))
+            if (!result.Cancelled && File.Exists(file) && edit)
+            {
+                File.SetAttributes(file, File.GetAttributes(file) & ~FileAttributes.ReadOnly);
+                var entry = new FileEntry(item.Entry.Name, file, false, item.Entry.Size, item.Entry.LastWrite, FileAttributes.Normal);
+                _main.RunFoundFile(entry, Settings.Editors, () => _main.EditWithoutRules(file, saved => PutBackAsync(saved, location)));
+            }
+            else if (!result.Cancelled && File.Exists(file))
             {
                 FileItemViewModel opened = new(new FileEntry(item.Entry.Name, file, false, item.Entry.Size, item.Entry.LastWrite, FileAttributes.ReadOnly), p.Columns);
                 PaneViewModel other = p == _main.Left ? _main.Right : _main.Left;
@@ -257,6 +270,21 @@ internal sealed class ArchivePanelCommands
             }
             return result;
         });
+        return Task.CompletedTask;
+    }
+
+    /// <summary>The built-in editor saved a file opened from a ZIP or TAR: it goes back in, replacing the old one.</summary>
+    private Task PutBackAsync(string saved, ArchiveLocation location)
+    {
+        string display = ArchiveFileSystemProvider.Combine(location.ArchivePath, location.InnerPath);
+        _main.Transfers.EnqueueJob(OperationKind.Copy, new[] { saved }, display, job =>
+            Task.Run(() => location.Archiver.AddAsync(new ArchiveAddRequest
+            {
+                ArchivePath = location.ArchivePath,
+                Sources = new[] { saved },
+                TargetPath = location.InnerPath,
+                UpdateMode = PackUpdateMode.AddAndReplace,
+            }, job)));
         return Task.CompletedTask;
     }
 

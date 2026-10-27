@@ -35,7 +35,7 @@ each menu item shows its current key.
 | Keys | Action |
 |---|---|
 | F2 | Rename in place |
-| F3 / Alt+F3 | Open in the default app / Open with |
+| F3 / Alt+F3 | View / Open with |
 | F4 / Shift+F4 | Edit / edit a new file |
 | F5 / F6 | Copy / move or rename |
 | F7 | Create directory |
@@ -74,3 +74,30 @@ each menu item shows its current key.
 | F11 / F12 | Connect / disconnect a network drive (F12 also disconnects FTP / SFTP) |
 | Ctrl+Shift+V | Verify checksums (Checksum plugin) |
 | F1 | Help |
+
+## Viewer (F3)
+
+| Keys | Action |
+|---|---|
+| Esc / F10 | Close |
+| Ctrl+F / F7 | Find |
+| F3 / Shift+F3 | Find next / previous |
+| Ctrl+G | Go to a line (text) or an offset (hex) |
+| W | Wrap long lines |
+| Ctrl+1 … Ctrl+7 | Switch view (rendered, text, hex, …) |
+| Ctrl+PgUp / Ctrl+PgDn | Previous / next file of the folder |
+| ← / → , + / − , 0 , R | Pictures: previous / next, zoom, fit, rotate |
+| F4 | Edit the file |
+
+## Editor (F4)
+
+| Keys | Action |
+|---|---|
+| Ctrl+S / Ctrl+Shift+S | Save / save as |
+| Ctrl+F / Ctrl+H | Find / replace |
+| Ctrl+G | Go to line |
+| Shift+Alt+F | Format JSON / XML |
+| Ctrl+Shift+V | Show or hide the preview (Markdown, HTML) |
+| F1 | Command palette |
+| Ctrl+F3 | View the file |
+| Alt+F4 | Close (asks about unsaved changes) |
