@@ -1,0 +1,16 @@
+name: Feature request
+description: An idea, a missing Salamander feature, or something that could work better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: What you want to do, and how you'd like it to work. If Open Salamander, Total Commander or another file manager does it well, tell us how.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: When would you use it? What do you do today instead?

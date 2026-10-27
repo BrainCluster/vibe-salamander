@@ -17,6 +17,9 @@ internal static class Program
     {
         string folder = AppDomain.CurrentDomain.BaseDirectory;
         string app = Path.Combine(folder, "lib", "VibeSalamander.exe");
+        // started through a symbolic link (winget puts one on the PATH): the program is next to the link's target
+        if (!File.Exists(app) && RealFolder() is string real)
+            app = Path.Combine(real, "lib", "VibeSalamander.exe");
         if (!File.Exists(app))
         {
             MessageBoxW(IntPtr.Zero, "lib\\VibeSalamander.exe is missing. Unzip the whole Vibe Salamander folder again.",
@@ -40,6 +43,35 @@ internal static class Program
             return 1;
         }
     }
+
+    /// <summary>The folder this starter really is in (links followed), or null.</summary>
+    private static string? RealFolder()
+    {
+        try
+        {
+            string self = Process.GetCurrentProcess().MainModule!.FileName;
+            using (var stream = new FileStream(self, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            {
+                var path = new StringBuilder(1024);
+                uint length = GetFinalPathNameByHandleW(stream.SafeFileHandle, path, (uint)path.Capacity, 0);
+                if (length == 0 || length >= path.Capacity)
+                    return null;
+                string real = path.ToString();
+                if (real.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
+                    real = @"\\" + real.Substring(8);
+                else if (real.StartsWith(@"\\?\", StringComparison.Ordinal))
+                    real = real.Substring(4);
+                return Path.GetDirectoryName(real);
+            }
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetFinalPathNameByHandleW(Microsoft.Win32.SafeHandles.SafeFileHandle file, StringBuilder path, uint length, uint flags);
 
     /// <summary>The arguments as one command line, quoted the way Windows programs read them back.</summary>
     private static string JoinArguments(string[] args)

@@ -1,0 +1,58 @@
+name: Bug report
+description: Something doesn't work, crashes, or does the wrong thing.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time! Vibe Salamander is young (beta), and reports like this are how it gets solid.
+
+        **The error log helps most:** in Vibe Salamander, choose **Help → Error Log**. The panel opens the log folder
+        on the newest log; drag that file into the box below (or copy the part from around the time it happened).
+        The log contains the paths of the files involved: glance through it before you post it.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+      placeholder: |
+        1. In the left panel I marked two folders
+        2. Pressed F6 and Enter
+        3. Expected: both moved. Instead: an error "…" and only one moved
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Error log
+      description: Help → Error Log. Drop the file here, or paste the part about this problem.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Vibe Salamander version
+      description: Help → About Vibe Salamander (for example 0.4.0).
+      placeholder: "0.4.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: download
+    attributes:
+      label: Which download?
+      options:
+        - win-x64 (most PCs)
+        - win-arm64
+        - built from source
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: Settings → System → About (for example Windows 11 24H2).
+      placeholder: Windows 11 24H2
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else?
+      description: Screenshots, the kind of drive (local, network, USB, FTP), plugins you use (7-Zip), your language and color scheme if it looks wrong.
