@@ -70,10 +70,12 @@ public sealed partial class FilePane : UserControl
         // any click inside the panel makes it the active one (also on the empty area below the items)
         RootGrid.AddHandler(PointerPressedEvent, new PointerEventHandler(Pane_PointerPressed), handledEventsToo: true);
         // mouse rectangle selection (it stops the slow-click rename timer when a rectangle starts)
+        _addressBar = new AddressBar(Breadcrumb, BreadcrumbHost, PathEditor, () => ViewModel, () => _main, PathForeground, FocusList);
         _marquee = new MarqueeSelection(FileList, MarqueeLayer, Marquee, () => ViewModel, TrackedScroller, () => _slowClickTimer?.Stop());
     }
 
     private readonly MarqueeSelection _marquee;
+    private readonly AddressBar _addressBar;
 
     public PaneViewModel? ViewModel { get; private set; }
     private MainViewModel? _main;

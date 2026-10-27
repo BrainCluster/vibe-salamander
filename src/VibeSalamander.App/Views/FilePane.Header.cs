@@ -19,16 +19,6 @@ public sealed partial class FilePane
 {
     // ---- drive information (Ctrl+F1) ---------------------------------------------------------
 
-    private static string DriveTypeName(DriveType type) => type switch
-    {
-        DriveType.Fixed => "Local disk",
-        DriveType.Removable => "Removable disk",
-        DriveType.CDRom => "CD/DVD drive",
-        DriveType.Network => "Network drive",
-        DriveType.Ram => "RAM disk",
-        _ => "Drive",
-    };
-
     /// <summary>Volume details of the panel's drive (or the focused drive in This PC) in a flyout at the address bar.</summary>
     public async void ShowDriveInformation()
     {
@@ -46,54 +36,8 @@ public sealed partial class FilePane
             await _main.ShowErrorAsync($"No information is available for {DriveInformation.RootOf(path) ?? path} (is the drive ready?).");
             return;
         }
-
-        string title = info.Root.Length <= 3
-            ? $"{(info.Label.Length > 0 ? info.Label : DriveTypeName(info.Type))} ({info.Root.TrimEnd('\\')})"
-            : info.Root.TrimEnd('\\');
-        var panel = new StackPanel { Spacing = 10, MinWidth = 320 };
-        panel.Children.Add(new TextBlock { Text = title, Style = Application.Current.Resources["SubtitleTextBlockStyle"] as Style });
-        if (info.TotalBytes > 0)
-        {
-            panel.Children.Add(new ProgressBar { Maximum = 100, Value = info.UsedPercent, Height = 6, MinHeight = 6, CornerRadius = new CornerRadius(3) });
-        }
-        var grid = new Grid { ColumnSpacing = 16, RowSpacing = 3 };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        void Row(string label, string value)
-        {
-            int r = grid.RowDefinitions.Count;
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            var l = new TextBlock { Text = label, Opacity = 0.7 };
-            var v = new TextBlock { Text = value, IsTextSelectionEnabled = true, TextWrapping = TextWrapping.Wrap };
-            Grid.SetRow(l, r);
-            Grid.SetRow(v, r);
-            Grid.SetColumn(v, 1);
-            grid.Children.Add(l);
-            grid.Children.Add(v);
-        }
-        string Size(long bytes) => $"{Core.Formatting.Formats.ShortSize(bytes)}  ({Core.Formatting.Formats.ExactSize(bytes)} bytes)";
-        Row("Type", DriveTypeName(info.Type));
-        Row("File system", info.FileSystem.Length > 0 ? info.FileSystem : "-");
-        if (info.SerialNumber != 0)
-            Row("Serial number", info.SerialText);
-        if (info.TotalBytes > 0)
-        {
-            Row("Capacity", Size(info.TotalBytes));
-            Row("Used", $"{Size(info.TotalBytes - info.FreeBytes)},  {info.UsedPercent} %");
-            Row("Free", Size(info.FreeBytes));
-            if (info.AvailableBytes != info.FreeBytes)
-                Row("Free for you", Size(info.AvailableBytes));
-        }
-        if (info.BytesPerCluster > 0)
-            Row("Cluster size", Core.Formatting.Formats.ExactSize(info.BytesPerCluster) + " bytes");
-        if (info.MaxComponentLength > 0)
-            Row("Max name length", info.MaxComponentLength + " characters");
-        Row("Supports", info.Features);
-        panel.Children.Add(grid);
-
-        var flyout = new Flyout { Content = panel, Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft };
+        var flyout = new Flyout { Content = DriveInformationView.Build(info), Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft };
         flyout.Closed += (_, _) => FocusList();
-        Loc.Translate(panel);
         flyout.ShowAt(DriveMenuButton);
     }
 
@@ -280,63 +224,5 @@ public sealed partial class FilePane
         e.Handled = true;
     }
 
-    /// <summary>Address bar in edit mode with the full location selected (empty-area click, Shift+F7).</summary>
-    public void BeginPathEdit()
-    {
-        if (ViewModel == null)
-            return;
-        // the full location, ready to edit (Windows 11 Explorer: click the empty part of the address bar)
-        PathEditor.Text = ViewModel.IsLocalDisk ? ViewModel.Path : ViewModel.IsThisPc ? Loc.T("This PC") : ViewModel.DisplayPath;
-        BreadcrumbHost.Visibility = Visibility.Collapsed;
-        PathEditor.Visibility = Visibility.Visible;
-        // focus after menus/flyouts have closed and returned their focus (Shift+F7 from the menu), else the
-        // editor loses the focus at once and closes
-        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
-        {
-            if (PathEditor.Visibility != Visibility.Visible)
-                return;
-            PathEditor.Focus(FocusState.Programmatic);
-            PathEditor.SelectAll();
-        });
-    }
-
     private static bool IsInside(DependencyObject element, DependencyObject container) => VisualTree.IsInside(element, container);
-
-    private async void PathEditor_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (ViewModel == null)
-            return;
-        if (e.Key == VirtualKey.Enter)
-        {
-            e.Handled = true;
-            string text = PathEditor.Text;
-            EndPathEdit();
-            if (text.Trim().Equals("this pc", StringComparison.OrdinalIgnoreCase) || text.Trim().Equals(Loc.T("This PC"), StringComparison.CurrentCultureIgnoreCase))
-                await ViewModel.NavigateAsync(ThisPcProvider.RootPath);
-            else if (!string.IsNullOrWhiteSpace(text))
-            {
-                string target = PathUtil.Resolve(ViewModel.IsLocalDisk || ViewModel.IsArchive ? ViewModel.Path : @"C:\", text);
-                // Confirmations → "The directory doesn't exist. Do you want to create it?" (not for a directory in an archive)
-                if (_main != null && !Directory.Exists(target) && !File.Exists(target) && !_main.ArchiveProvider.CanHandle(target) &&
-                    !await _main.CreateMissingDirectoryAsync(target))
-                    return;
-                await ViewModel.NavigateAsync(target);
-            }
-            FocusList();
-        }
-        else if (e.Key == VirtualKey.Escape)
-        {
-            e.Handled = true;
-            EndPathEdit();
-            FocusList();
-        }
-    }
-
-    private void PathEditor_LostFocus(object sender, RoutedEventArgs e) => EndPathEdit();
-
-    private void EndPathEdit()
-    {
-        PathEditor.Visibility = Visibility.Collapsed;
-        BreadcrumbHost.Visibility = Visibility.Visible;
-    }
 }
