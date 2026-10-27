@@ -949,6 +949,7 @@
   "Skipped": "Пропущено",
   "Solid": "Суцільний",
   "Solid block size": "Розмір суцільного блоку",
+  "Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).": "Деякі налаштування не вдалося прочитати, і вони повернулися до типових значень. Подробиці — у журналі помилок (Довідка → Журнал помилок).",
   "Something went wrong: {0} The details are in the error log (Help → Error Log).": "Щось пішло не так: {0} Подробиці — у журналі помилок (Довідка → Журнал помилок).",
   "Sort By": "Сортувати за",
   "Sort by": "Сортувати за",

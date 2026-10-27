@@ -949,6 +949,7 @@
   "Skipped": "Übersprungen",
   "Solid": "Solide",
   "Solid block size": "Größe solider Blöcke",
+  "Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).": "Einige Einstellungen konnten nicht gelesen werden und sind wieder auf ihren Standardwerten. Die Details stehen im Fehlerprotokoll (Hilfe → Fehlerprotokoll).",
   "Something went wrong: {0} The details are in the error log (Help → Error Log).": "Etwas ist schiefgelaufen: {0} Die Details stehen im Fehlerprotokoll (Hilfe → Fehlerprotokoll).",
   "Sort By": "Sortieren nach",
   "Sort by": "Sortieren nach",

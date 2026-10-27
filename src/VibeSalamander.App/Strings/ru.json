@@ -949,6 +949,7 @@
  "Skipped": "Пропущен",
  "Solid": "Непрерывный",
  "Solid block size": "Размер непрерывного блока",
+ "Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).": "Некоторые настройки не удалось прочитать, и они вернулись к значениям по умолчанию. Подробности — в журнале ошибок (Справка → Журнал ошибок).",
  "Something went wrong: {0} The details are in the error log (Help → Error Log).": "Что-то пошло не так: {0} Подробности — в журнале ошибок (Справка → Журнал ошибок).",
  "Sort By": "Сортировка",
  "Sort by": "Сортировка",

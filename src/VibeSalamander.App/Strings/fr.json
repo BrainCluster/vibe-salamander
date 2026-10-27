@@ -950,6 +950,7 @@
   "Skipped": "Ignoré",
   "Solid": "Solide",
   "Solid block size": "Taille de bloc solide",
+  "Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).": "Certains paramètres n'ont pas pu être lus et reprennent leurs valeurs par défaut. Les détails sont dans le journal des erreurs (Aide → Journal des erreurs).",
   "Something went wrong: {0} The details are in the error log (Help → Error Log).": "Un problème est survenu : {0} Les détails sont dans le journal des erreurs (Aide → Journal des erreurs).",
   "Sort By": "Trier par",
   "Sort by": "Trier par",

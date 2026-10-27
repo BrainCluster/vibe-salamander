@@ -949,6 +949,7 @@
  "Skipped": "Overgeslagen",
  "Solid": "Solide",
  "Solid block size": "Grootte van solide blok",
+ "Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).": "Sommige instellingen konden niet worden gelezen en staan weer op hun standaardwaarden. De details staan in het foutenlogboek (Help → Foutenlogboek).",
  "Something went wrong: {0} The details are in the error log (Help → Error Log).": "Er is iets misgegaan: {0} De details staan in het foutenlogboek (Help → Foutenlogboek).",
  "Sort By": "Sorteren op",
  "Sort by": "Sorteren op",

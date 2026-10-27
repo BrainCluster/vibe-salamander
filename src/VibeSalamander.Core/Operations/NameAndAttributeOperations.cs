@@ -57,6 +57,7 @@ public static class NameAndAttributeOperations
                 ct.ThrowIfCancellationRequested();
                 while (true)
                 {
+                    FileAttributes? clearedReadOnly = null;
                     try
                     {
                         FileAttributes attr = File.GetAttributes(path);
@@ -65,18 +66,25 @@ public static class NameAndAttributeOperations
                         if (change.LastWriteTime != null || change.CreationTime != null || change.LastAccessTime != null)
                         {
                             if ((attr & FileAttributes.ReadOnly) != 0)
+                            {
                                 File.SetAttributes(path, attr & ~FileAttributes.ReadOnly);
+                                clearedReadOnly = attr;
+                            }
                             bool dir = (attr & FileAttributes.Directory) != 0;
                             if (change.LastWriteTime is DateTime w) { if (dir) Directory.SetLastWriteTime(path, w); else File.SetLastWriteTime(path, w); }
                             if (change.CreationTime is DateTime c) { if (dir) Directory.SetCreationTime(path, c); else File.SetCreationTime(path, c); }
                             if (change.LastAccessTime is DateTime a) { if (dir) Directory.SetLastAccessTime(path, a); else File.SetLastAccessTime(path, a); }
                         }
                         File.SetAttributes(path, updated);
+                        clearedReadOnly = null;
                         result.Succeeded++;
                         break;
                     }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
                     {
+                        // a time that couldn't be set: the item keeps the read-only attribute it had
+                        if (clearedReadOnly is FileAttributes original)
+                            TrySetAttributes(path, original);
                         ErrorChoice choice = await callbacks.ResolveErrorAsync(new OperationError(path, ex.Message));
                         if (choice == ErrorChoice.Retry) continue;
                         if (choice == ErrorChoice.Cancel) { result.Cancelled = true; return result; }
@@ -87,6 +95,18 @@ public static class NameAndAttributeOperations
             }
             return result;
         }, ct);
+
+    private static void TrySetAttributes(string path, FileAttributes attributes)
+    {
+        try
+        {
+            File.SetAttributes(path, attributes);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // the error is reported for the item anyway
+        }
+    }
 
     public static Task<OperationResult> ChangeCaseAsync(IReadOnlyList<string> paths, CaseMode mode, CasePart part,
         bool includeSubdirectories, IOperationCallbacks callbacks, CancellationToken ct = default) =>
@@ -181,17 +201,13 @@ public static class NameAndAttributeOperations
         }
     }
 
-    /// <summary>Renames when only the case differs (uses a temporary name for directories).</summary>
+    /// <summary>Renames when only the case differs (Windows renames in place: no temporary name a failure could leave behind).</summary>
     private static void RenameCaseOnly(string path, string newPath, bool isDirectory)
     {
-        if (!isDirectory)
-        {
+        if (isDirectory)
+            Directory.Move(path, newPath);
+        else
             File.Move(path, newPath);
-            return;
-        }
-        string temp = path + ".~case" + Environment.TickCount64.ToString(CultureInfo.InvariantCulture);
-        Directory.Move(path, temp);
-        Directory.Move(temp, newPath);
     }
 
     /// <summary>The items themselves plus, when requested, everything inside selected directories.</summary>
@@ -200,25 +216,48 @@ public static class NameAndAttributeOperations
         foreach (string path in paths)
         {
             yield return path;
-            if (recursive && Directory.Exists(path))
+            if (recursive && Directory.Exists(path) && !IsLink(path))
             {
-                IEnumerable<string> children;
-                try
-                {
-                    children = Directory.EnumerateFileSystemEntries(path, "*", new EnumerationOptions
-                    {
-                        AttributesToSkip = 0,
-                        RecurseSubdirectories = true,
-                        IgnoreInaccessible = true,
-                    }).ToList();
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    children = Array.Empty<string>();
-                }
+                var children = new List<string>();
+                Collect(path, children);
                 foreach (string child in children)
                     yield return child;
             }
+        }
+    }
+
+    /// <summary>
+    /// Everything inside a directory, without going into junctions and symbolic links: the folders they point to
+    /// are elsewhere and weren't selected (the link itself is included, like any item).
+    /// </summary>
+    private static void Collect(string directory, List<string> into)
+    {
+        List<string> entries;
+        try
+        {
+            entries = Directory.EnumerateFileSystemEntries(directory, "*", new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = true }).ToList();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return;
+        }
+        foreach (string entry in entries)
+        {
+            into.Add(entry);
+            if (Directory.Exists(entry) && !IsLink(entry))
+                Collect(entry, into);
+        }
+    }
+
+    private static bool IsLink(string path)
+    {
+        try
+        {
+            return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0 && new DirectoryInfo(path).LinkTarget != null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true; // unreadable: not gone into
         }
     }
 }

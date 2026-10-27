@@ -20,6 +20,9 @@ namespace VibeSalamander;
 public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
 {
     private readonly MainViewModel _vm;
+
+    /// <summary>What went wrong reading the settings at start, or null.</summary>
+    public string? SettingsProblem => _vm.SettingsProblem;
     private bool _dialogOpen;
     private FindWindow? _findWindow;
     private DeviceWatcher? _deviceWatcher;

@@ -950,6 +950,7 @@
   "Skipped": "Preskočeno",
   "Solid": "Čvrsto",
   "Solid block size": "Veličina čvrstog bloka",
+  "Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).": "Neke postavke nisu se mogle pročitati i vraćene su na zadane. Pojedinosti su u dnevniku pogrešaka (Pomoć → Dnevnik pogrešaka).",
   "Something went wrong: {0} The details are in the error log (Help → Error Log).": "Nešto je pošlo po zlu: {0} Pojedinosti su u dnevniku pogrešaka (Pomoć → Dnevnik pogrešaka).",
   "Sort By": "Sortiraj po",
   "Sort by": "Sortiraj po",

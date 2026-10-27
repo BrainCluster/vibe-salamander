@@ -949,6 +949,7 @@
   "Skipped": "Přeskočeno",
   "Solid": "Pevný",
   "Solid block size": "Velikost pevného bloku",
+  "Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).": "Některá nastavení nešlo načíst a vrátila se na výchozí hodnoty. Podrobnosti jsou v protokolu chyb (Nápověda → Protokol chyb).",
   "Something went wrong: {0} The details are in the error log (Help → Error Log).": "Něco se pokazilo: {0} Podrobnosti jsou v protokolu chyb (Nápověda → Protokol chyb).",
   "Sort By": "Seřadit podle",
   "Sort by": "Seřadit podle",

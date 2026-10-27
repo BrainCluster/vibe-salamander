@@ -949,6 +949,7 @@
   "Skipped": "Ignorado",
   "Solid": "Sólido",
   "Solid block size": "Tamanho do bloco sólido",
+  "Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).": "Algumas configurações não puderam ser lidas e voltaram ao padrão. Os detalhes estão no log de erros (Ajuda → Log de erros).",
   "Something went wrong: {0} The details are in the error log (Help → Error Log).": "Algo deu errado: {0} Os detalhes estão no log de erros (Ajuda → Log de erros).",
   "Sort By": "Classificar Por",
   "Sort by": "Classificar por",

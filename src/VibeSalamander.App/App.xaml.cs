@@ -65,7 +65,10 @@ public partial class App : Application
         }
         _window = new MainWindow();
         _window.Activate();
-        if (ErrorLog.TakeCrashNotice())
+        if (_window.SettingsProblem != null)
+            _window.Notify("Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).",
+                isError: true, log: false);
+        else if (ErrorLog.TakeCrashNotice())
             _window.Notify("Vibe Salamander closed because of an error the last time it ran. The details are in the error log (Help → Error Log).",
                 isError: false);
     }

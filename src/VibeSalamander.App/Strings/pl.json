@@ -949,6 +949,7 @@
  "Skipped": "Pominięto",
  "Solid": "Ciągły",
  "Solid block size": "Rozmiar bloku ciągłego",
+ "Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).": "Niektórych ustawień nie udało się odczytać i wróciły do wartości domyślnych. Szczegóły są w dzienniku błędów (Pomoc → Dziennik błędów).",
  "Something went wrong: {0} The details are in the error log (Help → Error Log).": "Coś poszło nie tak: {0} Szczegóły są w dzienniku błędów (Pomoc → Dziennik błędów).",
  "Sort By": "Sortuj według",
  "Sort by": "Sortuj według",

@@ -949,6 +949,7 @@
   "Skipped": "Saltato",
   "Solid": "Solido",
   "Solid block size": "Dimensione blocco solido",
+  "Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).": "Alcune impostazioni non sono state lette e tornano ai valori predefiniti. I dettagli sono nel registro errori (Guida → Registro errori).",
   "Something went wrong: {0} The details are in the error log (Help → Error Log).": "Qualcosa è andato storto: {0} I dettagli sono nel registro errori (Guida → Registro errori).",
   "Sort By": "Ordina per",
   "Sort by": "Ordina per",

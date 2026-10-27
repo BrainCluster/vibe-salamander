@@ -33,7 +33,10 @@ public sealed partial class MainViewModel : BindableBase
         _host = host;
         _dispatcher = dispatcher;
         _callbacks = new UiOperationCallbacks(dispatcher, host.Dialogs);
-        Settings = SettingsStore.Load();
+        Settings = SettingsStore.Load(SettingsStore.FilePath, out string? settingsProblem);
+        SettingsProblem = settingsProblem;
+        if (settingsProblem != null)
+            Core.Diagnostics.ErrorLog.Error("Settings", settingsProblem);
         Registry = new FileSystemRegistry();
         // plugins: archives open like directories ("C:\\x.zip\\dir"), so their provider goes before the disk's
         Plugins = new PluginManager();
@@ -178,6 +181,9 @@ public sealed partial class MainViewModel : BindableBase
     public TransfersViewModel Transfers { get; }
 
     public AppSettings Settings { get; }
+
+    /// <summary>What went wrong reading the settings file at start (shown once the window is up), or null.</summary>
+    public string? SettingsProblem { get; }
     public FileSystemRegistry Registry { get; }
     public IconCache Icons { get; }
     public ThumbnailCache Thumbnails { get; }
