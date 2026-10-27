@@ -463,7 +463,7 @@
         <!-- information line -->
         <Border x:Name="InfoLine" Grid.Row="4" BorderThickness="0,1,0,0" BorderBrush="{ThemeResource VibePaneBorderBrush}"
                 Padding="10,3,10,4">
-            <TextBlock Text="{x:Bind ViewModel.InfoText, Mode=OneWay}" TextTrimming="CharacterEllipsis"
+            <TextBlock x:Name="InfoText" Text="{x:Bind ViewModel.InfoText, Mode=OneWay}" TextTrimming="CharacterEllipsis"
                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
         </Border>
     </Grid>

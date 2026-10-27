@@ -134,15 +134,22 @@ public sealed class AppSession : IDisposable
         return value!;
     }
 
-    /// <summary>A window on the desktop whose title starts with this (Find, Configuration).</summary>
+    /// <summary>
+    /// A window whose title starts with this (Find, Configuration): they belong to the main window, so UI Automation
+    /// lists them under it (or on the desktop).
+    /// </summary>
     public Window OtherWindow(string titleStart) => Retry(() =>
-        Automation.GetDesktop().FindAllChildren()
+        Window.FindAllChildren(cf => cf.ByControlType(ControlType.Window))
+            .Concat(Automation.GetDesktop().FindAllChildren(cf => cf.ByControlType(ControlType.Window)))
             .FirstOrDefault(w => (w.Name ?? string.Empty).StartsWith(titleStart, StringComparison.OrdinalIgnoreCase))?.AsWindow(), "the window " + titleStart);
 
-    /// <summary>A text shown in the main window that starts with this (the information line, notifications).</summary>
-    public string? TextStartingWith(string start) =>
-        Window.FindAllDescendants(cf => cf.ByControlType(ControlType.Text))
-            .Select(t => t.Name ?? string.Empty).FirstOrDefault(n => n.StartsWith(start, StringComparison.Ordinal));
+    /// <summary>The information line of a panel (under its list).</summary>
+    public string InfoLine(bool left = true)
+    {
+        AutomationElement[] lines = Window.FindAllDescendants(cf => cf.ByAutomationId("InfoText"))
+            .OrderBy(l => l.BoundingRectangle.Left).ToArray();
+        return lines.Length == 0 ? string.Empty : (left ? lines[0] : lines[^1]).Name ?? string.Empty;
+    }
 
     // ---- the keyboard ------------------------------------------------------------------------------------
 
