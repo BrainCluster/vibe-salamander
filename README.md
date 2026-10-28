@@ -51,7 +51,11 @@ scoop bucket add vibe-salamander https://github.com/BrainCluster/vibe-salamander
 scoop install vibe-salamander
 ```
 
-**winget:** coming soon (`winget install BrainCluster.VibeSalamander`).
+**winget:** 
+
+```powershell
+winget install BrainCluster.VibeSalamander
+```
 
 > **"Windows protected your PC"?** The program isn't code-signed yet, so SmartScreen is careful with it: click
 > **More info → Run anyway**. Every release is built from this source by a public
