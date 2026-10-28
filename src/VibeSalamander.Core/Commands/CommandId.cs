@@ -154,4 +154,7 @@ public enum CommandId
 
     // Commands → Find Duplicates (Alt+Shift+F7)
     FindDuplicates,
+
+    // the menu bar from the keyboard (F9 in Total Commander's shortcuts; F10 always)
+    MainMenu,
 }

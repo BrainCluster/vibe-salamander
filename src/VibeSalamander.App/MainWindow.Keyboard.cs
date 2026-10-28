@@ -79,6 +79,11 @@ public sealed partial class MainWindow
 
         e.Handled = true;
         _vm.Active.EndQuickSearch();
+        if (command == CommandId.MainMenu)
+        {
+            FocusMenu(); // the menu bar is the window's, not a command of the panels
+            return;
+        }
         await _vm.ExecuteAsync(command);
         UpdateMenuChecks();
     }

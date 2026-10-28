@@ -143,6 +143,10 @@ public sealed partial class MainWindow
         CommandId.ArchiveComment => "Comment",
         CommandId.DisconnectNetworkDrive => "NetDis",
         CommandId.SharedDirectories => "Shares",
+        CommandId.MainMenu => "Menu",
+        CommandId.ViewBrief => "Brief",
+        CommandId.ViewDetailed => "Full",
+        CommandId.FindDuplicates => "Dupes",
         _ => command.ToString(),
     };
 
@@ -206,7 +210,12 @@ public sealed partial class MainWindow
             CommandId command = _vm.KeyMap.Resolve(key, mods);
             string label;
             Action? action = null;
-            if (command != CommandId.None)
+            if (command == CommandId.MainMenu)
+            {
+                label = "Menu";
+                action = FocusMenu;
+            }
+            else if (command != CommandId.None)
             {
                 label = ShortLabel(command);
                 CommandId c = command;

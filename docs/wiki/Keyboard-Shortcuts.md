@@ -1,7 +1,10 @@
 # Keyboard shortcuts
 
 These are the defaults (Salamander's). **Every one can be changed** in Options → Configuration → Keyboard, and
-each menu item shows its current key.
+each menu item and the bottom toolbar show the current keys.
+
+**Coming from Total Commander?** Options → Configuration → Keyboard → *Shortcuts like* → **Total Commander** switches
+to its keys; they are listed [at the end of this page](#total-commander-shortcuts).
 
 ## Panels and moving around
 
@@ -102,3 +105,38 @@ each menu item shows its current key.
 | F1 | Command palette |
 | Ctrl+F3 | View the file |
 | Alt+F4 | Close (asks about unsaved changes) |
+
+## Total Commander shortcuts
+
+With *Shortcuts like: Total Commander* (Configuration → Keyboard). Your own changes apply on top.
+
+| Keys | Action |
+|---|---|
+| F2 / Ctrl+R | Refresh |
+| F3 / F4 / Shift+F4 | View / edit / edit a new file |
+| F5 / F6 / F7 / F8 | Copy / move / create directory / delete |
+| Shift+F6 | Rename in place |
+| Shift+F8, Shift+Del | Delete permanently |
+| F9 | The menu bar |
+| Shift+F2 | Compare directories |
+| Alt+F1 / Alt+F2 | Left / right drive |
+| Alt+F3 | Open with |
+| Alt+F5 / Alt+F9 (Alt+F6) | Pack / unpack |
+| Alt+Shift+F9 | Test archive |
+| Alt+F7 / Alt+Shift+F7 | Find / find duplicates |
+| Ctrl+F1 / Ctrl+F2 | Brief / full (detailed) view |
+| Ctrl+F3 / F4 / F5 / F6 | Sort by name / extension / date / size |
+| Ctrl+F12, Ctrl+S | Filter |
+| Ctrl+L | Occupied space of the selection |
+| Alt+Shift+Enter | Sizes of all directories |
+| Alt+Down | Folder history |
+| Ctrl+\ | Root directory |
+| Ctrl+Left / Ctrl+Right | Open in the other panel |
+| Ctrl+U | Swap panels |
+| Ctrl+F / Ctrl+N, Ctrl+Shift+F | Connect to FTP / SFTP, disconnect |
+| Num + / Num − / Num * / Num / | Select / unselect by mask, invert, restore the selection |
+| Ctrl+Num + / Ctrl+Num −, Ctrl+A | Select all / none |
+| Alt+Num + / Alt+Num − | (Un)select the same extension |
+| Insert / Space | Mark and move down / mark |
+
+The rest is the same as with Salamander's keys (Alt+1…5 views, Ctrl+1…9 hot paths, Ctrl+X / C / V, Alt+Enter).

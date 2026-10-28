@@ -51,7 +51,7 @@ public sealed partial class MainViewModel : BindableBase
             Settings.HotPaths.Add(string.Empty);
         Settings.KeyBindings ??= new List<KeyBindingOverride>();
         Settings.Toolbar ??= CommandCatalog.DefaultToolbar();
-        KeyMap = KeyMap.Create(Settings.KeyBindings);
+        KeyMap = KeyMap.Create(Settings.KeyScheme, Settings.KeyBindings);
 
         Left = new PaneViewModel("Left", Registry, dispatcher, Icons, Settings.Left, () => Settings.ShowHidden, () => Settings);
         Right = new PaneViewModel("Right", Registry, dispatcher, Icons, Settings.Right, () => Settings.ShowHidden, () => Settings);
@@ -201,14 +201,21 @@ public sealed partial class MainViewModel : BindableBase
     public FileSystemRegistry Registry { get; }
     public IconCache Icons { get; }
     public ThumbnailCache Thumbnails { get; }
-    /// <summary>Shortcuts: the Salamander defaults plus the user's changes (Configuration → Keyboard).</summary>
+    /// <summary>Shortcuts: Salamander's or Total Commander's defaults plus the user's changes (Configuration → Keyboard).</summary>
     public KeyMap KeyMap { get; private set; }
 
     /// <summary>Replaces the key map (after the keyboard settings changed) and stores the differences.</summary>
+    /// <summary>Starts from another scheme's shortcuts (own changes are dropped: they were made for the other one).</summary>
+    public void SetKeyScheme(KeyScheme scheme)
+    {
+        Settings.KeyScheme = scheme;
+        SetKeyMap(KeyMap.CreateDefaults(scheme));
+    }
+
     public void SetKeyMap(KeyMap map)
     {
         KeyMap = map;
-        Settings.KeyBindings = map.GetOverrides();
+        Settings.KeyBindings = map.GetOverrides(Settings.KeyScheme);
         OnPropertyChanged(nameof(KeyMap));
     }
 

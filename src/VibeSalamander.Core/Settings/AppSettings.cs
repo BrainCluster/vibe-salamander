@@ -176,6 +176,9 @@ public sealed class AppSettings
     /// <summary>Changes to the default keyboard shortcuts (Configuration → Keyboard).</summary>
     public List<KeyBindingOverride> KeyBindings { get; set; } = new();
 
+    /// <summary>Whose shortcuts the key map starts from: Salamander's or Total Commander's (the changes above apply on top).</summary>
+    public KeyScheme KeyScheme { get; set; } = KeyScheme.Salamander;
+
     /// <summary>Top toolbar items: command names, "-" separators and "ViewMenu" (Configuration → Toolbar).</summary>
     public List<string> Toolbar { get; set; } = CommandCatalog.DefaultToolbar();
 

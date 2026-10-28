@@ -491,3 +491,48 @@ public sealed class SearchFormTests
         Assert.Equal(new DateTime(2026, 1, 31, 23, 59, 59).AddTicks(9_999_999), to);
     }
 }
+
+public sealed class KeySchemeTests
+{
+    private static VibeSalamander.Core.Commands.CommandId Key(VibeSalamander.Core.Commands.KeyMap map, int key,
+        VibeSalamander.Core.Commands.KeyModifiers mods = VibeSalamander.Core.Commands.KeyModifiers.None) => map.Resolve(key, mods);
+
+    [Fact]
+    public void Total_Commander_keys()
+    {
+        var tc = VibeSalamander.Core.Commands.KeyMap.CreateTotalCommanderDefaults();
+        const VibeSalamander.Core.Commands.KeyModifiers S = VibeSalamander.Core.Commands.KeyModifiers.Shift, C = VibeSalamander.Core.Commands.KeyModifiers.Ctrl,
+            A = VibeSalamander.Core.Commands.KeyModifiers.Alt;
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.Refresh, Key(tc, VibeSalamander.Core.Commands.VK.F2));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.QuickRename, Key(tc, VibeSalamander.Core.Commands.VK.F6, S));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.MainMenu, Key(tc, VibeSalamander.Core.Commands.VK.F9));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.ViewBrief, Key(tc, VibeSalamander.Core.Commands.VK.F1, C));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.ViewDetailed, Key(tc, VibeSalamander.Core.Commands.VK.F2, C));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.Unpack, Key(tc, VibeSalamander.Core.Commands.VK.F9, A));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.CompareDirectories, Key(tc, VibeSalamander.Core.Commands.VK.F2, S));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.CalculateOccupiedSpace, Key(tc, VibeSalamander.Core.Commands.VK.L, C));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.RestoreSelection, Key(tc, VibeSalamander.Core.Commands.VK.Divide));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.SelectAll, Key(tc, VibeSalamander.Core.Commands.VK.Add, C));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.Copy, Key(tc, VibeSalamander.Core.Commands.VK.F5));
+        // Salamander's are still Salamander's
+        var salamander = VibeSalamander.Core.Commands.KeyMap.CreateSalamanderDefaults();
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.QuickRename, Key(salamander, VibeSalamander.Core.Commands.VK.F2));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.UserMenu, Key(salamander, VibeSalamander.Core.Commands.VK.F9));
+    }
+
+    [Fact]
+    public void Changes_are_kept_on_top_of_the_scheme()
+    {
+        var scheme = VibeSalamander.Core.Commands.KeyScheme.TotalCommander;
+        var map = VibeSalamander.Core.Commands.KeyMap.CreateDefaults(scheme);
+        Assert.Empty(map.GetOverrides(scheme));
+        map.Bind(VibeSalamander.Core.Commands.VK.F2, VibeSalamander.Core.Commands.KeyModifiers.None, VibeSalamander.Core.Commands.CommandId.QuickRename);
+        map.Unbind(new VibeSalamander.Core.Commands.KeyChord(VibeSalamander.Core.Commands.VK.F9, VibeSalamander.Core.Commands.KeyModifiers.None));
+        var overrides = map.GetOverrides(scheme);
+        Assert.Equal(2, overrides.Count);
+        var restored = VibeSalamander.Core.Commands.KeyMap.Create(scheme, overrides);
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.QuickRename, restored.Resolve(VibeSalamander.Core.Commands.VK.F2, VibeSalamander.Core.Commands.KeyModifiers.None));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.None, restored.Resolve(VibeSalamander.Core.Commands.VK.F9, VibeSalamander.Core.Commands.KeyModifiers.None));
+        Assert.Equal(VibeSalamander.Core.Commands.CommandId.Copy, restored.Resolve(VibeSalamander.Core.Commands.VK.F5, VibeSalamander.Core.Commands.KeyModifiers.None));
+    }
+}

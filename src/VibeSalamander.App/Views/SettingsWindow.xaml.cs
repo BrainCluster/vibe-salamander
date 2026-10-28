@@ -405,6 +405,14 @@ public sealed partial class SettingsWindow : Window
             "Shortcuts of every command. Select a command, then add a shortcut by pressing it, or remove one. " +
             "A shortcut used by another command moves to the selected one.");
 
+        // whose shortcuts: Salamander's or Total Commander's
+        var scheme = new ComboBox { MinWidth = 240 };
+        scheme.Items.Add(Loc.T("Altap / Open Salamander"));
+        scheme.Items.Add(Loc.T("Total Commander"));
+        scheme.SelectedIndex = (int)_vm.Settings.KeyScheme;
+        page.Children.Add(Card("Shortcuts like", "F2 renames in Salamander, refreshes in Total Commander (Shift+F6 renames there); " +
+            "F9 is the user menu in Salamander, the menu bar in Total Commander. Your own changes below apply on top.", scheme));
+
         var search = new TextBox { PlaceholderText = "Search commands or shortcuts", Margin = new Thickness(0, 0, 0, 6) };
         var list = new ListView { Height = 330, SelectionMode = ListViewSelectionMode.Single };
         var detail = new StackPanel { Spacing = 8, Margin = new Thickness(0, 10, 0, 0) };
@@ -545,9 +553,40 @@ public sealed partial class SettingsWindow : Window
                 ShowDetail();
             }
         };
+        bool switching = false;
+        scheme.SelectionChanged += async (_, _) =>
+        {
+            var chosen = (KeyScheme)Math.Max(0, scheme.SelectedIndex);
+            if (switching || chosen == _vm.Settings.KeyScheme)
+                return;
+            if (_vm.Settings.KeyBindings.Count > 0)
+            {
+                ContentDialog confirm = _dialogs.Create("Keyboard", new TextBlock
+                {
+                    Text = Loc.F("Start from the {0} shortcuts? Your own changes to the shortcuts are removed.", scheme.SelectedItem as string ?? string.Empty),
+                    TextWrapping = TextWrapping.Wrap,
+                });
+                confirm.PrimaryButtonText = Loc.T("Change");
+                confirm.CloseButtonText = Loc.T("Cancel");
+                confirm.DefaultButton = ContentDialogButton.Primary;
+                if (await _dialogs.ShowDialogAsync(confirm) != ContentDialogResult.Primary)
+                {
+                    switching = true;
+                    scheme.SelectedIndex = (int)_vm.Settings.KeyScheme;
+                    switching = false;
+                    return;
+                }
+            }
+            _vm.SetKeyScheme(chosen);
+            _keys = _vm.KeyMap.Clone();
+            _host.ApplySettings();
+            _vm.SaveSettings();
+            Fill();
+            ShowDetail();
+        };
         reset.Click += (_, _) =>
         {
-            _keys = KeyMap.CreateSalamanderDefaults();
+            _keys = KeyMap.CreateDefaults(_vm.Settings.KeyScheme);
             Apply();
             Fill();
             ShowDetail();

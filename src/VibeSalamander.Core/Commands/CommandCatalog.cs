@@ -41,6 +41,7 @@ public static class CommandCatalog
         [CommandId.ChangeCase] = "Change case...",
         [CommandId.FindFiles] = "Find files and directories",
         [CommandId.FindDuplicates] = "Find duplicate files",
+        [CommandId.MainMenu] = "Open the menu bar",
         [CommandId.CreateDirectory] = "Create directory",
         [CommandId.ChangeDirectory] = "Change directory (edit address bar)",
         [CommandId.OpenActiveFolder] = "Open active folder in Explorer",
@@ -127,7 +128,7 @@ public static class CommandCatalog
         CommandId.Pack or CommandId.Unpack or CommandId.MountImage or CommandId.UnmountImage => "Files",
         CommandId.CalculateChecksums or CommandId.VerifyChecksums => "Files",
         CommandId.TestArchive or CommandId.MakeSelfExtractingArchive or CommandId.ArchiveComment => "Files",
-        CommandId.ConnectFtp or CommandId.DiskMap => "Commands",
+        CommandId.ConnectFtp or CommandId.DiskMap or CommandId.FindDuplicates => "Commands",
         CommandId.PluginsManager => "Options",
         <= CommandId.Filter => "Panels",
         <= CommandId.CommandShell => "Files",
@@ -257,7 +258,7 @@ public static class CommandCatalog
 
     /// <summary>Commands that make sense on the toolbar (all commands, without the per-digit hot path ones).</summary>
     public static IEnumerable<CommandId> ToolbarCommands =>
-        Enum.GetValues<CommandId>().Where(c => c != CommandId.None && c is not (>= CommandId.GoToHotPath0 and <= CommandId.SetHotPath9));
+        Enum.GetValues<CommandId>().Where(c => c is not (CommandId.None or CommandId.MainMenu) && c is not (>= CommandId.GoToHotPath0 and <= CommandId.SetHotPath9));
 
     /// <summary>The default top toolbar (the layout of phase 1-3A).</summary>
     public static List<string> DefaultToolbar() => new()
