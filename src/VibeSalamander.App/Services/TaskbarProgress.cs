@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 namespace VibeSalamander.Services;
 
 /// <summary>The progress shown on the app's taskbar button (Windows' ITaskbarList3), as Explorer's copies show it.</summary>
-internal sealed class TaskbarProgress
+public sealed class TaskbarProgress
 {
     public enum State
     {
