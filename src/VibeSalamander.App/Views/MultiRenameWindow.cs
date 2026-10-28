@@ -94,6 +94,10 @@ internal sealed class MultiRenameWindow : Window
         };
     }
 
+    /// <summary>The window's theme (code gets the light theme's colors from the app's resources, so they're chosen here).</summary>
+    private bool Dark => _root.RequestedTheme == ElementTheme.Dark ||
+                         (_root.RequestedTheme == ElementTheme.Default && Application.Current.RequestedTheme == ApplicationTheme.Dark);
+
     private static TextBlock Label(string text) => new() { Text = Loc.T(text), Opacity = 0.75, FontSize = 12, Margin = new Thickness(0, 0, 0, 2) };
 
     private static StackPanel Field(string label, UIElement control)
@@ -198,8 +202,8 @@ internal sealed class MultiRenameWindow : Window
             Child = list,
             CornerRadius = new CornerRadius(6),
             BorderThickness = new Thickness(1),
-            BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
-            Background = (Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+            BorderBrush = new SolidColorBrush(Dark ? Windows.UI.Color.FromArgb(255, 0x3A, 0x3A, 0x3A) : Windows.UI.Color.FromArgb(255, 0xE0, 0xE0, 0xE0)),
+            Background = new SolidColorBrush(Dark ? Windows.UI.Color.FromArgb(0x30, 0x00, 0x00, 0x00) : Windows.UI.Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF)),
         };
         Grid.SetRow(frame, 2);
         _root.Children.Add(frame);
@@ -295,7 +299,8 @@ internal sealed class MultiRenameWindow : Window
         _plan = MultiRename.Plan(_items, _options);
         _rows.Children.Clear();
         Brush problemBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xE0, 0x50, 0x50));
-        Brush changedBrush = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"];
+        Brush changedBrush = new SolidColorBrush(Dark ? Windows.UI.Color.FromArgb(255, 0x99, 0xEB, 0xFF) : Windows.UI.Color.FromArgb(255, 0x00, 0x3E, 0x92));
+        Brush sameBrush = new SolidColorBrush(Dark ? Windows.UI.Color.FromArgb(255, 0xA0, 0xA0, 0xA0) : Windows.UI.Color.FromArgb(255, 0x70, 0x70, 0x70));
         const int Shown = 2000;
         foreach (RenameLine line in _plan.Take(Shown))
         {
@@ -306,7 +311,7 @@ internal sealed class MultiRenameWindow : Window
             {
                 Text = line.Problem == null ? line.NewName : line.NewName + "  —  " + line.Problem,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                Foreground = line.Problem != null ? problemBrush : line.Changes ? changedBrush : (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                Foreground = line.Problem != null ? problemBrush : line.Changes ? changedBrush : sameBrush,
             };
             ToolTipService.SetToolTip(name, name.Text);
             Grid.SetColumn(name, 1);

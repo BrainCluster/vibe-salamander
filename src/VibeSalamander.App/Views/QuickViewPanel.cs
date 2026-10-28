@@ -43,8 +43,9 @@ internal sealed class QuickViewPanel : Grid
     {
         CornerRadius = new CornerRadius(6);
         BorderThickness = new Thickness(1);
-        BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
-        Background = (Brush)Application.Current.Resources["SolidBackgroundFillColorBaseBrush"];
+        // the app's resources give the light theme's colors to code: the theme is looked at here
+        ApplyColors();
+        ActualThemeChanged += (_, _) => ApplyColors();
         var layout = new Grid();
         layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -77,6 +78,13 @@ internal sealed class QuickViewPanel : Grid
             if (_pending is { } entry)
                 _ = ShowAsync(entry);
         };
+    }
+
+    private void ApplyColors()
+    {
+        bool dark = ActualTheme == ElementTheme.Dark;
+        Background = new SolidColorBrush(dark ? Windows.UI.Color.FromArgb(255, 0x1C, 0x1C, 0x1C) : Windows.UI.Color.FromArgb(255, 0xFF, 0xFF, 0xFF));
+        BorderBrush = new SolidColorBrush(dark ? Windows.UI.Color.FromArgb(255, 0x3A, 0x3A, 0x3A) : Windows.UI.Color.FromArgb(255, 0xE0, 0xE0, 0xE0));
     }
 
     /// <summary>The item under the caret changed: shown a moment later (holding an arrow key doesn't read every file).</summary>
