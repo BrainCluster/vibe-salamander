@@ -65,6 +65,7 @@ each menu item shows its current key.
 | Keys | Action |
 |---|---|
 | Alt+F7 | Find files and directories |
+| Alt+Shift+F7 | Find duplicate files |
 | Ctrl+F10 | Compare directories |
 | Alt+F10 / Ctrl+Shift+F10 | Occupied space / directory sizes |
 | Ctrl+F1 | Drive information |

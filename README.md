@@ -59,7 +59,8 @@ like Salamander) or **Modern** ones (like File Explorer: thumbnails for photo fo
 folder). A Windows 11 address bar, drive bars, hot paths, history, filters, live USB drives.
 
 **Files.** Copy, move, delete, rename in place, attributes, case, compression and encryption. Copies run in the
-**transfer panel**, queued or in parallel, with pause, resume and cancel. One question when a file exists, and
+**transfer panel**, queued or in parallel, with pause, resume, cancel, speed limits (per transfer or for all) and
+speed graphs. One question when a file exists, and
 notifications instead of dialogs.
 
 **View and edit.** F3 views any file: text and hex of any size, JSON / XML / YAML as trees, Markdown, notebooks
@@ -71,7 +72,8 @@ safe saving, also in archives and on FTP / SFTP servers.
 test them, make self-extracting ones. **FTP, FTPS and SFTP** servers in the panels. **Checksums** (CRC32 to
 SHA-512). **Disk Map**: what takes the space, four ways. Disk images (.iso, .img, .vhd, .vhdx) mount as drives.
 
-**Tools.** Find files (Alt+F7), compare directories, directory sizes, a user menu with your own commands, a command
+**Tools.** Find files (Alt+F7) with text rows, regular expressions, hex and ZIP contents, find duplicates, compare and
+**synchronize** directories, directory sizes, a user menu with your own commands, a command
 line, network drives.
 
 **Make it yours.** Light and dark themes, color schemes from Vibe and Explorer to Tokyo Night, Dracula, Nord and

@@ -25,6 +25,9 @@
   properties and security.
 - **The transfer panel**: copies, moves and deletes run in the background, several at once or queued, each with
   pause, resume and cancel. You keep working while they run.
+- **Speed limits**: for each transfer (the gauge button in its row) and for all of them together (in the panel's
+  header): 256 KB/s to 200 MB/s or any value you type, changed while the copy runs. **Graphs** (in the header) show
+  each transfer's speed over the last half minute, with its limit as a dashed line.
 - One question when a file exists (overwrite, skip, keep both, older only, each *for all*), and errors as
   notifications that close themselves rather than dialogs you have to click away.
 - Careful with links: folder links and junctions are copied as links, never followed into loops, and a move
@@ -73,10 +76,24 @@
 
 ## Find, compare and measure
 
-- **Find files** (Alt+F7) by name masks and text inside files, in subfolders too; the results are a list
-  you can open, focus in the panel or work with.
-- **Compare directories** (Ctrl+F10) by date, size or content (and inside subfolders): the differences are marked in
-  both panels.
+- **Find files** (Alt+F7) in one or several folders at once:
+  - names by masks (`*.txt;*.doc|*.bak`), size, date (today, the last week, between two days), attributes, depth and
+    folders to skip (`node_modules;.git`)
+  - **text rows**: each one "contains" or "doesn't contain", as text, a regular expression or hex bytes, all of them
+    or any; every file is read in its own encoding (UTF-8, UTF-16, ANSI), binary files as bytes
+  - **inside ZIP files** too
+  - the results show **the matching line**, with its number and the match highlighted; the files are read by several
+    workers at once
+  - **Show in Panel** lists the results in a panel, where you copy, move, delete, view and edit them
+  - **saved searches**, and the last search comes back when Find opens
+- **Find duplicates** (Alt+Shift+F7) by content, name or size: same size first, then the files' first and last
+  16 KB, and only then the whole files, so most files are read only a little. Hard links count once. The groups that
+  waste the most come first; one click selects all but the newest (or oldest, or first) of each group, then delete them
+  to the Recycle Bin or list them in a panel.
+- **Compare directories** (Ctrl+F10) by date, size, attributes or content, also inside subfolders: the differences
+  are marked in both panels, and a list shows each one (only left, only right, newer, different), to filter and
+  **synchronize**: left → right, right → left, or both ways (the newer wins), with an optional mirror that deletes
+  extras (to the Recycle Bin). The copies run in the transfer panel.
 - Directory sizes (Ctrl+Shift+F10), occupied space (Alt+F10), drive information (Ctrl+F1), file lists (Ctrl+M).
 - **Disk Map** (plugin): what takes the space, as blocks, a sunburst, columns or Salamander's classic treemap.
 

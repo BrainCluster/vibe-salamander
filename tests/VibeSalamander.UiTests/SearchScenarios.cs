@@ -34,16 +34,101 @@ public sealed class SearchScenarios : IDisposable
         Assert.True(log.Length == 0, "The error log has entries:\n" + log);
     }
 
-    private static AutomationElement Named(AutomationElement root, string name, ControlType type, double seconds = 10)
+    /// <summary>
+    /// A control in one of the app's windows. The window is looked up again from its handle (an owned window found
+    /// through the main window doesn't always give its content).
+    /// </summary>
+    private static AutomationElement Named(AppSession app, AutomationElement window, string name, ControlType type, double seconds = 10)
     {
         AutomationElement? found = null;
-        AppSession.WaitUntil(() =>
+        WaitUntilOr(() =>
         {
-            found = root.FindAllDescendants(cf => cf.ByControlType(type))
-                .FirstOrDefault(e => (e.Name ?? string.Empty).StartsWith(name, StringComparison.OrdinalIgnoreCase));
-            return found != null;
-        }, name, seconds);
+            foreach (AutomationElement root in Roots(app, window))
+            {
+                try
+                {
+                    found = root.FindAllDescendants(cf => cf.ByControlType(type))
+                        .FirstOrDefault(e => (e.Name ?? string.Empty).StartsWith(name, StringComparison.OrdinalIgnoreCase));
+                }
+                catch (Exception)
+                {
+                    found = null; // the window is changing: next time
+                }
+                if (found != null)
+                    return true;
+            }
+            return false;
+        }, name, seconds, () => string.Join(", ", Roots(app, window).SelectMany(r =>
+        {
+            try
+            {
+                return r.FindAllDescendants(cf => cf.ByControlType(type)).Select(e => "'" + e.Name + "'");
+            }
+            catch (Exception ex)
+            {
+                return new[] { ex.GetType().Name };
+            }
+        }).Distinct().Take(60)));
         return found!;
+    }
+
+    private static void WaitUntilOr(Func<bool> condition, string what, double seconds, Func<string> seen)
+    {
+        try
+        {
+            AppSession.WaitUntil(condition, what, seconds);
+        }
+        catch (TimeoutException ex)
+        {
+            throw new TimeoutException(ex.Message + " (there: " + seen() + ")", ex);
+        }
+    }
+
+    private static List<AutomationElement> Roots(AppSession app, AutomationElement window)
+    {
+        var roots = new List<AutomationElement>();
+        try
+        {
+            IntPtr handle = window.Properties.NativeWindowHandle.ValueOrDefault;
+            if (handle != IntPtr.Zero)
+                roots.Add(app.Automation.FromHandle(handle));
+        }
+        catch (Exception)
+        {
+            // gone or not ready: the element itself
+        }
+        roots.Add(window);
+        return roots;
+    }
+
+    private static string Texts(AppSession app, AutomationElement window) => string.Join(", ", Roots(app, window).SelectMany(r =>
+    {
+        try
+        {
+            return r.FindAllDescendants(cf => cf.ByControlType(ControlType.Text)).Select(e => "'" + e.Name + "'");
+        }
+        catch (Exception ex)
+        {
+            return new[] { ex.GetType().Name };
+        }
+    }).Distinct().Take(60));
+
+    /// <summary>A text in the window that contains <paramref name="part"/>.</summary>
+    private static bool HasText(AppSession app, AutomationElement window, string part)
+    {
+        foreach (AutomationElement root in Roots(app, window))
+        {
+            try
+            {
+                if (root.FindAllDescendants(cf => cf.ByControlType(ControlType.Text)).Any(t => (t.Name ?? string.Empty).Contains(part, StringComparison.Ordinal)))
+                    return true;
+            }
+            catch (Exception)
+            {
+                // the window is changing: next time
+            }
+        }
+        return false;
     }
 
     [UiFact]
@@ -59,7 +144,7 @@ public sealed class SearchScenarios : IDisposable
         Window find = app.OtherWindow("Find Files");
         app.Press(VirtualKeyShort.ENTER, settleMs: 3000);
         AppSession.Screenshot("s01 find with text rows");
-        AutomationElement show = Named(find, "Show in Panel", ControlType.Button);
+        AutomationElement show = Named(app, find, "Show in Panel", ControlType.Button);
         AppSession.WaitUntil(() => show.IsEnabled, "results to show", 15);
         show.Click();
         Thread.Sleep(1500);
@@ -80,15 +165,14 @@ public sealed class SearchScenarios : IDisposable
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.F7);
         Thread.Sleep(1500);
         Window duplicates = app.OtherWindow("Find Duplicate");
-        Named(duplicates, "Find", ControlType.Button).Click();
-        AppSession.WaitUntil(() => duplicates.FindAllDescendants(cf => cf.ByControlType(ControlType.Text))
-            .Any(t => (t.Name ?? string.Empty).Contains("photo (copy).txt", StringComparison.Ordinal)), "the duplicates", 20);
-        Named(duplicates, "Select duplicates", ControlType.Button).Click();
+        Named(app, duplicates, "Find", ControlType.Button).Click();
+        WaitUntilOr(() => HasText(app, duplicates, "photo (copy).txt"), "the duplicates", 20, () => Texts(app, duplicates));
+        Named(app, duplicates, "Select duplicates", ControlType.Button).Click();
         Thread.Sleep(800);
-        Named(app.Automation.GetDesktop(), "All but the newest", ControlType.MenuItem).Click();
+        Named(app, app.Automation.GetDesktop(), "All but the newest", ControlType.MenuItem).Click();
         Thread.Sleep(800);
         AppSession.Screenshot("s03 duplicates");
-        Assert.Contains(duplicates.FindAllDescendants(cf => cf.ByControlType(ControlType.Text)), t => (t.Name ?? string.Empty).StartsWith("Delete 1 selected", StringComparison.Ordinal));
+        AppSession.WaitUntil(() => HasText(app, duplicates, "Delete 1 selected"), "one copy selected", 5);
         duplicates.Close();
         NoErrors(app);
     }
@@ -101,10 +185,9 @@ public sealed class SearchScenarios : IDisposable
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F10, settleMs: 1200);
         app.Press(VirtualKeyShort.ENTER, settleMs: 2500); // the dialog's Compare
         Window compare = app.OtherWindow("Compare Directories");
-        AppSession.WaitUntil(() => compare.FindAllDescendants(cf => cf.ByControlType(ControlType.Text))
-            .Any(t => (t.Name ?? string.Empty).Contains("report.txt", StringComparison.Ordinal)), "the differences", 20);
+        WaitUntilOr(() => HasText(app, compare, "report.txt"), "the differences", 20, () => Texts(app, compare));
         AppSession.Screenshot("s04 compare list");
-        Named(compare, "Synchronize (", ControlType.Button).Click();
+        Named(app, compare, "Synchronize (", ControlType.Button).Click();
         Thread.Sleep(1000);
         app.Press(VirtualKeyShort.ENTER); // the dialog's Synchronize
         AppSession.WaitUntil(() => File.Exists(Path.Combine(_files.Target, "report.txt")), "report.txt copied to the right", 30);
