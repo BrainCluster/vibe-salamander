@@ -152,6 +152,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         UpdateTitle();
         if (StartupArguments is { IsEmpty: false } arguments)
             await ApplyArgumentsAsync(arguments);
+        UpdatesAtStart();
         if (_vm.Settings.IsNew)
             Notify(Loc.T("Welcome! Help → First Steps sets the shortcuts (Salamander or Total Commander), the looks and the language."), isError: false, log: false);
     }

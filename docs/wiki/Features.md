@@ -138,8 +138,10 @@
 - **Starting it**: `VibeSalamander.exe -L C:\Work -R D:\ -P 2` opens folders in the left and right panel and makes
   one active (`-A` the active one; a folder alone goes there). With *Allow only one instance*, a second start hands
   its folders to the running window.
-- **Portable**: an empty `portable.flag` file next to VibeSalamander.exe keeps the settings, plugins and logs in a
-  `Data` folder beside it, nothing in your profile.
+- **An installer or a portable zip**: the zip keeps the settings, plugins and logs in a `Data` folder beside the
+  program (its `portable.flag` does that), nothing in your profile. **Help → Check for Updates** (and once a day by
+  itself) updates either: the new installer runs silently, or the portable files are replaced with `Data` kept; then
+  Vibe Salamander starts again. See [Installation](Installation).
 - **Mount disk images**: .iso, .img, .vhd and .vhdx open as drives in the other panel.
 
 ![The user menu](images/user-menu.png)

@@ -1,13 +1,15 @@
 # Package managers
 
-**Scoop**: this repository is also a Scoop bucket (`bucket/vibe-salamander.json`):
+**Scoop**: this repository is also a Scoop bucket (`bucket/vibe-salamander.json`). It installs the portable zip and
+persists its `Data` folder (the settings) between updates:
 
 ```powershell
 scoop bucket add vibe-salamander https://github.com/BrainCluster/vibe-salamander
 scoop install vibe-salamander
 ```
 
-**winget**: each release gets its manifests in `winget/<version>/` (made by the release workflow with
+**winget**: each release gets its manifests in `winget/<version>/` (from 0.8.0 they install with the Inno Setup
+installer, for the user or for the machine; earlier ones with the zip) (made by the release workflow with
 `build/package-manifests.sh`, like the Scoop file). The **winget** workflow (`.github/workflows/winget.yml`) submits each release by itself once the repository
 has the secret `WINGET_TOKEN` (a classic GitHub token with the `public_repo` scope). By hand instead:
 

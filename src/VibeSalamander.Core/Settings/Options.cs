@@ -20,6 +20,18 @@ public sealed class GeneralOptions
     /// <summary>A second start brings the running window to the front instead of opening another one.</summary>
     public bool SingleInstance { get; set; }
 
+    /// <summary>Once a day, ask GitHub whether there is a newer version (Help → Check for Updates any time).</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>When it last asked (UTC).</summary>
+    public DateTime LastUpdateCheck { get; set; }
+
+    /// <summary>A version the user chose to skip: not offered again by the daily check.</summary>
+    public string SkippedVersion { get; set; } = string.Empty;
+
+    /// <summary>The version an update started from (the next start says it's done); "" otherwise.</summary>
+    public string UpdatingFrom { get; set; } = string.Empty;
+
     /// <summary>A beep when transfers finish while the window is in the background.</summary>
     public bool BeepWhenDoneInBackground { get; set; } = true;
 

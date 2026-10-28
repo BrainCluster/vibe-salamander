@@ -264,6 +264,7 @@
                 <MenuFlyoutItem Text="Error Log" Tag="ErrorLog" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="First Steps..." Click="FirstSteps_Click" />
+                <MenuFlyoutItem Text="Check for Updates..." Click="CheckForUpdates_Click" />
                 <MenuFlyoutItem Text="About Vibe Salamander" Tag="About" Click="Menu_Click" />
             </MenuBarItem>
         </MenuBar>

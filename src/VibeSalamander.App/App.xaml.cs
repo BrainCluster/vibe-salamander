@@ -17,6 +17,8 @@ public partial class App : Application
     {
         InitializeComponent();
         string version = typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "?";
+        // a portable copy's first start: the settings used so far come along (before anything is written to Data)
+        AppPaths.AdoptRoamingSettings();
         ErrorLog.Start(version);
         // an error nothing caught in the window (usually in an event handler): logged and reported, the program goes on
         UnhandledException += App_UnhandledException;

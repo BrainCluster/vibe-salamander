@@ -48,6 +48,9 @@ public sealed partial class SettingsWindow
         page.Children.Add(Toggle("Save configuration on exit",
             "Off: changes are kept only when you choose Options → Save Configuration (or change them here).",
             g.SaveOnExit, v => g.SaveOnExit = v));
+        page.Children.Add(Toggle("Check for updates once a day",
+            "Asks GitHub whether there is a newer version (nothing else is sent). Help → Check for Updates asks at any time.",
+            g.CheckForUpdates, v => g.CheckForUpdates = v));
         page.Children.Add(Toggle("Allow only one instance of Vibe Salamander",
             "Starting it again brings the running window to the front. Takes effect at the next start.", g.SingleInstance, v => g.SingleInstance = v));
         page.Children.Add(Toggle("Close the console window after a command line command",

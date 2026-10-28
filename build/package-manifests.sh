@@ -14,6 +14,15 @@ x64="VibeSalamander-${version}-win-x64.zip"
 arm64="VibeSalamander-${version}-win-arm64.zip"
 sha_x64=${SHA_X64:-$(sha256sum "$dist/$x64" | cut -d' ' -f1)}
 sha_arm64=${SHA_ARM64:-$(sha256sum "$dist/$arm64" | cut -d' ' -f1)}
+# the installers (from 0.8.0): winget installs with them; the zips are the portable version (Scoop)
+setup_x64="VibeSalamander-${version}-win-x64-setup.exe"
+setup_arm64="VibeSalamander-${version}-win-arm64-setup.exe"
+have_setup=false
+if [ -f "$dist/$setup_x64" ] && [ -f "$dist/$setup_arm64" ]; then
+  have_setup=true
+  sha_setup_x64=$(sha256sum "$dist/$setup_x64" | cut -d' ' -f1)
+  sha_setup_arm64=$(sha256sum "$dist/$setup_arm64" | cut -d' ' -f1)
+fi
 root=$(cd "$(dirname "$0")/.." && pwd)
 
 # ---- Scoop -------------------------------------------------------------------------------------------
@@ -23,7 +32,7 @@ cat > "$root/bucket/vibe-salamander.json" <<JSON
     "description": "Fast, keyboard-first dual-pane file manager for Windows: a modern spiritual successor to Altap / Open Salamander.",
     "homepage": "${repo}",
     "license": "GPL-3.0-or-later",
-    "notes": "Settings are in %AppData%\\\\VibeSalamander. The 7-Zip plugin is a separate download on the release page.",
+    "notes": "Portable: the settings are in the Data folder, which Scoop keeps between updates. The 7-Zip plugin is a separate download on the release page.",
     "architecture": {
         "64bit": {
             "url": "${repo}/releases/download/v${version}/${x64}",
@@ -35,6 +44,7 @@ cat > "$root/bucket/vibe-salamander.json" <<JSON
         }
     },
     "extract_dir": "VibeSalamander",
+    "persist": "Data",
     "bin": "VibeSalamander.exe",
     "shortcuts": [
         [
@@ -70,6 +80,44 @@ DefaultLocale: en-US
 ManifestType: version
 ManifestVersion: 1.9.0
 YAML
+if [ "$have_setup" = true ]; then
+cat > "$out/${id}.installer.yaml" <<YAML
+# yaml-language-server: \$schema=https://aka.ms/winget-manifest.installer.1.9.0.schema.json
+PackageIdentifier: ${id}
+PackageVersion: ${version}
+InstallerType: inno
+UpgradeBehavior: install
+ProductCode: '{FD1096E8-9977-4668-B1A2-196FC6091581}_is1'
+ReleaseDate: ${date}
+Installers:
+- Architecture: x64
+  Scope: user
+  InstallerUrl: ${repo}/releases/download/v${version}/${setup_x64}
+  InstallerSha256: ${sha_setup_x64^^}
+  InstallerSwitches:
+    Custom: /CURRENTUSER
+- Architecture: x64
+  Scope: machine
+  InstallerUrl: ${repo}/releases/download/v${version}/${setup_x64}
+  InstallerSha256: ${sha_setup_x64^^}
+  InstallerSwitches:
+    Custom: /ALLUSERS
+- Architecture: arm64
+  Scope: user
+  InstallerUrl: ${repo}/releases/download/v${version}/${setup_arm64}
+  InstallerSha256: ${sha_setup_arm64^^}
+  InstallerSwitches:
+    Custom: /CURRENTUSER
+- Architecture: arm64
+  Scope: machine
+  InstallerUrl: ${repo}/releases/download/v${version}/${setup_arm64}
+  InstallerSha256: ${sha_setup_arm64^^}
+  InstallerSwitches:
+    Custom: /ALLUSERS
+ManifestType: installer
+ManifestVersion: 1.9.0
+YAML
+else
 cat > "$out/${id}.installer.yaml" <<YAML
 # yaml-language-server: \$schema=https://aka.ms/winget-manifest.installer.1.9.0.schema.json
 PackageIdentifier: ${id}
@@ -90,6 +138,7 @@ Installers:
 ManifestType: installer
 ManifestVersion: 1.9.0
 YAML
+fi
 cat > "$out/${id}.locale.en-US.yaml" <<YAML
 # yaml-language-server: \$schema=https://aka.ms/winget-manifest.defaultLocale.1.9.0.schema.json
 PackageIdentifier: ${id}

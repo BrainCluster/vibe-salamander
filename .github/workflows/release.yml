@@ -67,6 +67,17 @@ jobs:
       - name: Build the example plugin
         run: dotnet build samples/HelloPlugin/HelloPlugin.csproj -c Release
 
+      # the installer script compiles (on a stand-in folder: the real one is built for releases only)
+      - name: Check the installer script
+        shell: pwsh
+        run: |
+          ./build/installer/inno.ps1
+          New-Item -ItemType Directory -Force stand-in/lib | Out-Null
+          Set-Content stand-in/VibeSalamander.exe 'stand-in'
+          Set-Content stand-in/lib/VibeSalamander.exe 'stand-in'
+          & $env:ISCC /Q /DVersion=0.0.0 /DArch=x64 "/DSource=$PWD\stand-in" "/DOutput=$PWD\stand-in-out" build/installer/VibeSalamander.iss
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
   build:
     needs: version
     if: needs.version.outputs.release == 'true'
@@ -100,9 +111,21 @@ jobs:
         shell: pwsh
         run: ./build/publish.ps1 -Runtime ${{ matrix.rid }} -Output publish/VibeSalamander
 
+      # the installer (before portable.flag goes into the folder: an installed copy keeps its settings in %AppData%)
+      - name: Installer
+        shell: pwsh
+        run: |
+          ./build/installer/inno.ps1
+          $arch = if ('${{ matrix.rid }}' -eq 'win-arm64') { 'arm64' } else { 'x64' }
+          & $env:ISCC /Q "/DVersion=${{ needs.version.outputs.version }}" "/DArch=$arch" "/DSource=$PWD\publish\VibeSalamander" "/DOutput=$PWD" build/installer/VibeSalamander.iss
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          "SETUP=VibeSalamander-${{ needs.version.outputs.version }}-${{ matrix.rid }}-setup.exe" >> $env:GITHUB_ENV
+
+      # the zip is the portable version: portable.flag keeps everything in a Data folder beside the program
       - name: Zip
         shell: pwsh
         run: |
+          New-Item -ItemType File -Force publish/VibeSalamander/portable.flag | Out-Null
           $zip = "VibeSalamander-${{ needs.version.outputs.version }}-${{ matrix.rid }}.zip"
           Compress-Archive -Path publish/VibeSalamander -DestinationPath $zip
           "ZIP=$zip" >> $env:GITHUB_ENV
@@ -119,6 +142,7 @@ jobs:
         with:
           name: ${{ matrix.rid }}
           path: |
+            ${{ env.SETUP }}
             ${{ env.ZIP }}
             ${{ env.PLUGIN_ZIP }}
 
@@ -141,7 +165,7 @@ jobs:
         run: |
           notes="docs/releases/${VERSION}.md"
           [ -f "$notes" ] || notes=/dev/null
-          gh release create "v${VERSION}" dist/*.zip \
+          gh release create "v${VERSION}" dist/*-setup.exe dist/*.zip \
             --target "$GITHUB_SHA" \
             --title "Vibe Salamander ${VERSION}" \
             --notes-file "$notes"

@@ -114,7 +114,7 @@ public sealed partial class MainWindow
     private static readonly Dictionary<string, string> TextGlyphs = new()
     {
         ["Save Configuration"] = "\uE74E", ["Export Configuration..."] = "\uEDE1", ["Import Configuration..."] = "\uE8B5",
-        ["Keyboard Shortcuts"] = "\uE765",
+        ["Keyboard Shortcuts"] = "\uE765", ["First Steps..."] = "\uE7BE", ["Check for Updates..."] = "\uE895",
         // submenus
         ["View"] = "\uE8A9", ["Sort By"] = "\uE8CB", ["NTFS"] = "\uEDA2", ["Advanced"] = "\uE712",
         ["Open Folder"] = "\uE838", ["Theme"] = "\uE790", ["Show"] = "\uE7B3",

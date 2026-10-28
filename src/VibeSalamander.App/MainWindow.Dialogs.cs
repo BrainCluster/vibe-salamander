@@ -171,6 +171,7 @@ public sealed partial class MainWindow
         Notification.Severity = isError ? InfoBarSeverity.Error : InfoBarSeverity.Informational;
         Notification.Title = isError ? Loc.T("Couldn't do that") : string.Empty;
         Notification.Message = Loc.T(message);
+        Notification.ActionButton = null;
         Notification.IsOpen = true;
         NotificationHost.Visibility = Visibility.Visible;
         if (_notificationTimer == null)
@@ -181,6 +182,22 @@ public sealed partial class MainWindow
         }
         // long enough to read; longer messages stay a bit longer
         _notificationTimer.Interval = TimeSpan.FromSeconds(Math.Clamp(4 + message.Length / 40.0, 5, 12));
+        _notificationTimer.Stop();
+        _notificationTimer.Start();
+    }
+
+    /// <summary>A message with a button (an update is available: "Update..."); it stays a little longer.</summary>
+    public void Notify(string message, string actionText, Action action)
+    {
+        Notify(message, isError: false, log: false);
+        var button = new Button { Content = Loc.T(actionText) };
+        button.Click += (_, _) =>
+        {
+            HideNotification();
+            action();
+        };
+        Notification.ActionButton = button;
+        _notificationTimer!.Interval = TimeSpan.FromSeconds(20);
         _notificationTimer.Stop();
         _notificationTimer.Start();
     }

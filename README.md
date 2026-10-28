@@ -31,9 +31,18 @@ and precision) and gives it a native Windows 11 look, fewer dialogs and a transf
 
 ## Install
 
-**Portable zip:** download `VibeSalamander-<version>-win-x64.zip` (or `win-arm64` for ARM PCs) from the
-[latest release](https://github.com/BrainCluster/vibe-salamander/releases/latest), unzip it anywhere and run
-`VibeSalamander.exe`. Nothing is installed into Windows; settings are kept in `%AppData%\VibeSalamander`.
+**Installer:** download `VibeSalamander-<version>-win-x64-setup.exe` (or `win-arm64` for ARM PCs) from the
+[latest release](https://github.com/BrainCluster/vibe-salamander/releases/latest) and run it. It installs for you
+alone without administrator rights (or for everyone into Program Files), with a Start menu entry and an uninstaller.
+Settings are kept in `%AppData%\VibeSalamander`.
+
+**Portable zip:** download `VibeSalamander-<version>-win-x64.zip` (or `win-arm64`), unzip it anywhere (a USB stick
+too) and run `VibeSalamander.exe`. Nothing is installed into Windows: settings are kept in a `Data` folder beside the
+program.
+
+**Updates:** Help → Check for Updates, and once a day by itself (Configuration → General). An installed copy is
+updated with the new installer, a portable one by replacing its files (your `Data` stays); either way it starts
+again on its own.
 
 **Scoop:**
 
@@ -82,7 +91,7 @@ line, network drives.
 
 **Make it yours.** Light and dark themes, color schemes from Vibe and Explorer to Tokyo Night, Dracula, Nord and
 Norton Commander (or a Visual Studio Code theme of yours), compact or comfortable density, any key for any command,
-a custom toolbar, 12 languages, and a portable mode (a `portable.flag` file next to the program).
+a custom toolbar, 12 languages; an installer or a portable zip, and updates from Help → Check for Updates.
 
 The full list, with pictures: [Features](https://github.com/BrainCluster/vibe-salamander/wiki/Features) ·
 [Keyboard shortcuts](https://github.com/BrainCluster/vibe-salamander/wiki/Keyboard-Shortcuts) ·

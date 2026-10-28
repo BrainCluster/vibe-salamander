@@ -61,6 +61,7 @@ public sealed class AppSession : IDisposable
         var settings = new AppSettings { WindowMaximized = true, ShowHidden = true };
         settings.General.Language = "en";
         settings.General.SingleInstance = false;
+        settings.General.CheckForUpdates = false; // no calls to GitHub from the tests
         configure(settings);
         SettingsStore.Save(settings, Path.Combine(Home, "settings.json"));
 
