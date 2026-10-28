@@ -1,20 +1,21 @@
 {
-    "version": "0.7.0",
+    "version": "0.8.0",
     "description": "Fast, keyboard-first dual-pane file manager for Windows: a modern spiritual successor to Altap / Open Salamander.",
     "homepage": "https://github.com/BrainCluster/vibe-salamander",
     "license": "GPL-3.0-or-later",
-    "notes": "Settings are in %AppData%\\VibeSalamander. The 7-Zip plugin is a separate download on the release page.",
+    "notes": "Portable: the settings are in the Data folder, which Scoop keeps between updates. The 7-Zip plugin is a separate download on the release page.",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/BrainCluster/vibe-salamander/releases/download/v0.7.0/VibeSalamander-0.7.0-win-x64.zip",
-            "hash": "42f72a344cb14a66dbb330bef42924f87354f37c7c7b900e7de7f38c778fcf61"
+            "url": "https://github.com/BrainCluster/vibe-salamander/releases/download/v0.8.0/VibeSalamander-0.8.0-win-x64.zip",
+            "hash": "2d5c86f2eb782b3462348f99c790e238c43202eafcad63f2e5a8423b021c758f"
         },
         "arm64": {
-            "url": "https://github.com/BrainCluster/vibe-salamander/releases/download/v0.7.0/VibeSalamander-0.7.0-win-arm64.zip",
-            "hash": "4003cc74b0581be90f17aab9dcad3d04f05680d56965ffefb89c35e85b20ead0"
+            "url": "https://github.com/BrainCluster/vibe-salamander/releases/download/v0.8.0/VibeSalamander-0.8.0-win-arm64.zip",
+            "hash": "a73d7e87a4ca37db0c3560189ed2dd4ebbbb44356146578d4b24f2724a68373f"
         }
     },
     "extract_dir": "VibeSalamander",
+    "persist": "Data",
     "bin": "VibeSalamander.exe",
     "shortcuts": [
         [
