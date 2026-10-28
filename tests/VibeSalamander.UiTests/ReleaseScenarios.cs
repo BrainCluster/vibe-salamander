@@ -182,4 +182,21 @@ public sealed class ReleaseScenarios : IDisposable
         Thread.Sleep(500);
         NoErrors(app);
     }
+
+    [UiFact]
+    public void Check_for_updates_answers()
+    {
+        using AppSession app = Start();
+        app.Menu("Help", "Check for Updates...");
+        // whatever GitHub says (newest, newer, or not reachable from the test machine): an answer, and no error
+        WaitForText(app, t => t.Contains("newest version", StringComparison.Ordinal) || t.Contains("is available", StringComparison.Ordinal) ||
+                              t.Contains("didn't reach GitHub", StringComparison.Ordinal), "the update check's answer", 30);
+        AppSession.Screenshot("r06 check for updates");
+        foreach (string button in new[] { "Later" })
+        {
+            AutomationElement? later = app.Window.FindFirstDescendant(cf => cf.ByName(button).And(cf.ByControlType(ControlType.Button)));
+            later?.Click();
+        }
+        NoErrors(app);
+    }
 }

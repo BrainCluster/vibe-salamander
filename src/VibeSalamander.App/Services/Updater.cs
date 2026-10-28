@@ -18,19 +18,21 @@ namespace VibeSalamander.Services;
 /// </summary>
 internal static class Updater
 {
+    // (first: the client below uses it, and static fields are set in the order they're written)
+    /// <summary>This program's version ("0.7.0").</summary>
+    public static string CurrentVersion { get; } =
+        typeof(Updater).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] is { Length: > 0 } v ? v : "0.0.0";
+
     private static readonly HttpClient Http = CreateClient();
 
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd($"VibeSalamander/{CurrentVersion}");
+        // GitHub wants a user agent; one that can't be read is left out rather than failing the check
+        client.DefaultRequestHeaders.UserAgent.TryParseAdd($"VibeSalamander/{CurrentVersion}");
         client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         return client;
     }
-
-    /// <summary>This program's version ("0.7.0").</summary>
-    public static string CurrentVersion { get; } =
-        typeof(Updater).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "0.0.0";
 
     public static InstallKind Kind => UpdateCheck.KindOf(AppPaths.MainFolder, AppPaths.IsInstalled, AppPaths.IsPortable);
 

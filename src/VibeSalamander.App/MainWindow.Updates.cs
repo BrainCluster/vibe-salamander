@@ -57,6 +57,14 @@ public sealed partial class MainWindow
                     Notify(Loc.F("The update check didn't reach GitHub: {0}", ex.Message), isError: true, log: false);
                 return;
             }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                // a mistake of ours: logged, said when asked, never a crash
+                Core.Diagnostics.ErrorLog.Exception("Update check", ex);
+                if (manual)
+                    Notify(Loc.F("The update check didn't reach GitHub: {0}", ex.Message), isError: true, log: false);
+                return;
+            }
             var g = _vm.Settings.General;
             g.LastUpdateCheck = DateTime.UtcNow;
             _vm.SaveSettings();
