@@ -222,7 +222,9 @@ internal sealed class CompareFilesWindow : Window
     {
         string left = (_l.Dirty ? "● " : string.Empty) + Path.GetFileName(_left);
         string right = (_r.Dirty ? "● " : string.Empty) + Path.GetFileName(_right);
-        Title = $"{left} ↔ {right} - {Loc.T("Compare Files")}";
+        // the count in the title too: on the taskbar, and for screen readers that read the title
+        string count = _status.Text.Length > 0 ? "  ·  " + _status.Text : string.Empty;
+        Title = $"{left} ↔ {right}{count} - {Loc.T("Compare Files")}";
         _titleText.Text = Title;
         _leftName.Text = (_l.Dirty ? "● " : string.Empty) + _left;
         _rightName.Text = (_r.Dirty ? "● " : string.Empty) + _right;
@@ -519,6 +521,7 @@ internal sealed class CompareFilesWindow : Window
     {
         _status.Text = text;
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_status, text);
+        UpdateTitle();
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetLiveSetting(_status, Microsoft.UI.Xaml.Automation.Peers.AutomationLiveSetting.Polite);
         if (Microsoft.UI.Xaml.Automation.Peers.FrameworkElementAutomationPeer.FromElement(_status) is { } peer)
             peer.RaiseAutomationEvent(Microsoft.UI.Xaml.Automation.Peers.AutomationEvents.LiveRegionChanged);
