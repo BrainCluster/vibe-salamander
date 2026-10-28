@@ -101,7 +101,34 @@ internal sealed partial class ViewerWindow
         _tree.RootNodes.Add(top);
         Realize(top);
         top.IsExpanded = true;
+        ExpandLevels(top, 200);
         _status.Text = Loc.F("{0} nodes", (root.Descendants().Count() + 1).ToString("N0", System.Globalization.CultureInfo.CurrentCulture));
+    }
+
+    /// <summary>
+    /// Opens the tree level by level while it stays short (about <paramref name="budget"/> rows): a small file is
+    /// seen whole, a large one shows its outline.
+    /// </summary>
+    private void ExpandLevels(TreeViewNode top, int budget)
+    {
+        int shown = 1 + top.Children.Count;
+        List<TreeViewNode> level = top.Children.ToList();
+        while (level.Count > 0)
+        {
+            var next = new List<TreeViewNode>();
+            foreach (TreeViewNode node in level)
+            {
+                if (node.Content is not TreeRow row || row.Node.Children.Count == 0)
+                    continue;
+                if (shown + row.Node.Children.Count > budget)
+                    return;
+                Realize(node);
+                node.IsExpanded = true;
+                shown += node.Children.Count;
+                next.AddRange(node.Children);
+            }
+            level = next;
+        }
     }
 
     /// <summary>A line to show when the text view opens (after a tree problem).</summary>

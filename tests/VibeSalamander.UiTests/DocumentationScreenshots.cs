@@ -208,4 +208,82 @@ public sealed class DocumentationScreenshots : IDisposable
         Doc("hello largest files");
         app.CloseOtherWindows();
     }
+
+    // ---- the viewer and the editor --------------------------------------------------------------------------
+
+    /// <summary>F3 / F4 on a file of the left panel: its window, maximized for the picture.</summary>
+    private static FlaUI.Core.AutomationElements.Window OpenWindow(AppSession app, string name, VirtualKeyShort key, int settleMs)
+    {
+        app.Window.Focus();
+        app.GoTo(name);
+        app.Press(key, settleMs: 300);
+        var window = app.OtherWindow(name + " - ");
+        window.Focus();
+        window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
+        Thread.Sleep(settleMs);
+        return window;
+    }
+
+    private static void Close(FlaUI.Core.AutomationElements.Window window)
+    {
+        try
+        {
+            window.Close();
+        }
+        catch (Exception)
+        {
+            // closed already
+        }
+        Thread.Sleep(600);
+    }
+
+    [UiFact]
+    public void Viewer_and_editor()
+    {
+        using AppSession app = Start(s => s.Left.Path = _files.Samples);
+
+        var markdown = OpenWindow(app, "README.md", VirtualKeyShort.F3, 4000);
+        Doc("viewer markdown");
+        Close(markdown);
+
+        var json = OpenWindow(app, "config.json", VirtualKeyShort.F3, 1500);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1, settleMs: 1200);
+        Doc("viewer tree");
+        Close(json);
+
+        var log = OpenWindow(app, "server.log", VirtualKeyShort.F3, 2000);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_F, settleMs: 600);
+        app.Type("request 150000 ", settleMs: 300);
+        app.Press(VirtualKeyShort.ENTER, settleMs: 2500);
+        Doc("viewer big file");
+        Close(log);
+
+        var editor = OpenWindow(app, "README.md", VirtualKeyShort.F4, 7000);
+        Doc("editor markdown");
+        Close(editor);
+
+        var code = OpenWindow(app, "config.json", VirtualKeyShort.F4, 7000);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.END, settleMs: 200);
+        app.Type(" oops", settleMs: 2500);
+        Doc("editor json problem");
+        Close(code);
+        try
+        {
+            app.Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("Don't save").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button)))?.Click();
+        }
+        catch (Exception)
+        {
+            // the question didn't come
+        }
+        Thread.Sleep(600);
+    }
+
+    [UiFact]
+    public void Picture_viewer()
+    {
+        using AppSession app = Start(s => s.Left.Path = _files.Photos);
+        var picture = OpenWindow(app, "holiday 01.png", VirtualKeyShort.F3, 3000);
+        Doc("viewer picture");
+        Close(picture);
+    }
 }
