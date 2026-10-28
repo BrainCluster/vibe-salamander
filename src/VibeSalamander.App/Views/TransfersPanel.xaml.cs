@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
+using VibeSalamander.Core.Interop;
 using VibeSalamander.Core.Operations;
 using VibeSalamander.Services;
 using VibeSalamander.ViewModels;
@@ -120,6 +121,7 @@ public sealed partial class TransfersPanel : UserControl
         SummaryText.Text = _vm.SummaryText;
         SharedLimitText.Text = _vm.SharedLimit > 0 ? Loc.F("Max {0}", SpeedLimits.Describe(_vm.SharedLimit)) : Loc.T("No limit");
         GraphsButton.IsChecked = _vm.ShowGraphs;
+        WhenDoneText.Text = _vm.WhenDone == WhenDone.Nothing ? Loc.T("When done") : Loc.F("Then: {0}", Loc.T(PowerActions.Name(_vm.WhenDone)));
         ClearButton.IsEnabled = _vm.Items.Any(i => !i.IsActive);
         ClearAllButton.IsEnabled = _vm.HasItems;
     }
@@ -183,10 +185,47 @@ public sealed partial class TransfersPanel : UserControl
         }, () => vm.AskLimitAsync(vm.SharedLimit)).ShowAt(SharedLimitButton);
     }
 
+    /// <summary>Nothing, close, lock, sleep, hibernate or shut down when the last transfer has finished.</summary>
+    private void WhenDone_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm == null)
+            return;
+        TransfersViewModel vm = _vm;
+        var menu = new MenuFlyout();
+        foreach (WhenDone action in Enum.GetValues<WhenDone>())
+        {
+            var item = new RadioMenuFlyoutItem { Text = Loc.T(PowerActions.Name(action)), GroupName = "done", IsChecked = vm.WhenDone == action };
+            WhenDone chosen = action;
+            item.Click += (_, _) =>
+            {
+                vm.WhenDone = chosen;
+                UpdateHeader();
+                Interacted?.Invoke(this, EventArgs.Empty);
+            };
+            menu.Items.Add(item);
+            if (action == WhenDone.Nothing)
+                menu.Items.Add(new MenuFlyoutSeparator());
+        }
+        menu.ShowAt(WhenDoneButton);
+    }
+
     private void Graphs_Click(object sender, RoutedEventArgs e)
     {
         if (_vm != null)
             _vm.ShowGraphs = GraphsButton.IsChecked == true;
+        Interacted?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void Up_Click(object sender, RoutedEventArgs e) => Move(sender, -1);
+
+    private void Down_Click(object sender, RoutedEventArgs e) => Move(sender, +1);
+
+    private void First_Click(object sender, RoutedEventArgs e) => Move(sender, int.MinValue);
+
+    private void Move(object sender, int delta)
+    {
+        if (ItemOf(sender) is { } item)
+            _vm?.MoveQueued(item, delta);
         Interacted?.Invoke(this, EventArgs.Empty);
     }
 

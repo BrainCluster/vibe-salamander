@@ -75,6 +75,9 @@ public interface IOperationCallbacks
 {
     Task<ConflictChoice> ResolveConflictAsync(ConflictInfo conflict);
     Task<ErrorChoice> ResolveErrorAsync(OperationError error);
+
+    /// <summary>A question before the work starts ("not enough space: copy anyway?"); true goes on. Without a UI: yes.</summary>
+    Task<bool> ConfirmAsync(string title, string message) => Task.FromResult(true);
 }
 
 /// <summary>Snapshot of a running operation for the progress window.</summary>

@@ -167,6 +167,11 @@ public sealed class FileOperationEngine : IPausable
             _itemsTotal = steps.Count(s => s is CopyFileStep or RenameStep or CreateDirStep);
             Report(force: true, analyzing: false);
 
+            // before anything is copied: is there room, and can the drive hold the files at all?
+            string? problem = Preflight(steps.OfType<CopyFileStep>().Select(s => (s.Source, s.Target, s.Size)), target, VolumeOf);
+            if (problem != null && !await _callbacks.ConfirmAsync(move ? L.T("Move") : L.T("Copy"), problem))
+                return Cancelled(result);
+
             foreach (Step step in steps)
             {
                 WaitWhilePaused();
@@ -751,6 +756,65 @@ public sealed class FileOperationEngine : IPausable
             BytesPerSecond = speed,
             Remaining = remaining,
         });
+    }
+
+    /// <summary>The free space and file system of the drive a path is on, or null when it can't be told.</summary>
+    private static (long Free, string Format)? VolumeOf(string path)
+    {
+        try
+        {
+            string? root = Path.GetPathRoot(path);
+            if (string.IsNullOrEmpty(root))
+                return null;
+            var drive = new DriveInfo(root);
+            return drive.IsReady ? (drive.AvailableFreeSpace, drive.DriveFormat) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null; // a network share without a drive letter, a drive that went away
+        }
+    }
+
+    /// <summary>The largest file FAT32 can hold: 4 GB less one byte.</summary>
+    internal const long Fat32Limit = 4L * 1024 * 1024 * 1024 - 1;
+
+    /// <summary>
+    /// What would go wrong before a copy starts: not enough free space on the target drive (files that are replaced
+    /// count as freed), or files larger than FAT32 can hold. Null when all is fine; else the question to ask.
+    /// </summary>
+    internal static string? Preflight(IEnumerable<(string Source, string Target, long Size)> files, string target,
+        Func<string, (long Free, string Format)?> volume)
+    {
+        var list = files.ToList();
+        if (list.Count == 0 || volume(target) is not { } drive)
+            return null;
+        long needed = 0;
+        foreach (var (_, to, size) in list)
+        {
+            long replaced = 0;
+            try
+            {
+                if (File.Exists(to))
+                    replaced = new FileInfo(to).Length;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+            }
+            needed += Math.Max(0, size - replaced);
+        }
+        var problems = new List<string>();
+        string root = Path.GetPathRoot(target) ?? target;
+        if (needed > drive.Free)
+            problems.Add(L.F("{0} are needed on {1}, but only {2} are free.", Formatting.Formats.ShortSize(needed), root,
+                Formatting.Formats.ShortSize(drive.Free)));
+        if (drive.Format.Equals("FAT32", StringComparison.OrdinalIgnoreCase) || drive.Format.Equals("FAT", StringComparison.OrdinalIgnoreCase))
+        {
+            var big = list.Where(f => f.Size > Fat32Limit).ToList();
+            if (big.Count > 0)
+                problems.Add(L.F("{0} files are larger than 4 GB, which the FAT32 drive {1} can't hold: {2}", big.Count, root,
+                    string.Join(", ", big.Take(3).Select(f => Path.GetFileName(f.Source))) + (big.Count > 3 ? ", ..." : string.Empty)));
+        }
+        return problems.Count == 0 ? null : string.Join("\n\n", problems) + "\n\n" + L.T("Copy anyway? (What doesn't fit fails, the rest is copied.)");
     }
 
     private static bool SameVolume(string a, string b) =>

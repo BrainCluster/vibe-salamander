@@ -247,4 +247,23 @@ public sealed class SearchScenarios : IDisposable
         Assert.True(clock.Elapsed.TotalSeconds > 4, $"The copy took {clock.Elapsed.TotalSeconds:0.0} s: the limit didn't hold");
         NoErrors(app);
     }
+
+    [UiFact]
+    public void Compare_two_files()
+    {
+        string common = "using System;\n\nnamespace Demo;\n\npublic static class Program\n{\n    public static void Main()\n    {\n";
+        File.WriteAllText(Path.Combine(_files.Documents, "Program.cs"), common + "        Console.WriteLine(\"Hello\");\n    }\n}\n");
+        File.WriteAllText(Path.Combine(_files.Target, "Program.cs"), common + "        Console.WriteLine(\"Hello, world!\");\n        return;\n    }\n}\n");
+        using AppSession app = Start(waitFor: "Program.cs");
+        app.GoTo("Program.cs");
+        FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_C);
+        Thread.Sleep(1500);
+        Window compare = app.OtherWindow("Program.cs ↔");
+        Thread.Sleep(6000); // WebView2 and Monaco start
+        AppSession.Screenshot("s07 compare files");
+        WaitUntilOr(() => HasText(app, compare, "Difference") || HasText(app, compare, "differences"), "the differences counted", 15,
+            () => Texts(app, compare));
+        compare.Close();
+        NoErrors(app);
+    }
 }

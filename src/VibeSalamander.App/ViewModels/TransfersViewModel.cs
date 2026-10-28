@@ -474,6 +474,38 @@ public sealed class TransfersViewModel : BindableBase
         }
     }
 
+    private Core.Interop.WhenDone _whenDone;
+
+    /// <summary>What happens when the last transfer has finished (this time; back to Nothing after it happened).</summary>
+    public Core.Interop.WhenDone WhenDone
+    {
+        get => _whenDone;
+        set
+        {
+            if (SetProperty(ref _whenDone, value))
+                StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>For the taskbar button: how far all running transfers are together, and whether they wait or failed.</summary>
+    public (Services.TaskbarProgress.State State, double Percent) Overall
+    {
+        get
+        {
+            var active = Items.Where(i => i.IsActive).ToList();
+            if (active.Count == 0)
+                return (Services.TaskbarProgress.State.None, 0);
+            double percent = active.Average(i => i.State == TransferState.Queued ? 0 : i.Percent);
+            if (active.Any(i => i.State == TransferState.WaitingForAnswer))
+                return (Services.TaskbarProgress.State.Error, percent);
+            if (active.All(i => i.State is TransferState.Paused or TransferState.Queued))
+                return (Services.TaskbarProgress.State.Paused, percent);
+            if (active.All(i => i.IsIndeterminate || i.State == TransferState.Queued))
+                return (Services.TaskbarProgress.State.Indeterminate, 0);
+            return (Services.TaskbarProgress.State.Normal, percent);
+        }
+    }
+
     private bool _showGraphs;
 
     /// <summary>Each row shows its speed graph.</summary>
@@ -686,6 +718,9 @@ public sealed class TransfersViewModel : BindableBase
 
         public Task<string?> AskPasswordAsync(string archivePath, bool wrongPassword) =>
             AskAsync<string?>(() => _dialogs.PasswordAsync(archivePath, wrongPassword, _item.Title), null);
+
+        public Task<bool> ConfirmAsync(string title, string message) =>
+            AskAsync(() => _dialogs.YesNoAsync(title, _item.Title + "\n\n" + message, "Copy anyway"), false);
 
         private Task<T> AskAsync<T>(Func<Task<T>> ask, T fallback)
         {

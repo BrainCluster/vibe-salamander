@@ -33,6 +33,8 @@ internal sealed class UiOperationCallbacks : IOperationCallbacks
 
     public Task<ErrorChoice> ResolveErrorAsync(OperationError error) => OnUi(() => _dialogs.ErrorAsync(error));
 
+    public Task<bool> ConfirmAsync(string title, string message) => OnUi(() => _dialogs.YesNoAsync(title, message, "Copy anyway"));
+
     private Task<T> OnUi<T>(Func<Task<T>> action)
     {
         var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);

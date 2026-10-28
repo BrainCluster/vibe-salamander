@@ -78,6 +78,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         {
             UpdateTransfersLayout();
             ScheduleTransfersAutoClose();
+            UpdateTaskbarProgress();
         };
         TransfersView.CollapsedChanged += (_, _) => UpdateTransfersLayout();
         TransfersView.HoldChanged += (_, _) => ScheduleTransfersAutoClose(); // the mouse or focus on the panel holds the auto close
@@ -98,6 +99,13 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             // Configuration → General: a beep when work finishes while the window is in the background
             if (!_windowActive && _vm.Settings.General.BeepWhenDoneInBackground && _vm.Transfers.ActiveCount == 0)
                 MessageBeep(0);
+            // the transfer panel's "When done": sleep, shut down... after a minute's countdown that can be cancelled
+            if (_vm.Transfers.ActiveCount == 0 && _vm.Transfers.WhenDone != Core.Interop.WhenDone.Nothing)
+            {
+                Core.Interop.WhenDone action = _vm.Transfers.WhenDone;
+                _vm.Transfers.WhenDone = Core.Interop.WhenDone.Nothing;
+                _ = RunWhenDoneAsync(action);
+            }
         };
 
         // minimized: the kept thumbnails are dropped and freed memory goes back to Windows

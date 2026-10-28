@@ -68,6 +68,16 @@ public sealed partial class Dialogs
     /// <summary>Creates a dialog with the app's theme (for callers that build their own content).</summary>
     public ContentDialog Create(string title, object content) => NewDialog(title, content);
 
+    /// <summary>A yes / no question with a text; true for the first button.</summary>
+    public async Task<bool> YesNoAsync(string title, string message, string yes)
+    {
+        ContentDialog dialog = NewDialog(title, new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
+        dialog.PrimaryButtonText = yes;
+        dialog.CloseButtonText = "Cancel";
+        dialog.DefaultButton = ContentDialogButton.Close;
+        return await ShowDialogAsync(dialog) == ContentDialogResult.Primary;
+    }
+
     /// <summary>A simple message with an OK button.</summary>
     public async Task MessageAsync(string title, string message)
     {
@@ -151,11 +161,7 @@ public sealed partial class Dialogs
         body.Children.Add(Text(c.IsDirectory ? "A directory with this name already exists:" : "The target file already exists:"));
         body.Children.Add(Text(c.TargetPath, bold: true));
         if (!c.IsDirectory)
-        {
-            string Compare(DateTime a, DateTime b) => a > b ? " (newer)" : a < b ? " (older)" : string.Empty;
-            body.Children.Add(Text($"Existing:  {Formats.ExactSize(c.TargetSize)} bytes, {c.TargetTime:g}{Compare(c.TargetTime, c.SourceTime)}", secondary: true));
-            body.Children.Add(Text($"New:         {Formats.ExactSize(c.SourceSize)} bytes, {c.SourceTime:g}{Compare(c.SourceTime, c.TargetTime)}", secondary: true));
-        }
+            body.Children.Add(ConflictCards(c));
         return ChooseAsync("Confirm Overwrite", body, new[]
         {
             ("Overwrite", ConflictChoice.Overwrite, true),
@@ -165,6 +171,61 @@ public sealed partial class Dialogs
             ("Skip All", ConflictChoice.SkipAll, false),
             ("Keep Both", ConflictChoice.Rename, false),
         }, ConflictChoice.Cancel);
+    }
+
+    /// <summary>The two files side by side, the newer and the larger one marked.</summary>
+    private static Grid ConflictCards(ConflictInfo c)
+    {
+        var grid = new Grid { ColumnSpacing = 12, Margin = new Thickness(0, 6, 0, 2) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Border Card(string title, long size, DateTime time, bool newer, bool larger, bool same)
+        {
+            var panel = new StackPanel { Spacing = 3 };
+            panel.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold });
+            panel.Children.Add(new TextBlock { Text = Formats.ExactSize(size) + " B  (" + Formats.ShortSize(size) + ")", Opacity = 0.85 });
+            panel.Children.Add(new TextBlock { Text = $"{Formats.Date(time)} {Formats.Time(time)}", Opacity = 0.85 });
+            var badges = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 4, 0, 0) };
+            void Badge(string text)
+            {
+                badges.Children.Add(new Border
+                {
+                    Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentFillColorDefaultBrush"],
+                    CornerRadius = new CornerRadius(3),
+                    Padding = new Thickness(6, 1, 6, 2),
+                    Child = new TextBlock
+                    {
+                        Text = Services.Loc.T(text),
+                        FontSize = 12,
+                        Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"],
+                    },
+                });
+            }
+            if (newer)
+                Badge("Newer");
+            if (larger)
+                Badge("Larger");
+            if (same)
+                Badge("Same size and time");
+            panel.Children.Add(badges);
+            return new Border
+            {
+                Child = panel,
+                Padding = new Thickness(10, 8, 10, 8),
+                CornerRadius = new CornerRadius(6),
+                BorderThickness = new Thickness(1),
+                BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+            };
+        }
+        bool sameTime = Math.Abs((c.SourceTime - c.TargetTime).TotalSeconds) < 2;
+        bool same = sameTime && c.SourceSize == c.TargetSize;
+        Border existing = Card("Existing", c.TargetSize, c.TargetTime, !sameTime && c.TargetTime > c.SourceTime, c.TargetSize > c.SourceSize, same);
+        Border incoming = Card("New", c.SourceSize, c.SourceTime, !sameTime && c.SourceTime > c.TargetTime, c.SourceSize > c.TargetSize, same);
+        Grid.SetColumn(incoming, 1);
+        grid.Children.Add(existing);
+        grid.Children.Add(incoming);
+        return grid;
     }
 
     public Task<ErrorChoice> ErrorAsync(OperationError e, string? context = null)

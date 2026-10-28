@@ -633,3 +633,21 @@ public sealed class TransferSchedulerTests
         Assert.Empty(TransferScheduler.Startable(waiting, running, 1, onePerDisk: true));
     }
 }
+
+public sealed class PreflightTests
+{
+    [Fact]
+    public void Space_and_FAT32()
+    {
+        const long GB = 1024L * 1024 * 1024;
+        var files = new[] { (@"C:\a\movie.mkv", @"E:\movie.mkv", 5 * GB), (@"C:\a\note.txt", @"E:\note.txt", 10L) };
+        Assert.Null(FileOperationEngine.Preflight(files, @"E:\", _ => (100 * GB, "NTFS")));
+        string? space = FileOperationEngine.Preflight(files, @"E:\", _ => (1 * GB, "NTFS"));
+        Assert.NotNull(space);
+        Assert.Contains("free", space);
+        string? fat = FileOperationEngine.Preflight(files, @"E:\", _ => (100 * GB, "FAT32"));
+        Assert.NotNull(fat);
+        Assert.Contains("movie.mkv", fat);
+        Assert.Null(FileOperationEngine.Preflight(files, @"\\server\share", _ => null));
+    }
+}
