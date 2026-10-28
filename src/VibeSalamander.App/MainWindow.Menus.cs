@@ -118,7 +118,7 @@ public sealed partial class MainWindow
         // submenus
         ["View"] = "\uE8A9", ["Sort By"] = "\uE8CB", ["NTFS"] = "\uEDA2", ["Advanced"] = "\uE712",
         ["Open Folder"] = "\uE838", ["Theme"] = "\uE790", ["Show"] = "\uE7B3",
-        ["Find"] = "\uE721", ["Compare"] = "\uE8AB", ["Sizes and Drives"] = "\uEDA2", ["Lists"] = "\uE8FD", ["Network"] = "\uE968",
+        ["Find"] = "\uE721", ["Compare"] = "\uE8AB", ["Sizes and Drives"] = "\uEDA2", ["Rename"] = "\uE8AC", ["Attributes and Security"] = "\uE72E", ["Archives"] = "\uF012", ["Lists"] = "\uE8FD", ["Network"] = "\uE968",
     };
 
     /// <summary>Puts an icon before every menu item (and submenu) that has none.</summary>

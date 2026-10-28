@@ -62,38 +62,42 @@
                 <MenuFlyoutItem Text="Refresh" Tag="Refresh" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+R" />
             </MenuBarItem>
             <MenuBarItem Title="Files">
-                <MenuFlyoutItem Text="Quick Rename..." Tag="QuickRename" Click="Menu_Click" KeyboardAcceleratorTextOverride="F2" />
                 <MenuFlyoutItem Text="Open (Default App)" Tag="View" Click="Menu_Click" KeyboardAcceleratorTextOverride="F3" />
                 <MenuFlyoutItem Text="Open With..." Tag="OpenWith" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F3" />
                 <MenuFlyoutItem Text="Edit" Tag="Edit" Click="Menu_Click" KeyboardAcceleratorTextOverride="F4" />
                 <MenuFlyoutItem Text="Edit New File" Tag="EditNewFile" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F4" />
+                <MenuFlyoutItem Text="New (Explorer)..." Tag="NewMenu" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Copy..." Tag="Copy" Click="Menu_Click" KeyboardAcceleratorTextOverride="F5" />
                 <MenuFlyoutItem Text="Move/Rename..." Tag="Move" Click="Menu_Click" KeyboardAcceleratorTextOverride="F6" />
                 <MenuFlyoutItem Text="Duplicate" Tag="Duplicate" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Shift+D" />
-                <MenuFlyoutItem Text="Multi-Rename..." Tag="MultiRename" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F2" />
                 <MenuFlyoutItem Text="Delete" Tag="Delete" Click="Menu_Click" KeyboardAcceleratorTextOverride="F8" />
                 <MenuFlyoutItem Text="Delete Permanently" Tag="DeletePermanently" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+Del" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Properties" Tag="Properties" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Enter" />
-                <MenuFlyoutItem Text="Change Attributes..." Tag="ChangeAttributes" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F2" />
-                <MenuFlyoutItem Text="Change Case..." Tag="ChangeCase" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F7" />
-                <MenuFlyoutItem Text="Security" Tag="Security" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+P" />
-                <MenuFlyoutSubItem Text="NTFS">
-                    <MenuFlyoutItem Text="Compress" Tag="NtfsCompress" Click="Menu_Click" />
-                    <MenuFlyoutItem Text="Uncompress" Tag="NtfsUncompress" Click="Menu_Click" />
-                    <MenuFlyoutSeparator />
-                    <MenuFlyoutItem Text="Encrypt" Tag="NtfsEncrypt" Click="Menu_Click" />
-                    <MenuFlyoutItem Text="Decrypt" Tag="NtfsDecrypt" Click="Menu_Click" />
+                <MenuFlyoutSubItem Text="Rename">
+                    <MenuFlyoutItem Text="Quick Rename..." Tag="QuickRename" Click="Menu_Click" KeyboardAcceleratorTextOverride="F2" />
+                    <MenuFlyoutItem Text="Multi-Rename..." Tag="MultiRename" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F2" />
+                    <MenuFlyoutItem Text="Change Case..." Tag="ChangeCase" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F7" />
                 </MenuFlyoutSubItem>
-                <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="New (Explorer)..." Tag="NewMenu" Click="Menu_Click" />
+                <MenuFlyoutSubItem Text="Attributes and Security">
+                    <MenuFlyoutItem Text="Change Attributes..." Tag="ChangeAttributes" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F2" />
+                    <MenuFlyoutItem Text="Security" Tag="Security" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+P" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Compress (NTFS)" Tag="NtfsCompress" Click="Menu_Click" />
+                    <MenuFlyoutItem Text="Uncompress (NTFS)" Tag="NtfsUncompress" Click="Menu_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Encrypt (NTFS)" Tag="NtfsEncrypt" Click="Menu_Click" />
+                    <MenuFlyoutItem Text="Decrypt (NTFS)" Tag="NtfsDecrypt" Click="Menu_Click" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSubItem Text="Archives">
+                    <MenuFlyoutItem Text="Pack..." Tag="Pack" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F5" />
+                    <MenuFlyoutItem Text="Unpack..." Tag="Unpack" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F6" />
+                    <MenuFlyoutItem Text="Test Archive" Tag="TestArchive" Click="Menu_Click" />
+                    <MenuFlyoutItem Text="Make Self-Extracting Archive..." Tag="MakeSelfExtractingArchive" Click="Menu_Click" />
+                    <MenuFlyoutItem Text="Archive Comment..." Tag="ArchiveComment" Click="Menu_Click" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutItem Text="Properties" Tag="Properties" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Enter" />
                 <MenuFlyoutItem Text="Email..." Tag="Email" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+E" />
-                <MenuFlyoutItem Text="Pack..." Tag="Pack" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F5" />
-                <MenuFlyoutItem Text="Unpack..." Tag="Unpack" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F6" />
-                <MenuFlyoutItem Text="Test Archive" Tag="TestArchive" Click="Menu_Click" />
-                <MenuFlyoutItem Text="Make Self-Extracting Archive..." Tag="MakeSelfExtractingArchive" Click="Menu_Click" />
-                <MenuFlyoutItem Text="Archive Comment..." Tag="ArchiveComment" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Exit" Tag="Exit" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F4" />
             </MenuBarItem>
