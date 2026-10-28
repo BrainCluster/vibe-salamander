@@ -45,6 +45,9 @@ public interface IUiHost
     void ShowDriveInformation(PaneViewModel pane);
     void ShowFindWindow(string directory);
 
+    /// <summary>The list of differences of Compare Directories, with Synchronize.</summary>
+    void ShowCompareWindow(string left, string right, Core.Tools.CompareOptions options);
+
     /// <summary>Find Duplicates (Alt+Shift+F7), looking in <paramref name="directory"/>.</summary>
     void ShowDuplicatesWindow(string directory);
 

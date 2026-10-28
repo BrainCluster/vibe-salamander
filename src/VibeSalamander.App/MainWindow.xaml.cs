@@ -305,6 +305,20 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
     }
 
     private DuplicatesWindow? _duplicatesWindow;
+    private readonly List<CompareWindow> _compareWindows = new();
+
+    public void ShowCompareWindow(string left, string right, Core.Tools.CompareOptions options)
+    {
+        var window = new CompareWindow(left, right, options, RootGrid.ActualTheme, _vm, FocusFoundItemAsync);
+        WindowOwner.Set(window, WindowHandle);
+        _compareWindows.Add(window);
+        window.Closed += (_, _) =>
+        {
+            _compareWindows.Remove(window);
+            MemoryCleanup.Schedule();
+        };
+        window.Activate();
+    }
 
     public void ShowDuplicatesWindow(string directory)
     {
@@ -372,6 +386,8 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         }
         _findWindow?.Close();
         _duplicatesWindow?.Close();
+        foreach (CompareWindow window in _compareWindows.ToList())
+            window.Close();
         _settingsWindow?.Close();
         CloseViewers();
         _vm.Transfers.CancelAll();

@@ -73,9 +73,14 @@ public sealed partial class MainViewModel
         CompareResult result = await DirectoryComparer.CompareAsync(Left.Path, left, Right.Path, right, options);
         int inLeft = Left.MarkNames(result.Left);
         int inRight = Right.MarkNames(result.Right);
+        if (options.ShowList && !result.Identical)
+        {
+            _host.ShowCompareWindow(Left.Path, Right.Path, options);
+            return;
+        }
         _host.Notify(result.Identical
             ? "The directories are identical."
-            : $"Differences marked: {inLeft} in the left panel, {inRight} in the right panel.", isError: false);
+            : Loc.F("Differences marked: {0} in the left panel, {1} in the right panel.", inLeft, inRight), isError: false);
     }
 
     private UserMenuContext UserMenuContextFor(PaneViewModel pane)

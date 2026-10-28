@@ -15,6 +15,9 @@ public sealed class CompareOptions
     /// <summary>Mark both files when their contents differ (reads the files; slower).</summary>
     public bool ByContent { get; set; }
 
+    /// <summary>After marking, a window lists the differences (all the way down) and synchronizes them.</summary>
+    public bool ShowList { get; set; } = true;
+
     /// <summary>Mark both files when their Read-only, Hidden or System attributes differ.</summary>
     public bool ByAttributes { get; set; }
 
