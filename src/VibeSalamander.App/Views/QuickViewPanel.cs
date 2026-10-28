@@ -17,7 +17,7 @@ namespace VibeSalamander.Views;
 /// Quick view (Ctrl+Q, as in Total Commander): the other panel shows the item under the caret — a picture, the start
 /// of a text, what's in a folder, or the file's details — and follows the caret. Ctrl+Q again brings the panel back.
 /// </summary>
-internal sealed class QuickViewPanel : Border
+internal sealed class QuickViewPanel : Grid
 {
     private const int TextLimit = 256 * 1024;
 
@@ -68,7 +68,7 @@ internal sealed class QuickViewPanel : Border
         var hint = new TextBlock { Text = Loc.T("Quick view · F3 opens the viewer · Ctrl+Q closes"), Opacity = 0.55, FontSize = 11, Margin = new Thickness(12, 4, 12, 6) };
         Grid.SetRow(hint, 2);
         layout.Children.Add(hint);
-        Child = layout;
+        Children.Add(layout);
         _timer = DispatcherQueue.CreateTimer();
         _timer.Interval = TimeSpan.FromMilliseconds(120);
         _timer.IsRepeating = false;
