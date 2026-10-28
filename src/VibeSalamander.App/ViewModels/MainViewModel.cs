@@ -117,6 +117,17 @@ public sealed partial class MainViewModel : BindableBase
                 ClearReadOnlyFromCd = Settings.General.ClearReadOnlyFromCd,
             },
             () => Math.Clamp(Settings.General.ParallelTransfers, 1, 8));
+        Transfers.SharedLimit = Math.Max(0, Settings.TransfersSpeedLimit);
+        Transfers.ShowGraphs = Settings.TransfersGraphs;
+        Transfers.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(TransfersViewModel.SharedLimit) or nameof(TransfersViewModel.ShowGraphs))
+            {
+                Settings.TransfersSpeedLimit = Transfers.SharedLimit;
+                Settings.TransfersGraphs = Transfers.ShowGraphs;
+                SaveSettings();
+            }
+        };
         Transfers.Finished += async (_, _) =>
         {
             try

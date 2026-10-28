@@ -54,6 +54,16 @@
         <Setter Property="CornerRadius" Value="4" />
     </Style>
 
+    <!-- the same as a toggle (accent while on) -->
+    <Style x:Key="VibeToolToggleButtonStyle" TargetType="ToggleButton" BasedOn="{StaticResource DefaultToggleButtonStyle}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="CornerRadius" Value="4" />
+    </Style>
+
     <!-- drive bar button: icon + letter -->
     <Style x:Key="VibeDriveButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
         <Setter Property="Background" Value="Transparent" />

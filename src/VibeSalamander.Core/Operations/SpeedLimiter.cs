@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using VibeSalamander.Core.Localization;
 using System.Diagnostics;
 
 namespace VibeSalamander.Core.Operations;
@@ -138,5 +139,43 @@ public sealed class SpeedHistory
     {
         _start = 0;
         _count = 0;
+    }
+}
+
+/// <summary>The speed limits offered in the menus, and limits typed by hand ("5", "500 KB", "1.5 MB/s").</summary>
+public static class SpeedLimits
+{
+    private const long KB = 1024, MB = 1024 * 1024;
+
+    /// <summary>The choices of the limit menus (0 = no limit).</summary>
+    public static IReadOnlyList<long> Presets { get; } = new[] { 0, 256 * KB, 512 * KB, 1 * MB, 2 * MB, 5 * MB, 10 * MB, 20 * MB, 50 * MB, 100 * MB, 200 * MB };
+
+    /// <summary>"5 MB/s", or "No limit".</summary>
+    public static string Describe(long bytesPerSecond) =>
+        bytesPerSecond <= 0 ? L.T("No limit") : Formatting.Formats.ShortSize(bytesPerSecond) + "/s";
+
+    /// <summary>
+    /// A typed limit in bytes per second: a number with KB, MB or GB (and an optional "/s"); a number alone is in MB/s.
+    /// "0", "none", "" and "no limit" mean no limit. Null when it can't be read.
+    /// </summary>
+    public static long? Parse(string text)
+    {
+        string t = text.Trim().ToUpperInvariant().Replace("/S", string.Empty, StringComparison.Ordinal).Replace(" ", string.Empty, StringComparison.Ordinal);
+        if (t.Length == 0 || t is "0" or "NONE" or "NOLIMIT" or "-")
+            return 0;
+        long unit = MB;
+        foreach (var (suffix, value) in new[] { ("KIB", KB), ("MIB", MB), ("GIB", 1024 * MB), ("KB", KB), ("MB", MB), ("GB", 1024 * MB), ("K", KB), ("M", MB), ("G", 1024 * MB), ("B", 1L) })
+        {
+            if (t.EndsWith(suffix, StringComparison.Ordinal))
+            {
+                unit = value;
+                t = t[..^suffix.Length];
+                break;
+            }
+        }
+        t = t.Replace(',', '.');
+        if (!double.TryParse(t, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double number) || number < 0 || double.IsInfinity(number))
+            return null;
+        return (long)Math.Min(number * unit, long.MaxValue / 2);
     }
 }

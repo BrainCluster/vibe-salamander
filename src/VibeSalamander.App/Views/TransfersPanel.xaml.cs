@@ -5,6 +5,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
+using VibeSalamander.Core.Operations;
+using VibeSalamander.Services;
 using VibeSalamander.ViewModels;
 
 namespace VibeSalamander.Views;
@@ -116,12 +118,77 @@ public sealed partial class TransfersPanel : UserControl
         if (_vm == null)
             return;
         SummaryText.Text = _vm.SummaryText;
+        SharedLimitText.Text = _vm.SharedLimit > 0 ? Loc.F("Max {0}", SpeedLimits.Describe(_vm.SharedLimit)) : Loc.T("No limit");
+        GraphsButton.IsChecked = _vm.ShowGraphs;
         ClearButton.IsEnabled = _vm.Items.Any(i => !i.IsActive);
         ClearAllButton.IsEnabled = _vm.HasItems;
     }
 
     private static TransferItemViewModel? ItemOf(object sender) =>
         (sender as FrameworkElement)?.DataContext as TransferItemViewModel;
+
+    /// <summary>The limit choices: no limit, the presets, a typed one; the current one checked.</summary>
+    private MenuFlyout LimitMenu(long current, Action<long> set, Func<Task<long?>> ask)
+    {
+        var menu = new MenuFlyout();
+        bool preset = false;
+        foreach (long limit in SpeedLimits.Presets)
+        {
+            var item = new RadioMenuFlyoutItem { Text = SpeedLimits.Describe(limit), GroupName = "limit", IsChecked = limit == current };
+            preset |= limit == current;
+            long chosen = limit;
+            item.Click += (_, _) =>
+            {
+                set(chosen);
+                Interacted?.Invoke(this, EventArgs.Empty);
+            };
+            menu.Items.Add(item);
+            if (limit == 0)
+                menu.Items.Add(new MenuFlyoutSeparator());
+        }
+        menu.Items.Add(new MenuFlyoutSeparator());
+        var other = new RadioMenuFlyoutItem
+        {
+            Text = preset ? Loc.T("Other...") : Loc.F("Other ({0})...", SpeedLimits.Describe(current)),
+            GroupName = "limit",
+            IsChecked = !preset,
+        };
+        other.Click += async (_, _) =>
+        {
+            if (await ask() is long typed)
+                set(typed);
+            Interacted?.Invoke(this, EventArgs.Empty);
+        };
+        menu.Items.Add(other);
+        return menu;
+    }
+
+    private void Limit_Click(object sender, RoutedEventArgs e)
+    {
+        if (ItemOf(sender) is not { } item || _vm == null || sender is not FrameworkElement button)
+            return;
+        TransfersViewModel vm = _vm;
+        LimitMenu(item.Limit, limit => item.Limit = limit, () => vm.AskLimitAsync(item.Limit)).ShowAt(button);
+    }
+
+    private void SharedLimit_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm == null)
+            return;
+        TransfersViewModel vm = _vm;
+        LimitMenu(vm.SharedLimit, limit =>
+        {
+            vm.SharedLimit = limit;
+            UpdateHeader();
+        }, () => vm.AskLimitAsync(vm.SharedLimit)).ShowAt(SharedLimitButton);
+    }
+
+    private void Graphs_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm != null)
+            _vm.ShowGraphs = GraphsButton.IsChecked == true;
+        Interacted?.Invoke(this, EventArgs.Empty);
+    }
 
     private void Pause_Click(object sender, RoutedEventArgs e)
     {

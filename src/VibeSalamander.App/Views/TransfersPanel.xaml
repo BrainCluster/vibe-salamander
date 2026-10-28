@@ -12,6 +12,7 @@
                     <ColumnDefinition Width="20" />
                     <ColumnDefinition Width="*" MinWidth="160" />
                     <ColumnDefinition Width="200" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="120" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
@@ -40,13 +41,28 @@
                     </Grid>
                 </StackPanel>
 
-                <StackPanel Grid.Column="3" VerticalAlignment="Center" Spacing="1">
+                <!-- the speed graph (Graphs in the header): the last half minute, the limit as a dashed line -->
+                <Grid Grid.Column="3" Width="120" Height="26" VerticalAlignment="Center" Visibility="{x:Bind GraphVisibility, Mode=OneWay}"
+                      Background="{ThemeResource VibeBarBackgroundBrush}" CornerRadius="3"
+                      ToolTipService.ToolTip="{x:Bind GraphText, Mode=OneWay}">
+                    <Polygon Points="{x:Bind GraphArea, Mode=OneWay}" Fill="{ThemeResource AccentFillColorDefaultBrush}" Opacity="0.28" />
+                    <Polyline Points="{x:Bind GraphLine, Mode=OneWay}" Stroke="{ThemeResource AccentFillColorDefaultBrush}" StrokeThickness="1.4" />
+                    <Line X1="0" X2="120" Y1="{x:Bind LimitLineY, Mode=OneWay}" Y2="{x:Bind LimitLineY, Mode=OneWay}"
+                          Visibility="{x:Bind LimitLineVisibility, Mode=OneWay}" Stroke="{ThemeResource TextFillColorSecondaryBrush}"
+                          StrokeThickness="1" StrokeDashArray="3,2" />
+                </Grid>
+
+                <StackPanel Grid.Column="4" VerticalAlignment="Center" Spacing="1">
                     <TextBlock Text="{x:Bind SpeedText, Mode=OneWay}" FontSize="11" HorizontalAlignment="Right" />
                     <TextBlock Text="{x:Bind RemainingText, Mode=OneWay}" FontSize="11" HorizontalAlignment="Right"
                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                    <Button Style="{StaticResource VibeToolButtonStyle}" Click="Limit_Click" ToolTipService.ToolTip="{x:Bind LimitText, Mode=OneWay}"
+                            Visibility="{x:Bind CancelVisibility, Mode=OneWay}">
+                        <FontIcon Glyph="&#xEC4A;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" Opacity="{x:Bind LimitGlyphOpacity, Mode=OneWay}" />
+                    </Button>
                     <Button Style="{StaticResource VibeToolButtonStyle}" Click="Pause_Click" ToolTipService.ToolTip="Pause"
                             Visibility="{x:Bind PauseVisibility, Mode=OneWay}">
                         <FontIcon Glyph="&#xE769;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />
@@ -89,6 +105,20 @@
                 <TextBlock x:Name="SummaryText" Grid.Column="2" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                            Foreground="{ThemeResource VibeHeaderForegroundBrush}" />
                 <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2">
+                    <Button x:Name="SharedLimitButton" Style="{StaticResource VibeToolButtonStyle}" Click="SharedLimit_Click"
+                            ToolTipService.ToolTip="A speed limit for all transfers together">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xEC4A;" FontFamily="{StaticResource VibeIconFont}" FontSize="12" />
+                            <TextBlock x:Name="SharedLimitText" Text="No limit" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                    <ToggleButton x:Name="GraphsButton" Style="{StaticResource VibeToolToggleButtonStyle}" Click="Graphs_Click"
+                                  ToolTipService.ToolTip="Show a speed graph for each transfer">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE9D2;" FontFamily="{StaticResource VibeIconFont}" FontSize="12" />
+                            <TextBlock Text="Graphs" FontSize="12" />
+                        </StackPanel>
+                    </ToggleButton>
                     <Button x:Name="ClearButton" Style="{StaticResource VibeToolButtonStyle}" Click="Clear_Click"
                             ToolTipService.ToolTip="Remove finished transfers from the list">
                         <StackPanel Orientation="Horizontal" Spacing="6">

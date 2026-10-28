@@ -415,3 +415,24 @@ public sealed class SpeedLimiterTests
         Assert.Equal(4, history.Max);
     }
 }
+
+public sealed class SpeedLimitsTests
+{
+    [Theory]
+    [InlineData("5", 5L * 1024 * 1024)]
+    [InlineData("500 KB", 500L * 1024)]
+    [InlineData("1.5 MB/s", 1572864L)]
+    [InlineData("1,5mb", 1572864L)]
+    [InlineData("2G", 2L * 1024 * 1024 * 1024)]
+    [InlineData("", 0L)]
+    [InlineData("none", 0L)]
+    [InlineData("0", 0L)]
+    public void Typed_limits(string text, long expected) => Assert.Equal(expected, SpeedLimits.Parse(text));
+
+    [Fact]
+    public void Nonsense_isnt_a_limit()
+    {
+        Assert.Null(SpeedLimits.Parse("fast"));
+        Assert.Null(SpeedLimits.Parse("-5"));
+    }
+}

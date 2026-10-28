@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using VibeSalamander.Core.Localization;
 using System.Text;
 using System.Text.RegularExpressions;
 using VibeSalamander.Core.Viewing;

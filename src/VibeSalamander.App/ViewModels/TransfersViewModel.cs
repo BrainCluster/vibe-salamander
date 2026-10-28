@@ -36,6 +36,13 @@ public sealed class TransferItemViewModel : BindableBase
     private string _speedText = string.Empty;
     private string _remainingText = string.Empty;
     private TransferState _stateBeforeQuestion;
+    private bool _showGraph;
+    private readonly System.Diagnostics.Stopwatch _sampleClock = System.Diagnostics.Stopwatch.StartNew();
+    private long _sampleBytes;
+    private double _currentSpeed;
+
+    /// <summary>The graph's size in the row.</summary>
+    public const double GraphWidth = 120, GraphHeight = 26;
 
     public TransferItemViewModel(OperationKind kind, IReadOnlyList<string> sources, string? target)
     {
@@ -64,6 +71,113 @@ public sealed class TransferItemViewModel : BindableBase
     public string Route { get; }
 
     internal CancellationTokenSource Cancellation { get; } = new();
+
+    /// <summary>This transfer's own speed limit (the one for all transfers applies too).</summary>
+    public SpeedLimiter Limiter { get; } = new();
+
+    /// <summary>The limit for all transfers, to draw it in the graph.</summary>
+    internal SpeedLimiter? SharedLimiter { get; set; }
+
+    /// <summary>The speed every half second, for the graph.</summary>
+    public SpeedHistory History { get; } = new(60);
+
+    public long Limit
+    {
+        get => Limiter.BytesPerSecond;
+        set
+        {
+            Limiter.BytesPerSecond = value;
+            OnPropertyChanged(nameof(Limit));
+            OnPropertyChanged(nameof(LimitText));
+            OnPropertyChanged(nameof(LimitGlyphOpacity));
+            UpdateGraph();
+        }
+    }
+
+    /// <summary>The tooltip of the limit button.</summary>
+    public string LimitText => Limit > 0 ? Loc.F("Speed limit: {0}", SpeedLimits.Describe(Limit)) : Loc.T("Speed limit");
+
+    /// <summary>The limit button stands out while a limit is set.</summary>
+    public double LimitGlyphOpacity => Limit > 0 ? 1 : 0.55;
+
+    public bool ShowGraph
+    {
+        get => _showGraph;
+        set
+        {
+            if (SetProperty(ref _showGraph, value))
+                OnPropertyChanged(nameof(GraphVisibility));
+        }
+    }
+
+    public Visibility GraphVisibility => _showGraph ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>The speed line of the graph.</summary>
+    public Microsoft.UI.Xaml.Media.PointCollection GraphLine { get; private set; } = new();
+
+    /// <summary>The area under the speed line.</summary>
+    public Microsoft.UI.Xaml.Media.PointCollection GraphArea { get; private set; } = new();
+
+    /// <summary>Where the limit is in the graph (hidden without a limit).</summary>
+    public double LimitLineY { get; private set; }
+
+    public Visibility LimitLineVisibility { get; private set; } = Visibility.Collapsed;
+
+    /// <summary>The tooltip of the graph: now and the fastest so far.</summary>
+    public string GraphText => History.Count == 0 ? string.Empty
+        : Loc.F("Now {0}, fastest {1}", Formats.ShortSize((long)_currentSpeed) + "/s", Formats.ShortSize((long)History.Max) + "/s");
+
+    private long EffectiveLimit
+    {
+        get
+        {
+            long own = Limiter.BytesPerSecond, shared = SharedLimiter?.BytesPerSecond ?? 0;
+            return own > 0 && shared > 0 ? Math.Min(own, shared) : Math.Max(own, shared);
+        }
+    }
+
+    /// <summary>A new speed sample every half second, from the bytes done since the last one.</summary>
+    private void Sample(long totalBytesDone)
+    {
+        double seconds = _sampleClock.Elapsed.TotalSeconds;
+        if (seconds < 0.5)
+            return;
+        _currentSpeed = Math.Max(0, (totalBytesDone - _sampleBytes) / seconds);
+        _sampleBytes = totalBytesDone;
+        _sampleClock.Restart();
+        History.Add(_state == TransferState.Paused ? 0 : _currentSpeed);
+        UpdateGraph();
+    }
+
+    internal void UpdateGraph()
+    {
+        IReadOnlyList<double> samples = History.Samples;
+        long limit = EffectiveLimit;
+        double top = Math.Max(Math.Max(History.Max, limit) * 1.1, 1);
+        var line = new Microsoft.UI.Xaml.Media.PointCollection();
+        var area = new Microsoft.UI.Xaml.Media.PointCollection();
+        double step = GraphWidth / (History.Capacity - 1);
+        // the newest sample at the right edge
+        double x0 = GraphWidth - (samples.Count - 1) * step;
+        for (int i = 0; i < samples.Count; i++)
+            line.Add(new Windows.Foundation.Point(x0 + i * step, GraphHeight - samples[i] / top * GraphHeight));
+        if (samples.Count > 0)
+        {
+            area.Add(new Windows.Foundation.Point(x0, GraphHeight));
+            foreach (Windows.Foundation.Point p in line)
+                area.Add(p);
+            area.Add(new Windows.Foundation.Point(GraphWidth, GraphHeight));
+        }
+        GraphLine = line;
+        GraphArea = area;
+        LimitLineVisibility = limit > 0 && samples.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        LimitLineY = GraphHeight - limit / top * GraphHeight;
+        OnPropertyChanged(nameof(GraphLine));
+        OnPropertyChanged(nameof(GraphArea));
+        OnPropertyChanged(nameof(LimitLineVisibility));
+        OnPropertyChanged(nameof(LimitLineY));
+        OnPropertyChanged(nameof(GraphText));
+    }
 
     /// <summary>What pauses: the copy engine or a plugin job (set when the operation starts).</summary>
     internal IPausable? Pausable { get; set; }
@@ -197,6 +311,7 @@ public sealed class TransferItemViewModel : BindableBase
         DetailText = Kind == OperationKind.Delete || p.TotalBytes == 0
             ? Loc.F("{0} / {1} items", p.ItemsDone.ToString("N0"), p.ItemsTotal.ToString("N0"))
             : $"{Formats.ShortSize(p.TotalBytesDone)} / {Formats.ShortSize(p.TotalBytes)}  ·  {p.ItemsDone:N0} / {p.ItemsTotal:N0}";
+        Sample(p.TotalBytesDone);
         if (_state == TransferState.Running)
         {
             SpeedText = p.BytesPerSecond > 0 ? Formats.ShortSize((long)p.BytesPerSecond) + "/s" : string.Empty;
@@ -315,6 +430,46 @@ public sealed class TransfersViewModel : BindableBase
 
     public ObservableCollection<TransferItemViewModel> Items { get; } = new();
 
+    /// <summary>The speed limit for all transfers together.</summary>
+    public SpeedLimiter SharedLimiter { get; } = new();
+
+    public long SharedLimit
+    {
+        get => SharedLimiter.BytesPerSecond;
+        set
+        {
+            SharedLimiter.BytesPerSecond = value;
+            OnPropertyChanged(nameof(SharedLimit));
+            foreach (TransferItemViewModel item in Items)
+                item.UpdateGraph();
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private bool _showGraphs;
+
+    /// <summary>Each row shows its speed graph.</summary>
+    public bool ShowGraphs
+    {
+        get => _showGraphs;
+        set
+        {
+            if (!SetProperty(ref _showGraphs, value))
+                return;
+            foreach (TransferItemViewModel item in Items)
+                item.ShowGraph = value;
+        }
+    }
+
+    /// <summary>Asks for a limit typed by hand ("5", "500 KB", "1.5 MB/s"); null when cancelled or unreadable.</summary>
+    public async Task<long?> AskLimitAsync(long current)
+    {
+        string? answer = await _dialogs.InputAsync(Loc.T("Speed limit"),
+            Loc.T("Bytes per second, like 5 MB, 500 KB or 1.5 GB (a number alone is MB). 0 = no limit."),
+            current > 0 ? SpeedLimits.Describe(current).Replace("/s", string.Empty, StringComparison.Ordinal) : string.Empty);
+        return answer == null ? null : SpeedLimits.Parse(answer);
+    }
+
     public int ActiveCount => Items.Count(i => i.IsActive);
 
     public bool HasItems => Items.Count > 0;
@@ -359,6 +514,7 @@ public sealed class TransfersViewModel : BindableBase
             {
                 Options = _engineOptions(),
             };
+            engine.Limiters = new[] { item.Limiter, SharedLimiter };
             item.Pausable = engine;
             return run(engine, item.Cancellation.Token);
         });
@@ -371,7 +527,7 @@ public sealed class TransfersViewModel : BindableBase
         Func<IArchiveJob, Task<OperationResult>> run) =>
         Add(kind, sources, target, item =>
         {
-            var job = new PluginJob(item, new ItemCallbacks(item, _dispatcher, _dialogs), new ItemProgress(item, _dispatcher));
+            var job = new PluginJob(item, new ItemCallbacks(item, _dispatcher, _dialogs), new ItemProgress(item, _dispatcher), SharedLimiter);
             item.Pausable = job;
             return run(job);
         });
@@ -379,7 +535,7 @@ public sealed class TransfersViewModel : BindableBase
     private TransferItemViewModel Add(OperationKind kind, IReadOnlyList<string> sources, string? target,
         Func<TransferItemViewModel, Task<OperationResult>> run)
     {
-        var item = new TransferItemViewModel(kind, sources, target);
+        var item = new TransferItemViewModel(kind, sources, target) { SharedLimiter = SharedLimiter, ShowGraph = _showGraphs };
         item.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(TransferItemViewModel.State))
@@ -549,13 +705,16 @@ public sealed class TransfersViewModel : BindableBase
         private readonly ItemCallbacks _callbacks;
         private readonly ItemProgress _progress;
         private readonly ManualResetEventSlim _running = new(true);
+        private readonly SpeedLimiter _shared;
         private volatile bool _paused;
+        private long _counted;
 
-        public PluginJob(TransferItemViewModel item, ItemCallbacks callbacks, ItemProgress progress)
+        public PluginJob(TransferItemViewModel item, ItemCallbacks callbacks, ItemProgress progress, SpeedLimiter shared)
         {
             _item = item;
             _callbacks = callbacks;
             _progress = progress;
+            _shared = shared;
         }
 
         public CancellationToken Cancellation => _item.Cancellation.Token;
@@ -580,7 +739,23 @@ public sealed class TransfersViewModel : BindableBase
             Cancellation.ThrowIfCancellationRequested();
         }
 
-        public void Report(OperationProgress progress) => _progress.Report(progress);
+        /// <summary>Progress from the plugin's thread; the speed limits make it wait there.</summary>
+        public void Report(OperationProgress progress)
+        {
+            _progress.Report(progress);
+            long done = progress.TotalBytesDone;
+            if (done > _counted)
+            {
+                long bytes = done - _counted;
+                _counted = done;
+                _item.Limiter.Take(bytes, Cancellation);
+                _shared.Take(bytes, Cancellation);
+            }
+            else if (done < _counted)
+            {
+                _counted = done; // a new stage started from zero
+            }
+        }
 
         public Task<ConflictChoice> ResolveConflictAsync(ConflictInfo conflict) => _callbacks.ResolveConflictAsync(conflict);
 

@@ -152,6 +152,12 @@ public sealed class AppSettings
     /// <summary>Seconds after the last transfer finished until the transfer panel closes (0 = it stays open).</summary>
     public int TransfersAutoCloseSeconds { get; set; } = 2;
 
+    /// <summary>A speed limit for all transfers together, in bytes per second (0 = none).</summary>
+    public long TransfersSpeedLimit { get; set; }
+
+    /// <summary>Each transfer shows a graph of its speed.</summary>
+    public bool TransfersGraphs { get; set; }
+
     /// <summary>Height of the transfer panel in DIPs (resized with the splitter above it).</summary>
     public double TransfersHeight { get; set; } = 150;
 
