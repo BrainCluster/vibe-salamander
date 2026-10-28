@@ -132,6 +132,15 @@ public sealed partial class FilePane
         ViewModel.ApplyDriveOptions();
     }
 
+    /// <summary>The hot paths as a menu (Shift+F9; Ctrl+D in Total Commander's shortcuts).</summary>
+    private async void HotPathsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        _main.Activate(ViewModel);
+        await _main.ExecuteAsync(CommandId.HotPathList);
+    }
+
     private async void HistoryButton_Click(object sender, RoutedEventArgs e)
     {
         if (ViewModel == null || _main == null)
@@ -187,29 +196,7 @@ public sealed partial class FilePane
             menu.Items.Add(asOther);
         }
 
-        // hot paths (Ctrl+Shift+digit sets one, Ctrl+digit goes there)
-        IList<string> hotPaths = _main.Settings.HotPaths;
-        bool header = false;
-        for (int i = 1; i < hotPaths.Count && i < 10 && driveOptions.MenuShowHotPaths; i++)
-        {
-            string hot = hotPaths[i];
-            if (string.IsNullOrEmpty(hot))
-                continue;
-            if (!header)
-            {
-                menu.Items.Add(new MenuFlyoutSeparator());
-                header = true;
-            }
-            string hotName = i < _main.Settings.HotPathNames.Count ? _main.Settings.HotPathNames[i] : string.Empty;
-            var item = new MenuFlyoutItem
-            {
-                Text = hotName.Length > 0 ? hotName : hot == ThisPcProvider.RootPath ? Loc.T("This PC") : hot,
-                Icon = new FontIcon { Glyph = "\uE734" },
-                KeyboardAcceleratorTextOverride = "Ctrl+" + i,
-            };
-            item.Click += async (_, _) => await ViewModel.NavigateAsync(hot);
-            menu.Items.Add(item);
-        }
+        // the hot paths have their own button (next to the working directories) and Shift+F9
         menu.ShowAt(DriveMenuButton);
     }
 
@@ -218,7 +205,7 @@ public sealed partial class FilePane
         if (ViewModel == null || _main == null)
             return;
         _main.Activate(ViewModel);
-        if (e.OriginalSource is DependencyObject source && (IsInside(source, DriveMenuButton) || IsInside(source, HistoryButton) || IsInside(source, MaximizeButton)))
+        if (e.OriginalSource is DependencyObject source && (IsInside(source, DriveMenuButton) || IsInside(source, HotPathsButton) || IsInside(source, HistoryButton) || IsInside(source, MaximizeButton)))
             return;
         BeginPathEdit();
         e.Handled = true;

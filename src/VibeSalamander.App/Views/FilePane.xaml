@@ -306,6 +306,12 @@
                         <FontIcon Glyph="&#xE740;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
                                   Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
                     </Button>
+                    <!-- the hot paths (Shift+F9; Ctrl+1…9 go to them, Ctrl+Shift+1…9 set them) -->
+                    <Button x:Name="HotPathsButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                            Click="HotPathsButton_Click" ToolTipService.ToolTip="Hot paths (Shift+F9)">
+                        <FontIcon Glyph="&#xE734;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                    </Button>
                     <!-- recent locations, like the drop-down at the end of Explorer's address bar (Alt+F12) -->
                     <Button x:Name="HistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
                             Click="HistoryButton_Click" ToolTipService.ToolTip="Working directories (Alt+F12)">

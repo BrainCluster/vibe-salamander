@@ -20,7 +20,8 @@
   in a folder — and follows the cursor.
 - **All files of the subfolders** (Ctrl+B, Total Commander's branch view): every file below the folder in one list,
   to copy, delete, rename or compare them together; Ctrl+B again goes back.
-- **Hot path list** (Shift+F9; Ctrl+D in Total Commander's shortcuts) as a menu, with "add this folder".
+- **Hot path list** (Shift+F9; Ctrl+D in Total Commander's shortcuts, or the star button at the end of the address bar)
+  as a menu, with "add this folder".
 
 ![Thumbnails of a photo folder, documents in the other panel, in the dark theme](images/hero-dark.png)
 

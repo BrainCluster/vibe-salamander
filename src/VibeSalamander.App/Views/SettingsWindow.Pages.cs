@@ -799,7 +799,6 @@ public sealed partial class SettingsWindow
         page.Children.Add(Toggle("Documents", null, d.MenuShowDocuments, v => d.MenuShowDocuments = v));
         page.Children.Add(Toggle("Network", null, d.MenuShowNetwork, v => d.MenuShowNetwork = v));
         page.Children.Add(Toggle("As other panel", "The directory of the other panel.", d.MenuShowOtherPanelPath, v => d.MenuShowOtherPanelPath = v));
-        page.Children.Add(Toggle("Hot paths", "Names are set on the Hot Paths page.", d.MenuShowHotPaths, v => d.MenuShowHotPaths = v));
         return page;
     }
 

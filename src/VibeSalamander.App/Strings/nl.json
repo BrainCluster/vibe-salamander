@@ -680,6 +680,7 @@
  "Hot path {0} isn't set. Ctrl+Shift+{1} makes the current folder hot path {2}.": "Snelpad {0} is niet ingesteld. Ctrl+Shift+{1} maakt van de huidige map snelpad {2}.",
  "Hot path {0}: {1}  (Ctrl+{2} goes there)": "Snelpad {0}: {1}  (Ctrl+{2} gaat erheen)",
  "Hot paths": "Snelpaden",
+ "Hot paths (Shift+F9)": "Snelpaden (Shift+F9)",
  "Hot paths, user menu, shortcuts, toolbar and all other settings go back to the defaults, and Vibe Salamander restarts.": "Snelpaden, gebruikersmenu, sneltoetsen, werkbalk en alle andere instellingen gaan terug naar de standaardwaarden en Vibe Salamander wordt opnieuw gestart.",
  "HotPaths": "Snelpad",
  "ISO": "ISO",

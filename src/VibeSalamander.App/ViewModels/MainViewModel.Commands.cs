@@ -293,7 +293,7 @@ public sealed partial class MainViewModel
         });
         t.AddSync(CommandId.Configuration, _ => _host.ShowConfiguration());
         t.AddSync(CommandId.PluginsManager, _ => _host.ShowConfigurationPage("Plugins"));
-        t.AddSync(CommandId.Help, _ => ShellOperations.Open("https://github.com/BrainCluster/vibe-salamander"));
+        t.AddSync(CommandId.Help, _ => ShellOperations.Open("https://github.com/BrainCluster/vibe-salamander/wiki")); // F1, Help → Contents: the wiki
         t.AddSync(CommandId.About, _ => _host.ShowAbout());
         t.Add(CommandId.ErrorLog, p => ShowErrorLogAsync(p));
         t.AddSync(CommandId.Exit, _ => _host.Exit());

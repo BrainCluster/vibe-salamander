@@ -680,6 +680,7 @@
  "Hot path {0} isn't set. Ctrl+Shift+{1} makes the current folder hot path {2}.": "Szybka ścieżka {0} nie jest ustawiona. Ctrl+Shift+{1} ustawia bieżący folder jako szybką ścieżkę {2}.",
  "Hot path {0}: {1}  (Ctrl+{2} goes there)": "Szybka ścieżka {0}: {1}  (Ctrl+{2} przechodzi do niej)",
  "Hot paths": "Szybkie ścieżki",
+ "Hot paths (Shift+F9)": "Szybkie ścieżki (Shift+F9)",
  "Hot paths, user menu, shortcuts, toolbar and all other settings go back to the defaults, and Vibe Salamander restarts.": "Szybkie ścieżki, menu użytkownika, skróty, pasek narzędzi i wszystkie inne ustawienia wrócą do wartości domyślnych, a Vibe Salamander uruchomi się ponownie.",
  "HotPaths": "Ścieżki",
  "ISO": "ISO",
