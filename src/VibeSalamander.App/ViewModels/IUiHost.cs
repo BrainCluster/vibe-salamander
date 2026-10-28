@@ -48,6 +48,9 @@ public interface IUiHost
     /// <summary>The list of differences of Compare Directories, with Synchronize.</summary>
     void ShowCompareWindow(string left, string right, Core.Tools.CompareOptions options);
 
+    /// <summary>Compare Files (Ctrl+Shift+C): two files side by side.</summary>
+    void OpenCompareFiles(string left, string right);
+
     /// <summary>Find Duplicates (Alt+Shift+F7), looking in <paramref name="directory"/>.</summary>
     void ShowDuplicatesWindow(string directory);
 

@@ -48,7 +48,7 @@ public sealed class SearchScenarios : IDisposable
                 try
                 {
                     found = root.FindAllDescendants(cf => cf.ByControlType(type))
-                        .FirstOrDefault(e => (e.Name ?? string.Empty).StartsWith(name, StringComparison.OrdinalIgnoreCase));
+                        .FirstOrDefault(e => NameOf(e).StartsWith(name, StringComparison.OrdinalIgnoreCase));
                 }
                 catch (Exception)
                 {
@@ -62,7 +62,7 @@ public sealed class SearchScenarios : IDisposable
         {
             try
             {
-                return r.FindAllDescendants(cf => cf.ByControlType(type)).Select(e => "'" + e.Name + "'");
+                return r.FindAllDescendants(cf => cf.ByControlType(type)).Select(e => "'" + NameOf(e) + "'").ToList();
             }
             catch (Exception ex)
             {
@@ -70,6 +70,19 @@ public sealed class SearchScenarios : IDisposable
             }
         }).Distinct().Take(60)));
         return found!;
+    }
+
+    /// <summary>An element's name, or "" (some elements don't have the property, and reading it throws).</summary>
+    private static string NameOf(AutomationElement element)
+    {
+        try
+        {
+            return element.Properties.Name.ValueOrDefault ?? string.Empty;
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
     }
 
     private static void WaitUntilOr(Func<bool> condition, string what, double seconds, Func<string> seen)
@@ -105,7 +118,7 @@ public sealed class SearchScenarios : IDisposable
     {
         try
         {
-            return r.FindAllDescendants(cf => cf.ByControlType(ControlType.Text)).Select(e => "'" + e.Name + "'");
+            return r.FindAllDescendants(cf => cf.ByControlType(ControlType.Text)).Select(e => "'" + NameOf(e) + "'").ToList();
         }
         catch (Exception ex)
         {
@@ -120,7 +133,7 @@ public sealed class SearchScenarios : IDisposable
         {
             try
             {
-                if (root.FindAllDescendants(cf => cf.ByControlType(ControlType.Text)).Any(t => (t.Name ?? string.Empty).Contains(part, StringComparison.Ordinal)))
+                if (root.FindAllDescendants(cf => cf.ByControlType(ControlType.Text)).Any(t => NameOf(t).Contains(part, StringComparison.Ordinal)))
                     return true;
             }
             catch (Exception)

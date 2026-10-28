@@ -4,6 +4,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using VibeSalamander.Core.Localization;
 
 namespace VibeSalamander.Core.Operations;
 
@@ -227,7 +228,7 @@ public sealed class FileOperationEngine : IPausable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                ErrorChoice choice = await AskErrorAsync(source, ex.Message);
+                ErrorChoice choice = await AskErrorAsync(source, Interop.FileLocks.Explain(ex, source));
                 if (choice == ErrorChoice.Retry) continue;
                 if (choice == ErrorChoice.Cancel) return false;
                 result.Skipped++;
@@ -249,7 +250,7 @@ public sealed class FileOperationEngine : IPausable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                if (await AskErrorAsync(child, ex.Message) == ErrorChoice.Cancel)
+                if (await AskErrorAsync(child, Interop.FileLocks.Explain(ex, child)) == ErrorChoice.Cancel)
                     return false;
                 result.Skipped++;
                 continue;
@@ -367,7 +368,7 @@ public sealed class FileOperationEngine : IPausable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception)
             {
-                ErrorChoice choice = await AskErrorAsync(step.Source, ex.Message);
+                ErrorChoice choice = await AskErrorAsync(step.Source, Interop.FileLocks.Explain(ex, step.Source, target));
                 if (choice == ErrorChoice.Retry) continue;
                 if (choice == ErrorChoice.Cancel) return false;
                 result.Failed++;
@@ -411,7 +412,7 @@ public sealed class FileOperationEngine : IPausable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                ErrorChoice choice = await AskErrorAsync(step.Target, ex.Message);
+                ErrorChoice choice = await AskErrorAsync(step.Target, Interop.FileLocks.Explain(ex, step.Target));
                 if (choice == ErrorChoice.Retry) continue;
                 if (choice == ErrorChoice.Cancel) return false;
                 result.Failed++;
@@ -476,7 +477,7 @@ public sealed class FileOperationEngine : IPausable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                ErrorChoice choice = await AskErrorAsync(step.Source, ex.Message);
+                ErrorChoice choice = await AskErrorAsync(step.Source, Interop.FileLocks.Explain(ex, step.Source));
                 if (choice == ErrorChoice.Retry) continue;
                 if (choice == ErrorChoice.Cancel) return false;
                 result.Failed++;
@@ -527,7 +528,7 @@ public sealed class FileOperationEngine : IPausable
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                     {
-                        ErrorChoice choice = await AskErrorAsync(step.Source, ex.Message);
+                        ErrorChoice choice = await AskErrorAsync(step.Source, Interop.FileLocks.Explain(ex, step.Source));
                         if (choice == ErrorChoice.Retry) continue;
                         if (choice == ErrorChoice.Cancel) return Cancelled(result);
                         result.Failed++;
@@ -870,6 +871,9 @@ public sealed class FileOperationEngine : IPausable
                 throw new OperationCanceledException(_ct);
             throw new Win32Exception(error);
         }
+        // Configuration → General: the copy is read again and compared with the original
+        if (Options.VerifyCopies && !Tools.DirectoryComparer.ContentEqual(LongPath(source), LongPath(target), _ct))
+            throw new IOException(L.T("The copy differs from the original (checked after copying)."));
     }
 
     /// <summary>Adds the \\?\ prefix for paths beyond MAX_PATH.</summary>

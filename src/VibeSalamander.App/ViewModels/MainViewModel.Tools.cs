@@ -48,6 +48,31 @@ public sealed partial class MainViewModel
     private static DirectoryComparer.Item ToCompareItem(FileItemViewModel i) =>
         new(i.Entry.Name, i.Entry.IsDirectory, i.Entry.Size, i.Entry.LastWrite, i.Entry.Attributes);
 
+    /// <summary>
+    /// Ctrl+Shift+C: two marked files of the active panel, or the caret's file and the one of the same name in the other
+    /// panel (else the other panel's caret file), side by side.
+    /// </summary>
+    private void CompareFiles()
+    {
+        PaneViewModel other = _active == Left ? Right : Left;
+        static IReadOnlyList<string> Marked(PaneViewModel p) => p.HasDiskItems
+            ? p.Items.Where(i => i.IsMarked && !i.Entry.IsDirectory).Select(i => i.Entry.FullPath).ToList()
+            : Array.Empty<string>();
+        static string? Caret(PaneViewModel p) => p.HasDiskItems && p.FocusedItem is { Entry.IsDirectory: false, Entry.IsUpDir: false } item
+            ? item.Entry.FullPath : null;
+        var files = FileComparison.Pick(Marked(_active), Caret(_active), _active == Left, Marked(other), Caret(other),
+            other.IsLocalDisk ? other.Path : null);
+        if (files is not { } pair)
+        {
+            _host.Notify("Mark two files, or put the caret on a file that has one of the same name in the other panel.", isError: false);
+            return;
+        }
+        _host.OpenCompareFiles(pair.Left, pair.Right);
+    }
+
+    /// <summary>Compare Files for two given files (from the Compare Directories list).</summary>
+    public void CompareFiles(string left, string right) => _host.OpenCompareFiles(left, right);
+
     /// <summary>Ctrl+F10: marks, in both panels, what is missing on the other side or differs.</summary>
     private async Task CompareDirectoriesAsync()
     {

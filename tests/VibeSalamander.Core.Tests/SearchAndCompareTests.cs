@@ -536,3 +536,100 @@ public sealed class KeySchemeTests
         Assert.Equal(VibeSalamander.Core.Commands.CommandId.Copy, restored.Resolve(VibeSalamander.Core.Commands.VK.F5, VibeSalamander.Core.Commands.KeyModifiers.None));
     }
 }
+
+public sealed class FileComparisonTests : IDisposable
+{
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "vibe-filecmp-" + Guid.NewGuid().ToString("N")[..8]);
+
+    public FileComparisonTests() => Directory.CreateDirectory(_root);
+
+    public void Dispose()
+    {
+        try
+        {
+            Directory.Delete(_root, recursive: true);
+        }
+        catch (IOException)
+        {
+        }
+    }
+
+    private string F(string name, byte[] content)
+    {
+        string path = Path.Combine(_root, name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, content);
+        return path;
+    }
+
+    [Fact]
+    public void Kinds()
+    {
+        string a = F("a.txt", Encoding.UTF8.GetBytes("hello\nworld\n"));
+        string b = F("b.txt", Encoding.UTF8.GetBytes("hello\nthere\n"));
+        string c = F("c.txt", Encoding.UTF8.GetBytes("hello\nworld\n"));
+        string bin = F("x.bin", new byte[] { 0, 1, 2, 3, 0, 0 });
+        Assert.Equal(ComparisonKind.Text, FileComparison.KindOf(a, b));
+        Assert.Equal(ComparisonKind.Identical, FileComparison.KindOf(a, c));
+        Assert.Equal(ComparisonKind.Binary, FileComparison.KindOf(a, bin));
+    }
+
+    [Fact]
+    public void Binary_differences_line_up_on_both_sides()
+    {
+        var left = new byte[1000];
+        var right = new byte[1010];
+        right[100] = 7;
+        right[101] = 8;
+        right[900] = 9;
+        BinaryComparison cmp = FileComparison.CompareBinary(F("l.bin", left), F("r.bin", right));
+        Assert.Equal(new (long, long)[] { (100, 2), (900, 1), (1000, 10) }, cmp.Differences);
+        Assert.Equal(3, cmp.DifferentBytes);
+        Assert.Equal(cmp.Left.Split('\n').Length, cmp.Right.Split('\n').Length);
+        Assert.Contains("···", cmp.Left);
+        Assert.Contains("07 08", cmp.Right);
+    }
+
+    [Fact]
+    public void Which_files_are_compared()
+    {
+        string l1 = F(@"L\a.txt", new byte[] { 1 });
+        string l2 = F(@"L\b.txt", new byte[] { 2 });
+        string r1 = F(@"R\a.txt", new byte[] { 3 });
+        string r2 = F(@"R\z.txt", new byte[] { 4 });
+        string right = Path.Combine(_root, "R");
+        // two marked on the active side
+        Assert.Equal((l1, l2), FileComparison.Pick(new[] { l1, l2 }, null, true, Array.Empty<string>(), null, right));
+        // the caret's file and the same name on the other side; right panel active: left stays left
+        Assert.Equal((l1, r1), FileComparison.Pick(Array.Empty<string>(), l1, true, Array.Empty<string>(), r2, right));
+        Assert.Equal((r1, l1), FileComparison.Pick(Array.Empty<string>(), l1, false, Array.Empty<string>(), r2, right));
+        // no same name: the other side's caret
+        Assert.Equal((l2, r2), FileComparison.Pick(Array.Empty<string>(), l2, true, Array.Empty<string>(), r2, right));
+        Assert.Null(FileComparison.Pick(Array.Empty<string>(), null, true, Array.Empty<string>(), null, right));
+    }
+}
+
+public sealed class TransferSchedulerTests
+{
+    [Fact]
+    public void Disks_of_a_transfer()
+    {
+        Assert.Equal(new[] { @"C:\", @"D:\" }, TransferScheduler.Disks(new[] { @"c:\a\b.txt", @"C:\x" }, @"D:\target"));
+        Assert.Equal(new[] { @"\\server" }, TransferScheduler.Disks(new[] { @"\\server\share\a" }, null));
+        Assert.Equal(new[] { @"C:\", "ftp://host" }, TransferScheduler.Disks(new[] { @"C:\a" }, "ftp://host/dir/"));
+    }
+
+    [Fact]
+    public void One_per_disk_in_queue_order()
+    {
+        IReadOnlyList<string> D(params string[] d) => d;
+        var running = new[] { D(@"C:\", @"D:\") };
+        var waiting = new[] { D(@"C:\", @"E:\"), D(@"F:\", @"G:\"), D(@"E:\"), D(@"F:\") };
+        // C: is busy; F:/G: can go; then E: alone; F: is taken by the second one now
+        Assert.Equal(new[] { 1, 2 }, TransferScheduler.Startable(waiting, running, 8, onePerDisk: true));
+        // without the per-disk rule: the first ones up to the limit
+        Assert.Equal(new[] { 0, 1 }, TransferScheduler.Startable(waiting, running, 3, onePerDisk: false));
+        // the limit counts the running ones
+        Assert.Empty(TransferScheduler.Startable(waiting, running, 1, onePerDisk: true));
+    }
+}

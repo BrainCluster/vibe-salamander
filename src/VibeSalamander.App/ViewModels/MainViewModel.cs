@@ -115,8 +115,10 @@ public sealed partial class MainViewModel : BindableBase
                 ConfirmHiddenSystemOverwrite = Settings.Confirm.HiddenSystemFileOverwrite,
                 ConfirmDirectoryMerge = Settings.Confirm.DirectoryMerge,
                 ClearReadOnlyFromCd = Settings.General.ClearReadOnlyFromCd,
+                VerifyCopies = Settings.General.VerifyCopies,
             },
-            () => Math.Clamp(Settings.General.ParallelTransfers, 1, 8));
+            () => Math.Clamp(Settings.General.ParallelTransfers, 1, 8),
+            () => Settings.General.TransfersOnePerDisk);
         Transfers.SharedLimit = Math.Max(0, Settings.TransfersSpeedLimit);
         Transfers.ShowGraphs = Settings.TransfersGraphs;
         Transfers.PropertyChanged += (_, e) =>

@@ -353,6 +353,12 @@ public sealed partial class CompareWindow : Window
     {
         if (Results.SelectedItem is not CompareRow row)
             return;
+        // a file on both sides: the two side by side
+        if (!row.Difference.IsDirectory && row.Difference.Kind is not (DifferenceKind.OnlyLeft or DifferenceKind.OnlyRight or DifferenceKind.FileAndDirectory))
+        {
+            _main.CompareFiles(Path.Combine(_left, row.Difference.RelativePath), Path.Combine(_right, row.Difference.RelativePath));
+            return;
+        }
         bool rightOnly = row.Difference.Kind == DifferenceKind.OnlyRight;
         string folder = Path.Combine(rightOnly ? _right : _left, row.Difference.Folder);
         await _focusInPanel(folder, row.Name);

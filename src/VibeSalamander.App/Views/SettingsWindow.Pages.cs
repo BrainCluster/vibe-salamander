@@ -66,6 +66,12 @@ public sealed partial class SettingsWindow
         page.Children.Add(Section("Transfers"));
         page.Children.Add(Number("Transfers at the same time",
             "Copy, move and delete operations in the transfer panel; the others wait as Queued.", g.ParallelTransfers, 1, 8, v => g.ParallelTransfers = v));
+        page.Children.Add(Toggle("One transfer at a time per disk",
+            "Two copies on the same disk are slower side by side than one after another; copies between different disks still run together.",
+            g.TransfersOnePerDisk, v => g.TransfersOnePerDisk = v));
+        page.Children.Add(Toggle("Check copies after copying",
+            "Each copied file is read again and compared with the original (slower, safer for important data).",
+            g.VerifyCopies, v => g.VerifyCopies = v));
         page.Children.Add(Toggle("Clear read-only attribute when copying from CD / DVD",
             "Files on optical discs are always read-only; their copies usually shouldn't be.", g.ClearReadOnlyFromCd, v => g.ClearReadOnlyFromCd = v));
         page.Children.Add(Toggle("Beep when work finishes in the background",

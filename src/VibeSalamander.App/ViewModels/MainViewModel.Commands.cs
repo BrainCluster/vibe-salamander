@@ -233,6 +233,7 @@ public sealed partial class MainViewModel
     {
         t.AddSync(CommandId.FindFiles, p => _host.ShowFindWindow(p.IsLocalDisk ? p.Path : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)));
         t.Add(CommandId.CompareDirectories, _ => CompareDirectoriesAsync());
+        t.AddSync(CommandId.CompareFiles, _ => CompareFiles());
         t.AddSync(CommandId.FindDuplicates, p => _host.ShowDuplicatesWindow(p.IsLocalDisk ? p.Path : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)));
         t.Add(CommandId.CalculateOccupiedSpace, p => CalculateOccupiedSpaceAsync(p, p.GetOperationItems()));
         t.Add(CommandId.CalculateDirectorySizes, p =>

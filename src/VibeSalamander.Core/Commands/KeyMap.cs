@@ -126,6 +126,7 @@ public sealed class KeyMap
         m.Bind(VK.T, C, CommandId.GoToShortcutTarget);
         m.Bind(VK.F7, A, CommandId.FindFiles);
         m.Bind(VK.F7, A | S, CommandId.FindDuplicates);
+        m.Bind(VK.C, C | S, CommandId.CompareFiles);
         m.Bind(VK.F10, S, CommandId.ContextMenu);
         m.Bind(VK.Apps, N, CommandId.ContextMenu);
 
@@ -207,6 +208,7 @@ public sealed class KeyMap
         m.Bind(VK.F9, A | S, CommandId.TestArchive);
         m.Bind(VK.F7, A, CommandId.FindFiles);
         m.Bind(VK.F7, A | S, CommandId.FindDuplicates);
+        m.Bind(VK.C, C | S, CommandId.CompareFiles);
         m.Bind(VK.F1, C, CommandId.ViewBrief);
         m.Bind(VK.F2, C, CommandId.ViewDetailed);
         m.Bind(VK.F3, C, CommandId.SortByName);

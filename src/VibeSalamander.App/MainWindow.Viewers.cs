@@ -37,6 +37,18 @@ public sealed partial class MainWindow
         editor.Activate();
     }
 
+    public void OpenCompareFiles(string left, string right)
+    {
+        var window = new CompareFilesWindow(_vm, left, right, RootGrid.ActualTheme);
+        _editors.Add(window);
+        window.Closed += (_, _) =>
+        {
+            _editors.Remove(window);
+            MemoryCleanup.Schedule();
+        };
+        window.Activate();
+    }
+
     /// <summary>At exit: the viewers close with the main window (editors stay: they may hold unsaved work).</summary>
     private void CloseViewers()
     {

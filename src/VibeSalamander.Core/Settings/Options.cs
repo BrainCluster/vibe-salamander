@@ -43,6 +43,12 @@ public sealed class GeneralOptions
 
     /// <summary>How many transfers run at the same time (1-8).</summary>
     public int ParallelTransfers { get; set; } = 3;
+
+    /// <summary>Transfers on the same disk run one after another (between different disks, side by side).</summary>
+    public bool TransfersOnePerDisk { get; set; } = true;
+
+    /// <summary>Each copied file is read again and compared with the original.</summary>
+    public bool VerifyCopies { get; set; }
 }
 
 public enum DeleteMode
@@ -437,4 +443,10 @@ public sealed class ViewerOptions
     public bool EditorBackup { get; set; }
 
     public WindowPlacement EditorWindow { get; set; } = new();
+
+    // Compare Files
+    public bool CompareIgnoreWhitespace { get; set; }
+    public bool CompareSideBySide { get; set; } = true;
+    public bool CompareWordWrap { get; set; }
+    public WindowPlacement CompareWindow { get; set; } = new();
 }

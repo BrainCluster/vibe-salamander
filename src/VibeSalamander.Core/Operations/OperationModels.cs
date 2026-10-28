@@ -57,6 +57,9 @@ public sealed class EngineOptions
 
     /// <summary>Copies from CD/DVD drop the read-only attribute.</summary>
     public bool ClearReadOnlyFromCd { get; init; } = true;
+
+    /// <summary>Each copied file is read again and compared with the original (a difference is an error).</summary>
+    public bool VerifyCopies { get; init; }
 }
 
 public sealed record OperationError(string Path, string Message);

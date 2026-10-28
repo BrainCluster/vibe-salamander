@@ -157,4 +157,7 @@ public enum CommandId
 
     // the menu bar from the keyboard (F9 in Total Commander's shortcuts; F10 always)
     MainMenu,
+
+    // Files → Compare Files (Ctrl+Shift+C)
+    CompareFiles,
 }

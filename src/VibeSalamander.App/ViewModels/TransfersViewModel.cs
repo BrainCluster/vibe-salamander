@@ -49,6 +49,7 @@ public sealed class TransferItemViewModel : BindableBase
         Kind = kind;
         Sources = sources;
         Target = target;
+        Disks = TransferScheduler.Disks(sources, target);
         string what = sources.Count == 1 ? Path.GetFileName(sources[0].TrimEnd('\\')) : Loc.F("{0} items", sources.Count);
         string format = kind switch
         {
@@ -65,6 +66,10 @@ public sealed class TransferItemViewModel : BindableBase
     }
 
     public OperationKind Kind { get; }
+
+    /// <summary>The disks it reads and writes (transfers on the same disk run one after another).</summary>
+    public IReadOnlyList<string> Disks { get; }
+
     public IReadOnlyList<string> Sources { get; }
     public string? Target { get; }
     public string Title { get; }
@@ -205,6 +210,7 @@ public sealed class TransferItemViewModel : BindableBase
                 OnPropertyChanged(nameof(ResumeVisibility));
                 OnPropertyChanged(nameof(CancelVisibility));
                 OnPropertyChanged(nameof(RemoveVisibility));
+                OnPropertyChanged(nameof(QueuedVisibility));
                 OnPropertyChanged(nameof(IsIndeterminate));
                 OnPropertyChanged(nameof(IsPaused));
                 OnPropertyChanged(nameof(HasError));
@@ -287,6 +293,9 @@ public sealed class TransferItemViewModel : BindableBase
     public Visibility ResumeVisibility => _state == TransferState.Paused ? Visibility.Visible : Visibility.Collapsed;
     public Visibility CancelVisibility => IsActive ? Visibility.Visible : Visibility.Collapsed;
     public Visibility RemoveVisibility => IsActive ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>Waiting: it can be moved up and down the queue.</summary>
+    public Visibility QueuedVisibility => _state == TransferState.Queued ? Visibility.Visible : Visibility.Collapsed;
 
     internal void Apply(OperationProgress p)
     {
@@ -372,60 +381,79 @@ public sealed class TransfersViewModel : BindableBase
     private readonly Func<EngineOptions> _engineOptions;
     private readonly Func<int> _maxParallel;
 
-    // slots: how many run at once comes from the configuration (General → parallel transfers) and may change
-    private int _running;
-    private readonly LinkedList<TaskCompletionSource<bool>> _waiting = new();
+    private readonly Func<bool> _onePerDisk;
+
+    // waiting for a slot (in the order of the list), and running: how many run at once comes from the configuration
+    // (General → parallel transfers), and by default only one at a time per disk
+    private readonly List<(TransferItemViewModel Item, TaskCompletionSource<bool> Start)> _waiting = new();
+    private readonly HashSet<TransferItemViewModel> _running = new();
 
     /// <param name="engineOptions">Confirmations the engine follows (read when an operation starts).</param>
     /// <param name="maxParallel">How many operations run at the same time; the rest wait as "Queued".</param>
-    public TransfersViewModel(DispatcherQueue dispatcher, Views.Dialogs dialogs, Func<EngineOptions> engineOptions, Func<int> maxParallel)
+    /// <param name="onePerDisk">Transfers on the same disk run one after another.</param>
+    public TransfersViewModel(DispatcherQueue dispatcher, Views.Dialogs dialogs, Func<EngineOptions> engineOptions, Func<int> maxParallel,
+        Func<bool> onePerDisk)
     {
         _dispatcher = dispatcher;
         _dialogs = dialogs;
         _engineOptions = engineOptions;
         _maxParallel = maxParallel;
+        _onePerDisk = onePerDisk;
         Items.CollectionChanged += (_, _) => Changed();
     }
 
-    /// <summary>Waits for a free slot (on the UI thread). Throws OperationCanceledException when cancelled while queued.</summary>
-    private async Task AcquireSlotAsync(CancellationToken ct)
+    /// <summary>Waits until the item may start (on the UI thread). Throws OperationCanceledException when cancelled while queued.</summary>
+    private async Task AcquireSlotAsync(TransferItemViewModel item, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        if (_running < Math.Max(1, _maxParallel()))
-        {
-            _running++;
+        var start = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _waiting.Add((item, start));
+        StartWaiting();
+        if (start.Task.IsCompleted)
             return;
-        }
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        LinkedListNode<TaskCompletionSource<bool>> node = _waiting.AddLast(tcs);
         using (ct.Register(() => _dispatcher.TryEnqueue(() =>
                {
-                   if (node.List != null)
-                   {
-                       _waiting.Remove(node);
-                       tcs.TrySetCanceled();
-                   }
+                   if (_waiting.RemoveAll(w => w.Start == start) > 0)
+                       start.TrySetCanceled();
                })))
         {
-            await tcs.Task;
+            await start.Task;
         }
     }
 
-    private void ReleaseSlot()
+    private void ReleaseSlot(TransferItemViewModel item)
     {
-        _running = Math.Max(0, _running - 1);
+        _running.Remove(item);
         StartWaiting();
     }
 
-    /// <summary>Starts queued operations while slots are free (also after the limit was raised).</summary>
+    /// <summary>Starts queued operations, in the list's order, as far as the limits allow (also after the limit was raised).</summary>
     public void StartWaiting()
     {
-        while (_running < Math.Max(1, _maxParallel()) && _waiting.First is { } first)
+        if (_waiting.Count == 0)
+            return;
+        var ordered = _waiting.OrderBy(w => Items.IndexOf(w.Item)).ToList();
+        IReadOnlyList<int> startable = TransferScheduler.Startable(ordered.Select(w => w.Item.Disks).ToList(),
+            _running.Select(i => i.Disks), Math.Max(1, _maxParallel()), _onePerDisk());
+        foreach (int index in startable)
         {
-            _waiting.RemoveFirst();
-            _running++;
-            first.Value.TrySetResult(true);
+            var (item, start) = ordered[index];
+            _waiting.Remove(ordered[index]);
+            _running.Add(item);
+            start.TrySetResult(true);
         }
+    }
+
+    /// <summary>Moves a queued transfer up or down the list (the list's order is the order they start in).</summary>
+    public void MoveQueued(TransferItemViewModel item, int delta)
+    {
+        int from = Items.IndexOf(item);
+        if (from < 0 || item.State != TransferState.Queued)
+            return;
+        int to = delta == int.MinValue ? 0 : Math.Clamp(from + delta, 0, Items.Count - 1);
+        if (to != from)
+            Items.Move(from, to);
+        StartWaiting();
     }
 
     public ObservableCollection<TransferItemViewModel> Items { get; } = new();
@@ -550,7 +578,7 @@ public sealed class TransfersViewModel : BindableBase
     {
         try
         {
-            await AcquireSlotAsync(item.Cancellation.Token);
+            await AcquireSlotAsync(item, item.Cancellation.Token);
         }
         catch (OperationCanceledException)
         {
@@ -584,7 +612,7 @@ public sealed class TransfersViewModel : BindableBase
         }
         finally
         {
-            ReleaseSlot();
+            ReleaseSlot(item);
         }
         Finished?.Invoke(this, item);
         if (item.RemoveWhenDone)

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Vibe Salamander Authors -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Compare Files: Monaco's diff editor (as in Visual Studio Code), both sides editable, talking to the app through messages. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body, #diff { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+</style>
+</head>
+<body>
+<div id="diff"></div>
+<script src="../Monaco/vs/loader.js"></script>
+<script>
+  "use strict";
+  require.config({ paths: { vs: "../Monaco/vs" } });
+
+  let diff = null, left = null, right = null;
+  let loading = false;
+  let lastSide = "right";
+  const send = (message) => window.chrome.webview.postMessage(message);
+
+  function model(side) { return side === "left" ? left : right; }
+  function editorOf(side) { return side === "left" ? diff.getOriginalEditor() : diff.getModifiedEditor(); }
+
+  function changes() { return diff.getLineChanges() || []; }
+
+  function reportChanges() {
+    const list = changes();
+    // the change the cursor is in (or the next one), for "3 of 12"
+    const line = editorOf(lastSide).getPosition()?.lineNumber || 1;
+    let current = 0;
+    for (let i = 0; i < list.length; i++) {
+      const c = list[i];
+      const start = lastSide === "left" ? c.originalStartLineNumber : c.modifiedStartLineNumber;
+      const end = Math.max(start, lastSide === "left" ? c.originalEndLineNumber : c.modifiedEndLineNumber);
+      if (line <= end) { current = i + 1; break; }
+    }
+    send({ type: "diff", count: list.length, current });
+  }
+
+  /** The change the cursor of the last used side is in, or the next one after it, or the last one. */
+  function currentChange() {
+    const list = changes();
+    if (list.length === 0) return null;
+    const line = editorOf(lastSide).getPosition()?.lineNumber || 1;
+    for (const c of list) {
+      const start = lastSide === "left" ? c.originalStartLineNumber : c.modifiedStartLineNumber;
+      const end = lastSide === "left" ? c.originalEndLineNumber : c.modifiedEndLineNumber;
+      if (line <= Math.max(start, end)) return c;
+    }
+    return list[list.length - 1];
+  }
+
+  function linesOf(m, start, end) {
+    if (end === 0) return null; // nothing on this side: an insertion point after "start"
+    return m.getValueInRange(new monaco.Range(start, 1, end, m.getLineMaxColumn(end)));
+  }
+
+  /** Copies one change to the other side, as one edit there (Ctrl+Z on that side brings it back). */
+  function copyChange(c, toRight) {
+    const from = toRight ? left : right, to = toRight ? right : left;
+    const fs = toRight ? c.originalStartLineNumber : c.modifiedStartLineNumber;
+    const fe = toRight ? c.originalEndLineNumber : c.modifiedEndLineNumber;
+    const ts = toRight ? c.modifiedStartLineNumber : c.originalStartLineNumber;
+    const te = toRight ? c.modifiedEndLineNumber : c.originalEndLineNumber;
+    const text = linesOf(from, fs, fe);
+    const eol = to.getEOL();
+    let range, value;
+    if (te > 0 && text !== null) {
+      range = new monaco.Range(ts, 1, te, to.getLineMaxColumn(te));
+      value = text;
+    } else if (te > 0) {
+      // the lines go: with their line break
+      if (te < to.getLineCount()) range = new monaco.Range(ts, 1, te + 1, 1);
+      else if (ts > 1) range = new monaco.Range(ts - 1, to.getLineMaxColumn(ts - 1), te, to.getLineMaxColumn(te));
+      else range = new monaco.Range(1, 1, te, to.getLineMaxColumn(te));
+      value = "";
+    } else if (text !== null) {
+      // nothing there yet: inserted after line "ts"
+      if (ts === 0) { range = new monaco.Range(1, 1, 1, 1); value = text + eol; }
+      else { range = new monaco.Range(ts, to.getLineMaxColumn(ts), ts, to.getLineMaxColumn(ts)); value = eol + text; }
+    } else {
+      return;
+    }
+    const target = editorOf(toRight ? "right" : "left");
+    target.pushUndoStop();
+    target.executeEdits("vibe", [{ range, text: value }]);
+    target.pushUndoStop();
+  }
+
+  function copyAll(toRight) {
+    const from = toRight ? left : right, to = toRight ? right : left;
+    const target = editorOf(toRight ? "right" : "left");
+    target.pushUndoStop();
+    target.executeEdits("vibe", [{ range: to.getFullModelRange(), text: from.getValue() }]);
+    target.pushUndoStop();
+  }
+
+  function handle(m) {
+    switch (m.type) {
+      case "load":
+        loading = true;
+        if (left) left.dispose();
+        if (right) right.dispose();
+        left = monaco.editor.createModel(m.left, m.language || "plaintext");
+        right = monaco.editor.createModel(m.right, m.language || "plaintext");
+        left.setEOL(m.leftEol === "LF" ? monaco.editor.EndOfLineSequence.LF : monaco.editor.EndOfLineSequence.CRLF);
+        right.setEOL(m.rightEol === "LF" ? monaco.editor.EndOfLineSequence.LF : monaco.editor.EndOfLineSequence.CRLF);
+        diff.setModel({ original: left, modified: right });
+        diff.updateOptions({ readOnly: !!m.readOnly, originalEditable: !m.readOnly });
+        left.onDidChangeContent(() => { if (!loading) send({ type: "changed", side: "left", version: left.getAlternativeVersionId() }); });
+        right.onDidChangeContent(() => { if (!loading) send({ type: "changed", side: "right", version: right.getAlternativeVersionId() }); });
+        loading = false;
+        send({ type: "loaded", left: left.getAlternativeVersionId(), right: right.getAlternativeVersionId() });
+        setTimeout(() => { diff.goToDiff("next"); diff.getModifiedEditor().focus(); }, 300);
+        break;
+      case "options":
+        diff.updateOptions(m.options);
+        if (m.theme) monaco.editor.setTheme(m.theme);
+        break;
+      case "go":
+        diff.goToDiff(m.direction === "previous" ? "previous" : "next");
+        editorOf(lastSide).focus();
+        break;
+      case "copy": {
+        const c = currentChange();
+        if (c) copyChange(c, m.toRight);
+        editorOf(lastSide).focus();
+        break;
+      }
+      case "copyAll":
+        copyAll(m.toRight);
+        break;
+      case "undo":
+        editorOf(m.side).focus();
+        editorOf(m.side).trigger("vibe", m.redo ? "redo" : "undo", null);
+        break;
+      case "getText":
+        send({ type: "text", id: m.id, side: m.side, text: model(m.side).getValue(), version: model(m.side).getAlternativeVersionId() });
+        break;
+      case "focus":
+        editorOf(lastSide).focus();
+        break;
+    }
+  }
+
+  require(["vs/editor/editor.main"], function () {
+    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({ validate: false, allowComments: true });
+    diff = monaco.editor.createDiffEditor(document.getElementById("diff"), {
+      automaticLayout: true,
+      originalEditable: true,
+      renderSideBySide: true,
+      enableSplitViewResizing: true,
+      ignoreTrimWhitespace: false,
+      renderIndicators: true,
+      renderMarginRevertIcon: true,
+      renderOverviewRuler: true,
+      diffWordWrap: "off",
+      fontFamily: "'Cascadia Mono', Consolas, 'Courier New', monospace",
+      fontSize: 14,
+      minimap: { enabled: false },
+      smoothScrolling: true,
+      mouseWheelZoom: true,
+      scrollBeyondLastLine: false,
+      unicodeHighlight: { ambiguousCharacters: false },
+      fixedOverflowWidgets: true,
+    });
+    diff.onDidUpdateDiff(reportChanges);
+    for (const side of ["left", "right"]) {
+      const e = editorOf(side);
+      e.onDidFocusEditorText(() => { lastSide = side; reportChanges(); });
+      e.onDidChangeCursorPosition(() => { if (lastSide === side) reportChanges(); });
+      e.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => send({ type: "key", key: "save", side }));
+      e.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.RightArrow, () => handle({ type: "copy", toRight: true }));
+      e.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.LeftArrow, () => handle({ type: "copy", toRight: false }));
+      e.addCommand(monaco.KeyCode.F7, () => handle({ type: "go", direction: "next" }));
+      e.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.F7, () => handle({ type: "go", direction: "previous" }));
+      e.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.DownArrow, () => handle({ type: "go", direction: "next" }));
+      e.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.UpArrow, () => handle({ type: "go", direction: "previous" }));
+    }
+    window.chrome.webview.addEventListener("message", e => handle(e.data));
+    send({ type: "ready" });
+  });
+</script>
+</body>
+</html>
