@@ -261,7 +261,10 @@ public sealed class SearchScenarios : IDisposable
         Window compare = app.OtherWindow("Program.cs ↔");
         Thread.Sleep(6000); // WebView2 and Monaco start
         AppSession.Screenshot("s07 compare files");
-        WaitUntilOr(() => HasText(app, compare, "Difference") || HasText(app, compare, "differences"), "the differences counted", 15,
+        // the status line ("Difference 1 of 1"), or the compared text itself (the diff editor's page is in the
+        // accessibility tree too: UI Automation sometimes keeps reading the status line as it was before)
+        WaitUntilOr(() => HasText(app, compare, "Difference") || HasText(app, compare, "differences") || HasText(app, compare, "world!"),
+            "the differences counted", 20,
             () => Texts(app, compare));
         compare.Close();
         NoErrors(app);
