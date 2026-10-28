@@ -52,7 +52,8 @@ public sealed class AppSession : IDisposable
     public Window Window { get; private set; }
 
     /// <param name="prepareHome">Called with the settings folder before the app starts (to put a plugin into it).</param>
-    public AppSession(Action<AppSettings> configure, Action<string>? prepareHome = null)
+    /// <param name="arguments">The program's command line (-L folder, -R folder, -P 2).</param>
+    public AppSession(Action<AppSettings> configure, Action<string>? prepareHome = null, IEnumerable<string>? arguments = null)
     {
         Home = Path.Combine(Path.GetTempPath(), "vibe-ui-home-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(Home);
@@ -65,6 +66,8 @@ public sealed class AppSession : IDisposable
 
         var start = new ProcessStartInfo(AppExe ?? throw new InvalidOperationException("The app isn't built.")) { UseShellExecute = false };
         start.Environment[AppPaths.HomeVariable] = Home;
+        foreach (string argument in arguments ?? Array.Empty<string>())
+            start.ArgumentList.Add(argument);
         App = Application.Launch(start);
         Window = App.GetMainWindow(Automation, TimeSpan.FromSeconds(60)) ?? throw new InvalidOperationException("No main window.");
         Window.SetForeground();
@@ -129,7 +132,7 @@ public sealed class AppSession : IDisposable
         throw new TimeoutException($"Waited {seconds} s for: {what}");
     }
 
-    private static T Retry<T>(Func<T?> get, string what, double seconds = 15) where T : class
+    public static T Retry<T>(Func<T?> get, string what, double seconds = 15) where T : class
     {
         T? value = null;
         WaitUntil(() => (value = get()) != null, what, seconds);
