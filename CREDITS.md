@@ -96,6 +96,7 @@ Salamander application icon (`src/res/salamand.ico`),
 | [FluentFTP](https://github.com/robinrodricks/FluentFTP) | MIT | FTP / SFTP plugin (FTP, FTPS) |
 | [SSH.NET](https://github.com/sshnet/SSH.NET) | MIT | FTP / SFTP plugin (SFTP) |
 | [Monaco Editor](https://github.com/microsoft/monaco-editor) | MIT | the built-in editor (F4); downloaded by the build, its LICENSE is in Assets\Monaco |
+| [Inno Setup](https://jrsoftware.org/isinfo.php) | Inno Setup License (free) | makes the installer (not part of the program itself) |
 | [Markdig](https://github.com/xoofx/markdig) | BSD 2-clause | Markdown in the viewer and the editor's preview |
 | [YamlDotNet](https://github.com/aaubry/YamlDotNet) | MIT | YAML trees and checks |
 | [Microsoft Edge WebView2](https://learn.microsoft.com/microsoft-edge/webview2/) | Microsoft (part of Windows) | the previews and the editor |
