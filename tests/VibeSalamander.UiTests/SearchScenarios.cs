@@ -58,7 +58,7 @@ public sealed class SearchScenarios : IDisposable
                     return true;
             }
             return false;
-        }, name, seconds, () => string.Join(", ", Roots(app, window).SelectMany(r =>
+        }, name, seconds, () => string.Join(", ", Roots(app, window).SelectMany<AutomationElement, string>(r =>
         {
             try
             {
@@ -114,7 +114,7 @@ public sealed class SearchScenarios : IDisposable
         return roots;
     }
 
-    private static string Texts(AppSession app, AutomationElement window) => string.Join(", ", Roots(app, window).SelectMany(r =>
+    private static string Texts(AppSession app, AutomationElement window) => string.Join(", ", Roots(app, window).SelectMany<AutomationElement, string>(r =>
     {
         try
         {
