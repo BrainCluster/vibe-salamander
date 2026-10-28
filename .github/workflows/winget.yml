@@ -1,5 +1,8 @@
 # Submits each release to the winget catalog (a pull request to microsoft/winget-pkgs, made by wingetcreate
-# from packaging/winget/<version>). Runs after "Build and release" and by hand (Actions → winget → Run workflow).
+# from packaging/winget/<version>). Runs after "Build and release" (only when it made a release), once a day until
+# the version is in the catalog or has a pull request (GitHub sometimes refuses the many calls wingetcreate makes to
+# winget-pkgs with "429 gitmon refuses to schedule us": then it waits and tries again), and by hand
+# (Actions → winget → Run workflow).
 # Needs the repository secret WINGET_TOKEN: a classic GitHub token of the account that submits, with the
 # "public_repo" scope (wingetcreate forks winget-pkgs into that account and opens the pull request from it).
 name: winget
@@ -8,6 +11,8 @@ on:
   workflow_run:
     workflows: [ "Build and release" ]
     types: [ completed ]
+  schedule:
+    - cron: '17 6 * * *'
   workflow_dispatch:
     inputs:
       version:
@@ -23,8 +28,10 @@ concurrency:
 
 jobs:
   submit:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # after "Build and release": only when its release job ran (a push without a new version has nothing to submit)
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,7 +62,22 @@ jobs:
           $open = gh pr list --repo microsoft/winget-pkgs --state open --search "$id $version in:title" --json url --jq '.[].url'
           if ($open) { "A pull request is open already: $open"; exit 0 }
 
+          # after a push: only right after the release was made (later pushes don't try again: the daily run does)
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_run') {
+            $published = gh release view "v$version" --repo $env:GITHUB_REPOSITORY --json publishedAt --jq .publishedAt 2>$null
+            if (-not $published -or ((Get-Date).ToUniversalTime() - [DateTime]::Parse($published).ToUniversalTime()).TotalHours -gt 2) {
+              "v$version wasn't released just now: nothing to submit after this push."
+              exit 0
+            }
+          }
+
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
           $env:WINGET_CREATE_GITHUB_TOKEN = $env:WINGET_TOKEN # read from the environment: never on the command line or in the log
-          .\wingetcreate.exe submit --prtitle "New version: $id version $version" (Resolve-Path $folder).Path
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # GitHub refuses bursts of calls to winget-pkgs now and then (429): wait and try again
+          foreach ($wait in 0, 120, 600, 1200) {
+            if ($wait -gt 0) { "Waiting $wait s before trying again..."; Start-Sleep -Seconds $wait }
+            .\wingetcreate.exe submit --prtitle "New version: $id version $version" (Resolve-Path $folder).Path
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+          }
+          "::warning::winget-pkgs refused the submission four times; the daily run tries again."
+          exit 1
