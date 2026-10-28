@@ -197,6 +197,7 @@ public sealed partial class CompareWindow : Window
                 _cts = null;
                 Busy.IsActive = false;
                 CompareAgainButton.IsEnabled = true;
+                UpdateSyncButton(); // it was updated while the comparison still ran (and so stayed off)
             }
             cts.Dispose();
         }

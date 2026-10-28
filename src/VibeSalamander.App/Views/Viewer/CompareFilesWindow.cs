@@ -290,7 +290,7 @@ internal sealed class CompareFilesWindow : Window
             _binaryStatus = Loc.F("Binary files: {0} bytes differ in {1} places", cmp.DifferentBytes.ToString("N0"), cmp.Differences.Count.ToString("N0"))
                 + (cmp.LeftLength != cmp.RightLength ? "  ·  " + Loc.F("sizes {0} and {1}", cmp.LeftLength.ToString("N0"), cmp.RightLength.ToString("N0")) : string.Empty)
                 + (cmp.Truncated ? "  ·  " + Loc.T("only the first differences are shown") : string.Empty);
-            _status.Text = _binaryStatus;
+            SetStatus(_binaryStatus);
         }
         else
         {
@@ -425,9 +425,9 @@ internal sealed class CompareFilesWindow : Window
                 if (_binary)
                     break;
                 int count = m.GetProperty("count").GetInt32(), current = m.GetProperty("current").GetInt32();
-                _status.Text = count == 0 ? Loc.T("No differences")
+                SetStatus(count == 0 ? Loc.T("No differences")
                     : current > 0 ? Loc.F("Difference {0} of {1}", current, count)
-                    : Loc.F("{0} differences", count.ToString("N0"));
+                    : Loc.F("{0} differences", count.ToString("N0")));
                 break;
             case "text":
                 int id = m.GetProperty("id").GetInt32();
@@ -507,5 +507,15 @@ internal sealed class CompareFilesWindow : Window
             default:
                 return false;
         }
+    }
+
+    /// <summary>The status line, also as its automation name and a polite live region (screen readers hear "Difference 2 of 5").</summary>
+    private void SetStatus(string text)
+    {
+        _status.Text = text;
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(_status, text);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetLiveSetting(_status, Microsoft.UI.Xaml.Automation.Peers.AutomationLiveSetting.Polite);
+        if (Microsoft.UI.Xaml.Automation.Peers.FrameworkElementAutomationPeer.FromElement(_status) is { } peer)
+            peer.RaiseAutomationEvent(Microsoft.UI.Xaml.Automation.Peers.AutomationEvents.LiveRegionChanged);
     }
 }
