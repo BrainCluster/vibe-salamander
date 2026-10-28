@@ -190,14 +190,14 @@ public sealed partial class FindWindow : Window
             StatusText.Text = Loc.F("Directory not found: {0}", directory);
             return;
         }
-        var options = new SearchOptions
+        var options = new SearchCriteria
         {
-            Directory = directory,
+            Directories = new[] { directory },
             Mask = new WildcardMask(string.IsNullOrWhiteSpace(NamedBox.Text) ? "*.*" : NamedBox.Text),
-            IncludeSubdirectories = SubdirsBox.IsChecked == true,
+            MaxDepth = SubdirsBox.IsChecked == true ? -1 : 0,
             IncludeDirectories = DirectoriesBox.IsChecked == true,
             IncludeHidden = HiddenBox.IsChecked == true,
-            ContainingText = string.IsNullOrEmpty(ContainingBox.Text) ? null : ContainingBox.Text,
+            Texts = string.IsNullOrEmpty(ContainingBox.Text) ? Array.Empty<TextCondition>() : new[] { new TextCondition(ContainingBox.Text) },
             MatchCase = MatchCaseBox.IsChecked == true,
         };
 
@@ -206,15 +206,15 @@ public sealed partial class FindWindow : Window
         FindButton.Content = Loc.T("Stop");
         Busy.IsActive = true;
         _flushTimer.Start();
-        var progress = new Progress<string>(dir => DispatcherQueue.TryEnqueue(() => { if (_cts != null) StatusText.Text = Loc.F("Searching: {0}", dir); }));
+        var progress = new Progress<SearchProgress>(p => DispatcherQueue.TryEnqueue(() => { if (_cts != null) StatusText.Text = Loc.F("Searching: {0}", p.Directory); }));
         string status;
         try
         {
-            int count = await FileSearcher.SearchAsync(options, entry =>
+            int count = (await FileSearcher.SearchAsync(options, hit =>
             {
                 lock (_pendingLock)
-                    _pending.Add(new FindResult(entry, Layout));
-            }, progress, _cts.Token);
+                    _pending.Add(new FindResult(hit.Entry, Layout));
+            }, progress, _cts.Token)).Found;
             status = count == 1 ? Loc.T("1 item found") : Loc.F("{0} items found", count.ToString("N0"));
         }
         catch (OperationCanceledException)

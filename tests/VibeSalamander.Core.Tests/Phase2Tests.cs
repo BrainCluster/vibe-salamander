@@ -171,12 +171,12 @@ public sealed class EngineTests : IDisposable
         Make(@"s\three.log", "lazy");
         var found = new List<string>();
 
-        await FileSearcher.SearchAsync(new SearchOptions
+        await FileSearcher.SearchAsync(new SearchCriteria
         {
-            Directory = Path.Combine(_root, "s"),
+            Directories = new[] { Path.Combine(_root, "s") },
             Mask = new WildcardMask("*.txt"),
-            ContainingText = "lazy",
-        }, e => { lock (found) found.Add(e.Name); }, null, CancellationToken.None);
+            Texts = new[] { new TextCondition("lazy") },
+        }, h => { lock (found) found.Add(h.Entry.Name); }, null, CancellationToken.None);
 
         Assert.Equal(new[] { "two.txt" }, found);
     }

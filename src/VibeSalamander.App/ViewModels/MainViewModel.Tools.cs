@@ -46,7 +46,7 @@ public sealed partial class MainViewModel
     }
 
     private static DirectoryComparer.Item ToCompareItem(FileItemViewModel i) =>
-        new(i.Entry.Name, i.Entry.IsDirectory, i.Entry.Size, i.Entry.LastWrite);
+        new(i.Entry.Name, i.Entry.IsDirectory, i.Entry.Size, i.Entry.LastWrite, i.Entry.Attributes);
 
     /// <summary>Ctrl+F10: marks, in both panels, what is missing on the other side or differs.</summary>
     private async Task CompareDirectoriesAsync()

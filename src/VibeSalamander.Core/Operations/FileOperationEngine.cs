@@ -28,6 +28,9 @@ public sealed class FileOperationEngine : IPausable
 
     /// <summary>Confirmations and options from the configuration (set before starting an operation).</summary>
     public EngineOptions Options { get; set; } = new();
+
+    /// <summary>Speed limits the copies keep to (this transfer's own, and the one for all transfers).</summary>
+    public IReadOnlyList<SpeedLimiter> Limiters { get; set; } = Array.Empty<SpeedLimiter>();
     private bool _skipAllErrors;
     private long _totalBytes, _doneBytes, _currentDone, _currentTotal;
 
@@ -841,11 +844,18 @@ public sealed class FileOperationEngine : IPausable
 
     private void CopyOneFile(string source, string target, bool overwrite)
     {
+        long counted = 0;
         CopyProgressRoutine routine = (total, transferred, _, _, _, _, _, _, _) =>
         {
             _currentTotal = total;
             _currentDone = transferred;
             Report(force: false);
+            if (transferred > counted)
+            {
+                foreach (SpeedLimiter limiter in Limiters)
+                    limiter.Take(transferred - counted, _ct);
+                counted = transferred;
+            }
             WaitWhilePaused();
             return _ct.IsCancellationRequested ? PROGRESS_CANCEL : PROGRESS_CONTINUE;
         };

@@ -12,5 +12,6 @@
     <!-- the viewer and the editor: Markdown pages, YAML trees -->
     <PackageReference Include="Markdig" Version="0.40.0" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="System.IO.Hashing" Version="9.0.0" />
   </ItemGroup>
 </Project>

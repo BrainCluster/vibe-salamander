@@ -15,6 +15,9 @@ public sealed class CompareOptions
     /// <summary>Mark both files when their contents differ (reads the files; slower).</summary>
     public bool ByContent { get; set; }
 
+    /// <summary>Mark both files when their Read-only, Hidden or System attributes differ.</summary>
+    public bool ByAttributes { get; set; }
+
     /// <summary>Also compare what is inside directories present on both sides (marks the directory when anything differs).</summary>
     public bool Subdirectories { get; set; }
 
@@ -49,7 +52,10 @@ public sealed class CompareResult
 /// </summary>
 public static class DirectoryComparer
 {
-    public readonly record struct Item(string Name, bool IsDirectory, long Size, DateTime LastWrite);
+    public readonly record struct Item(string Name, bool IsDirectory, long Size, DateTime LastWrite, FileAttributes Attributes = 0);
+
+    /// <summary>The attributes compared by <see cref="CompareOptions.ByAttributes"/>.</summary>
+    public const FileAttributes ComparedAttributes = FileAttributes.ReadOnly | FileAttributes.Hidden | FileAttributes.System;
 
     public static Task<CompareResult> CompareAsync(string leftDir, IReadOnlyList<Item> left, string rightDir,
         IReadOnlyList<Item> right, CompareOptions options, CancellationToken ct = default) =>
@@ -93,12 +99,14 @@ public static class DirectoryComparer
             return result;
         }, ct);
 
-    private enum Difference { None, LeftNewer, RightNewer, Both }
+    internal enum Difference { None, LeftNewer, RightNewer, Both }
 
-    private static Difference CompareFiles(string leftPath, Item l, string rightPath, Item r, CompareOptions options, CancellationToken ct)
+    internal static Difference CompareFiles(string leftPath, Item l, string rightPath, Item r, CompareOptions options, CancellationToken ct)
     {
         bool sizeDiffers = l.Size != r.Size;
         if (options.BySize && sizeDiffers)
+            return Difference.Both;
+        if (options.ByAttributes && (l.Attributes & ComparedAttributes) != (r.Attributes & ComparedAttributes))
             return Difference.Both;
         if (options.ByDate && !options.SameTime(l.LastWrite, r.LastWrite))
             return l.LastWrite > r.LastWrite ? Difference.LeftNewer : Difference.RightNewer;
@@ -135,13 +143,13 @@ public static class DirectoryComparer
         }
     }
 
-    private static IReadOnlyList<Item> List(string dir)
+    internal static IReadOnlyList<Item> List(string dir)
     {
         try
         {
             var options = new EnumerationOptions { IgnoreInaccessible = true, AttributesToSkip = 0 };
             return new DirectoryInfo(dir).EnumerateFileSystemInfos("*", options)
-                .Select(i => new Item(i.Name, i is DirectoryInfo, i is FileInfo f ? f.Length : 0, i.LastWriteTime))
+                .Select(i => new Item(i.Name, i is DirectoryInfo, i is FileInfo f ? f.Length : 0, i.LastWriteTime, i.Attributes))
                 .ToList();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -150,7 +158,7 @@ public static class DirectoryComparer
         }
     }
 
-    private static bool IsReparsePoint(string path)
+    internal static bool IsReparsePoint(string path)
     {
         try
         {
