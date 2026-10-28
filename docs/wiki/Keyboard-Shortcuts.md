@@ -70,6 +70,7 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | Alt+F7 | Find files and directories |
 | Alt+Shift+F7 | Find duplicate files |
 | Ctrl+F10 | Compare directories |
+| Ctrl+Shift+C | Compare files |
 | Alt+F10 / Ctrl+Shift+F10 | Occupied space / directory sizes |
 | Ctrl+F1 | Drive information |
 | Ctrl+M | Make a file list |
@@ -106,6 +107,15 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | Ctrl+F3 | View the file |
 | Alt+F4 | Close (asks about unsaved changes) |
 
+## Compare files (Ctrl+Shift+C)
+
+| Keys | Action |
+|---|---|
+| F7 / Shift+F7, Alt+↓ / Alt+↑ | Next / previous difference |
+| Alt+→ / Alt+← | Copy the difference to the right / left |
+| Ctrl+S | Save the side you're in |
+| Esc | Close (asks about unsaved changes) |
+
 ## Total Commander shortcuts
 
 With *Shortcuts like: Total Commander* (Configuration → Keyboard). Your own changes apply on top.
@@ -119,6 +129,7 @@ With *Shortcuts like: Total Commander* (Configuration → Keyboard). Your own ch
 | Shift+F8, Shift+Del | Delete permanently |
 | F9 | The menu bar |
 | Shift+F2 | Compare directories |
+| Ctrl+Shift+C | Compare files |
 | Alt+F1 / Alt+F2 | Left / right drive |
 | Alt+F3 | Open with |
 | Alt+F5 / Alt+F9 (Alt+F6) | Pack / unpack |

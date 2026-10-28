@@ -25,10 +25,20 @@
   properties and security.
 - **The transfer panel**: copies, moves and deletes run in the background, several at once or queued, each with
   pause, resume and cancel. You keep working while they run.
+- **One transfer per disk** (on by default): two copies on the same disk wait for each other instead of slowing each
+  other down, while copies between different disks run side by side. Waiting transfers can be moved up, down or to
+  the front of the queue.
+- **Checks before copying**: not enough free space on the target, or files over 4 GB for a FAT32 drive, are said
+  before anything is copied, not halfway through.
+- **Verify copies** (Configuration → Transfers): each copied file is read again and compared with the original.
+- **When done**: close the app, lock, sleep, hibernate or shut down the computer when the last transfer finishes,
+  after a 60-second countdown you can cancel. The taskbar button shows the overall progress, as Explorer's does.
+- A file that's in use says **which program** holds it ("in use by Word"), not only "used by another process".
 - **Speed limits**: for each transfer (the gauge button in its row) and for all of them together (in the panel's
   header): 256 KB/s to 200 MB/s or any value you type, changed while the copy runs. **Graphs** (in the header) show
   each transfer's speed over the last half minute, with its limit as a dashed line.
-- One question when a file exists (overwrite, skip, keep both, older only, each *for all*), and errors as
+- One question when a file exists, with both files side by side (size, date, and which is newer or larger), a
+  *Compare files* button, and overwrite, skip, keep both, older only, each *for all*; and errors as
   notifications that close themselves rather than dialogs you have to click away.
 - Careful with links: folder links and junctions are copied as links, never followed into loops, and a move
   never deletes what a link points to.
@@ -94,6 +104,10 @@
   are marked in both panels, and a list shows each one (only left, only right, newer, different), to filter and
   **synchronize**: left → right, right → left, or both ways (the newer wins), with an optional mirror that deletes
   extras (to the Recycle Bin). The copies run in the transfer panel.
+- **Compare files** (Ctrl+Shift+C): two marked files, or the file under the cursor and the one of the same name in
+  the other panel, side by side or inline, with the differences highlighted. F7 / Shift+F7 go to the next and previous
+  difference, Alt+→ / Alt+← copy a difference to the other side, and both sides can be edited and saved. Binary files
+  are compared byte by byte. Also from the compare-directories list (double-click a file that's on both sides).
 - Directory sizes (Ctrl+Shift+F10), occupied space (Alt+F10), drive information (Ctrl+F1), file lists (Ctrl+M).
 - **Disk Map** (plugin): what takes the space, as blocks, a sunburst, columns or Salamander's classic treemap.
 
