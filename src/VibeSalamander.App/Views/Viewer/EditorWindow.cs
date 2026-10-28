@@ -485,6 +485,7 @@ internal sealed partial class EditorWindow : Window
     {
         if (_plain != null)
             return;
+        _web.Focus(FocusState.Programmatic); // Monaco focuses itself inside; the WebView must have the keyboard first
         Post(new { type = "command", id });
     }
 
@@ -664,9 +665,15 @@ internal sealed partial class EditorWindow : Window
             return;
         }
         if (_plain != null)
+        {
             _plain.Text = formatted;
+            _plain.Focus(FocusState.Programmatic);
+        }
         else
+        {
             Post(new { type = "replaceAll", text = formatted });
+            FocusText(); // the keyboard back in the text (Ctrl+S, Ctrl+Z), not on the toolbar button
+        }
     }
 
     /// <summary>Minify (JSON, XML) or Sort keys (JSON): one edit, so Ctrl+Z brings the text back.</summary>
@@ -686,9 +693,15 @@ internal sealed partial class EditorWindow : Window
             return;
         }
         if (_plain != null)
+        {
             _plain.Text = result;
+            _plain.Focus(FocusState.Programmatic);
+        }
         else
+        {
             Post(new { type = "replaceAll", text = result });
+            FocusText(); // the keyboard back in the text (Ctrl+S, Ctrl+Z), not on the toolbar button
+        }
     }
 
     // ---- saving ------------------------------------------------------------------------------------------
