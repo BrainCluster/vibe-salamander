@@ -281,7 +281,11 @@ public sealed class DocumentationScreenshots : IDisposable
     [UiFact]
     public void Picture_viewer()
     {
-        using AppSession app = Start(s => s.Left.Path = _files.Photos);
+        using AppSession app = Start(s =>
+        {
+            s.Left.Path = _files.Photos;
+            s.Viewer.ShowImageDetails = true;
+        });
         var picture = OpenWindow(app, "holiday 01.png", VirtualKeyShort.F3, 3000);
         Doc("viewer picture");
         Close(picture);

@@ -85,6 +85,7 @@ The full list, with pictures: [Features](https://github.com/BrainCluster/vibe-sa
 |---|---|
 | ![Find results](docs/images/find-results.png) | ![Tokyo Night color scheme](docs/images/scheme-tokyo-night.png) |
 | ![Transfer panel](docs/images/transfer-panel.png) | ![Disk Map](docs/images/disk-map-sunburst.png) |
+| ![The viewer: Markdown](docs/images/viewer-markdown.png) | ![The editor with a live Markdown preview](docs/images/editor-markdown.png) |
 
 ## Plugins
 

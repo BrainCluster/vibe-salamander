@@ -52,6 +52,10 @@
 - Ctrl+PgUp / Ctrl+PgDn (or ← / → for pictures) go to the previous or next file of the folder; Ctrl+1…7 switch between
   the views a file has; F4 edits it.
 
+| ![Markdown in the viewer](images/viewer-markdown.png) | ![A JSON tree](images/viewer-tree.png) |
+|---|---|
+| ![A 200,000-line log, found in a moment](images/viewer-big-file.png) | ![A picture with its details](images/viewer-picture.png) |
+
 **The editor (F4)** is the editor of Visual Studio Code (Monaco):
 
 - Syntax colors for more than 70 languages, folding, multiple cursors, the minimap and the command palette (F1).
@@ -63,6 +67,9 @@
 - **Safe saving**: the file is written next to the original and swapped in only when complete, with an optional
   backup (.bak). Changes made by another program are noticed, and closing never loses unsaved work silently.
 - Files in archives and on FTP / SFTP servers are edited too: saving sends them back.
+
+| ![The editor with the Markdown preview](images/editor-markdown.png) | ![A JSON problem found while typing](images/editor-json-problem.png) |
+|---|---|
 
 ## Find, compare and measure
 
