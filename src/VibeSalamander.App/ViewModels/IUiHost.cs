@@ -45,6 +45,9 @@ public interface IUiHost
     void ShowDriveInformation(PaneViewModel pane);
     void ShowFindWindow(string directory);
 
+    /// <summary>Find Duplicates (Alt+Shift+F7), looking in <paramref name="directory"/>.</summary>
+    void ShowDuplicatesWindow(string directory);
+
     /// <summary>The built-in viewer (F3) on a file; <paramref name="siblings"/> are the files the viewer can go through.</summary>
     void OpenViewer(string path, IReadOnlyList<string> siblings);
 

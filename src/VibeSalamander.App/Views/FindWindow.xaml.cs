@@ -9,6 +9,7 @@ using Microsoft.UI.Xaml.Media;
 using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Formatting;
 using VibeSalamander.Core.Search;
+using VibeSalamander.Core.Settings;
 using VibeSalamander.Services;
 using VibeSalamander.ViewModels;
 
@@ -64,22 +65,47 @@ public sealed class FindColumnLayout : System.ComponentModel.INotifyPropertyChan
     }
 }
 
-/// <summary>One search result row.</summary>
+/// <summary>One search result row: the item, and where its content matched.</summary>
 public sealed class FindResult
 {
-    public FindResult(FileEntry entry, FindColumnLayout columns)
+    public FindResult(FileEntry entry, FindColumnLayout columns, ContentMatch? match = null)
     {
         Entry = entry;
         Columns = columns;
+        Match = match;
     }
 
     public FileEntry Entry { get; }
     public FindColumnLayout Columns { get; }
+    public ContentMatch? Match { get; }
     public string Name => Entry.Name;
     public string Directory => Path.GetDirectoryName(Entry.FullPath) ?? string.Empty;
     public string SizeText => Entry.IsDirectory ? "DIR" : Formats.ExactSize(Entry.Size);
     public string DateText => $"{Formats.Date(Entry.LastWrite)} {Formats.Time(Entry.LastWrite)}";
-    public string Glyph => Entry.IsDirectory ? "" : "";
+    public string Glyph => Entry.IsDirectory ? "\uE8B7" : "\uE8A5";
+
+    public Visibility MatchVisibility => Match is { Snippet.Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>"12:" for a line, "0x1A2B:" for a place in a binary file.</summary>
+    public string MatchWhere => Match is not { } m ? string.Empty
+        : m.Line > 0 ? m.Line.ToString("N0", System.Globalization.CultureInfo.CurrentCulture) + ":"
+        : m.Offset >= 0 ? "0x" + m.Offset.ToString("X", System.Globalization.CultureInfo.InvariantCulture) + ":" : string.Empty;
+
+    private (string Before, string Text, string After) Parts
+    {
+        get
+        {
+            if (Match is not { } m || m.Snippet.Length == 0)
+                return (string.Empty, string.Empty, string.Empty);
+            int start = Math.Clamp(m.Column, 0, m.Snippet.Length);
+            int length = Math.Clamp(m.Length, 0, m.Snippet.Length - start);
+            return (m.Snippet[..start], m.Snippet.Substring(start, length), m.Snippet[(start + length)..]);
+        }
+    }
+
+    public string MatchBefore => Parts.Before;
+    public string MatchText => Parts.Text;
+    public string MatchAfter => Parts.After;
 }
 
 /// <summary>
@@ -124,11 +150,18 @@ public sealed partial class FindWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBarArea);
         RootGrid.RequestedTheme = theme;
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(980, 640));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(1080, 760));
         string icon = Path.Combine(AppContext.BaseDirectory, "Assets", "VibeSalamander.ico");
         if (File.Exists(icon))
             AppWindow.SetIcon(icon);
 
+        _startDirectory = startDirectory;
+        foreach (string key in ModifiedChoices)
+            ModifiedBox.Items.Add(new ComboBoxItem { Content = Loc.T(ModifiedText(key)), Tag = key });
+        foreach (var (letter, _, name) in SearchForm.Attributes)
+            AttributesPanel.Children.Add(new CheckBox { Content = Loc.T(name), Tag = letter, IsThreeState = true, IsChecked = null, MinWidth = 0 });
+        FillSaved();
+        ApplyForm(main.Settings.LastSearch ?? new SavedSearch());
         LookInBox.Text = startDirectory;
         Results.ItemsSource = _results;
         _flushTimer = DispatcherQueue.CreateTimer();
@@ -142,7 +175,260 @@ public sealed partial class FindWindow : Window
         RootGrid.Loaded += (_, _) => { NamedBox.Focus(FocusState.Programmatic); NamedBox.SelectAll(); };
     }
 
+    private readonly string _startDirectory;
+
     public void SetLookIn(string directory) => LookInBox.Text = directory;
+
+    // ---- the form: text rows, more options, saved searches -----------------------------------------
+
+    private static readonly string[] ModifiedChoices = { "Any", "Today", "Week", "Month", "Year", "Between" };
+
+    private static string ModifiedText(string key) => key switch
+    {
+        "Today" => "Today",
+        "Week" => "In the last 7 days",
+        "Month" => "In the last 30 days",
+        "Year" => "In the last year",
+        "Between" => "Between...",
+        _ => "Any time",
+    };
+
+    private static readonly (string Mode, string Text)[] Modes = { ("Text", "Text"), ("Regex", "Regular expression"), ("Hex", "Hex bytes") };
+
+    /// <summary>One "Containing" row: contains / doesn't contain, the text, how it is read, and a remove button.</summary>
+    private void AddTextRow(SavedText text, bool focus = false)
+    {
+        var row = new Grid { ColumnSpacing = 6 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var kind = new ComboBox { MinWidth = 150 };
+        kind.Items.Add(Loc.T("Contains"));
+        kind.Items.Add(Loc.T("Doesn't contain"));
+        kind.SelectedIndex = text.Negate ? 1 : 0;
+        var box = new TextBox { Text = text.Text, PlaceholderText = Loc.T("(optional) text inside the files"), IsSpellCheckEnabled = false };
+        var mode = new ComboBox { MinWidth = 170 };
+        foreach (var (_, label) in Modes)
+            mode.Items.Add(Loc.T(label));
+        mode.SelectedIndex = Math.Max(0, Array.FindIndex(Modes, m => m.Mode == text.Mode));
+        mode.SelectionChanged += (_, _) => box.PlaceholderText = Loc.T(mode.SelectedIndex switch
+        {
+            1 => "A regular expression, like TODO|FIXME",
+            2 => "Hex bytes, like 4D 5A 90",
+            _ => "(optional) text inside the files",
+        });
+        var remove = new Button { Content = new FontIcon { Glyph = "\uE711", FontSize = 12 }, Padding = new Thickness(8, 6, 8, 6) };
+        ToolTipService.SetToolTip(remove, Loc.T("Remove this row"));
+        remove.Click += (_, _) =>
+        {
+            TextRows.Children.Remove(row);
+            if (TextRows.Children.Count == 0)
+                AddTextRow(new SavedText());
+            UpdateRemoveButtons();
+        };
+        Grid.SetColumn(box, 1);
+        Grid.SetColumn(mode, 2);
+        Grid.SetColumn(remove, 3);
+        row.Children.Add(kind);
+        row.Children.Add(box);
+        row.Children.Add(mode);
+        row.Children.Add(remove);
+        row.Tag = (kind, box, mode);
+        TextRows.Children.Add(row);
+        UpdateRemoveButtons();
+        if (focus)
+            box.Focus(FocusState.Programmatic);
+    }
+
+    private void UpdateRemoveButtons()
+    {
+        foreach (Grid row in TextRows.Children.OfType<Grid>())
+            row.Children[3].Visibility = TextRows.Children.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void AddText_Click(object sender, RoutedEventArgs e) => AddTextRow(new SavedText(), focus: true);
+
+    private void More_Click(object sender, RoutedEventArgs e) => ShowMore(MoreButton.IsChecked == true);
+
+    private void ShowMore(bool show)
+    {
+        MoreButton.IsChecked = show;
+        MorePanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        MoreGlyph.Glyph = show ? "\uE70E" : "\uE70D";
+    }
+
+    private void Modified_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        bool between = (ModifiedBox.SelectedItem as ComboBoxItem)?.Tag as string == "Between";
+        FromDate.Visibility = ToDate.Visibility = between ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async void Browse_Click(object sender, RoutedEventArgs e)
+    {
+        string? folder = await _dialogs.PickFolderAsync();
+        if (folder == null)
+            return;
+        string current = LookInBox.Text.Trim().TrimEnd(';');
+        LookInBox.Text = current.Length == 0 ? folder : current + ";" + folder;
+    }
+
+    /// <summary>The form as typed.</summary>
+    private SavedSearch ReadForm()
+    {
+        var form = new SavedSearch
+        {
+            Named = NamedBox.Text,
+            LookIn = LookInBox.Text,
+            AllTexts = AllTextsRadio.IsChecked == true,
+            MatchCase = MatchCaseBox.IsChecked == true,
+            WholeWord = WholeWordBox.IsChecked == true,
+            Subdirectories = SubdirsBox.IsChecked == true,
+            Directories = DirectoriesBox.IsChecked == true,
+            Hidden = HiddenBox.IsChecked == true,
+            InsideArchives = ArchivesBox.IsChecked == true,
+            MinSize = MinSizeBox.Text,
+            MaxSize = MaxSizeBox.Text,
+            Modified = (ModifiedBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "Any",
+            From = FromDate.Date?.Date,
+            To = ToDate.Date?.Date,
+            Depth = double.IsNaN(DepthBox.Value) ? null : (int)DepthBox.Value,
+            SkipFolders = SkipFoldersBox.Text,
+        };
+        foreach (Grid row in TextRows.Children.OfType<Grid>())
+        {
+            var (kind, box, mode) = ((ComboBox, TextBox, ComboBox))row.Tag;
+            form.Texts.Add(new SavedText { Text = box.Text, Negate = kind.SelectedIndex == 1, Mode = Modes[Math.Max(0, mode.SelectedIndex)].Mode });
+        }
+        FileAttributes required = 0, excluded = 0;
+        foreach (CheckBox box in AttributesPanel.Children.OfType<CheckBox>())
+        {
+            var attribute = SearchForm.Attributes.First(a => a.Letter == (char)box.Tag).Attribute;
+            if (box.IsChecked == true)
+                required |= attribute;
+            else if (box.IsChecked == false)
+                excluded |= attribute;
+        }
+        form.Attributes = SearchForm.FormatAttributes(required, excluded);
+        return form;
+    }
+
+    /// <summary>Fills the form (a saved search, the last one, or an empty one).</summary>
+    private void ApplyForm(SavedSearch form)
+    {
+        NamedBox.Text = string.IsNullOrEmpty(form.Named) ? "*.*" : form.Named;
+        if (form.LookIn.Trim().Length > 0)
+            LookInBox.Text = form.LookIn;
+        TextRows.Children.Clear();
+        foreach (SavedText text in form.Texts.Where(t => t.Text.Length > 0))
+            AddTextRow(text);
+        if (TextRows.Children.Count == 0)
+            AddTextRow(new SavedText());
+        AllTextsRadio.IsChecked = form.AllTexts;
+        AnyTextRadio.IsChecked = !form.AllTexts;
+        MatchCaseBox.IsChecked = form.MatchCase;
+        WholeWordBox.IsChecked = form.WholeWord;
+        SubdirsBox.IsChecked = form.Subdirectories;
+        DirectoriesBox.IsChecked = form.Directories;
+        HiddenBox.IsChecked = form.Hidden;
+        ArchivesBox.IsChecked = form.InsideArchives;
+        MinSizeBox.Text = form.MinSize;
+        MaxSizeBox.Text = form.MaxSize;
+        ModifiedBox.SelectedIndex = Math.Max(0, Array.IndexOf(ModifiedChoices, form.Modified));
+        FromDate.Date = form.From;
+        ToDate.Date = form.To;
+        DepthBox.Value = form.Depth is int depth ? depth : double.NaN;
+        SkipFoldersBox.Text = form.SkipFolders;
+        var (required, excluded) = SearchForm.ParseAttributes(form.Attributes);
+        foreach (CheckBox box in AttributesPanel.Children.OfType<CheckBox>())
+        {
+            var attribute = SearchForm.Attributes.First(a => a.Letter == (char)box.Tag).Attribute;
+            box.IsChecked = (required & attribute) != 0 ? true : (excluded & attribute) != 0 ? false : null;
+        }
+        // the extra options open when they are used
+        bool more = form.MinSize.Length > 0 || form.MaxSize.Length > 0 || form.Modified != "Any" || form.Attributes.Length > 0 ||
+                    form.Depth != null || form.SkipFolders.Length > 0;
+        if (more)
+            ShowMore(true);
+    }
+
+    private bool _fillingSaved;
+
+    private void FillSaved()
+    {
+        _fillingSaved = true;
+        SavedBox.Items.Clear();
+        foreach (SavedSearch saved in _main.Settings.SavedSearches)
+            SavedBox.Items.Add(saved.Name);
+        _fillingSaved = false;
+        DeleteSearchButton.IsEnabled = false;
+    }
+
+    private void Saved_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_fillingSaved || SavedBox.SelectedItem is not string name)
+            return;
+        DeleteSearchButton.IsEnabled = true;
+        if (_main.Settings.SavedSearches.FirstOrDefault(s => s.Name == name) is { } saved)
+        {
+            string lookIn = LookInBox.Text;
+            ApplyForm(SearchForm.Copy(saved));
+            if (saved.LookIn.Trim().Length == 0)
+                LookInBox.Text = lookIn; // a search without folders searches where you are
+        }
+    }
+
+    private async void SaveSearch_Click(object sender, RoutedEventArgs e)
+    {
+        string? name = await _dialogs.InputAsync(Loc.T("Save search"), Loc.T("Name of the search:"), SavedBox.SelectedItem as string ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+        name = name.Trim();
+        List<SavedSearch> list = _main.Settings.SavedSearches;
+        int existing = list.FindIndex(s => s.Name.Equals(name, StringComparison.CurrentCultureIgnoreCase));
+        SavedSearch saved = SearchForm.Copy(ReadForm(), name);
+        if (existing >= 0)
+            list[existing] = saved;
+        else
+            list.Add(saved);
+        _main.SaveSettings();
+        FillSaved();
+        _fillingSaved = true;
+        SavedBox.SelectedItem = name;
+        _fillingSaved = false;
+        DeleteSearchButton.IsEnabled = true;
+        StatusText.Text = Loc.F("Saved: {0}", name);
+    }
+
+    private void DeleteSearch_Click(object sender, RoutedEventArgs e)
+    {
+        if (SavedBox.SelectedItem is not string name)
+            return;
+        _main.Settings.SavedSearches.RemoveAll(s => s.Name == name);
+        _main.SaveSettings();
+        FillSaved();
+    }
+
+    private void Reset_Click(object sender, RoutedEventArgs e)
+    {
+        string lookIn = LookInBox.Text;
+        ApplyForm(new SavedSearch());
+        LookInBox.Text = lookIn;
+        ShowMore(true);
+    }
+
+    /// <summary>The results in the active panel: copy, move, delete, view and edit them there.</summary>
+    private async void ShowInPanel_Click(object sender, RoutedEventArgs e)
+    {
+        if (_results.Count == 0)
+            return;
+        SavedSearch form = ReadForm();
+        string root = SearchForm.Folders(form.LookIn).FirstOrDefault() ?? _startDirectory;
+        string what = string.Join(" ", new[] { form.Named }.Concat(form.Texts.Where(t => t.Text.Length > 0).Select(t => "\"" + t.Text + "\"")));
+        string title = Loc.F("Found: {0} ({1})", what, _results.Count.ToString("N0"));
+        string path = FoundListProvider.Publish(title, root, _results.Select(r => r.Entry));
+        await _focusInPanel(path, null);
+    }
 
     private async void FindButton_Click(object sender, RoutedEventArgs e)
     {
@@ -184,38 +470,46 @@ public sealed partial class FindWindow : Window
 
     private async Task RunSearchAsync()
     {
-        string directory = LookInBox.Text.Trim();
-        if (!System.IO.Directory.Exists(directory))
+        SavedSearch form = ReadForm();
+        if (SearchForm.Folders(form.LookIn).Count == 0)
+            form.LookIn = LookInBox.Text = _startDirectory;
+        SearchCriteria? criteria = SearchForm.Criteria(form, DateTime.Now, 0, out string? problem);
+        if (criteria == null)
         {
-            StatusText.Text = Loc.F("Directory not found: {0}", directory);
+            StatusText.Text = problem ?? string.Empty;
             return;
         }
-        var options = new SearchCriteria
-        {
-            Directories = new[] { directory },
-            Mask = new WildcardMask(string.IsNullOrWhiteSpace(NamedBox.Text) ? "*.*" : NamedBox.Text),
-            MaxDepth = SubdirsBox.IsChecked == true ? -1 : 0,
-            IncludeDirectories = DirectoriesBox.IsChecked == true,
-            IncludeHidden = HiddenBox.IsChecked == true,
-            Texts = string.IsNullOrEmpty(ContainingBox.Text) ? Array.Empty<TextCondition>() : new[] { new TextCondition(ContainingBox.Text) },
-            MatchCase = MatchCaseBox.IsChecked == true,
-        };
+        _main.Settings.LastSearch = SearchForm.Copy(form);
+        _main.SaveSettings();
 
         _results.Clear();
         _cts = new CancellationTokenSource();
         FindButton.Content = Loc.T("Stop");
+        ShowInPanelButton.IsEnabled = false;
         Busy.IsActive = true;
         _flushTimer.Start();
-        var progress = new Progress<SearchProgress>(p => DispatcherQueue.TryEnqueue(() => { if (_cts != null) StatusText.Text = Loc.F("Searching: {0}", p.Directory); }));
+        bool reading = criteria.Texts.Count > 0 || criteria.InsideArchives;
+        var progress = new Progress<SearchProgress>(p => DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_cts == null)
+                return;
+            StatusText.Text = reading
+                ? Loc.F("Searching: {0}  ·  {1} files read ({2})", p.Directory, p.FilesChecked.ToString("N0"), Formats.ShortSize(p.BytesRead))
+                : Loc.F("Searching: {0}", p.Directory);
+        }));
         string status;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            int count = (await FileSearcher.SearchAsync(options, hit =>
+            SearchSummary summary = await FileSearcher.SearchAsync(criteria, hit =>
             {
                 lock (_pendingLock)
-                    _pending.Add(new FindResult(hit.Entry, Layout));
-            }, progress, _cts.Token)).Found;
-            status = count == 1 ? Loc.T("1 item found") : Loc.F("{0} items found", count.ToString("N0"));
+                    _pending.Add(new FindResult(hit.Entry, Layout, hit.Match));
+            }, progress, _cts.Token);
+            status = summary.Found == 1 ? Loc.T("1 item found") : Loc.F("{0} items found", summary.Found.ToString("N0"));
+            if (reading)
+                status += "  ·  " + Loc.F("{0} files read ({1})", summary.FilesChecked.ToString("N0"), Formats.ShortSize(summary.BytesRead));
+            status += "  ·  " + Loc.F("{0} s", clock.Elapsed.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.CurrentCulture));
         }
         catch (OperationCanceledException)
         {
@@ -227,7 +521,8 @@ public sealed partial class FindWindow : Window
         _cts = null;
         FindButton.Content = Loc.T("Find");
         Busy.IsActive = false;
-        StatusText.Text = status + " " + Loc.F("({0} listed)", _results.Count.ToString("N0"));
+        ShowInPanelButton.IsEnabled = _results.Count > 0;
+        StatusText.Text = status;
         if (_results.Count > 0)
         {
             Results.SelectedIndex = 0;

@@ -304,6 +304,27 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         _findWindow.Activate();
     }
 
+    private DuplicatesWindow? _duplicatesWindow;
+
+    public void ShowDuplicatesWindow(string directory)
+    {
+        if (_duplicatesWindow == null)
+        {
+            _duplicatesWindow = new DuplicatesWindow(directory, RootGrid.ActualTheme, _vm, FocusFoundItemAsync);
+            WindowOwner.Set(_duplicatesWindow, WindowHandle);
+            _duplicatesWindow.Closed += (_, _) =>
+            {
+                _duplicatesWindow = null;
+                MemoryCleanup.Schedule();
+            };
+        }
+        else
+        {
+            _duplicatesWindow.SetLookIn(directory);
+        }
+        _duplicatesWindow.Activate();
+    }
+
     /// <summary>
     /// "Focus in Panel" / "Open file location" from the Find window: shows the item in the active panel
     /// (name null: opens the directory or archive itself).
@@ -350,6 +371,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
             }
         }
         _findWindow?.Close();
+        _duplicatesWindow?.Close();
         _settingsWindow?.Close();
         CloseViewers();
         _vm.Transfers.CancelAll();

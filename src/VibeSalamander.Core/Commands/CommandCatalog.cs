@@ -40,6 +40,7 @@ public static class CommandCatalog
         [CommandId.ChangeAttributes] = "Change attributes...",
         [CommandId.ChangeCase] = "Change case...",
         [CommandId.FindFiles] = "Find files and directories",
+        [CommandId.FindDuplicates] = "Find duplicate files",
         [CommandId.CreateDirectory] = "Create directory",
         [CommandId.ChangeDirectory] = "Change directory (edit address bar)",
         [CommandId.OpenActiveFolder] = "Open active folder in Explorer",

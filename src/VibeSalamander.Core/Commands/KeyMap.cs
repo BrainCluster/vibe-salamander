@@ -113,6 +113,7 @@ public sealed class KeyMap
         m.Bind(VK.F7, C, CommandId.ChangeCase);
         m.Bind(VK.T, C, CommandId.GoToShortcutTarget);
         m.Bind(VK.F7, A, CommandId.FindFiles);
+        m.Bind(VK.F7, A | S, CommandId.FindDuplicates);
         m.Bind(VK.F10, S, CommandId.ContextMenu);
         m.Bind(VK.Apps, N, CommandId.ContextMenu);
 

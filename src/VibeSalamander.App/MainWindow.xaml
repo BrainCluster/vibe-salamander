@@ -137,6 +137,7 @@
                 <MenuFlyoutItem Text="Drive Information" Tag="DriveInformation" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F1" />
                 <MenuFlyoutItem Text="Disk Map" Tag="DiskMap" Click="Menu_Click" />
                 <MenuFlyoutItem Text="Find Files and Directories..." Tag="FindFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F7" />
+                <MenuFlyoutItem Text="Find Duplicate Files..." Tag="FindDuplicates" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Shift+F7" />
                 <MenuFlyoutItem Text="Make File List" Tag="MakeFileList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+M" />
                 <MenuFlyoutItem Text="Go to Shortcut Target" Tag="GoToShortcutTarget" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+T" />
                 <MenuFlyoutItem Text="List of Opened Files" Tag="OpenedFilesList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F11" />

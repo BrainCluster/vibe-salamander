@@ -436,3 +436,58 @@ public sealed class SpeedLimitsTests
         Assert.Null(SpeedLimits.Parse("-5"));
     }
 }
+
+public sealed class SearchFormTests
+{
+    [Fact]
+    public void The_form_becomes_criteria()
+    {
+        string temp = Path.GetTempPath();
+        var form = new VibeSalamander.Core.Settings.SavedSearch
+        {
+            Named = "*.cs",
+            LookIn = temp + ";" + temp,
+            Texts = { new() { Text = "TODO" }, new() { Text = "x+", Mode = "Regex", Negate = true }, new() { Text = "" } },
+            MinSize = "1 KB",
+            MaxSize = "2mb",
+            Modified = "Week",
+            Attributes = "R+H-",
+            Depth = 2,
+            SkipFolders = "bin;obj",
+        };
+        var now = new DateTime(2026, 10, 28, 15, 0, 0);
+        SearchCriteria c = SearchForm.Criteria(form, now, 4, out string? problem)!;
+        Assert.Null(problem);
+        Assert.Equal(2, c.Texts.Count);
+        Assert.Equal(TextMode.Regex, c.Texts[1].Mode);
+        Assert.True(c.Texts[1].Negate);
+        Assert.Equal(1024, c.MinSize);
+        Assert.Equal(2 * 1024 * 1024, c.MaxSize);
+        Assert.Equal(new DateTime(2026, 10, 21), c.ModifiedFrom);
+        Assert.Equal(FileAttributes.ReadOnly, c.RequiredAttributes);
+        Assert.Equal(FileAttributes.Hidden, c.ExcludedAttributes);
+        Assert.Equal(2, c.MaxDepth);
+        Assert.True(c.SkipFolders!.IsMatch("obj"));
+        Assert.Equal("R+H-", SearchForm.FormatAttributes(c.RequiredAttributes, c.ExcludedAttributes));
+    }
+
+    [Fact]
+    public void Problems_in_the_form()
+    {
+        var form = new VibeSalamander.Core.Settings.SavedSearch { LookIn = Path.GetTempPath(), MinSize = "big" };
+        Assert.Null(SearchForm.Criteria(form, DateTime.Now, 0, out string? problem));
+        Assert.NotNull(problem);
+        form = new VibeSalamander.Core.Settings.SavedSearch { LookIn = @"Z:\surely\not\here" + Guid.NewGuid() };
+        Assert.Null(SearchForm.Criteria(form, DateTime.Now, 0, out problem));
+        Assert.NotNull(problem);
+    }
+
+    [Fact]
+    public void Between_two_days_includes_the_last_one()
+    {
+        var form = new VibeSalamander.Core.Settings.SavedSearch { Modified = "Between", From = new DateTime(2026, 1, 1), To = new DateTime(2026, 1, 31) };
+        var (from, to) = SearchForm.Dates(form, DateTime.Now);
+        Assert.Equal(new DateTime(2026, 1, 1), from);
+        Assert.Equal(new DateTime(2026, 1, 31, 23, 59, 59).AddTicks(9_999_999), to);
+    }
+}

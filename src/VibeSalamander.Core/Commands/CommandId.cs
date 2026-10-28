@@ -151,4 +151,7 @@ public enum CommandId
 
     // Help → Error Log
     ErrorLog,
+
+    // Commands → Find Duplicates (Alt+Shift+F7)
+    FindDuplicates,
 }

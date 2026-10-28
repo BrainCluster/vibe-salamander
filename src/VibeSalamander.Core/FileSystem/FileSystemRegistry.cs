@@ -11,6 +11,7 @@ public sealed class FileSystemRegistry
     public FileSystemRegistry()
     {
         Register(new ThisPcProvider());
+        Register(new FoundListProvider());
         Register(new LocalFileSystemProvider());
     }
 

@@ -40,7 +40,7 @@ internal sealed class FileCommands
     {
         PaneViewModel active = Active;
         var items = active.GetOperationItems();
-        if (items.Count == 0 || !active.IsLocalDisk)
+        if (items.Count == 0 || !active.HasDiskItems)
             return;
 
         string what = items.Count == 1 ? $"\"{items[0].Entry.Name}\"" : Loc.F("{0} items", items.Count);
@@ -134,7 +134,7 @@ internal sealed class FileCommands
     {
         PaneViewModel active = Active;
         var items = active.GetOperationItems();
-        if (items.Count == 0 || !active.IsLocalDisk)
+        if (items.Count == 0 || !active.HasDiskItems)
             return;
 
         (List<FileItemViewModel> recycle, List<FileItemViewModel> remove) = DeletePlan.Split(items, permanent, Settings.Recycle.Mode, Settings.Recycle.Masks);

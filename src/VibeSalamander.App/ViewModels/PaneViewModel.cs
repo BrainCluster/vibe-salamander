@@ -306,6 +306,12 @@ public sealed partial class PaneViewModel : BindableBase, IDisposable
     public bool IsThisPc => _provider is ThisPcProvider;
     public bool IsLocalDisk => _provider.IsLocalDisk;
 
+    /// <summary>Find's results shown in the panel (Show in panel): not a folder, but the items are files on disk.</summary>
+    public bool IsFoundList => _provider is FoundListProvider;
+
+    /// <summary>The items are on disk: copy, move and delete work on them.</summary>
+    public bool HasDiskItems => _provider.IsLocalDisk || _provider is FoundListProvider;
+
     /// <summary>The panel shows the inside of an archive (read-only: copy out with F5, open files with Enter).</summary>
     public bool IsArchive => _provider is ArchiveFileSystemProvider;
 

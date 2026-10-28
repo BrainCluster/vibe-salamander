@@ -160,11 +160,27 @@ public static class SpeedLimits
     /// </summary>
     public static long? Parse(string text)
     {
-        string t = text.Trim().ToUpperInvariant().Replace("/S", string.Empty, StringComparison.Ordinal).Replace(" ", string.Empty, StringComparison.Ordinal);
-        if (t.Length == 0 || t is "0" or "NONE" or "NOLIMIT" or "-")
+        string t = text.Trim();
+        if (t.Length == 0 || t.Equals("none", StringComparison.OrdinalIgnoreCase) || t.Equals("no limit", StringComparison.OrdinalIgnoreCase) ||
+            t == "-" || t == L.T("No limit"))
             return 0;
-        long unit = MB;
-        foreach (var (suffix, value) in new[] { ("KIB", KB), ("MIB", MB), ("GIB", 1024 * MB), ("KB", KB), ("MB", MB), ("GB", 1024 * MB), ("K", KB), ("M", MB), ("G", 1024 * MB), ("B", 1L) })
+        return ParseBytes(t.Replace("/s", string.Empty, StringComparison.OrdinalIgnoreCase), MB);
+    }
+
+    /// <summary>
+    /// A size typed by hand: a number with B, KB, MB, GB or TB ("1.5 GB", "500k"); a number alone is in
+    /// <paramref name="defaultUnit"/>. Null when it can't be read.
+    /// </summary>
+    public static long? ParseBytes(string text, long defaultUnit)
+    {
+        string t = text.Trim().ToUpperInvariant().Replace(" ", string.Empty, StringComparison.Ordinal);
+        long unit = defaultUnit;
+        foreach (var (suffix, value) in new[]
+                 {
+                     ("KIB", KB), ("MIB", MB), ("GIB", 1024 * MB), ("TIB", 1024L * 1024 * MB),
+                     ("KB", KB), ("MB", MB), ("GB", 1024 * MB), ("TB", 1024L * 1024 * MB),
+                     ("K", KB), ("M", MB), ("G", 1024 * MB), ("T", 1024L * 1024 * MB), ("B", 1L),
+                 })
         {
             if (t.EndsWith(suffix, StringComparison.Ordinal))
             {
@@ -174,7 +190,8 @@ public static class SpeedLimits
             }
         }
         t = t.Replace(',', '.');
-        if (!double.TryParse(t, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double number) || number < 0 || double.IsInfinity(number))
+        if (t.Length == 0 || !double.TryParse(t, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double number) ||
+            number < 0 || double.IsInfinity(number))
             return null;
         return (long)Math.Min(number * unit, long.MaxValue / 2);
     }

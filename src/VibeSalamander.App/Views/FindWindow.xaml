@@ -32,25 +32,104 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <TextBlock Text="Named:" VerticalAlignment="Center" />
-            <TextBox x:Name="NamedBox" Grid.Column="1" Text="*.*" PlaceholderText="*.txt;*.doc|*.bak" />
-            <Button x:Name="FindButton" Grid.Column="2" Content="Find" MinWidth="110" Style="{StaticResource AccentButtonStyle}" Click="FindButton_Click" />
+            <TextBox x:Name="NamedBox" Grid.Column="1" Text="*.*" PlaceholderText="*.txt;*.doc|*.bak" IsSpellCheckEnabled="False" />
+            <Button x:Name="FindButton" Grid.Column="2" Content="Find" MinWidth="130" Style="{StaticResource AccentButtonStyle}" Click="FindButton_Click" />
 
             <TextBlock Grid.Row="1" Text="Look in:" VerticalAlignment="Center" />
-            <TextBox x:Name="LookInBox" Grid.Row="1" Grid.Column="1" />
-            <Button x:Name="FocusButton" Grid.Row="1" Grid.Column="2" Content="Focus in Panel" MinWidth="110" IsEnabled="False" Click="FocusButton_Click" />
+            <Grid Grid.Row="1" Grid.Column="1" ColumnSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="LookInBox" IsSpellCheckEnabled="False" PlaceholderText="C:\Projects;D:\Backup  (several folders: separated by ;)" />
+                <Button x:Name="BrowseButton" Grid.Column="1" Click="Browse_Click" ToolTipService.ToolTip="Add a folder">
+                    <FontIcon Glyph="&#xE8DA;" FontFamily="{StaticResource VibeIconFont}" FontSize="14" />
+                </Button>
+            </Grid>
+            <Button x:Name="FocusButton" Grid.Row="1" Grid.Column="2" Content="Focus in Panel" MinWidth="130" IsEnabled="False" Click="FocusButton_Click" />
 
-            <TextBlock Grid.Row="2" Text="Containing:" VerticalAlignment="Center" />
-            <TextBox x:Name="ContainingBox" Grid.Row="2" Grid.Column="1" PlaceholderText="(optional) text inside the files" />
+            <TextBlock Grid.Row="2" Text="Containing:" VerticalAlignment="Top" Margin="0,6,0,0" />
+            <StackPanel Grid.Row="2" Grid.Column="1" Spacing="6">
+                <StackPanel x:Name="TextRows" Spacing="6" />
+                <StackPanel Orientation="Horizontal" Spacing="14">
+                    <Button x:Name="AddTextButton" Click="AddText_Click" Padding="8,3">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon Glyph="&#xE710;" FontFamily="{StaticResource VibeIconFont}" FontSize="12" />
+                            <TextBlock Text="Add text" />
+                        </StackPanel>
+                    </Button>
+                    <RadioButton x:Name="AllTextsRadio" Content="All rows" GroupName="texts" IsChecked="True" MinWidth="0" />
+                    <RadioButton x:Name="AnyTextRadio" Content="Any row" GroupName="texts" MinWidth="0" />
+                    <CheckBox x:Name="MatchCaseBox" Content="Match case" MinWidth="0" />
+                    <CheckBox x:Name="WholeWordBox" Content="Whole words" MinWidth="0" />
+                </StackPanel>
+            </StackPanel>
+            <Button x:Name="ShowInPanelButton" Grid.Row="2" Grid.Column="2" Content="Show in Panel" MinWidth="130" VerticalAlignment="Top"
+                    IsEnabled="False" Click="ShowInPanel_Click" ToolTipService.ToolTip="List the results in the active panel (copy, move and delete them there)" />
 
             <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="16">
-                <CheckBox x:Name="SubdirsBox" Content="Include subdirectories" IsChecked="True" />
-                <CheckBox x:Name="DirectoriesBox" Content="Find directories too" IsChecked="True" />
-                <CheckBox x:Name="HiddenBox" Content="Hidden and system" IsChecked="True" />
-                <CheckBox x:Name="MatchCaseBox" Content="Match case" />
+                <CheckBox x:Name="SubdirsBox" Content="Include subdirectories" IsChecked="True" MinWidth="0" />
+                <CheckBox x:Name="DirectoriesBox" Content="Find directories too" IsChecked="True" MinWidth="0" />
+                <CheckBox x:Name="HiddenBox" Content="Hidden and system" IsChecked="True" MinWidth="0" />
+                <CheckBox x:Name="ArchivesBox" Content="Inside ZIP files" MinWidth="0" />
             </StackPanel>
+            <ToggleButton x:Name="MoreButton" Grid.Row="3" Grid.Column="2" MinWidth="130" Click="More_Click">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="More options" />
+                    <FontIcon x:Name="MoreGlyph" Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
+                </StackPanel>
+            </ToggleButton>
+
+            <!-- more options: size, dates, attributes, depth, folders to skip, saved searches -->
+            <Grid x:Name="MorePanel" Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Visibility="Collapsed" ColumnSpacing="12" RowSpacing="8"
+                  Padding="12,10" CornerRadius="6" Background="{ThemeResource VibeBarBackgroundBrush}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Size:" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="from" VerticalAlignment="Center" Opacity="0.75" />
+                    <TextBox x:Name="MinSizeBox" Width="110" PlaceholderText="10 KB" IsSpellCheckEnabled="False" />
+                    <TextBlock Text="to" VerticalAlignment="Center" Opacity="0.75" />
+                    <TextBox x:Name="MaxSizeBox" Width="110" PlaceholderText="2.5 GB" IsSpellCheckEnabled="False" />
+                    <TextBlock Text="Modified:" VerticalAlignment="Center" Margin="18,0,0,0" />
+                    <ComboBox x:Name="ModifiedBox" MinWidth="150" SelectionChanged="Modified_SelectionChanged" />
+                    <CalendarDatePicker x:Name="FromDate" Width="140" PlaceholderText="From" Visibility="Collapsed" />
+                    <CalendarDatePicker x:Name="ToDate" Width="140" PlaceholderText="To" Visibility="Collapsed" />
+                </StackPanel>
+
+                <TextBlock Grid.Row="1" Text="Attributes:" VerticalAlignment="Center" />
+                <StackPanel x:Name="AttributesPanel" Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="14"
+                            ToolTipService.ToolTip="Checked: must have it. Unchecked: must not. Square: doesn't matter." />
+
+                <TextBlock Grid.Row="2" Text="Depth:" VerticalAlignment="Center" />
+                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <NumberBox x:Name="DepthBox" Width="120" Minimum="0" Maximum="100" SpinButtonPlacementMode="Compact" PlaceholderText="all"
+                               ToolTipService.ToolTip="Levels of subdirectories (empty: all)" />
+                    <TextBlock Text="Skip folders:" VerticalAlignment="Center" Margin="18,0,0,0" />
+                    <TextBox x:Name="SkipFoldersBox" Width="380" IsSpellCheckEnabled="False" PlaceholderText="node_modules;.git;bin;obj" />
+                </StackPanel>
+
+                <TextBlock Grid.Row="3" Text="Saved:" VerticalAlignment="Center" />
+                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                    <ComboBox x:Name="SavedBox" MinWidth="220" PlaceholderText="(saved searches)" SelectionChanged="Saved_SelectionChanged" />
+                    <Button x:Name="SaveSearchButton" Content="Save..." Click="SaveSearch_Click" />
+                    <Button x:Name="DeleteSearchButton" Content="Delete" Click="DeleteSearch_Click" IsEnabled="False" />
+                    <Button x:Name="ResetButton" Content="Reset" Click="Reset_Click" ToolTipService.ToolTip="Back to an empty search" />
+                </StackPanel>
+            </Grid>
         </Grid>
 
         <!-- results -->
@@ -108,20 +187,35 @@
                       ContextRequested="Results_ContextRequested">
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="views:FindResult">
-                        <Grid Height="22" ColumnSpacing="8">
+                        <Grid ColumnSpacing="8" Padding="0,1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="{x:Bind Columns.NameWidth, Mode=OneWay}" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="{x:Bind Columns.SizeWidth, Mode=OneWay}" />
                                 <ColumnDefinition Width="{x:Bind Columns.DateWidth, Mode=OneWay}" />
                             </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="20" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />
                                 <TextBlock Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                             </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{x:Bind Directory}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Opacity="0.75" />
+                            <TextBlock Grid.Column="1" Text="{x:Bind Directory}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Opacity="0.75"
+                                       ToolTipService.ToolTip="{x:Bind Directory}" />
                             <TextBlock Grid.Column="2" Text="{x:Bind SizeText}" HorizontalAlignment="Right" VerticalAlignment="Center" Opacity="0.75" />
                             <TextBlock Grid.Column="3" Text="{x:Bind DateText}" VerticalAlignment="Center" Opacity="0.75" />
+                            <!-- where the text was found: the line, with the match highlighted -->
+                            <StackPanel Grid.Row="1" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="19,0,0,3" Visibility="{x:Bind MatchVisibility}">
+                                <TextBlock Text="{x:Bind MatchWhere}" FontSize="12" Opacity="0.6" Margin="0,0,8,0" FontFamily="Cascadia Mono, Consolas" />
+                                <TextBlock Text="{x:Bind MatchBefore}" FontSize="12" Opacity="0.8" FontFamily="Cascadia Mono, Consolas" />
+                                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="2" Padding="1,0">
+                                    <TextBlock Text="{x:Bind MatchText}" FontSize="12" FontFamily="Cascadia Mono, Consolas"
+                                               Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                                </Border>
+                                <TextBlock Text="{x:Bind MatchAfter}" FontSize="12" Opacity="0.8" FontFamily="Cascadia Mono, Consolas" />
+                            </StackPanel>
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>

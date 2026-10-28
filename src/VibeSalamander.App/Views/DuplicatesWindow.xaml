@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="VibeSalamander.Views.DuplicatesWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="using:VibeSalamander.Views"
+    Title="Find Duplicate Files">
+
+    <Grid x:Name="RootGrid" Padding="12,0,12,8" RowSpacing="8" KeyDown="RootGrid_KeyDown">
+        <Grid.Resources>
+            <DataTemplate x:Key="HeaderTemplate" x:DataType="views:DuplicateHeaderRow">
+                <StackPanel Orientation="Horizontal" Spacing="10" Padding="0,8,0,2">
+                    <FontIcon Glyph="&#xE8C8;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                    <TextBlock Text="{x:Bind Title}" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Bind Detail}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </DataTemplate>
+            <DataTemplate x:Key="FileTemplate" x:DataType="views:DuplicateFileRow">
+                <Grid ColumnSpacing="10" Height="26" Padding="22,0,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="260" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="150" />
+                    </Grid.ColumnDefinitions>
+                    <CheckBox IsChecked="{x:Bind IsChecked, Mode=TwoWay}" MinWidth="0" Padding="0" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{x:Bind Folder}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Opacity="0.75"
+                               ToolTipService.ToolTip="{x:Bind Folder}" />
+                    <TextBlock Grid.Column="3" Text="{x:Bind DateText}" VerticalAlignment="Center" Opacity="0.75" />
+                </Grid>
+            </DataTemplate>
+            <views:DuplicateRowTemplateSelector x:Key="RowTemplates" HeaderTemplate="{StaticResource HeaderTemplate}" FileTemplate="{StaticResource FileTemplate}" />
+        </Grid.Resources>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="TitleBarArea" Background="Transparent" Margin="0,0,140,0">
+            <TextBlock x:Name="TitleBarText" Text="Find Duplicate Files" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" />
+        </Grid>
+
+        <!-- what to compare -->
+        <Grid Grid.Row="1" ColumnSpacing="12" RowSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="Look in:" VerticalAlignment="Center" />
+            <Grid Grid.Column="1" ColumnSpacing="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="LookInBox" IsSpellCheckEnabled="False" PlaceholderText="C:\Photos;D:\Backup  (several folders: separated by ;)" />
+                <Button Grid.Column="1" Click="Browse_Click" ToolTipService.ToolTip="Add a folder">
+                    <FontIcon Glyph="&#xE8DA;" FontFamily="{StaticResource VibeIconFont}" FontSize="14" />
+                </Button>
+            </Grid>
+            <Button x:Name="FindButton" Grid.Column="2" Content="Find" MinWidth="130" Style="{StaticResource AccentButtonStyle}" Click="FindButton_Click" />
+
+            <TextBlock Grid.Row="1" Text="Named:" VerticalAlignment="Center" />
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="12">
+                <TextBox x:Name="NamedBox" Width="220" Text="*.*" IsSpellCheckEnabled="False" />
+                <TextBlock Text="At least:" VerticalAlignment="Center" />
+                <TextBox x:Name="MinSizeBox" Width="100" Text="1 B" IsSpellCheckEnabled="False" />
+                <TextBlock Text="Skip folders:" VerticalAlignment="Center" />
+                <TextBox x:Name="SkipFoldersBox" Width="260" IsSpellCheckEnabled="False" PlaceholderText="node_modules;.git" />
+            </StackPanel>
+
+            <TextBlock Grid.Row="2" Text="The same:" VerticalAlignment="Center" />
+            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                <CheckBox x:Name="ContentBox" Content="Content (byte by byte)" IsChecked="True" MinWidth="0" />
+                <CheckBox x:Name="NameBox" Content="Name" MinWidth="0" />
+                <CheckBox x:Name="SizeBox" Content="Size" MinWidth="0" />
+                <CheckBox x:Name="HiddenBox" Content="Hidden and system" MinWidth="0" Margin="24,0,0,0" />
+            </StackPanel>
+        </Grid>
+
+        <!-- what to do with them -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+            <DropDownButton x:Name="SelectButton" IsEnabled="False">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE73A;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />
+                    <TextBlock Text="Select duplicates" />
+                </StackPanel>
+                <DropDownButton.Flyout>
+                    <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                        <MenuFlyoutItem Text="All but the newest in each group" Tag="Newest" Click="Select_Click" />
+                        <MenuFlyoutItem Text="All but the oldest in each group" Tag="Oldest" Click="Select_Click" />
+                        <MenuFlyoutItem Text="All but the first in each group (by path)" Tag="First" Click="Select_Click" />
+                        <MenuFlyoutItem Text="Everything in the selected file's folder" Tag="Folder" Click="Select_Click" />
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem Text="Nothing" Tag="None" Click="Select_Click" />
+                    </MenuFlyout>
+                </DropDownButton.Flyout>
+            </DropDownButton>
+            <Button x:Name="DeleteButton" IsEnabled="False" Click="Delete_Click">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon Glyph="&#xE74D;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />
+                    <TextBlock x:Name="DeleteText" Text="Delete selected" />
+                </StackPanel>
+            </Button>
+            <Button x:Name="FocusButton" Content="Focus in Panel" IsEnabled="False" Click="FocusButton_Click" />
+            <Button x:Name="ShowInPanelButton" Content="Show in Panel" IsEnabled="False" Click="ShowInPanel_Click"
+                    ToolTipService.ToolTip="List the selected files in the active panel" />
+        </StackPanel>
+
+        <ListView x:Name="Results" Grid.Row="3" SelectionMode="Single" ItemTemplateSelector="{StaticResource RowTemplates}"
+                  BorderBrush="{ThemeResource VibePaneBorderBrush}" BorderThickness="1" CornerRadius="6"
+                  Background="{ThemeResource VibePaneBackgroundBrush}" ItemContainerStyle="{StaticResource VibeListItemStyle}"
+                  DoubleTapped="Results_DoubleTapped" SelectionChanged="Results_SelectionChanged" />
+
+        <Grid Grid.Row="4" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <ProgressRing x:Name="Busy" Width="14" Height="14" IsActive="False" />
+            <TextBlock x:Name="StatusText" Grid.Column="1" TextTrimming="CharacterEllipsis" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Grid>
+    </Grid>
+</Window>

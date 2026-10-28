@@ -49,6 +49,54 @@ public sealed class FindColumnWidths
     public double Date { get; set; } = DefaultDate;
 }
 
+/// <summary>One text row of a saved search.</summary>
+public sealed class SavedText
+{
+    public string Text { get; set; } = string.Empty;
+
+    /// <summary>"Text", "Regex" or "Hex".</summary>
+    public string Mode { get; set; } = "Text";
+
+    /// <summary>"Doesn't contain".</summary>
+    public bool Negate { get; set; }
+}
+
+/// <summary>Everything the Find window asks, as typed (also the last search, and searches saved by name).</summary>
+public sealed class SavedSearch
+{
+    public string Name { get; set; } = string.Empty;
+    public string Named { get; set; } = "*.*";
+
+    /// <summary>Empty: the active panel's folder.</summary>
+    public string LookIn { get; set; } = string.Empty;
+
+    public List<SavedText> Texts { get; set; } = new();
+    public bool AllTexts { get; set; } = true;
+    public bool MatchCase { get; set; }
+    public bool WholeWord { get; set; }
+    public bool Subdirectories { get; set; } = true;
+    public bool Directories { get; set; } = true;
+    public bool Hidden { get; set; } = true;
+    public bool InsideArchives { get; set; }
+
+    /// <summary>Sizes as typed ("10 MB"); empty = no limit.</summary>
+    public string MinSize { get; set; } = string.Empty;
+    public string MaxSize { get; set; } = string.Empty;
+
+    /// <summary>"Any", "Today", "Week", "Month", "Year" or "Between".</summary>
+    public string Modified { get; set; } = "Any";
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+
+    /// <summary>"R+H-": attributes that must be there (+) or not (−); others don't matter.</summary>
+    public string Attributes { get; set; } = string.Empty;
+
+    /// <summary>Levels below the folder (null = all).</summary>
+    public int? Depth { get; set; }
+
+    public string SkipFolders { get; set; } = string.Empty;
+}
+
 public sealed class AppSettings
 {
     /// <summary>The settings file couldn't be read at start (locked): these settings aren't saved over it.</summary>
@@ -75,6 +123,15 @@ public sealed class AppSettings
 
     /// <summary>Column widths of the Find window's results (dragged at the column headers).</summary>
     public FindColumnWidths FindColumns { get; set; } = new();
+
+    /// <summary>The Find window's last search (restored when it opens).</summary>
+    public SavedSearch LastSearch { get; set; } = new();
+
+    /// <summary>Searches saved by name in the Find window.</summary>
+    public List<SavedSearch> SavedSearches { get; set; } = new();
+
+    /// <summary>Find Duplicates: "Content", "Name", "Size", "Name, Size" (the last choice).</summary>
+    public string DuplicatesBy { get; set; } = "Content";
 
     /// <summary>Classic: one view per panel; Modern: views per folder, like Explorer (Configuration → Views).</summary>
     public ViewStyle ViewStyle { get; set; } = ViewStyle.Classic;
