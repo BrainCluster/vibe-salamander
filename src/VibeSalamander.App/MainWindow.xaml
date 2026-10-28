@@ -133,32 +133,41 @@
             <MenuBarItem Title="Commands">
                 <MenuFlyoutItem Text="Create Directory" Tag="CreateDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="F7" />
                 <MenuFlyoutItem Text="Change Directory" Tag="ChangeDirectory" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F7" />
-                <MenuFlyoutItem Text="Compare Directories..." Tag="CompareDirectories" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F10" />
-                <MenuFlyoutItem Text="Calculate Occupied Space" Tag="CalculateOccupiedSpace" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F10" />
-                <MenuFlyoutItem Text="Calculate Directory Sizes" Tag="CalculateDirectorySizes" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F10" />
-                <MenuFlyoutItem Text="Drive Information" Tag="DriveInformation" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F1" />
-                <MenuFlyoutItem Text="Disk Map" Tag="DiskMap" Click="Menu_Click" />
-                <MenuFlyoutItem Text="Find Files and Directories..." Tag="FindFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F7" />
-                <MenuFlyoutItem Text="Find Duplicate Files..." Tag="FindDuplicates" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Shift+F7" />
-                <MenuFlyoutItem Text="Compare Files..." Tag="CompareFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+C" />
-                <MenuFlyoutItem Text="Make File List" Tag="MakeFileList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+M" />
-                <MenuFlyoutItem Text="All Files of the Subfolders" Tag="FlatView" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+B" />
                 <MenuFlyoutItem Text="Quick View" Tag="QuickView" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Q" />
-                <MenuFlyoutItem Text="Hot Path List" Tag="HotPathList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F9" />
-                <MenuFlyoutItem Text="Command Line History" Tag="CommandHistory" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F8" />
-                <MenuFlyoutItem Text="Go to Shortcut Target" Tag="GoToShortcutTarget" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+T" />
-                <MenuFlyoutItem Text="List of Opened Files" Tag="OpenedFilesList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F11" />
-                <MenuFlyoutItem Text="List of Working Directories" Tag="WorkingDirectoriesList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F12" />
+                <MenuFlyoutItem Text="All Files of the Subfolders" Tag="FlatView" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+B" />
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Connect Network Drive..." Tag="ConnectNetworkDrive" Click="Menu_Click" KeyboardAcceleratorTextOverride="F11" />
-                <MenuFlyoutItem Text="Connect to FTP / SFTP Server..." Tag="ConnectFtp" Click="Menu_Click" />
-                <MenuFlyoutItem Text="Disconnect..." Tag="DisconnectNetworkDrive" Click="Menu_Click" KeyboardAcceleratorTextOverride="F12" />
-                <MenuFlyoutItem Text="Shared Directories" Tag="SharedDirectories" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F9" />
+                <MenuFlyoutSubItem Text="Find">
+                    <MenuFlyoutItem Text="Find Files and Directories..." Tag="FindFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F7" />
+                    <MenuFlyoutItem Text="Find Duplicate Files..." Tag="FindDuplicates" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Shift+F7" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSubItem Text="Compare">
+                    <MenuFlyoutItem Text="Compare Directories..." Tag="CompareDirectories" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F10" />
+                    <MenuFlyoutItem Text="Compare Files..." Tag="CompareFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+C" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSubItem Text="Sizes and Drives">
+                    <MenuFlyoutItem Text="Calculate Occupied Space" Tag="CalculateOccupiedSpace" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F10" />
+                    <MenuFlyoutItem Text="Calculate Directory Sizes" Tag="CalculateDirectorySizes" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F10" />
+                    <MenuFlyoutItem Text="Drive Information" Tag="DriveInformation" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+F1" />
+                    <MenuFlyoutItem Text="Disk Map" Tag="DiskMap" Click="Menu_Click" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSubItem Text="Lists">
+                    <MenuFlyoutItem Text="Hot Path List" Tag="HotPathList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F9" />
+                    <MenuFlyoutItem Text="List of Opened Files" Tag="OpenedFilesList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F11" />
+                    <MenuFlyoutItem Text="List of Working Directories" Tag="WorkingDirectoriesList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F12" />
+                    <MenuFlyoutItem Text="Command Line History" Tag="CommandHistory" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F8" />
+                    <MenuFlyoutItem Text="Make File List" Tag="MakeFileList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+M" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSubItem Text="Network">
+                    <MenuFlyoutItem Text="Connect Network Drive..." Tag="ConnectNetworkDrive" Click="Menu_Click" KeyboardAcceleratorTextOverride="F11" />
+                    <MenuFlyoutItem Text="Connect to FTP / SFTP Server..." Tag="ConnectFtp" Click="Menu_Click" />
+                    <MenuFlyoutItem Text="Disconnect..." Tag="DisconnectNetworkDrive" Click="Menu_Click" KeyboardAcceleratorTextOverride="F12" />
+                    <MenuFlyoutItem Text="Shared Directories" Tag="SharedDirectories" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F9" />
+                </MenuFlyoutSubItem>
                 <MenuFlyoutSeparator />
-                <MenuFlyoutItem Text="Command Shell" Tag="CommandShell" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num /" />
-                <MenuFlyoutItem Text="Open Active Folder" Tag="OpenActiveFolder" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F3" />
                 <MenuFlyoutItem Text="User Menu" Tag="UserMenu" Click="Menu_Click" KeyboardAcceleratorTextOverride="F9" />
                 <MenuFlyoutItem Text="Edit User Menu..." Tag="EditUserMenu" Click="Menu_Click" />
+                <MenuFlyoutItem Text="Command Shell" Tag="CommandShell" Click="Menu_Click" KeyboardAcceleratorTextOverride="Num /" />
+                <MenuFlyoutItem Text="Go to Shortcut Target" Tag="GoToShortcutTarget" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+T" />
                 <MenuFlyoutSubItem Text="Open Folder">
                     <MenuFlyoutItem Text="Active Folder in Explorer" Tag="OpenActiveFolder" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F3" />
                     <MenuFlyoutSeparator />

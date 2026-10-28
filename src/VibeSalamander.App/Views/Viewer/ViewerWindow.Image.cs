@@ -30,6 +30,8 @@ internal sealed partial class ViewerWindow
     private AppBarToggleButton? _detailsButton;
     private double _rotation;
     private bool _mirrored, _flipped;
+    // a new picture is fitted once its frame has its size (the scroll area isn't measured at once)
+    private bool _fitPending;
     // the pictures next to this one, decoded ahead so the arrow keys show them at once
     private readonly Dictionary<string, Task<BitmapImage?>> _decoded = new(StringComparer.OrdinalIgnoreCase);
     private int _imageWidth, _imageHeight;
@@ -184,6 +186,14 @@ internal sealed partial class ViewerWindow
         _imageFrame.PointerMoved += PanMove;
         _imageFrame.PointerReleased += PanEnd;
         _imageFrame.PointerCaptureLost += (_, _) => PanStop();
+        _imageFrame.SizeChanged += (_, _) =>
+        {
+            if (_fitPending)
+            {
+                _fitPending = false;
+                FitImage();
+            }
+        };
         _imageScroller.ViewChanged += (_, _) => _imageFrame.SetPanCursor(CanPan, _panning);
         _details = new StackPanel { Spacing = 6, Padding = new Thickness(16), Width = 280 };
         _detailsScroller = new ScrollViewer { Content = _details, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -230,6 +240,7 @@ internal sealed partial class ViewerWindow
                 _imageHeight = (int)svg.RasterizePixelHeight;
                 if (path == _path)
                     _image.Source = svg;
+                FitNewPicture();
             }
             else
             {
@@ -245,9 +256,11 @@ internal sealed partial class ViewerWindow
                 _imageWidth = bitmap.PixelWidth;
                 _imageHeight = bitmap.PixelHeight;
                 _image.Source = bitmap;
+                FitNewPicture();
             }
             await ShowImageDetailsAsync(file);
-            FitImage();
+            if (path == _path)
+                FitNewPicture(); // the camera's orientation may have turned it
             DecodeNeighbours(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException or ArgumentException)
@@ -463,6 +476,22 @@ internal sealed partial class ViewerWindow
             _image!.Width = _imageWidth;
             _image.Height = _imageHeight;
         }
+    }
+
+    /// <summary>
+    /// Every picture opens fitted to the window, or at 100 % when it's smaller (not at the zoom of the one before):
+    /// now, once its frame has its new size, and once more after the layout has settled.
+    /// </summary>
+    private void FitNewPicture()
+    {
+        ApplyRotation(); // the frame takes this picture's size
+        _fitPending = true;
+        FitImage();
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (_mode == ViewerMode.Image)
+                FitImage();
+        });
     }
 
     /// <summary>The whole picture in the window (never enlarged beyond its own size).</summary>
