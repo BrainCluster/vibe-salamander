@@ -58,6 +58,7 @@ internal sealed partial class ViewerWindow : Window
 
     // the status line
     private readonly TextBlock _status = new() { VerticalAlignment = VerticalAlignment.Center };
+    private readonly Grid _statusLine = new() { Padding = new Thickness(12, 4, 12, 6), ColumnSpacing = 16 };
     private readonly TextBlock _info = new() { VerticalAlignment = VerticalAlignment.Center, Opacity = 0.75 };
     private readonly ProgressBar _progress = new() { Width = 120, Maximum = 1000, VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
 
@@ -124,10 +125,12 @@ internal sealed partial class ViewerWindow : Window
             _fileCancel.Cancel();
             _findCancel?.Cancel();
             CloseModes();
+            _decoded.Clear();
             CleanPreviewFiles();
             _file?.Dispose();
             _options.FontSize = _textView.TextSize;
-            WindowPlacements.Save(this, _options.ViewerWindow);
+            if (!IsFullScreen) // full screen: the window's normal place stays as it was
+                WindowPlacements.Save(this, _options.ViewerWindow);
             _main.SaveSettings();
         };
         _ = OpenAsync(path);
@@ -187,6 +190,7 @@ internal sealed partial class ViewerWindow : Window
         _bar.PrimaryCommands.Add(new AppBarSeparator());
         _bar.PrimaryCommands.Add(Button("Previous file", "", () => _ = StepFileAsync(-1, imagesOnly: false)));
         _bar.PrimaryCommands.Add(Button("Next file", "", () => _ = StepFileAsync(+1, imagesOnly: false)));
+        _bar.SecondaryCommands.Add(Button("Full screen (F11)", "", ToggleFullScreen));
         _bar.SecondaryCommands.Add(Button("Edit (F4)", "", Edit));
         _bar.SecondaryCommands.Add(Button("Open with the default app", "", () => Run(() => ShellOperations.Open(_path, Path.GetDirectoryName(_path)))));
         _bar.SecondaryCommands.Add(Button("Show in folder", "", () => Run(() => System.Diagnostics.Process.Start("explorer.exe", "/select,\"" + _path + "\"")?.Dispose())));
@@ -238,7 +242,7 @@ internal sealed partial class ViewerWindow : Window
         _root.Children.Add(_findBar);
 
         // status line
-        var status = new Grid { Padding = new Thickness(12, 4, 12, 6), ColumnSpacing = 16 };
+        var status = _statusLine;
         status.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         status.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         status.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -817,6 +821,12 @@ internal sealed partial class ViewerWindow : Window
         bool shift = KeyboardState.IsDown(KeyboardState.Shift);
         switch (e.Key)
         {
+            case VirtualKey.F11:
+                ToggleFullScreen();
+                break;
+            case VirtualKey.Escape when !InFindBox && IsFullScreen:
+                ToggleFullScreen();
+                break;
             case VirtualKey.Escape when !InFindBox:
             case VirtualKey.F10:
                 Close();
@@ -854,6 +864,21 @@ internal sealed partial class ViewerWindow : Window
                 return;
         }
         e.Handled = true;
+    }
+
+    private bool IsFullScreen => AppWindow.Presenter.Kind == Microsoft.UI.Windowing.AppWindowPresenterKind.FullScreen;
+
+    /// <summary>F11: the whole screen for the file (no title, toolbar or status line); F11 or Esc back.</summary>
+    private void ToggleFullScreen()
+    {
+        bool full = !IsFullScreen;
+        AppWindow.SetPresenter(full ? Microsoft.UI.Windowing.AppWindowPresenterKind.FullScreen : Microsoft.UI.Windowing.AppWindowPresenterKind.Default);
+        Visibility chrome = full ? Visibility.Collapsed : Visibility.Visible;
+        _titleBar.Visibility = chrome;
+        _bar.Visibility = chrome;
+        _statusLine.Visibility = chrome;
+        if (_mode == ViewerMode.Image)
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, FitImage);
     }
 
     private void Edit()

@@ -103,6 +103,10 @@ public sealed class AppSettings
     [JsonIgnore]
     public bool DoNotSave { get; set; }
 
+    /// <summary>There was no settings file: the first start (Help → First Steps is suggested).</summary>
+    [JsonIgnore]
+    public bool IsNew { get; set; }
+
     public PanelSettings Left { get; set; } = new();
     public PanelSettings Right { get; set; } = new();
     public bool RightPanelActive { get; set; }
@@ -132,6 +136,11 @@ public sealed class AppSettings
 
     /// <summary>Find Duplicates: "Content", "Name", "Size", "Name, Size" (the last choice).</summary>
     public string DuplicatesBy { get; set; } = "Content";
+
+    /// <summary>The multi-rename tool's last masks, search and counter (Ctrl+M in Total Commander's shortcuts).</summary>
+    public Tools.MultiRenameOptions MultiRename { get; set; } = new();
+
+    public WindowPlacement MultiRenameWindow { get; set; } = new();
 
     /// <summary>Classic: one view per panel; Modern: views per folder, like Explorer (Configuration → Views).</summary>
     public ViewStyle ViewStyle { get; set; } = ViewStyle.Classic;
@@ -260,7 +269,7 @@ public static class SettingsStore
         try
         {
             if (!File.Exists(path))
-                return new AppSettings();
+                return new AppSettings { IsNew = true };
             json = ReadWithRetries(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

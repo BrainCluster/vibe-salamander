@@ -150,6 +150,10 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         UpdateTitleBarButtons();
         await _vm.InitializeAsync();
         UpdateTitle();
+        if (StartupArguments is { IsEmpty: false } arguments)
+            await ApplyArgumentsAsync(arguments);
+        if (_vm.Settings.IsNew)
+            Notify(Loc.T("Welcome! Help → First Steps sets the shortcuts (Salamander or Total Commander), the looks and the language."), isError: false, log: false);
     }
 
     private void Pane_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

@@ -28,6 +28,7 @@ public sealed partial class MainViewModel
         CommandId.Move or CommandId.Delete or CommandId.DeletePermanently or CommandId.ClipboardPaste =>
             _active.IsLocalDisk || _active.IsRemote || ArchivePanelCommands.Editable(_active) != null,
         CommandId.QuickRename or CommandId.CreateDirectory when _active.IsRemote => true,
+        CommandId.Duplicate or CommandId.MultiRename => _active.IsLocalDisk || (_active.HasDiskItems && command == CommandId.MultiRename),
         CommandId.QuickRename or CommandId.CreateDirectory or CommandId.EditNewFile or
         CommandId.ChangeAttributes or CommandId.ChangeCase or CommandId.ClipboardCut or
         CommandId.ClipboardCopy => _active.IsLocalDisk,
@@ -244,6 +245,23 @@ public sealed partial class MainViewModel
         t.AddSync(CommandId.MakeFileList, p => MakeFileList(p));
         t.AddSync(CommandId.OpenedFilesList, p => ShowOpenedFiles(p));
         t.AddSync(CommandId.WorkingDirectoriesList, p => ShowWorkingDirectories(p));
+        t.Add(CommandId.Duplicate, _ => Files.DuplicateAsync());
+        t.AddSync(CommandId.MultiRename, p => OpenMultiRename(p));
+        t.Add(CommandId.FlatView, p => FlatViewAsync(p));
+        t.AddSync(CommandId.QuickView, _ => _host.ToggleQuickView());
+        t.AddSync(CommandId.HotPathList, p => ShowHotPaths(p));
+        t.AddSync(CommandId.NameToCommandLine, p =>
+        {
+            if (p.FocusedItem is { Entry.IsUpDir: false } item)
+                _host.AddToCommandLine(item.Entry.Name);
+        });
+        t.AddSync(CommandId.FullNameToCommandLine, p =>
+        {
+            if (p.FocusedItem is { Entry.IsUpDir: false } item)
+                _host.AddToCommandLine(item.Entry.FullPath);
+        });
+        t.AddSync(CommandId.PathToCommandLine, p => _host.AddToCommandLine(p.IsLocalDisk ? p.Path.TrimEnd('\\') + "\\" : p.DisplayPath));
+        t.AddSync(CommandId.CommandHistory, p => _host.ShowCommandHistory(p));
         t.Add(CommandId.ConnectNetworkDrive, async _ =>
         {
             if (NetworkDrives.ShowConnectDialog(_host.WindowHandle))

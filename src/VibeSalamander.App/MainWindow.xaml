@@ -70,6 +70,8 @@
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Copy..." Tag="Copy" Click="Menu_Click" KeyboardAcceleratorTextOverride="F5" />
                 <MenuFlyoutItem Text="Move/Rename..." Tag="Move" Click="Menu_Click" KeyboardAcceleratorTextOverride="F6" />
+                <MenuFlyoutItem Text="Duplicate" Tag="Duplicate" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Shift+D" />
+                <MenuFlyoutItem Text="Multi-Rename..." Tag="MultiRename" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F2" />
                 <MenuFlyoutItem Text="Delete" Tag="Delete" Click="Menu_Click" KeyboardAcceleratorTextOverride="F8" />
                 <MenuFlyoutItem Text="Delete Permanently" Tag="DeletePermanently" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+Del" />
                 <MenuFlyoutSeparator />
@@ -140,6 +142,10 @@
                 <MenuFlyoutItem Text="Find Duplicate Files..." Tag="FindDuplicates" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Shift+F7" />
                 <MenuFlyoutItem Text="Compare Files..." Tag="CompareFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+C" />
                 <MenuFlyoutItem Text="Make File List" Tag="MakeFileList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+M" />
+                <MenuFlyoutItem Text="All Files of the Subfolders" Tag="FlatView" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+B" />
+                <MenuFlyoutItem Text="Quick View" Tag="QuickView" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Q" />
+                <MenuFlyoutItem Text="Hot Path List" Tag="HotPathList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F9" />
+                <MenuFlyoutItem Text="Command Line History" Tag="CommandHistory" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F8" />
                 <MenuFlyoutItem Text="Go to Shortcut Target" Tag="GoToShortcutTarget" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+T" />
                 <MenuFlyoutItem Text="List of Opened Files" Tag="OpenedFilesList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F11" />
                 <MenuFlyoutItem Text="List of Working Directories" Tag="WorkingDirectoriesList" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F12" />
@@ -244,6 +250,7 @@
                 <MenuFlyoutItem Text="Keyboard Shortcuts" Click="Shortcuts_Click" />
                 <MenuFlyoutItem Text="Error Log" Tag="ErrorLog" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
+                <MenuFlyoutItem Text="First Steps..." Click="FirstSteps_Click" />
                 <MenuFlyoutItem Text="About Vibe Salamander" Tag="About" Click="Menu_Click" />
             </MenuBarItem>
         </MenuBar>

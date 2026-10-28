@@ -44,6 +44,73 @@ public sealed partial class MainViewModel
         await _active.NavigateAsync(path);
     }
 
+    /// <summary>Ctrl+D (Total Commander) / Shift+F9: the hot paths as a menu; the last item makes this folder one.</summary>
+    private void ShowHotPaths(PaneViewModel pane)
+    {
+        var entries = new List<MenuEntry> { MenuEntry.Header("Hot paths") };
+        for (int number = 1; number <= 9; number++)
+        {
+            string path = Settings.HotPaths[number];
+            if (string.IsNullOrEmpty(path))
+                continue;
+            string name = Settings.HotPathNames.Count > number && Settings.HotPathNames[number].Length > 0 ? Settings.HotPathNames[number] : path;
+            string target = path;
+            entries.Add(new MenuEntry(name == path ? path : $"{name}  —  {path}", () => _ = pane.NavigateAsync(target), "\uE728", $"Ctrl+{number}"));
+        }
+        if (entries.Count == 1)
+            entries.Add(new MenuEntry("(none yet)", IsEnabled: false));
+        int free = Enumerable.Range(1, 9).FirstOrDefault(n => string.IsNullOrEmpty(Settings.HotPaths[n]));
+        if (free > 0 && !pane.IsThisPc && pane.IsLocalDisk)
+        {
+            entries.Add(MenuEntry.Separator);
+            entries.Add(new MenuEntry(Loc.F("Add this folder as hot path {0}", free), () => SetHotPath(free), "\uE710", $"Ctrl+Shift+{free}"));
+        }
+        _host.ShowMenu(pane, entries, atCaret: false);
+    }
+
+    /// <summary>Ctrl+B: every file of the folder and its subfolders in one list (names with their subfolders); again: back.</summary>
+    private async Task FlatViewAsync(PaneViewModel pane)
+    {
+        if (FoundListProvider.IsFoundList(pane.Path))
+        {
+            await pane.GoUpAsync(); // back to the folder the list was made of
+            return;
+        }
+        if (!pane.IsLocalDisk || pane.IsThisPc)
+            return;
+        string root = pane.Path;
+        const int Limit = 200_000;
+        var (files, more) = await Task.Run(() =>
+        {
+            var list = new List<FileEntry>();
+            var options = new Core.Search.WalkOptions { IncludeHidden = Settings.ShowHidden };
+            foreach (Core.Search.FileWalker.Found found in Core.Search.FileWalker.Walk(new[] { root }, options, null, CancellationToken.None))
+            {
+                if (found.Entry.IsDirectory)
+                    continue;
+                if (list.Count >= Limit)
+                    return (list, true);
+                list.Add(found.Entry);
+            }
+            return (list, false);
+        });
+        string title = Loc.F("All files in {0} ({1})", Path.GetFileName(root.TrimEnd('\\')) is { Length: > 0 } n ? n : root, files.Count.ToString("N0"));
+        string path = FoundListProvider.Publish(title, root, files);
+        await pane.NavigateAsync(path);
+        if (more)
+            _host.Notify(Loc.F("Only the first {0} files are listed.", Limit.ToString("N0")), isError: false);
+    }
+
+    /// <summary>The multi-rename tool on the marked items (or the one under the caret).</summary>
+    private void OpenMultiRename(PaneViewModel pane)
+    {
+        var items = pane.GetOperationItems().Where(i => !i.Entry.IsUpDir && !i.IsDrive)
+            .Select(i => new RenameSource(i.Entry.FullPath, i.Entry.IsDirectory, i.Entry.LastWrite)).ToList();
+        if (items.Count == 0)
+            return;
+        _host.ShowMultiRename(pane, items);
+    }
+
     private void SetHotPath(int number)
     {
         string path = _active.IsThisPc ? ThisPcProvider.RootPath : _active.Path;

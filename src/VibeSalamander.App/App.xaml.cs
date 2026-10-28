@@ -59,11 +59,13 @@ public partial class App : Application
             // Activated is raised on a background thread: go through the UI thread's queue (captured here)
             Microsoft.UI.Dispatching.DispatcherQueue ui = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
             if (main.IsCurrent)
-                main.Activated += (_, _) => ui.TryEnqueue(() => _window?.BringToFront());
+                main.Activated += (_, e) => ui.TryEnqueue(() => Reactivated(e));
             else
                 _ = RegisterWhenOldInstanceExitsAsync(ui); // restarting: take over the key once the old instance is gone
         }
         _window = new MainWindow();
+        // -L / -R / -A folders, -P 1 / -P 2 (applied once the panels have loaded)
+        _window.StartupArguments = StartupArguments.Parse(Environment.GetCommandLineArgs().Skip(1).Select(FullPath).ToList());
         _window.Activate();
         if (_window.SettingsProblem != null)
             _window.Notify("Some settings couldn't be read and are back to their defaults. The details are in the error log (Help → Error Log).",
@@ -71,6 +73,37 @@ public partial class App : Application
         else if (ErrorLog.TakeCrashNotice())
             _window.Notify("Vibe Salamander closed because of an error the last time it ran. The details are in the error log (Help → Error Log).",
                 isError: false);
+    }
+
+    /// <summary>A second start (with one instance only): the window comes to the front, with that start's folders.</summary>
+    private void Reactivated(AppActivationArguments e)
+    {
+        _window?.BringToFront();
+        if (_window != null && e.Kind == ExtendedActivationKind.Launch && e.Data is Windows.ApplicationModel.Activation.ILaunchActivatedEventArgs launch)
+        {
+            // the command line starts with the program itself
+            List<string> parts = StartupArguments.Split(launch.Arguments ?? string.Empty).ToList();
+            if (parts.Count > 0 && parts[0].EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                parts.RemoveAt(0);
+            StartupArguments arguments = StartupArguments.Parse(parts);
+            if (!arguments.IsEmpty)
+                _ = _window.ApplyArgumentsAsync(arguments);
+        }
+    }
+
+    /// <summary>A relative folder given on the command line is relative to where the program was started from.</summary>
+    private static string FullPath(string arg)
+    {
+        if (arg.StartsWith('-') || arg.StartsWith('/') || arg.Length == 0)
+            return arg;
+        try
+        {
+            return Path.IsPathRooted(arg) ? arg : Path.GetFullPath(arg.Trim('"'));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return arg;
+        }
     }
 
     /// <summary>After a restart: registers as the single instance when the closing one has exited.</summary>
@@ -82,7 +115,7 @@ public partial class App : Application
             AppInstance main = AppInstance.FindOrRegisterForKey("VibeSalamander.Main");
             if (main.IsCurrent)
             {
-                main.Activated += (_, _) => ui.TryEnqueue(() => _window?.BringToFront());
+                main.Activated += (_, e) => ui.TryEnqueue(() => Reactivated(e));
                 return;
             }
         }

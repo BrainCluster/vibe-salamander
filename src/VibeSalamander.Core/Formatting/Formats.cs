@@ -73,11 +73,33 @@ public static class Formats
         return body.Length is > 0 and <= 8 && ext.Length <= 3 && name.Count(c => c == '.') <= 1;
     }
 
+    /// <summary>Configuration → Panels: the dates as Windows shows them, or as "2026-10-28".</summary>
+    public static Settings.DateStyle DateStyle { get; set; }
+
+    /// <summary>Configuration → Panels: the times as Windows shows them, in 24 or in 12 hours.</summary>
+    public static Settings.TimeStyle TimeStyle { get; set; }
+
     public static string Date(DateTime value) =>
-        value == DateTime.MinValue ? string.Empty : value.ToString("d", CultureInfo.CurrentCulture);
+        value == DateTime.MinValue ? string.Empty
+        : DateStyle == Settings.DateStyle.Iso ? value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+        : value.ToString("d", CultureInfo.CurrentCulture);
 
     public static string Time(DateTime value) =>
-        value == DateTime.MinValue ? string.Empty : value.ToString("T", CultureInfo.CurrentCulture);
+        value == DateTime.MinValue ? string.Empty
+        : TimeStyle switch
+        {
+            Settings.TimeStyle.Hours24 => value.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
+            Settings.TimeStyle.Hours12 => value.ToString("h:mm:ss tt", CultureInfo.InvariantCulture),
+            _ => value.ToString("T", CultureInfo.CurrentCulture),
+        };
+
+    /// <summary>The times have an AM / PM part (they need a wider column).</summary>
+    public static bool TwelveHours => TimeStyle switch
+    {
+        Settings.TimeStyle.Hours24 => false,
+        Settings.TimeStyle.Hours12 => true,
+        _ => CultureInfo.CurrentCulture.DateTimeFormat.LongTimePattern.Contains('t'),
+    };
 
     /// <summary>Attribute letters in Salamander order: R H S A, plus C (compressed), E (encrypted), O (offline).</summary>
     public static string Attributes(FileAttributes a)

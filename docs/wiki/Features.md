@@ -16,6 +16,11 @@
   or swap the panels.
 - Rectangle selection with the mouse, drag and drop between the panels and to or from Explorer, automatic refresh
   that keeps the cursor and the marks.
+- **Quick view** (Ctrl+Q): the other panel shows the item under the cursor — a picture, the start of a text, what's
+  in a folder — and follows the cursor.
+- **All files of the subfolders** (Ctrl+B, Total Commander's branch view): every file below the folder in one list,
+  to copy, delete, rename or compare them together; Ctrl+B again goes back.
+- **Hot path list** (Shift+F9; Ctrl+D in Total Commander's shortcuts) as a menu, with "add this folder".
 
 ![Thumbnails of a photo folder, documents in the other panel, in the dark theme](images/hero-dark.png)
 
@@ -23,13 +28,19 @@
 
 - Copy, move, delete, rename in place (F2), change attributes and case, NTFS compression and encryption,
   properties and security.
+- **Duplicate** (Alt+Shift+D; Shift+F5 in Total Commander's shortcuts): a copy next to the original, "name (2).ext",
+  named in place.
+- **Multi-rename** (Shift+F2; Ctrl+M in Total Commander's shortcuts): many names at once from a mask (`[N]` name,
+  `[N1-3]` part of it, `[E]` extension, `[C]` counter, `[P]` folder, `[YMD]` / `[hms]` date and time), search and
+  replace (text or regular expression, `$1`), and the case. Every new name is shown before anything is renamed, with
+  what's wrong with it; names can be swapped or shifted ("1 → 2, 2 → 3").
 - **The transfer panel**: copies, moves and deletes run in the background, several at once or queued, each with
   pause, resume and cancel. You keep working while they run.
 - **One transfer per disk** (on by default): two copies on the same disk wait for each other instead of slowing each
   other down, while copies between different disks run side by side. Waiting transfers can be moved up, down or to
   the front of the queue.
-- **Checks before copying**: not enough free space on the target, or files over 4 GB for a FAT32 drive, are said
-  before anything is copied, not halfway through.
+- **Checks before copying**: not enough free space on the target, files over 4 GB for a FAT32 drive, or a
+  write-protected drive are said before anything is copied, not halfway through.
 - **Verify copies** (Configuration → Transfers): each copied file is read again and compared with the original.
 - **When done**: close the app, lock, sleep, hibernate or shut down the computer when the last transfer finishes,
   after a 60-second countdown you can cancel. The taskbar button shows the overall progress, as Explorer's does.
@@ -60,7 +71,9 @@
 - **Markdown, Jupyter notebooks and web pages rendered**: tables, task lists, code, pictures next to the file and
   notebook outputs. Nothing is loaded from the internet and no script runs unless you allow it.
 - **Pictures**: JPEG, PNG, GIF, WebP, HEIC, AVIF, JPEG XL, SVG and camera RAW (with Windows' free extensions), zoom (also with the mouse wheel) and drag,
-  rotate (R), and details: size, camera, lens, exposure, date taken, location.
+  up to 6400 %, fit (0), fit the width (W), rotate (R), mirror (M; Shift+M turns it upside down), full screen (F11),
+  the next and previous pictures decoded ahead, and details: size, camera, lens, exposure, date taken, rating,
+  keywords, author, copyright, color profile, location with altitude, and **Show on map**.
 - **PDFs**, page by page, and **audio and video** with their details.
 - Ctrl+PgUp / Ctrl+PgDn (or ← / → for pictures) go to the previous or next file of the folder; Ctrl+1…7 switch between
   the views a file has; F4 edits it.
@@ -73,8 +86,9 @@
 
 - Syntax colors for more than 70 languages, folding, multiple cursors, the minimap and the command palette (F1).
 - **JSON, XML and YAML are checked while you type**: problems are underlined and the first one is in the status line;
-  Format (Shift+Alt+F) tidies JSON and XML.
-- **A live preview** of Markdown and HTML beside the text.
+  Format (Shift+Alt+F) tidies JSON and XML, **Minify** puts them on one line, **Sort keys** orders a JSON's keys;
+  Ctrl+/ comments a line out.
+- **A live preview** of Markdown, HTML and SVG beside the text.
 - Find and replace (Ctrl+F, Ctrl+H) with regular expressions; go to line (Ctrl+G).
 - The encoding and line endings are kept, or chosen when saving; characters the encoding can't hold are pointed out.
 - **Safe saving**: the file is written next to the original and swapped in only when complete, with an optional
@@ -107,7 +121,8 @@
 - **Compare files** (Ctrl+Shift+C): two marked files, or the file under the cursor and the one of the same name in
   the other panel, side by side or inline, with the differences highlighted. F7 / Shift+F7 go to the next and previous
   difference, Alt+→ / Alt+← copy a difference to the other side, and both sides can be edited and saved. Binary files
-  are compared byte by byte. Also from the compare-directories list (double-click a file that's on both sides).
+  are compared byte by byte; **Only the differences** folds the same lines away. Also from the compare-directories
+  list (double-click a file that's on both sides).
 - Directory sizes (Ctrl+Shift+F10), occupied space (Alt+F10), drive information (Ctrl+F1), file lists (Ctrl+M).
 - **Disk Map** (plugin): what takes the space, as blocks, a sunburst, columns or Salamander's classic treemap.
 
@@ -117,7 +132,14 @@
 
 - **User menu** (F9): your own commands, with variables such as `$(FullName)`, `$(Name)`, `$(SelectedFullNames)` and `$(OtherPath)`,
   and an optional user menu bar.
-- A command line under the panels, a command shell (Num /), network drives and shares.
+- A command line under the panels: Ctrl+Enter puts the name under the cursor into it, Ctrl+Shift+Enter its full
+  path (Ctrl+P the folder, in Total Commander's shortcuts), Alt+F8 shows its history. A command shell (Num /),
+  network drives and shares.
+- **Starting it**: `VibeSalamander.exe -L C:\Work -R D:\ -P 2` opens folders in the left and right panel and makes
+  one active (`-A` the active one; a folder alone goes there). With *Allow only one instance*, a second start hands
+  its folders to the running window.
+- **Portable**: an empty `portable.flag` file next to VibeSalamander.exe keeps the settings, plugins and logs in a
+  `Data` folder beside it, nothing in your profile.
 - **Mount disk images**: .iso, .img, .vhd and .vhdx open as drives in the other panel.
 
 ![The user menu](images/user-menu.png)
@@ -132,8 +154,10 @@
 ## Looks
 
 - Light, dark or the system's theme; Compact or Comfortable density; the panel font and its size.
-- **Color schemes**: Vibe, Explorer, the terminal-inspired Yazi, Superfile, Tokyo Night, Gruvbox, Dracula, Nord
-  and Phosphor, the retro Norton Commander and DOS Navigator, or your own. Files can be colored by mask.
+- **Color schemes**: Vibe, Explorer, Altap Salamander classic, the terminal-inspired Yazi, Superfile, Tokyo Night,
+  Gruvbox, Dracula, Nord, Solarized and GitHub (dark and light) and Phosphor, the retro Norton Commander and DOS
+  Navigator, or your own — also **imported from a Visual Studio Code theme**. Files can be colored by mask.
+- Dates as Windows shows them or as 2026-10-28, times in 24 or 12 hours; sizes in bytes, kilobytes or short.
 
 ![The Tokyo Night scheme](images/scheme-tokyo-night.png)
 
@@ -141,7 +165,9 @@
 
 Options → Configuration has Open Salamander's pages, plus a search box: confirmations, panels, views, colors,
 drives, the keyboard (every command can get any key), the toolbar, hot paths, the user menu, the transfer panel,
-plugins, and backup (export and import of all settings).
+plugins, and backup (export and import of all settings). The keyboard page tells **which command a key has** (press
+it) and makes a **cheat sheet** of all shortcuts to print. **Help → First Steps** chooses the shortcuts (Salamander
+or Total Commander), the theme, the colors and the language on one page.
 
 | | |
 |---|---|

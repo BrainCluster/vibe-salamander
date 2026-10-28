@@ -43,6 +43,15 @@ public static class CommandCatalog
         [CommandId.FindDuplicates] = "Find duplicate files",
         [CommandId.MainMenu] = "Open the menu bar",
         [CommandId.CompareFiles] = "Compare files",
+        [CommandId.Duplicate] = "Duplicate (a copy next to it)",
+        [CommandId.MultiRename] = "Multi-rename...",
+        [CommandId.FlatView] = "All files of the subfolders (flat view)",
+        [CommandId.QuickView] = "Quick view in the other panel",
+        [CommandId.HotPathList] = "Hot path list",
+        [CommandId.NameToCommandLine] = "Name to the command line",
+        [CommandId.FullNameToCommandLine] = "Path + name to the command line",
+        [CommandId.PathToCommandLine] = "Path to the command line",
+        [CommandId.CommandHistory] = "Command line history",
         [CommandId.CreateDirectory] = "Create directory",
         [CommandId.ChangeDirectory] = "Change directory (edit address bar)",
         [CommandId.OpenActiveFolder] = "Open active folder in Explorer",
@@ -121,6 +130,33 @@ public static class CommandCatalog
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Every command that has a shortcut, by group, as a page to print (the keyboard settings' "Cheat sheet").
+    /// </summary>
+    public static string CheatSheet(KeyMap keys, string title)
+    {
+        static string Html(string text) => System.Net.WebUtility.HtmlEncode(text);
+        var html = new StringBuilder();
+        html.Append("<!doctype html><html><head><meta charset=\"utf-8\"><title>").Append(Html(title)).Append("</title><style>")
+            .Append("body{font:13px 'Segoe UI',sans-serif;margin:24px;color:#222}h1{font-size:20px}h2{font-size:14px;margin:18px 0 4px;color:#555}")
+            .Append("main{columns:2 320px;column-gap:32px}section{break-inside:avoid}table{border-collapse:collapse;width:100%}")
+            .Append("td{padding:2px 4px;border-bottom:1px solid #eee;vertical-align:top}td.k{white-space:nowrap;font-family:Consolas,monospace;text-align:right;color:#0b5394}")
+            .Append("@media (prefers-color-scheme:dark){body{background:#1e1e1e;color:#ddd}h2{color:#aaa}td{border-color:#333}td.k{color:#7fb3ff}}")
+            .Append("</style></head><body><h1>").Append(Html(title)).Append("</h1><main>");
+        foreach (var group in Enum.GetValues<CommandId>()
+                     .Where(c => c != CommandId.None && keys.GetShortcuts(c).Count > 0)
+                     .GroupBy(Category))
+        {
+            html.Append("<section><h2>").Append(Html(group.Key)).Append("</h2><table>");
+            foreach (CommandId command in group)
+                html.Append("<tr><td>").Append(Html(DisplayName(command))).Append("</td><td class=\"k\">")
+                    .Append(Html(string.Join(", ", keys.GetShortcuts(command).Select(KeyMap.Describe)))).Append("</td></tr>");
+            html.Append("</table></section>");
+        }
+        html.Append("</main></body></html>");
+        return html.ToString();
+    }
+
     /// <summary>Group for the keyboard settings page.</summary>
     public static string Category(CommandId command) => Localization.L.T(EnglishCategory(command));
 
@@ -130,7 +166,9 @@ public static class CommandCatalog
         CommandId.CalculateChecksums or CommandId.VerifyChecksums => "Files",
         CommandId.TestArchive or CommandId.MakeSelfExtractingArchive or CommandId.ArchiveComment => "Files",
         CommandId.ConnectFtp or CommandId.DiskMap or CommandId.FindDuplicates => "Commands",
-        CommandId.CompareFiles => "Files",
+        CommandId.CompareFiles or CommandId.Duplicate or CommandId.MultiRename => "Files",
+        CommandId.FlatView or CommandId.QuickView or CommandId.HotPathList => "Panels",
+        CommandId.NameToCommandLine or CommandId.FullNameToCommandLine or CommandId.PathToCommandLine or CommandId.CommandHistory => "Commands",
         CommandId.PluginsManager => "Options",
         <= CommandId.Filter => "Panels",
         <= CommandId.CommandShell => "Files",
@@ -194,6 +232,11 @@ public static class CommandCatalog
         CommandId.Email => "",
         CommandId.Security => "",
         CommandId.MakeFileList => "",
+        CommandId.Duplicate => "",
+        CommandId.MultiRename => "",
+        CommandId.FlatView => "",
+        CommandId.QuickView => "",
+        CommandId.HotPathList => "",
         CommandId.ViewBrief => "",
         CommandId.ViewDetailed => "",
         CommandId.ViewIcons => "",

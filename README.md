@@ -56,9 +56,12 @@ plugin, updating, uninstalling).
 **Panels.** Two panels with Salamander's keys: Tab, quick search by typing, Insert / Space to mark, Num + / − / *
 to select. Five views (Brief, Detailed, Icons, Thumbnails, Tiles), and a choice of **Classic** views (one per panel,
 like Salamander) or **Modern** ones (like File Explorer: thumbnails for photo folders, a remembered view for each
-folder). A Windows 11 address bar, drive bars, hot paths, history, filters, live USB drives.
+folder). A Windows 11 address bar, drive bars, hot paths, history, filters, live USB drives, **quick view** of the
+file under the cursor in the other panel, and all files of the subfolders in one list. **Salamander's or Total
+Commander's shortcuts**, your choice.
 
-**Files.** Copy, move, delete, rename in place, attributes, case, compression and encryption. Copies run in the
+**Files.** Copy, move, delete, rename in place, **multi-rename** (masks, counters, regular expressions, previewed),
+duplicate, attributes, case, compression and encryption. Copies run in the
 **transfer panel**, queued or in parallel, with pause, resume, cancel, speed limits (per transfer or for all) and
 speed graphs, one transfer per disk, free-space checks before copying, optional verification, and *when done* (sleep,
 shut down...) with progress on the taskbar button. One question when a file exists, with both files side by side, and
@@ -78,7 +81,8 @@ side by side, compare and **synchronize** directories, directory sizes, a user m
 line, network drives.
 
 **Make it yours.** Light and dark themes, color schemes from Vibe and Explorer to Tokyo Night, Dracula, Nord and
-Norton Commander, compact or comfortable density, any key for any command, a custom toolbar, 12 languages.
+Norton Commander (or a Visual Studio Code theme of yours), compact or comfortable density, any key for any command,
+a custom toolbar, 12 languages, and a portable mode (a `portable.flag` file next to the program).
 
 The full list, with pictures: [Features](https://github.com/BrainCluster/vibe-salamander/wiki/Features) ·
 [Keyboard shortcuts](https://github.com/BrainCluster/vibe-salamander/wiki/Keyboard-Shortcuts) ·

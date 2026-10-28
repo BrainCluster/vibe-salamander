@@ -307,6 +307,60 @@ internal sealed class FileCommands
             _main.EditWithoutRules(final);
     }
 
+    /// <summary>
+    /// Alt+Shift+D (Shift+F5 in Total Commander's shortcuts): a copy next to the original ("name (2).ext"). One
+    /// smaller file is copied at once and named in place; folders, large files and several items copy in the
+    /// transfer panel.
+    /// </summary>
+    public async Task DuplicateAsync()
+    {
+        PaneViewModel pane = Active;
+        if (!pane.IsLocalDisk)
+            return;
+        var items = pane.GetOperationItems().Where(i => !i.Entry.IsUpDir && !i.IsDrive).ToList();
+        if (items.Count == 0)
+            return;
+        static string CopyName(string source, bool isDirectory)
+        {
+            string directory = Path.GetDirectoryName(source.TrimEnd('\\'))!;
+            string name = Path.GetFileName(source.TrimEnd('\\'));
+            return isDirectory
+                ? NewItemNames.UniquePath(directory, name, string.Empty)
+                : NewItemNames.UniquePath(directory, Path.GetFileNameWithoutExtension(name), Path.GetExtension(name));
+        }
+        if (items.Count == 1 && !items[0].Entry.IsDirectory && items[0].Entry.Size <= 64L * 1024 * 1024)
+        {
+            string source = items[0].Entry.FullPath;
+            string target = CopyName(source, isDirectory: false);
+            try
+            {
+                await Task.Run(() => File.Copy(source, target, overwrite: false));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _host.Notify(FileLocks.Explain(ex, source));
+                return;
+            }
+            await CreatedItemRenameAsync(pane, target, allowSubdirectories: false);
+            return;
+        }
+        pane.RememberSelection();
+        pane.MarkAll(false);
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (FileItemViewModel item in items)
+        {
+            string source = item.Entry.FullPath;
+            string target = CopyName(source, item.Entry.IsDirectory);
+            // two items called alike ("a" and "a (2)") don't get the same new name
+            for (int i = 2; !taken.Add(target); i++)
+                target = NewItemNames.UniquePath(Path.GetDirectoryName(target)!, Path.GetFileNameWithoutExtension(source) + $" ({i})",
+                    item.Entry.IsDirectory ? string.Empty : Path.GetExtension(source), p => File.Exists(p) || Directory.Exists(p) || taken.Contains(p));
+            string[] sources = { source };
+            string to = target;
+            _main.Transfers.Enqueue(OperationKind.Copy, sources, to, (engine, ct) => engine.CopyAsync(sources, to, ct));
+        }
+    }
+
     /// <summary>Focuses a just created item and starts the in-place rename on it. Returns its final path.</summary>
     public async Task<string?> CreatedItemRenameAsync(PaneViewModel pane, string path, bool allowSubdirectories)
     {

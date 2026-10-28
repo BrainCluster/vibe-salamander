@@ -162,11 +162,14 @@ internal sealed class CompareFilesWindow : Window
         var whitespace = Toggle("Ignore spaces at line ends", "", _options.CompareIgnoreWhitespace, v => _options.CompareIgnoreWhitespace = v);
         var sideBySide = Toggle("Side by side", "", _options.CompareSideBySide, v => _options.CompareSideBySide = v);
         var wrap = Toggle("Wrap", "", _options.CompareWordWrap, v => _options.CompareWordWrap = v);
+        var onlyDifferences = Toggle("Only the differences", "", _options.CompareOnlyDifferences, v => _options.CompareOnlyDifferences = v);
         _bar.PrimaryCommands.Add(whitespace);
         _bar.PrimaryCommands.Add(sideBySide);
         _bar.PrimaryCommands.Add(wrap);
+        _bar.PrimaryCommands.Add(onlyDifferences);
         _textTools.Add(whitespace);
         _textTools.Add(wrap);
+        _textTools.Add(onlyDifferences);
         var allRight = Button("Copy everything to the right", "", () => Post(new { type = "copyAll", toRight = true }));
         var allLeft = Button("Copy everything to the left", "", () => Post(new { type = "copyAll", toRight = false }));
         _bar.SecondaryCommands.Add(allRight);
@@ -392,6 +395,8 @@ internal sealed class CompareFilesWindow : Window
             diffWordWrap = _options.CompareWordWrap ? "on" : "off",
             wordWrap = _options.CompareWordWrap ? "on" : "off",
             fontSize = _options.EditorFontSize,
+            // the same lines folded away, three kept around each change (click a fold to open it)
+            hideUnchangedRegions = new { enabled = _options.CompareOnlyDifferences, contextLineCount = 3, minimumLineCount = 3, revealLineCount = 20 },
         },
     });
 

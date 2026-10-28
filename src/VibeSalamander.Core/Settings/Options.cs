@@ -118,9 +118,31 @@ public enum SizeFormat
     Short,
 }
 
+/// <summary>How dates are shown in the panels.</summary>
+public enum DateStyle
+{
+    /// <summary>As Windows' region settings say.</summary>
+    System,
+    /// <summary>"2026-10-28" (sorts as text, the same in every language).</summary>
+    Iso,
+}
+
+/// <summary>How times are shown in the panels.</summary>
+public enum TimeStyle
+{
+    System,
+    /// <summary>"21:26:53".</summary>
+    Hours24,
+    /// <summary>"9:26:53 PM".</summary>
+    Hours12,
+}
+
 /// <summary>Configuration → Panels.</summary>
 public sealed class PanelOptions
 {
+    public DateStyle DateStyle { get; set; } = DateStyle.System;
+    public TimeStyle TimeStyle { get; set; } = TimeStyle.System;
+
     /// <summary>Select / Unselect (Num + / Num -), Select All and Invert also mark directories.</summary>
     public bool SelectIncludesDirectories { get; set; }
 
@@ -449,4 +471,7 @@ public sealed class ViewerOptions
     public bool CompareSideBySide { get; set; } = true;
     public bool CompareWordWrap { get; set; }
     public WindowPlacement CompareWindow { get; set; } = new();
+
+    /// <summary>Compare Files folds away the lines that are the same (a few stay around each change).</summary>
+    public bool CompareOnlyDifferences { get; set; }
 }

@@ -61,6 +61,9 @@ public static class EditorLanguages
         _ => null,
     };
 
-    /// <summary>The live preview for a language: Markdown or HTML (null: none).</summary>
-    public static string? Preview(string language) => language is "markdown" or "html" ? language : null;
+    /// <summary>The live preview for a language: Markdown, HTML or SVG (null: none).</summary>
+    public static string? Preview(string language, string? path = null) =>
+        language is "markdown" or "html" ? language
+        : path != null && path.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) ? "svg"
+        : null;
 }

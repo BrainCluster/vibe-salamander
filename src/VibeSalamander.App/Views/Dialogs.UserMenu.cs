@@ -168,15 +168,13 @@ public sealed partial class Dialogs
     }
 
     /// <summary>The Windows file picker (for a program); null when cancelled or unavailable.</summary>
-    public async Task<string?> PickFileAsync()
+    public async Task<string?> PickFileAsync(params string[] types)
     {
         try
         {
             var picker = new Microsoft.Windows.Storage.Pickers.FileOpenPicker(_windowId());
-            picker.FileTypeFilter.Add(".exe");
-            picker.FileTypeFilter.Add(".cmd");
-            picker.FileTypeFilter.Add(".bat");
-            picker.FileTypeFilter.Add(".ps1");
+            foreach (string type in types.Length > 0 ? types : new[] { ".exe", ".cmd", ".bat", ".ps1" })
+                picker.FileTypeFilter.Add(type);
             picker.FileTypeFilter.Add("*");
             var picked = await picker.PickSingleFileAsync();
             return string.IsNullOrEmpty(picked?.Path) ? null : picked.Path;

@@ -147,6 +147,10 @@ public sealed partial class MainWindow
         CommandId.ViewBrief => "Brief",
         CommandId.ViewDetailed => "Full",
         CommandId.FindDuplicates => "Dupes",
+        CommandId.Duplicate => "Dupl",
+        CommandId.MultiRename => "MRename",
+        CommandId.HotPathList => "HotPaths",
+        CommandId.CommandHistory => "History",
         _ => command.ToString(),
     };
 

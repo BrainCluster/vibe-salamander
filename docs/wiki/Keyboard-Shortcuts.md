@@ -18,6 +18,9 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | Shift+F7 | Change directory (type a path) |
 | Ctrl+. | Path from the other panel |
 | Ctrl+1…9 / Ctrl+Shift+1…9 | Go to / set a hot path |
+| Shift+F9 | Hot path list |
+| Ctrl+B | All files of the subfolders (again: back) |
+| Ctrl+Q | Quick view in the other panel |
 | typing | Quick search |
 | Ctrl+U | Swap panels |
 | Ctrl+F11 | Maximize / restore the panel |
@@ -41,6 +44,8 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | F3 / Alt+F3 | View / Open with |
 | F4 / Shift+F4 | Edit / edit a new file |
 | F5 / F6 | Copy / move or rename |
+| Alt+Shift+D | Duplicate (a copy next to it, named in place) |
+| Shift+F2 | Multi-rename |
 | F7 | Create directory |
 | F8, Del / Shift+Del | Delete (Recycle Bin) / delete permanently |
 | Alt+Enter | Properties |
@@ -71,6 +76,8 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | Alt+Shift+F7 | Find duplicate files |
 | Ctrl+F10 | Compare directories |
 | Ctrl+Shift+C | Compare files |
+| Ctrl+Enter / Ctrl+Shift+Enter | Name / full path to the command line |
+| Alt+F8 | Command line history |
 | Alt+F10 / Ctrl+Shift+F10 | Occupied space / directory sizes |
 | Ctrl+F1 | Drive information |
 | Ctrl+M | Make a file list |
@@ -92,6 +99,8 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | Ctrl+1 … Ctrl+7 | Switch view (rendered, text, hex, …) |
 | Ctrl+PgUp / Ctrl+PgDn | Previous / next file of the folder |
 | ← / → , + / − or the mouse wheel, 0 , R | Pictures: previous / next, zoom, fit, rotate |
+| W / M / Shift+M | Pictures: fit the width / mirror / upside down |
+| F11 | Full screen (F11 or Esc: back) |
 | F4 | Edit the file |
 
 ## Editor (F4)
@@ -125,6 +134,13 @@ With *Shortcuts like: Total Commander* (Configuration → Keyboard). Your own ch
 | F2 / Ctrl+R | Refresh |
 | F3 / F4 / Shift+F4 | View / edit / edit a new file |
 | F5 / F6 / F7 / F8 | Copy / move / create directory / delete |
+| Shift+F5 | Duplicate (a copy in the same folder) |
+| Ctrl+M | Multi-rename |
+| Ctrl+B | All files of the subfolders (branch view) |
+| Ctrl+Q | Quick view |
+| Ctrl+D | Hot path list |
+| Ctrl+Enter / Ctrl+Shift+Enter / Ctrl+P | Name / full path / folder to the command line |
+| Alt+F8 | Command line history |
 | Shift+F6 | Rename in place |
 | Shift+F8, Shift+Del | Delete permanently |
 | F9 | The menu bar |

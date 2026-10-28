@@ -192,6 +192,94 @@ public static class Structured
         }
     }
 
+    /// <summary>
+    /// The document on one line without the spaces between its parts (JSON, XML), or null with a reason: it has
+    /// problems, it's YAML, or a JSON with comments.
+    /// </summary>
+    public static string? Minify(string text, StructuredFormat format, out string? reason)
+    {
+        if (!Writable(text, format, out reason))
+            return null;
+        if (format == StructuredFormat.Json)
+            return WriteJson(text, indented: false, sortKeys: false);
+        XDocument document = XDocument.Parse(text, LoadOptions.None);
+        var builder = new StringBuilder();
+        var settings = new XmlWriterSettings { Indent = false, OmitXmlDeclaration = document.Declaration == null, NewLineHandling = NewLineHandling.None };
+        using (var writer = new Utf8StringWriter(builder, document.Declaration?.Encoding))
+        using (var xml = XmlWriter.Create(writer, settings))
+            document.Save(xml);
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// A JSON document with the keys of every object in alphabetical order (the arrays keep theirs); indented when
+    /// the document was on more than one line. Null with a reason when it isn't JSON that can be written back.
+    /// </summary>
+    public static string? SortKeys(string text, out string? reason)
+    {
+        if (!Writable(text, StructuredFormat.Json, out reason))
+            return null;
+        return WriteJson(text, indented: text.Contains('\n'), sortKeys: true);
+    }
+
+    private static bool Writable(string text, StructuredFormat format, out string? reason)
+    {
+        reason = null;
+        if (format == StructuredFormat.Yaml)
+        {
+            reason = "YAML isn't rewritten: its comments and layout would be lost.";
+            return false;
+        }
+        if (Parse(text, format).Problem is { } problem)
+        {
+            reason = $"Line {problem.Line}: {problem.Message}";
+            return false;
+        }
+        if (format == StructuredFormat.Json && HasJsonComments(text))
+        {
+            reason = "The JSON has comments, which would be removed.";
+            return false;
+        }
+        return true;
+    }
+
+    private static string WriteJson(string text, bool indented, bool sortKeys)
+    {
+        using JsonDocument document = JsonDocument.Parse(text, JsonOptions);
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = indented, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
+            Write(writer, document.RootElement, sortKeys);
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static void Write(Utf8JsonWriter writer, JsonElement element, bool sortKeys)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                IEnumerable<JsonProperty> properties = element.EnumerateObject();
+                if (sortKeys)
+                    properties = properties.OrderBy(p => p.Name, StringComparer.Ordinal);
+                foreach (JsonProperty property in properties)
+                {
+                    writer.WritePropertyName(property.Name);
+                    Write(writer, property.Value, sortKeys);
+                }
+                writer.WriteEndObject();
+                break;
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (JsonElement item in element.EnumerateArray())
+                    Write(writer, item, sortKeys);
+                writer.WriteEndArray();
+                break;
+            default:
+                element.WriteTo(writer); // numbers stay exactly as written
+                break;
+        }
+    }
+
     /// <summary>A StringWriter that reports the document's own encoding (so the XML declaration keeps it).</summary>
     private sealed class Utf8StringWriter : StringWriter
     {

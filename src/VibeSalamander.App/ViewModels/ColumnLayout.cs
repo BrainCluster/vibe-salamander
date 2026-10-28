@@ -110,7 +110,7 @@ public sealed class ColumnLayout : BindableBase
     /// narrower than they need (it would cut off the hour).
     /// </summary>
     private static double MinTimeWidth =>
-        System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.LongTimePattern.Contains('t') ? Math.Round(90 * UiState.FontSize / 13) : 0;
+        Core.Formatting.Formats.TwelveHours ? Math.Round(90 * UiState.FontSize / 13) : 0;
 
     public bool IsVisible(DetailColumn c) => c switch
     {

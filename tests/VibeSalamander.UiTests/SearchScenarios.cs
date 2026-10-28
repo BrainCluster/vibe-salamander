@@ -266,4 +266,58 @@ public sealed class SearchScenarios : IDisposable
         compare.Close();
         NoErrors(app);
     }
+
+    [UiFact]
+    public void Duplicate_a_file_in_place()
+    {
+        File.WriteAllText(Path.Combine(_files.Target, "plan.txt"), "the plan");
+        using AppSession app = Start(s => s.Left.Path = _files.Target, waitFor: "plan.txt");
+        app.GoTo("plan.txt");
+        FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_D);
+        Thread.Sleep(1500);
+        AppSession.Screenshot("g01 duplicate named in place");
+        app.Press(VirtualKeyShort.ENTER, settleMs: 1000); // keeps the suggested name
+        string copy = Path.Combine(_files.Target, "plan (2).txt");
+        AppSession.WaitUntil(() => File.Exists(copy), "the copy", 10);
+        Assert.Equal("the plan", File.ReadAllText(copy));
+        NoErrors(app);
+    }
+
+    [UiFact]
+    public void Multi_rename_with_a_counter()
+    {
+        File.WriteAllText(Path.Combine(_files.Target, "a1.txt"), "1");
+        File.WriteAllText(Path.Combine(_files.Target, "a2.txt"), "2");
+        using AppSession app = Start(s => s.Left.Path = _files.Target, waitFor: "a2.txt");
+        app.GoTo("a1.txt");
+        app.Press(VirtualKeyShort.INSERT);
+        app.Press(VirtualKeyShort.INSERT);
+        app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F2, settleMs: 1500);
+        Window rename = app.OtherWindow("Multi-Rename");
+        app.Type("trip [C]", settleMs: 1200);
+        AppSession.Screenshot("g02 multi-rename");
+        WaitUntilOr(() => HasText(app, rename, "trip 2.txt"), "the new names", 10, () => Texts(app, rename));
+        Named(app, rename, "Rename", ControlType.Button).Click();
+        AppSession.WaitUntil(() => File.Exists(Path.Combine(_files.Target, "trip 1.txt")) && File.Exists(Path.Combine(_files.Target, "trip 2.txt")),
+            "the files renamed", 10);
+        Assert.Equal("1", File.ReadAllText(Path.Combine(_files.Target, "trip 1.txt")));
+        NoErrors(app);
+    }
+
+    [UiFact]
+    public void Flat_view_and_quick_view()
+    {
+        using AppSession app = Start();
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_B, settleMs: 2000);
+        AppSession.WaitUntil(() => app.Items().Contains(@"Projects\Old\readme.txt"), "the files of the subfolders", 10);
+        AppSession.Screenshot("g03 flat view");
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_B, settleMs: 1500); // back
+        AppSession.WaitUntil(() => app.Items().Contains("notes.md"), "the folder again", 10);
+        app.GoTo("notes.md");
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_Q, settleMs: 1500);
+        WaitUntilOr(() => HasText(app, app.Window, "- one"), "the quick view of notes.md", 10, () => Texts(app, app.Window));
+        AppSession.Screenshot("g04 quick view");
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_Q, settleMs: 800);
+        NoErrors(app);
+    }
 }

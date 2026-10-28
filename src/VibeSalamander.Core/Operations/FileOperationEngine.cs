@@ -167,6 +167,14 @@ public sealed class FileOperationEngine : IPausable
             _itemsTotal = steps.Count(s => s is CopyFileStep or RenameStep or CreateDirStep);
             Report(force: true, analyzing: false);
 
+            // a write-protected drive (a locked SD card): said once, instead of an error for every file
+            if (steps.Any(s => s is CopyFileStep or CreateDirStep || (s is RenameStep && !SameVolume(s.Source, target))) &&
+                FileSystem.DriveInformation.IsWriteProtected(target))
+            {
+                await HandleErrorAsync(target, L.F("The drive {0} is write-protected: nothing can be copied to it.", Path.GetPathRoot(target) ?? target), result);
+                return Cancelled(result);
+            }
+
             // before anything is copied: is there room, and can the drive hold the files at all?
             string? problem = Preflight(steps.OfType<CopyFileStep>().Select(s => (s.Source, s.Target, s.Size)), target, VolumeOf);
             if (problem != null && !await _callbacks.ConfirmAsync(move ? L.T("Move") : L.T("Copy"), problem))

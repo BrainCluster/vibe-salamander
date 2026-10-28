@@ -29,6 +29,9 @@ internal sealed partial class ViewerWindow
     private readonly List<ICommandBarElement> _imageTools = new();
     private AppBarToggleButton? _detailsButton;
     private double _rotation;
+    private bool _mirrored, _flipped;
+    // the pictures next to this one, decoded ahead so the arrow keys show them at once
+    private readonly Dictionary<string, Task<BitmapImage?>> _decoded = new(StringComparer.OrdinalIgnoreCase);
     private int _imageWidth, _imageHeight;
     private string? _imagePath;
 
@@ -38,7 +41,10 @@ internal sealed partial class ViewerWindow
         _imageTools.Add(Button("Zoom out", "", () => Zoom(0.8)));
         _imageTools.Add(Button("Fit", "", FitImage));
         _imageTools.Add(Button("Actual size", "", () => SetZoom(1)));
+        // the rest are for pictures only (zoom is for PDFs too)
+        _imageTools.Add(Button("Fit width", "", FitImageWidth));
         _imageTools.Add(Button("Rotate", "", () => Rotate(90)));
+        _imageTools.Add(Button("Mirror", "", () => Mirror(horizontal: true)));
         _detailsButton = new AppBarToggleButton { Label = Loc.T("Details"), Icon = new FontIcon { Glyph = "" }, IsChecked = _options.ShowImageDetails };
         _detailsButton.Click += (_, _) =>
         {
@@ -159,7 +165,7 @@ internal sealed partial class ViewerWindow
         {
             ZoomMode = ZoomMode.Enabled,
             MinZoomFactor = 0.1f, // WinUI refuses less than 0.1
-            MaxZoomFactor = 32f,
+            MaxZoomFactor = 64f, // 6400 %
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollMode = ScrollMode.Auto,
@@ -201,6 +207,7 @@ internal sealed partial class ViewerWindow
         string path = _path;
         _imagePath = path;
         _rotation = 0;
+        _mirrored = _flipped = false;
         _imageFrame!.RenderTransform = null;
         _image!.Source = null;
         _details!.Children.Clear();
@@ -226,9 +233,13 @@ internal sealed partial class ViewerWindow
             }
             else
             {
-                var bitmap = new BitmapImage();
-                using (var stream = await file.OpenReadAsync())
-                    await bitmap.SetSourceAsync(stream);
+                BitmapImage? bitmap = _decoded.TryGetValue(path, out Task<BitmapImage?>? ahead) ? await ahead : null;
+                if (bitmap == null)
+                {
+                    bitmap = new BitmapImage();
+                    using (var stream = await file.OpenReadAsync())
+                        await bitmap.SetSourceAsync(stream);
+                }
                 if (path != _path)
                     return;
                 _imageWidth = bitmap.PixelWidth;
@@ -237,6 +248,7 @@ internal sealed partial class ViewerWindow
             }
             await ShowImageDetailsAsync(file);
             FitImage();
+            DecodeNeighbours(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException or ArgumentException)
         {
@@ -288,12 +300,47 @@ internal sealed partial class ViewerWindow
                 Row("Taken", properties.DateTaken.LocalDateTime.ToString("g", CultureInfo.CurrentCulture));
             Row("Camera", $"{properties.CameraManufacturer} {properties.CameraModel}".Trim());
             Row("Title", properties.Title);
-            if (properties.Latitude is double lat && properties.Longitude is double lon)
-                Row("Location", $"{lat.ToString("0.00000", CultureInfo.InvariantCulture)}, {lon.ToString("0.00000", CultureInfo.InvariantCulture)}");
+            if (properties.Rating > 0)
+                Row("Rating", new string('★', (int)Math.Clamp(Math.Round(properties.Rating / 20.0), 1, 5)).PadRight(5, '☆'));
+            if (properties.Keywords.Count > 0)
+                Row("Keywords", string.Join(", ", properties.Keywords));
             IDictionary<string, object> extra = await properties.RetrievePropertiesAsync(new[]
             {
                 "System.Photo.FNumber", "System.Photo.ExposureTime", "System.Photo.ISOSpeed", "System.Photo.FocalLength", "System.Photo.LensModel",
+                "System.Author", "System.Copyright", "System.Comment", "System.ApplicationName", "System.Image.ColorSpace", "System.Image.BitDepth",
+                "System.GPS.Altitude",
             });
+            object? Extra(string key) => extra.TryGetValue(key, out object? value) ? value : null;
+            static string? Text(object? value) => value switch
+            {
+                null => null,
+                string s => s,
+                IEnumerable<string> list => string.Join(", ", list),
+                _ => value.ToString(),
+            };
+            Row("Author", Text(Extra("System.Author")));
+            Row("Copyright", Text(Extra("System.Copyright")));
+            Row("Comment", Text(Extra("System.Comment")));
+            Row("Software", Text(Extra("System.ApplicationName")));
+            if (Extra("System.Image.ColorSpace") is ushort space)
+                Row("Colors", space == 1 ? "sRGB" : Loc.T("Its own color profile"));
+            if (Extra("System.Image.BitDepth") is uint depth && depth > 0)
+                Row("Bit depth", depth.ToString(CultureInfo.CurrentCulture));
+            if (properties.Latitude is double lat && properties.Longitude is double lon)
+            {
+                string place = $"{lat.ToString("0.00000", CultureInfo.InvariantCulture)}, {lon.ToString("0.00000", CultureInfo.InvariantCulture)}";
+                if (Extra("System.GPS.Altitude") is double altitude)
+                    place += "  ·  " + Loc.F("{0} m above sea level", Math.Round(altitude).ToString(CultureInfo.CurrentCulture));
+                Row("Location", place);
+                // the only thing here that goes to the internet, and only when clicked
+                string la = lat.ToString("0.000000", CultureInfo.InvariantCulture), lo = lon.ToString("0.000000", CultureInfo.InvariantCulture);
+                _details.Children.Add(new HyperlinkButton
+                {
+                    Content = Loc.T("Show on map"),
+                    NavigateUri = new Uri($"https://www.openstreetmap.org/?mlat={la}&mlon={lo}#map=16/{la}/{lo}"),
+                    Padding = new Thickness(0, 2, 0, 2),
+                });
+            }
             if (extra.TryGetValue("System.Photo.FNumber", out object? f) && f is double fNumber)
                 Row("Aperture", "f/" + fNumber.ToString("0.#", CultureInfo.CurrentCulture));
             if (extra.TryGetValue("System.Photo.ExposureTime", out object? t) && t is double exposure && exposure > 0)
@@ -320,6 +367,72 @@ internal sealed partial class ViewerWindow
         }
     }
 
+    /// <summary>Decodes the pictures before and after this one, so the arrow keys show them at once (and forgets the rest).</summary>
+    private void DecodeNeighbours(string path)
+    {
+        var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { path };
+        int index = -1;
+        for (int i = 0; i < _siblings.Count; i++)
+            if (string.Equals(_siblings[i], path, StringComparison.OrdinalIgnoreCase))
+                index = i;
+        if (index >= 0)
+        {
+            foreach (int direction in new[] { +1, -1 })
+                for (int step = 1; step < _siblings.Count; step++)
+                {
+                    string next = _siblings[(index + direction * step + _siblings.Count * step) % _siblings.Count];
+                    if (!ViewerModes.IsImage(next))
+                        continue;
+                    if (!next.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+                        keep.Add(next);
+                    break;
+                }
+        }
+        foreach (string old in _decoded.Keys.Where(k => !keep.Contains(k)).ToList())
+            _decoded.Remove(old);
+        foreach (string next in keep)
+            if (next != path && !_decoded.ContainsKey(next))
+                _decoded[next] = DecodeAsync(next);
+    }
+
+    private static async Task<BitmapImage?> DecodeAsync(string path)
+    {
+        try
+        {
+            if (new FileInfo(path).Length > 200L * 1024 * 1024)
+                return null; // a huge picture: only when it's shown
+            StorageFile file = await StorageFile.GetFileFromPathAsync(path);
+            var bitmap = new BitmapImage();
+            using (var stream = await file.OpenReadAsync())
+                await bitmap.SetSourceAsync(stream);
+            return bitmap;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException or ArgumentException)
+        {
+            return null; // shown (with its error) when it's its turn
+        }
+    }
+
+    private void Mirror(bool horizontal)
+    {
+        if (horizontal)
+            _mirrored = !_mirrored;
+        else
+            _flipped = !_flipped;
+        ApplyRotation();
+    }
+
+    /// <summary>The picture as wide as the window (scrolling down for the rest).</summary>
+    private void FitImageWidth()
+    {
+        if (_imageScroller == null || _imageWidth <= 0 || _imageScroller.ViewportWidth <= 0)
+            return;
+        double width = _rotation is 90 or 270 ? _imageHeight : _imageWidth;
+        double zoom = Math.Clamp((_imageScroller.ViewportWidth - 2) / width, _imageScroller.MinZoomFactor, _imageScroller.MaxZoomFactor);
+        _imageScroller.ChangeView(0, 0, (float)zoom, disableAnimation: true);
+        UpdateImageStatus();
+    }
+
     private void Rotate(double degrees)
     {
         _rotation = (_rotation + degrees + 360) % 360;
@@ -332,7 +445,15 @@ internal sealed partial class ViewerWindow
         if (_imageFrame == null)
             return;
         _imageFrame.RenderTransformOrigin = new Windows.Foundation.Point(0.5, 0.5);
-        _imageFrame.RenderTransform = _rotation == 0 ? null : new RotateTransform { Angle = _rotation };
+        if (_rotation == 0 && !_mirrored && !_flipped)
+            _imageFrame.RenderTransform = null;
+        else
+        {
+            var group = new TransformGroup();
+            group.Children.Add(new ScaleTransform { ScaleX = _mirrored ? -1 : 1, ScaleY = _flipped ? -1 : 1 });
+            group.Children.Add(new RotateTransform { Angle = _rotation });
+            _imageFrame.RenderTransform = group;
+        }
         // turned sideways, the frame takes the turned size (so the scroll area fits)
         bool sideways = _rotation is 90 or 270;
         if (_imageWidth > 0)
@@ -370,7 +491,7 @@ internal sealed partial class ViewerWindow
         _status.Text = size + Loc.F("{0} %", Math.Round(_imageScroller.ZoomFactor * 100));
     }
 
-    /// <summary>Picture keys: arrows and Space for the other pictures, + / − / 0 / 1 zoom, R turns.</summary>
+    /// <summary>Picture keys: arrows and Space for the other pictures, + / − / 0 / 1 / W zoom, R turns, M mirrors.</summary>
     private bool ImageKey(VirtualKey key)
     {
         switch (key)
@@ -395,6 +516,12 @@ internal sealed partial class ViewerWindow
                 return true;
             case VirtualKey.R:
                 Rotate(KeyboardState.IsDown(KeyboardState.Shift) ? -90 : 90);
+                return true;
+            case VirtualKey.W:
+                FitImageWidth();
+                return true;
+            case VirtualKey.M:
+                Mirror(horizontal: !KeyboardState.IsDown(KeyboardState.Shift)); // M mirrors, Shift+M turns upside down
                 return true;
             default:
                 return false;

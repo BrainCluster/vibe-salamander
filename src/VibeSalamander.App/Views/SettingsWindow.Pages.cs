@@ -184,6 +184,18 @@ public sealed partial class SettingsWindow
             ("In kilobytes (Windows Explorer default)", SizeFormat.KiloBytes),
             ("In short format (15 B, 3.41 KB, 12.5 MB)", SizeFormat.Short),
         }, p.SizeFormat, v => p.SizeFormat = v, display: true));
+        DateTime sample = new(2026, 10, 28, 21, 26, 53);
+        page.Children.Add(Choice("Show dates", null, new[]
+        {
+            (Loc.F("As Windows' region settings say ({0})", sample.ToString("d", CultureInfo.CurrentCulture)), DateStyle.System),
+            ("2026-10-28 (ISO)", DateStyle.Iso),
+        }, p.DateStyle, v => p.DateStyle = v, display: true));
+        page.Children.Add(Choice("Show times", null, new[]
+        {
+            (Loc.F("As Windows' region settings say ({0})", sample.ToString("T", CultureInfo.CurrentCulture)), TimeStyle.System),
+            ("21:26:53 (24 hours)", TimeStyle.Hours24),
+            ("9:26:53 PM (12 hours)", TimeStyle.Hours12),
+        }, p.TimeStyle, v => p.TimeStyle = v, display: true));
 
         page.Children.Add(Section("Keyboard"));
         page.Children.Add(Toggle("Redirect typing from the panel to the command line",
@@ -368,6 +380,26 @@ public sealed partial class SettingsWindow
             DispatcherQueue.TryEnqueue(() => Render(_currentPage));
         }, display: true));
         page.Children.Add(BuildSchemePreview());
+        var import = IconButton("\uE8B5", "A theme's .json file, from the \"themes\" folder of a Visual Studio Code extension", "Import...");
+        import.Click += async (_, _) =>
+        {
+            string? file = await _dialogs.PickFileAsync(".json");
+            if (file == null)
+                return;
+            string? problem;
+            try
+            {
+                VsCodeThemes.TryImport(await File.ReadAllTextAsync(file), c, out problem);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                problem = ex.Message;
+            }
+            if (problem != null)
+                await _dialogs.MessageAsync("Import a Visual Studio Code theme", problem);
+            Render(_currentPage);
+        };
+        page.Children.Add(Card("Visual Studio Code theme", "Its colors become the custom colors below (the Custom scheme).", import));
         page.Children.Add(Toggle("File type colors", "Executables, archives, images, audio / video, documents and source code in the scheme's colors.",
             c.FileTypeColors, v =>
             {

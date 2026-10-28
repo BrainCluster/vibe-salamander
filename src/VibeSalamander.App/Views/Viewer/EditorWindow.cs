@@ -50,6 +50,8 @@ internal sealed partial class EditorWindow : Window
     private readonly ComboBox _lineEndings = new() { MinWidth = 80, VerticalAlignment = VerticalAlignment.Center };
     private readonly AppBarToggleButton _previewButton;
     private readonly AppBarButton _formatButton;
+    private readonly AppBarButton _minifyButton;
+    private readonly AppBarButton _sortKeysButton;
     private readonly TextBlock _position = new() { VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _problems = new() { VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _fileInfo = new() { VerticalAlignment = VerticalAlignment.Center, Opacity = 0.75 };
@@ -84,6 +86,8 @@ internal sealed partial class EditorWindow : Window
         WindowPlacements.Restore(this, _options.EditorWindow, 1150, 800);
         _previewButton = new AppBarToggleButton { Label = Loc.T("Preview"), Icon = new FontIcon { Glyph = "\uE8A1" }, IsChecked = _options.EditorPreview };
         _formatButton = Button("Format", "\uE8E2", () => _ = FormatAsync());
+        _minifyButton = Button("Minify", "\uE73F", () => _ = RewriteAsync(minify: true));
+        _sortKeysButton = Button("Sort keys", "\uE8CB", () => _ = RewriteAsync(minify: false));
         BuildLayout();
         Content = _root;
         SetTitleBar(_titleBar);
@@ -145,6 +149,9 @@ internal sealed partial class EditorWindow : Window
         _bar.PrimaryCommands.Add(Button("Replace", "\uE8AB", () => Command("editor.action.startFindReplaceAction")));
         _bar.PrimaryCommands.Add(Button("Go to line", "\uE8AD", () => Command("editor.action.gotoLine")));
         _bar.PrimaryCommands.Add(_formatButton);
+        _bar.SecondaryCommands.Add(_minifyButton);
+        _bar.SecondaryCommands.Add(_sortKeysButton);
+        _bar.SecondaryCommands.Add(Button("Comment line (Ctrl+/)", "\uE90A", () => Command("editor.action.commentLine")));
         _previewButton.Click += (_, _) =>
         {
             _options.EditorPreview = _previewButton.IsChecked == true;
@@ -305,7 +312,9 @@ internal sealed partial class EditorWindow : Window
     {
         StructuredFormat? format = EditorLanguages.Checked(_language);
         _formatButton.Visibility = format is StructuredFormat.Json or StructuredFormat.Xml ? Visibility.Visible : Visibility.Collapsed;
-        _previewButton.Visibility = EditorLanguages.Preview(_language) != null ? Visibility.Visible : Visibility.Collapsed;
+        _minifyButton.Visibility = _formatButton.Visibility;
+        _sortKeysButton.Visibility = format is StructuredFormat.Json ? Visibility.Visible : Visibility.Collapsed;
+        _previewButton.Visibility = EditorLanguages.Preview(_language, _path) != null ? Visibility.Visible : Visibility.Collapsed;
         ApplyPreviewLayout();
         if (format == null)
         {
@@ -568,13 +577,13 @@ internal sealed partial class EditorWindow : Window
             _problems.Foreground = problems.Count == 0 ? (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xE0, 0x50, 0x50));
             Post(new { type = "markers", markers = problems.Select(p => new { line = p.Line, column = p.Column, message = p.Message }).ToArray() });
         }
-        if (_previewButton.IsChecked == true && EditorLanguages.Preview(_language) is { } preview)
+        if (_previewButton.IsChecked == true && EditorLanguages.Preview(_language, _path) is { } preview)
             _ = UpdatePreviewAsync(preview, text);
     }
 
     private void ApplyPreviewLayout()
     {
-        bool show = _previewButton.IsChecked == true && EditorLanguages.Preview(_language) != null;
+        bool show = _previewButton.IsChecked == true && EditorLanguages.Preview(_language, _path) != null;
         _body.ColumnDefinitions[1].Width = show ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
         if (_preview != null)
             _preview.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
@@ -609,9 +618,15 @@ internal sealed partial class EditorWindow : Window
             bool dark = _root.ActualTheme == ElementTheme.Dark;
             string path = _path;
             bool remote = _options.AllowRemoteContent;
-            string page = kind == "markdown"
-                ? await Task.Run(() => HtmlRendering.MarkdownPage(path, text, dark, remote))
-                : text;
+            string page = kind switch
+            {
+                "markdown" => await Task.Run(() => HtmlRendering.MarkdownPage(path, text, dark, remote)),
+                // the drawing in the middle, on a checkerboard (its transparent parts show); no scripts run
+                "svg" => "<!doctype html><html><head><meta charset=\"utf-8\"><style>html,body{margin:0;height:100%}" +
+                         "body{display:grid;place-items:center;background:repeating-conic-gradient(#ccc 0 25%,#fff 0 50%) 0 0/16px 16px}" +
+                         "svg{max-width:100%;max-height:100vh}</style></head><body>" + text + "</body></html>",
+                _ => text,
+            };
             // a file beside the others of the app (relative pictures come from the document's folder)
             if (_previewFile == null)
             {
@@ -652,6 +667,28 @@ internal sealed partial class EditorWindow : Window
             _plain.Text = formatted;
         else
             Post(new { type = "replaceAll", text = formatted });
+    }
+
+    /// <summary>Minify (JSON, XML) or Sort keys (JSON): one edit, so Ctrl+Z brings the text back.</summary>
+    private async Task RewriteAsync(bool minify)
+    {
+        if (EditorLanguages.Checked(_language) is not { } format)
+            return;
+        var (text, _) = await CurrentTextAsync();
+        string result = await Task.Run(() =>
+        {
+            string? done = minify ? Structured.Minify(text, format, out string? reason) : Structured.SortKeys(text, out reason);
+            return done ?? "\0" + reason;
+        });
+        if (result.StartsWith('\0'))
+        {
+            ShowInfo(InfoBarSeverity.Warning, Loc.T(minify ? "Not minified:" : "Keys not sorted:") + " " + Loc.T(result[1..]));
+            return;
+        }
+        if (_plain != null)
+            _plain.Text = result;
+        else
+            Post(new { type = "replaceAll", text = result });
     }
 
     // ---- saving ------------------------------------------------------------------------------------------

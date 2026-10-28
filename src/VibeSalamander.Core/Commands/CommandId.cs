@@ -160,4 +160,21 @@ public enum CommandId
 
     // Files → Compare Files (Ctrl+Shift+C)
     CompareFiles,
+
+    // a copy next to the original, named in place (Alt+Shift+D; Shift+F5 in Total Commander's shortcuts)
+    Duplicate,
+    // many names at once: masks, search and replace, counter (Ctrl+M in Total Commander's shortcuts)
+    MultiRename,
+    // all files of the folder and its subfolders in one list (Ctrl+B)
+    FlatView,
+    // the other panel shows the file under the caret (Ctrl+Q)
+    QuickView,
+    // the hot paths as a menu (Ctrl+D in Total Commander's shortcuts)
+    HotPathList,
+    // names into the command line (Ctrl+Enter, Ctrl+Shift+Enter, Ctrl+P in Total Commander's shortcuts)
+    NameToCommandLine,
+    FullNameToCommandLine,
+    PathToCommandLine,
+    // the earlier commands of the command line (Alt+F8)
+    CommandHistory,
 }

@@ -52,6 +52,18 @@ public sealed class DriveInformation
         return root.EndsWith('\\') ? root : root + "\\";
     }
 
+    /// <summary>The drive is write-protected (a locked SD card, a read-only volume): nothing can be written to it.</summary>
+    public static bool IsWriteProtected(string path)
+    {
+        if (!OperatingSystem.IsWindows() || RootOf(path) is not { } root)
+            return false;
+        const uint FILE_READ_ONLY_VOLUME = 0x00080000;
+        var label = new StringBuilder(261);
+        var fs = new StringBuilder(261);
+        return GetVolumeInformationW(root, label, label.Capacity, out _, out _, out uint flags, fs, fs.Capacity) &&
+               (flags & FILE_READ_ONLY_VOLUME) != 0 && (DriveType)GetDriveTypeW(root) != DriveType.CDRom;
+    }
+
     public static Task<DriveInformation?> QueryAsync(string path) => Task.Run(() =>
     {
         string? root = RootOf(path);

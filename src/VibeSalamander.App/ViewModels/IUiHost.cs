@@ -78,4 +78,16 @@ public interface IUiHost
     void ShowMenu(PaneViewModel pane, IReadOnlyList<MenuEntry> entries, bool atCaret);
     /// <summary>The Explorer "New" menu for the pane's directory; true when an item was chosen.</summary>
     bool ShowNewMenu(PaneViewModel pane);
+
+    /// <summary>Ctrl+Q: the other panel shows the item under the caret (again: the panel comes back).</summary>
+    void ToggleQuickView();
+
+    /// <summary>Ctrl+Enter and the like: text at the end of the command line.</summary>
+    void AddToCommandLine(string text);
+
+    /// <summary>Alt+F8: the command line's history as a menu.</summary>
+    void ShowCommandHistory(PaneViewModel pane);
+
+    /// <summary>The multi-rename tool on these items.</summary>
+    void ShowMultiRename(PaneViewModel pane, IReadOnlyList<Core.Tools.RenameSource> items);
 }

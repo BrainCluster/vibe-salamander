@@ -592,6 +592,53 @@ public sealed partial class SettingsWindow : Window
             ShowDetail();
         };
 
+        // "which command has this key?": press it, the command is shown and selected
+        var lookup = new TextBox { PlaceholderText = "Which command has a key? Click here and press it", IsReadOnly = true, Width = 360 };
+        var found = Hint(string.Empty);
+        lookup.PreviewKeyDown += (_, e) =>
+        {
+            e.Handled = true;
+            int key = (int)e.Key;
+            if (key is 0x10 or 0x11 or 0x12 or 0xA0 or 0xA1 or 0xA2 or 0xA3 or 0xA4 or 0xA5 or 0x5B or 0x5C)
+                return;
+            var chord = new KeyChord(key, Services.KeyboardState.CurrentModifiers());
+            lookup.Text = KeyMap.Describe(chord);
+            CommandId command = _keys!.Resolve(chord.Key, chord.Modifiers);
+            if (command == CommandId.None)
+            {
+                found.Text = Loc.F("{0} isn't used: it's free for a command.", KeyMap.Describe(chord));
+                return;
+            }
+            found.Text = Loc.F("{0}: {1}", KeyMap.Describe(chord), CommandCatalog.DisplayName(command));
+            _selectedCommand = command;
+            search.Text = string.Empty;
+            Fill();
+            ShowDetail();
+            if (list.SelectedItem != null)
+                list.ScrollIntoView(list.SelectedItem);
+        };
+        // all the shortcuts on one page, to print or keep open
+        var sheet = IconButton("\uE749", "All shortcuts on one page (opens in the browser, to print)", "Cheat sheet");
+        sheet.Click += (_, _) =>
+        {
+            try
+            {
+                string file = Path.Combine(Path.GetTempPath(), "VibeSalamander", "Shortcuts.html");
+                Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                File.WriteAllText(file, CommandCatalog.CheatSheet(_keys!, Loc.T("Vibe Salamander shortcuts")));
+                Core.Interop.ShellOperations.Open(file, Path.GetDirectoryName(file));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+            {
+                found.Text = ex.Message;
+            }
+        };
+        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 0, 0, 2) };
+        tools.Children.Add(lookup);
+        tools.Children.Add(sheet);
+        page.Children.Add(tools);
+        page.Children.Add(found);
+
         Fill();
         ShowDetail();
         page.Children.Add(search);

@@ -363,6 +363,8 @@ public static class UiState
     public static void ApplyOptions(Core.Settings.AppSettings settings)
     {
         _settings = settings;
+        Formats.DateStyle = settings.Panels.DateStyle;
+        Formats.TimeStyle = settings.Panels.TimeStyle;
         string family = settings.Appearance.FontFamily?.Trim() ?? string.Empty;
         PanelFont = family.Length > 0 ? new FontFamily(family) : null;
         ApplyDensity(Density);
@@ -425,6 +427,26 @@ public static class UiState
             Background: 0x2E3440, Text: 0xD8DEE9, Secondary: 0x7B88A1, Marked: 0xEBCB8B,
             FolderIcon: 0x88C0D0, DirectoryText: 0x88C0D0, Focus: 0x434C5E, FocusText: 0xECEFF4,
             Exe: 0xA3BE8C, Archive: 0xBF616A, Image: 0xB48EAD, Media: 0x8FBCBB, Document: 0xD08770, Code: 0x81A1C1),
+        new("SolarizedDark", "Solarized Dark", true,
+            Background: 0x002B36, Text: 0x93A1A1, Secondary: 0x586E75, Marked: 0xB58900,
+            FolderIcon: 0x268BD2, DirectoryText: 0x268BD2, Focus: 0x073642, FocusText: 0xEEE8D5,
+            Exe: 0x859900, Archive: 0xDC322F, Image: 0xD33682, Media: 0x6C71C4, Document: 0xCB4B16, Code: 0x2AA198),
+        new("SolarizedLight", "Solarized Light", false,
+            Background: 0xFDF6E3, Text: 0x586E75, Secondary: 0x93A1A1, Marked: 0xB58900,
+            FolderIcon: 0x268BD2, DirectoryText: 0x268BD2, Focus: 0xEEE8D5, FocusText: 0x073642,
+            Exe: 0x859900, Archive: 0xDC322F, Image: 0xD33682, Media: 0x6C71C4, Document: 0xCB4B16, Code: 0x2AA198),
+        new("GitHubDark", "GitHub Dark", true,
+            Background: 0x0D1117, Text: 0xC9D1D9, Secondary: 0x8B949E, Marked: 0xD29922,
+            FolderIcon: 0x58A6FF, DirectoryText: 0x58A6FF, Focus: 0x264F78, FocusText: 0xFFFFFF,
+            Exe: 0x3FB950, Archive: 0xF85149, Image: 0xD2A8FF, Media: 0xA5D6FF, Document: 0xFFA657, Code: 0x79C0FF),
+        new("GitHubLight", "GitHub Light", false,
+            Background: 0xFFFFFF, Text: 0x24292F, Secondary: 0x6E7781, Marked: 0x9A6700,
+            FolderIcon: 0x54AEFF, DirectoryText: 0x0969DA, Focus: 0xDDF4FF, FocusText: 0x24292F,
+            Exe: 0x1A7F37, Archive: 0xCF222E, Image: 0x8250DF, Media: 0x0550AE, Document: 0xBC4C00, Code: 0x0A3069),
+        // Altap Salamander 2.5's look: black on white, marked names red, a blue cursor bar
+        new("Salamander", "Altap Salamander (classic)", false,
+            Background: 0xFFFFFF, Text: 0x000000, Secondary: 0x000000, Marked: 0xFF0000,
+            FolderIcon: 0xE8B830, DirectoryText: 0x000000, Focus: 0x0A246A, FocusText: 0xFFFFFF),
         new("Matrix", "Phosphor (green terminal)", true,
             Background: 0x0A0F0A, Text: 0x33FF66, Secondary: 0x1F9940, Marked: 0xEEFF41,
             FolderIcon: 0x99FFAA, DirectoryText: 0x99FFAA, Focus: 0x33FF66, FocusText: 0x0A0F0A),
