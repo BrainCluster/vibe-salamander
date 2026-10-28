@@ -113,7 +113,7 @@ public sealed class ReleaseScenarios : IDisposable
         app.Menu("Help", "First Steps...");
         Thread.Sleep(1200);
         AppSession.Screenshot("r03 first steps");
-        ComboBox keys = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByControlType(ControlType.ComboBox))?.AsComboBox(), "the shortcuts choice");
+        FlaUI.Core.AutomationElements.ComboBox keys = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByControlType(ControlType.ComboBox))?.AsComboBox(), "the shortcuts choice");
         keys.Select(1);
         Thread.Sleep(600);
         app.Click("OK", settleMs: 1500);
