@@ -119,6 +119,7 @@ public sealed partial class CompareWindow : Window
         _right = right;
         _options = options;
         InitializeComponent();
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SyncButton, Loc.T("Synchronize"));
         _dialogs = new Dialogs(() => Content.XamlRoot, () => RootGrid.ActualTheme, () => AppWindow.Id);
         Loc.Translate(RootGrid);
         Title = Loc.T(Title);
@@ -274,6 +275,7 @@ public sealed partial class CompareWindow : Window
         int steps = plan.Actions.Count;
         SyncButton.IsEnabled = steps > 0 && _cts == null;
         SyncText.Text = steps == 0 ? Loc.T("Synchronize") : Loc.F("Synchronize ({0})", steps.ToString("N0"));
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SyncButton, SyncText.Text); // icon and text: the text is its name
     }
 
     private void Direction_SelectionChanged(object sender, SelectionChangedEventArgs e)

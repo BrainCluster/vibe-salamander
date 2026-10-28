@@ -99,6 +99,8 @@ public sealed partial class DuplicatesWindow : Window
         _main = main;
         _focusInPanel = focusInPanel;
         InitializeComponent();
+        // the button shows an icon and a text: give it the text as its name (screen readers, UI tests)
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(SelectButton, Loc.T("Select duplicates"));
         _dialogs = new Dialogs(() => Content.XamlRoot, () => RootGrid.ActualTheme, () => AppWindow.Id);
         Loc.Translate(RootGrid);
         if (SelectButton.Flyout is MenuFlyout menu)
