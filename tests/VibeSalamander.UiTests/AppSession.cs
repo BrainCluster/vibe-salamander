@@ -62,6 +62,7 @@ public sealed class AppSession : IDisposable
         settings.General.Language = "en";
         settings.General.SingleInstance = false;
         settings.General.CheckForUpdates = false; // no calls to GitHub from the tests
+        settings.ViewStyle = VibeSalamander.Core.Panels.ViewStyle.Classic; // the tests expect one view per panel (a test can choose Modern)
         configure(settings);
         SettingsStore.Save(settings, Path.Combine(Home, "settings.json"));
 

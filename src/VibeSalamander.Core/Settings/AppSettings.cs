@@ -143,7 +143,7 @@ public sealed class AppSettings
     public WindowPlacement MultiRenameWindow { get; set; } = new();
 
     /// <summary>Classic: one view per panel; Modern: views per folder, like Explorer (Configuration → Views).</summary>
-    public ViewStyle ViewStyle { get; set; } = ViewStyle.Classic;
+    public ViewStyle ViewStyle { get; set; } = ViewStyle.Modern;
 
     /// <summary>Modern views: the view chosen in each folder, by <see cref="Panels.FolderViews.Key"/>.</summary>
     public Dictionary<string, FolderView> FolderViews { get; set; } = new();

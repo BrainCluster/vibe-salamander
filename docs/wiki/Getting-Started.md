@@ -62,9 +62,9 @@ Ctrl+F3…F6 sort by name, extension, date or size (press again to reverse).
 
 There are two ways views can behave (Configuration → Views → *Folder views*):
 
-- **Classic** (the default): each panel keeps one view everywhere, like Salamander.
-- **Modern**, like File Explorer: This PC opens as tiles, folders of pictures and videos open as thumbnails, and
-  the view you pick for a folder is remembered for that folder.
+- **Modern** (the default), like File Explorer: This PC opens as tiles, folders of pictures and videos open as
+  thumbnails, and the view you pick for a folder is remembered for that folder.
+- **Classic**: each panel keeps one view everywhere, like Salamander.
 
 ## Where to go next
 
