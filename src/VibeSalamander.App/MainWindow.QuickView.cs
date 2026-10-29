@@ -152,6 +152,12 @@ public sealed partial class MainWindow
         var themes = new[] { Core.Settings.AppTheme.System, Core.Settings.AppTheme.Light, Core.Settings.AppTheme.Dark };
         ComboBox theme = Combo(new[] { Loc.T("Use system setting"), Loc.T("Light"), Loc.T("Dark") }, Array.IndexOf(themes, s.Theme));
         var schemes = UiState.Schemes;
+        var styles = new[] { Core.Panels.ViewStyle.Modern, Core.Panels.ViewStyle.Classic };
+        ComboBox views = Combo(new[]
+        {
+            Loc.T("Modern: like File Explorer (thumbnails for pictures, a view remembered per folder)"),
+            Loc.T("Classic: one view per panel, like Salamander"),
+        }, Array.IndexOf(styles, s.ViewStyle));
         ComboBox colors = Combo(schemes.Select(x => Loc.T(x.Name)), Array.FindIndex(schemes, x => x.Id == s.Colors.Scheme));
         var languages = new List<(string Name, string Code)> { (Loc.T("Windows language"), string.Empty) };
         languages.AddRange(Loc.Languages.Select(l => (l.Name, l.Code)));
@@ -168,6 +174,7 @@ public sealed partial class MainWindow
         }
         Row("Shortcuts like", "F5 copies and F6 moves in both; the rest follows the program you know.", keys);
         Row("Theme", null, theme);
+        Row("Folder views", null, views);
         Row("Colors of the panels", null, colors);
         Row("Language", "Changing it restarts Vibe Salamander.", language);
         body.Children.Add(new TextBlock
@@ -186,6 +193,13 @@ public sealed partial class MainWindow
             _vm.SetKeyScheme(scheme); // your own key changes start over from those shortcuts
         s.Theme = themes[Math.Max(0, theme.SelectedIndex)];
         s.Colors.Scheme = schemes[Math.Max(0, colors.SelectedIndex)].Id;
+        Core.Panels.ViewStyle style = styles[Math.Max(0, views.SelectedIndex)];
+        if (style != s.ViewStyle)
+        {
+            s.ViewStyle = style;
+            _vm.Left.ApplyViewStyle();
+            _vm.Right.ApplyViewStyle();
+        }
         string code = languages[Math.Max(0, language.SelectedIndex)].Code;
         bool restart = code != (s.General.Language ?? string.Empty);
         s.General.Language = code;

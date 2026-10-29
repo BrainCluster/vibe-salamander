@@ -170,7 +170,7 @@ Options → Configuration has Open Salamander's pages, plus a search box: confir
 drives, the keyboard (every command can get any key), the toolbar, hot paths, the user menu, the transfer panel,
 plugins, and backup (export and import of all settings). The keyboard page tells **which command a key has** (press
 it) and makes a **cheat sheet** of all shortcuts to print. **Help → First Steps** chooses the shortcuts (Salamander
-or Total Commander), the theme, the colors and the language on one page.
+or Total Commander), the theme, the folder views, the colors and the language on one page.
 
 | | |
 |---|---|
