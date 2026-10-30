@@ -26,6 +26,7 @@ public static class ListMenu
     public const int VisibleCharacters = 50;
     public const int VisibleRows = 10;
     private const double RowHeight = 32;
+    private const double DetailRowHeight = 44;
     private const double IconWidth = 30;
     private const double ScrollSpeed = 70; // pixels a second
     private static readonly TimeSpan Pause = TimeSpan.FromSeconds(0.9);
@@ -38,24 +39,29 @@ public static class ListMenu
     /// (<see cref="MenuEntry.Header"/>). Every list menu has the same size: the title, then 10 rows of an icon,
     /// 50 characters and a shortcut.
     /// </summary>
-    public static void Show(FrameworkElement anchor, string? title, IReadOnlyList<MenuEntry> entries, FlyoutShowOptions options, Action? closed = null)
+    public static void Show(FrameworkElement anchor, string? title, IReadOnlyList<MenuEntry> entries, FlyoutShowOptions options, Action? closed = null,
+        int characters = VisibleCharacters, string? widestDetail = null)
     {
         if (entries.Count > 0 && entries[0] is { IsSeparator: false, IsEnabled: false, Invoke: null } header)
         {
             title ??= header.Text;
             entries = entries.Skip(1).ToList();
         }
-        double labelWidth = Measure(Sample[..VisibleCharacters], 14).Width;
-        // room for the longest shortcut there is, so every menu has the same width
-        double shortcutWidth = entries.Where(e => !string.IsNullOrEmpty(e.Shortcut)).Select(e => Measure(e.Shortcut!, 12).Width)
-            .Append(Measure("Ctrl+Shift+F12", 12).Width).Max() + 20;
+        double labelWidth = Measure(Sample[..Math.Min(characters, Sample.Length)], 14).Width;
+        // room for the longest shortcut there is, so every menu has the same width; or for the details (the drive menu)
+        double shortcutWidth = widestDetail != null
+            ? entries.Where(e => !string.IsNullOrEmpty(e.Detail)).Select(e => Measure(e.Detail!, 11).Width)
+                .Append(Measure(widestDetail, 11).Width).Max() + 16
+            : entries.Where(e => !string.IsNullOrEmpty(e.Shortcut)).Select(e => Measure(e.Shortcut!, 12).Width)
+                .Append(Measure("Ctrl+Shift+F12", 12).Width).Max() + 20;
         double width = IconWidth + labelWidth + shortcutWidth + 44;
+        double rowHeight = entries.Any(e => e.Detail != null) ? DetailRowHeight : RowHeight;
 
         var list = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
             IsItemClickEnabled = true,
-            MaxHeight = VisibleRows * RowHeight + 8, // fewer rows: shorter; never taller
+            MaxHeight = VisibleRows * rowHeight + 8, // fewer rows: shorter; never taller
             Padding = new Thickness(0, 4, 0, 4),
         };
         ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Disabled);
@@ -222,13 +228,28 @@ public static class ListMenu
             Grid.SetColumn(shortcut, 2);
             grid.Children.Add(shortcut);
         }
+        else if (!string.IsNullOrEmpty(entry.Detail))
+        {
+            // a drive: how full it is, and "120 GB free of 476 GB" below, at the right
+            var detail = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+            if (entry.Fullness >= 0)
+            {
+                var bar = new ProgressBar { Minimum = 0, Maximum = 100, Value = Math.Clamp(entry.Fullness, 0, 1) * 100, Height = 4, MinHeight = 4 };
+                if (entry.Fullness >= 0.9)
+                    bar.Foreground = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0xD1, 0x34, 0x38)); // nearly full: red, like Explorer
+                detail.Children.Add(bar);
+            }
+            detail.Children.Add(new TextBlock { Text = entry.Detail, FontSize = 11, Opacity = 0.75, HorizontalAlignment = HorizontalAlignment.Right });
+            Grid.SetColumn(detail, 2);
+            grid.Children.Add(detail);
+        }
 
         var item = new ListViewItem
         {
             Content = grid,
             IsEnabled = entry.IsEnabled,
-            MinHeight = RowHeight,
-            Height = RowHeight,
+            MinHeight = entry.Detail != null ? DetailRowHeight : RowHeight,
+            Height = entry.Detail != null ? DetailRowHeight : RowHeight,
             Padding = new Thickness(12, 0, 12, 0),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
         };

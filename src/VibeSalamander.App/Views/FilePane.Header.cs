@@ -169,9 +169,14 @@ public sealed partial class FilePane
         var entries = new List<MenuEntry>();
         foreach (DriveButtonViewModel drive in ViewModel.VisibleDrives)
         {
-            string free = drive.Drive.HasSize ? $"   {Core.Formatting.Formats.ShortSize(drive.Drive.FreeSpace)} free" : string.Empty;
-            string root = drive.Drive.Root;
-            entries.Add(new MenuEntry($"{root.TrimEnd('\\')}   {drive.Drive.Caption}{free}", async () => await ViewModel.ChangeDriveAsync(root), "\uEDA2"));
+            DriveEntryInfo d = drive.Drive;
+            string root = d.Root;
+            string? free = d.HasSize && d.TotalSize > 0
+                ? Loc.F("{0} free of {1}", Core.Formatting.Formats.ShortSize(d.FreeSpace), Core.Formatting.Formats.ShortSize(d.TotalSize))
+                : null;
+            double fullness = d.HasSize && d.TotalSize > 0 ? 1 - (double)d.FreeSpace / d.TotalSize : -1;
+            entries.Add(new MenuEntry($"{root.TrimEnd('\\')}   {d.Caption}", async () => await ViewModel.ChangeDriveAsync(root), "\uEDA2",
+                Detail: free, Fullness: fullness));
             if (drive.SeparatorAfter)
                 entries.Add(MenuEntry.Separator);
         }
@@ -196,7 +201,7 @@ public sealed partial class FilePane
         {
             Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft,
             ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
-        }, FocusList);
+        }, FocusList, characters: 30, widestDetail: Loc.F("{0} free of {1}", "999 GB", "9.99 TB"));
     }
 
     private void DirectoryLine_PointerPressed(object sender, PointerRoutedEventArgs e)

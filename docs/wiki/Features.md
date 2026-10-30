@@ -27,6 +27,8 @@
 - **List menus** (drives, hot paths, opened files, working directories, histories, the user menu) all have the same
   width (50 characters with icons and shortcuts) and a title; up to 10 rows, scrolling beyond; a longer path slides sideways under the mouse or the keyboard, and its
   tooltip shows all of it. A letter jumps to the next row starting with it (C for the C: drive).
+  The drive menu is narrower (30 characters) and shows each drive's free space at the right, with a bar of how
+  full it is (red when nearly full).
 
 ![Thumbnails of a photo folder, documents in the other panel, in the dark theme](images/hero-dark.png)
 
