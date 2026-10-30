@@ -191,6 +191,12 @@ public static class ListMenu
             };
         }
 
+        // nothing at the right (no shortcut, no free space): the label has that room too
+        if (string.IsNullOrEmpty(entry.Shortcut) && string.IsNullOrEmpty(entry.Detail))
+        {
+            labelWidth += shortcutWidth;
+            shortcutWidth = 0;
+        }
         var grid = new Grid { ColumnSpacing = 0 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(IconWidth) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(labelWidth) });
