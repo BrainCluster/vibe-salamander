@@ -64,7 +64,7 @@ public sealed partial class MainViewModel : BindableBase
         foreach (PaneViewModel pane in new[] { Left, Right })
         {
             pane.Navigated += (_, path) => RememberRecent(Settings.WorkingDirectories, path, WorkingDirectoriesLimit);
-            pane.FileOpened += (_, path) => RememberRecent(Settings.OpenedFiles, path);
+            pane.FileOpened += (_, path) => RememberOpened(path);
             PaneViewModel p = pane;
             pane.ArchiveFileOpenRequested += async (_, item) =>
             {

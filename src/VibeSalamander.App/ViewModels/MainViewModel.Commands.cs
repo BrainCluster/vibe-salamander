@@ -389,7 +389,7 @@ public sealed partial class MainViewModel
         {
             if (!RunProgramRule(Settings.Viewers, item))
                 ViewWithoutRules(item.Entry.FullPath, SiblingFiles(_active));
-            RememberRecent(Settings.OpenedFiles, item.Entry.FullPath);
+            RememberOpened(item.Entry.FullPath);
         }
     }
 
@@ -400,7 +400,7 @@ public sealed partial class MainViewModel
         {
             if (!RunProgramRule(Settings.Editors, item))
                 EditWithoutRules(item.Entry.FullPath);
-            RememberRecent(Settings.OpenedFiles, item.Entry.FullPath);
+            RememberOpened(item.Entry.FullPath);
         }
     }
 

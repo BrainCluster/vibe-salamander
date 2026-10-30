@@ -312,6 +312,13 @@
                         <FontIcon Glyph="&#xE734;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
                                   Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
                     </Button>
+                    <!-- the recently opened files (Alt+F11) -->
+                    <Button x:Name="OpenedFilesButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                            Click="OpenedFilesButton_Click" ToolTipService.ToolTip="Opened files (Alt+F11)"
+                            AutomationProperties.Name="Opened files">
+                        <FontIcon Glyph="&#xE8A5;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                    </Button>
                     <!-- recent locations, like the drop-down at the end of Explorer's address bar (Alt+F12) -->
                     <Button x:Name="HistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
                             Click="HistoryButton_Click" ToolTipService.ToolTip="Working directories (Alt+F12)">

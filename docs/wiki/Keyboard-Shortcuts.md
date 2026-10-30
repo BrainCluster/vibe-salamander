@@ -19,6 +19,7 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | Ctrl+. | Path from the other panel |
 | Ctrl+1…9 / Ctrl+Shift+1…9 | Go to / set a hot path |
 | Shift+F9 | Hot path list |
+| Alt+F11 / Alt+F12 | List of opened files / working directories |
 | Ctrl+B | All files of the subfolders (again: back) |
 | Ctrl+Q | Quick view in the other panel |
 | typing | Quick search |

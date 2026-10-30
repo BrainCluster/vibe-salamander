@@ -138,7 +138,18 @@ public sealed partial class FilePane
         if (ViewModel == null || _main == null)
             return;
         _main.Activate(ViewModel);
+        _menuAnchor = HotPathsButton;
         await _main.ExecuteAsync(CommandId.HotPathList);
+    }
+
+    /// <summary>The recently opened files as a menu (Alt+F11).</summary>
+    private async void OpenedFilesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        _main.Activate(ViewModel);
+        _menuAnchor = OpenedFilesButton;
+        await _main.ExecuteAsync(CommandId.OpenedFilesList);
     }
 
     private async void HistoryButton_Click(object sender, RoutedEventArgs e)
@@ -205,7 +216,7 @@ public sealed partial class FilePane
         if (ViewModel == null || _main == null)
             return;
         _main.Activate(ViewModel);
-        if (e.OriginalSource is DependencyObject source && (IsInside(source, DriveMenuButton) || IsInside(source, HotPathsButton) || IsInside(source, HistoryButton) || IsInside(source, MaximizeButton)))
+        if (e.OriginalSource is DependencyObject source && (IsInside(source, DriveMenuButton) || IsInside(source, HotPathsButton) || IsInside(source, OpenedFilesButton) || IsInside(source, HistoryButton) || IsInside(source, MaximizeButton)))
             return;
         BeginPathEdit();
         e.Handled = true;

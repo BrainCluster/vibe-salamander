@@ -22,6 +22,8 @@
   to copy, delete, rename or compare them together; Ctrl+B again goes back.
 - **Hot path list** (Shift+F9; Ctrl+D in Total Commander's shortcuts, or the star button at the end of the address bar)
   as a menu, with "add this folder".
+- **Opened files** (Alt+F11, or the document button at the end of the address bar): the files opened lately, newest
+  first; choosing one goes to it and opens it again. How many are kept: Configuration → History (10 by default).
 
 ![Thumbnails of a photo folder, documents in the other panel, in the dark theme](images/hero-dark.png)
 

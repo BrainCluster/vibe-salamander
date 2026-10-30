@@ -47,8 +47,13 @@ public sealed partial class FilePane
     }
 
     /// <summary>A command menu (user menu, lists) at the caret item, or at the start of the address bar.</summary>
+    /// <summary>The address bar button that asked for the next menu (it opens under it), else the working directories one.</summary>
+    private FrameworkElement? _menuAnchor;
+
     public void ShowMenu(IReadOnlyList<MenuEntry> entries, bool atCaret)
     {
+        FrameworkElement? anchor = _menuAnchor;
+        _menuAnchor = null;
         if (ViewModel == null)
             return;
         var menu = new MenuFlyout();
@@ -79,7 +84,7 @@ public sealed partial class FilePane
                 ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
             });
         else
-            menu.ShowAt(HistoryButton, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+            menu.ShowAt(anchor ?? HistoryButton, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
             {
                 Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight,
                 ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,

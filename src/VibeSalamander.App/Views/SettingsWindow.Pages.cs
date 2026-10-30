@@ -959,6 +959,11 @@ public sealed partial class SettingsWindow
         HistoryOptions h = s.History;
         StackPanel page = Page("History", "Choose whether recently used values are kept with the configuration.");
         page.Children.Add(Toggle("Save history", "The list of opened files (Alt+F11).", h.SaveHistory, v => h.SaveHistory = v));
+        page.Children.Add(Number("Opened files to keep", "Alt+F11 and the opened files button of the address bar; the most recent ones are listed first.", h.OpenedFilesLimit, 1, 100, v =>
+        {
+            h.OpenedFilesLimit = v;
+            _vm.TrimOpenedFiles();
+        }));
         page.Children.Add(Toggle("Save the list of working directories", "Alt+F12 and the drop-down arrow of the address bar.", h.SaveWorkingDirectories, v => h.SaveWorkingDirectories = v));
         page.Children.Add(Number("Working directories to keep", "The most recent ones are listed first.", h.WorkingDirectoriesLimit, 1, 100, v =>
         {

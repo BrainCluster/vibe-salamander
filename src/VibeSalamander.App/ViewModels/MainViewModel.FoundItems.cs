@@ -51,7 +51,7 @@ public sealed partial class MainViewModel
         {
             if (!RunProgramRule(rules, new FileItemViewModel(entry, _active.Columns), context))
                 fallback();
-            RememberRecent(Settings.OpenedFiles, entry.FullPath);
+            RememberOpened(entry.FullPath);
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or FileNotFoundException)
         {

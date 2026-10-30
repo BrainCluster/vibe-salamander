@@ -45,6 +45,20 @@ public sealed partial class MainViewModel
             Settings.WorkingDirectories.RemoveRange(max, Settings.WorkingDirectories.Count - max);
     }
 
+    /// <summary>Configuration → History: how many opened files are kept (Alt+F11).</summary>
+    public int OpenedFilesLimit => Math.Clamp(Settings.History.OpenedFilesLimit, 1, 100);
+
+    /// <summary>A file was opened: first in the List of Opened Files.</summary>
+    private void RememberOpened(string path) => RememberRecent(Settings.OpenedFiles, path, OpenedFilesLimit);
+
+    /// <summary>Applies a lowered limit to the list at once.</summary>
+    public void TrimOpenedFiles()
+    {
+        int max = OpenedFilesLimit;
+        if (Settings.OpenedFiles.Count > max)
+            Settings.OpenedFiles.RemoveRange(max, Settings.OpenedFiles.Count - max);
+    }
+
     private static DirectoryComparer.Item ToCompareItem(FileItemViewModel i) =>
         new(i.Entry.Name, i.Entry.IsDirectory, i.Entry.Size, i.Entry.LastWrite, i.Entry.Attributes);
 
@@ -440,7 +454,7 @@ public sealed partial class MainViewModel
     private void ShowOpenedFiles(PaneViewModel pane)
     {
         var entries = new List<MenuEntry> { MenuEntry.Header("Opened files") };
-        foreach (string file in Settings.OpenedFiles.Take(MaxRecent))
+        foreach (string file in Settings.OpenedFiles.Take(OpenedFilesLimit))
         {
             string path = file;
             entries.Add(new MenuEntry(path, async () =>
@@ -451,7 +465,7 @@ public sealed partial class MainViewModel
                 if (File.Exists(path))
                 {
                     ShellOperations.Open(path, dir);
-                    RememberRecent(Settings.OpenedFiles, path);
+                    RememberOpened(path);
                 }
                 else
                 {
