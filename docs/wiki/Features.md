@@ -25,7 +25,7 @@
 - **Opened files** (Alt+F11, or the document button at the end of the address bar): the files opened lately, newest
   first; choosing one goes to it and opens it again. How many are kept: Configuration → History (10 by default).
 - **List menus** (drives, hot paths, opened files, working directories, histories, the user menu) all have the same
-  size: a title, then 10 rows of 50 characters with icons and shortcuts, scrolling beyond; a longer path slides sideways under the mouse or the keyboard, and its
+  width (50 characters with icons and shortcuts) and a title; up to 10 rows, scrolling beyond; a longer path slides sideways under the mouse or the keyboard, and its
   tooltip shows all of it. A letter jumps to the next row starting with it (C for the C: drive).
 
 ![Thumbnails of a photo folder, documents in the other panel, in the dark theme](images/hero-dark.png)

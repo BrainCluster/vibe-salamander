@@ -55,7 +55,7 @@ public static class ListMenu
         {
             SelectionMode = ListViewSelectionMode.Single,
             IsItemClickEnabled = true,
-            Height = VisibleRows * RowHeight + 8,
+            MaxHeight = VisibleRows * RowHeight + 8, // fewer rows: shorter; never taller
             Padding = new Thickness(0, 4, 0, 4),
         };
         ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Disabled);
