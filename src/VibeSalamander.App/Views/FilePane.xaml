@@ -312,6 +312,13 @@
                         <FontIcon Glyph="&#xE734;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
                                   Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
                     </Button>
+                    <!-- the command line history (Alt+F8) -->
+                    <Button x:Name="CommandHistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                            Click="CommandHistoryButton_Click" ToolTipService.ToolTip="Command line history (Alt+F8)"
+                            AutomationProperties.Name="Command line history">
+                        <FontIcon Glyph="&#xE81C;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                    </Button>
                     <!-- the recently opened files (Alt+F11) -->
                     <Button x:Name="OpenedFilesButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
                             Click="OpenedFilesButton_Click" ToolTipService.ToolTip="Opened files (Alt+F11)"
@@ -323,13 +330,6 @@
                     <Button x:Name="HistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
                             Click="HistoryButton_Click" ToolTipService.ToolTip="Working directories (Alt+F12)">
                         <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
-                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                    </Button>
-                    <!-- the command line history (Alt+F8) -->
-                    <Button x:Name="CommandHistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
-                            Click="CommandHistoryButton_Click" ToolTipService.ToolTip="Command line history (Alt+F8)"
-                            AutomationProperties.Name="Command line history">
-                        <FontIcon Glyph="&#xE81C;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
                                   Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
                     </Button>
                 </StackPanel>

@@ -24,7 +24,7 @@
   as a menu, with "add this folder".
 - **Opened files** (Alt+F11, or the document button at the end of the address bar): the files opened lately, newest
   first; choosing one goes to it and opens it again. How many are kept: Configuration → History (10 by default).
-- **Command line history** (Alt+F8, or the clock button at the end of the address bar): the command chosen goes
+- **Command line history** (Alt+F8, or the clock button next to the hot paths button): the command chosen goes
   into the command line.
 - **List menus** (drives, hot paths, opened files, working directories, histories, the user menu) all have the same
   width (50 characters with icons and shortcuts) and a title; up to 10 rows, scrolling beyond; a longer path slides sideways under the mouse or the keyboard, and its
