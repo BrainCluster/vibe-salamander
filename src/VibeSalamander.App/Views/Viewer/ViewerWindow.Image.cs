@@ -174,6 +174,8 @@ internal sealed partial class ViewerWindow
             VerticalScrollMode = ScrollMode.Auto,
             Content = _imageFrame,
             IsTabStop = true,
+            // it has the focus for the keys (next picture, zoom); its focus rectangle would frame the picture
+            UseSystemFocusVisuals = false,
         };
         _imageScroller.ViewChanged += (_, _) => UpdateImageStatus();
         // the mouse wheel zooms pictures (around the pointer) instead of scrolling them; the content sees the wheel

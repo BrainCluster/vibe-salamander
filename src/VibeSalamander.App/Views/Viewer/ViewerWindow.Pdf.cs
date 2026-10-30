@@ -41,6 +41,7 @@ internal sealed partial class ViewerWindow
                 HorizontalScrollMode = ScrollMode.Auto,
                 Content = _pdfPages,
                 IsTabStop = true,
+                UseSystemFocusVisuals = false, // no focus rectangle around the pages
             };
             _pdfScroller.ViewChanged += (_, e) =>
             {
