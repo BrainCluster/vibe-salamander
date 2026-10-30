@@ -57,6 +57,15 @@ public sealed class UpdatesTests : IDisposable
     }
 
     [Fact]
+    public void The_portable_zip_is_found_by_its_new_name_too()
+    {
+        // from 0.8.4: "-portable-win-x64.zip"; an older updater looks for the ending "-win-x64.zip" and still finds it
+        ReleaseInfo release = UpdateCheck.Parse(Release.Replace("VibeSalamander-0.8.0-win-x64.zip", "VibeSalamander-0.8.0-portable-win-x64.zip"))!;
+        Assert.Equal("VibeSalamander-0.8.0-portable-win-x64.zip", UpdateCheck.AssetFor(release, InstallKind.Portable, Architecture.X64)!.Name);
+        Assert.EndsWith("-win-x64.zip", "VibeSalamander-0.8.0-portable-win-x64.zip");
+    }
+
+    [Fact]
     public void Versions_compare_as_numbers()
     {
         Assert.True(UpdateCheck.IsNewer("0.8.0", "0.7.0"));
