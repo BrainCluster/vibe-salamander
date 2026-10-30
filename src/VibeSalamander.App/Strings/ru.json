@@ -288,6 +288,7 @@
  "Command line": "Командная строка",
  "Command line (Enter runs in the active panel's directory)": "Командная строка (Enter выполняет в папке активной панели)",
  "Command line history": "История командной строки",
+ "Command line history (Alt+F8)": "История командной строки (Alt+F8)",
  "Command prompt here": "Командная строка здесь",
  "Command shell": "Командная оболочка",
  "Commands": "Команды",

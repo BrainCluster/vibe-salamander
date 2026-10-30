@@ -288,6 +288,7 @@
   "Command line": "Příkazový řádek",
   "Command line (Enter runs in the active panel's directory)": "Příkazový řádek (Enter spustí v adresáři aktivního panelu)",
   "Command line history": "Historie příkazového řádku",
+  "Command line history (Alt+F8)": "Historie příkazového řádku (Alt+F8)",
   "Command prompt here": "Zde otevřít příkazový řádek",
   "Command shell": "Příkazový procesor",
   "Commands": "Příkazy",

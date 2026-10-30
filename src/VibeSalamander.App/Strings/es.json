@@ -289,6 +289,7 @@
  "Command line": "Línea de comandos",
  "Command line (Enter runs in the active panel's directory)": "Línea de comandos (Enter ejecuta en la carpeta del panel activo)",
  "Command line history": "Historial de la línea de comandos",
+ "Command line history (Alt+F8)": "Historial de la línea de comandos (Alt+F8)",
  "Command prompt here": "Símbolo del sistema aquí",
  "Command shell": "Shell de comandos",
  "Commands": "Comandos",

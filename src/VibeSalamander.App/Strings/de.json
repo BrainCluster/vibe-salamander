@@ -288,6 +288,7 @@
   "Command line": "Befehlszeile",
   "Command line (Enter runs in the active panel's directory)": "Befehlszeile (Enter führt im Ordner des aktiven Panels aus)",
   "Command line history": "Verlauf der Befehlszeile",
+  "Command line history (Alt+F8)": "Befehlszeilenverlauf (Alt+F8)",
   "Command prompt here": "Eingabeaufforderung hier",
   "Command shell": "Befehlsshell",
   "Commands": "Befehle",

@@ -160,6 +160,16 @@ public sealed partial class FilePane
         await _main.ExecuteAsync(CommandId.WorkingDirectoriesList);
     }
 
+    /// <summary>The command line history as a menu (Alt+F8); the one chosen goes into the command line.</summary>
+    private async void CommandHistoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel == null || _main == null)
+            return;
+        _main.Activate(ViewModel);
+        _menuAnchor = CommandHistoryButton;
+        await _main.ExecuteAsync(CommandId.CommandHistory);
+    }
+
     /// <summary>Alt+F1 / Alt+F2 drive menu.</summary>
     public void ShowDriveMenu()
     {
@@ -224,7 +234,7 @@ public sealed partial class FilePane
         if (ViewModel == null || _main == null)
             return;
         _main.Activate(ViewModel);
-        if (e.OriginalSource is DependencyObject source && (IsInside(source, DriveMenuButton) || IsInside(source, HotPathsButton) || IsInside(source, OpenedFilesButton) || IsInside(source, HistoryButton) || IsInside(source, MaximizeButton)))
+        if (e.OriginalSource is DependencyObject source && (IsInside(source, DriveMenuButton) || IsInside(source, HotPathsButton) || IsInside(source, OpenedFilesButton) || IsInside(source, HistoryButton) || IsInside(source, CommandHistoryButton) || IsInside(source, MaximizeButton)))
             return;
         BeginPathEdit();
         e.Handled = true;

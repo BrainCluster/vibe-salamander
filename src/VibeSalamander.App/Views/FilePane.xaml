@@ -325,6 +325,13 @@
                         <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
                                   Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
                     </Button>
+                    <!-- the command line history (Alt+F8) -->
+                    <Button x:Name="CommandHistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                            Click="CommandHistoryButton_Click" ToolTipService.ToolTip="Command line history (Alt+F8)"
+                            AutomationProperties.Name="Command line history">
+                        <FontIcon Glyph="&#xE81C;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                    </Button>
                 </StackPanel>
             </Grid>
         </Grid>
