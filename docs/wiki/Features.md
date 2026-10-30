@@ -88,7 +88,7 @@
   notebook outputs. Nothing is loaded from the internet and no script runs unless you allow it.
 - **Pictures**: JPEG, PNG, GIF, WebP, HEIC, AVIF, JPEG XL, SVG and camera RAW (with Windows' free extensions), zoom (also with the mouse wheel) and drag,
   up to 6400 %, fit (0), fit the width (W), rotate (R), mirror (M; Shift+M turns it upside down), full screen (F11),
-  the next and previous pictures decoded ahead, and details: size, camera, lens, exposure, date taken, rating,
+  arrows at the sides (and the arrow keys) to the next and previous pictures, decoded ahead, and details: size, camera, lens, exposure, date taken, rating,
   keywords, author, copyright, color profile, location with altitude, and **Show on map**.
 - **PDFs**, page by page, and **audio and video** with their details.
 - Ctrl+PgUp / Ctrl+PgDn (or ← / → for pictures) go to the previous or next file of the folder; Ctrl+1…7 switch between

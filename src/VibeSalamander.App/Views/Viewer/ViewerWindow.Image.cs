@@ -203,9 +203,54 @@ internal sealed partial class ViewerWindow
         _imageHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         _imageHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _imageHost.Children.Add(_imageScroller);
+        // like Photos: small arrows at the sides to the previous and the next picture of the folder
+        _previousPicture = PictureArrow("\uE76B", "Previous picture (Left)", HorizontalAlignment.Left, -1);
+        _nextPicture = PictureArrow("\uE76C", "Next picture (Right)", HorizontalAlignment.Right, +1);
+        _imageHost.Children.Add(_previousPicture);
+        _imageHost.Children.Add(_nextPicture);
         Grid.SetColumn(_detailsScroller, 1);
         _imageHost.Children.Add(_detailsScroller);
         _content.Children.Add(_imageHost);
+    }
+
+    private Button? _previousPicture, _nextPicture;
+
+    private Button PictureArrow(string glyph, string tip, HorizontalAlignment side, int direction)
+    {
+        var button = new Button
+        {
+            Content = new FontIcon { Glyph = glyph, FontSize = 14, Foreground = new SolidColorBrush(Microsoft.UI.Colors.White) },
+            Width = 28,
+            Height = 56,
+            Padding = new Thickness(0),
+            CornerRadius = new CornerRadius(6),
+            Margin = new Thickness(8, 0, 8, 0),
+            HorizontalAlignment = side,
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0x99, 0x20, 0x20, 0x20)),
+            BorderBrush = new SolidColorBrush(Windows.UI.Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
+            BorderThickness = new Thickness(1),
+            IsTabStop = false, // the keys stay with the picture
+            Visibility = Visibility.Collapsed,
+        };
+        ToolTipService.SetToolTip(button, Loc.T(tip));
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(button, Loc.T(tip));
+        button.Click += async (_, _) =>
+        {
+            await StepFileAsync(direction, imagesOnly: true);
+            _imageScroller?.Focus(FocusState.Programmatic);
+        };
+        return button;
+    }
+
+    /// <summary>The arrows show when the folder has another picture to go to.</summary>
+    private void UpdatePictureArrows()
+    {
+        Visibility show = _siblings.Count(ViewerModes.IsImage) > 1 ? Visibility.Visible : Visibility.Collapsed;
+        if (_previousPicture != null)
+            _previousPicture.Visibility = show;
+        if (_nextPicture != null)
+            _nextPicture.Visibility = show;
     }
 
     private async Task ShowImageAsync()
@@ -214,6 +259,7 @@ internal sealed partial class ViewerWindow
         _imageHost!.Visibility = Visibility.Visible;
         _detailsScroller!.Visibility = _options.ShowImageDetails ? Visibility.Visible : Visibility.Collapsed;
         _imageScroller!.Focus(FocusState.Programmatic);
+        UpdatePictureArrows();
         if (_imagePath == _path)
             return;
         string path = _path;
