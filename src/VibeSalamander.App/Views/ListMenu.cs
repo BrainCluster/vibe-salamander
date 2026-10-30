@@ -26,7 +26,6 @@ public static class ListMenu
     public const int VisibleCharacters = 50;
     public const int VisibleRows = 10;
     private const double RowHeight = 32;
-    private const double DetailRowHeight = 44;
     private const double IconWidth = 30;
     private const double ScrollSpeed = 70; // pixels a second
     private static readonly TimeSpan Pause = TimeSpan.FromSeconds(0.9);
@@ -55,13 +54,12 @@ public static class ListMenu
             : entries.Where(e => !string.IsNullOrEmpty(e.Shortcut)).Select(e => Measure(e.Shortcut!, 12).Width)
                 .Append(Measure("Ctrl+Shift+F12", 12).Width).Max() + 20;
         double width = IconWidth + labelWidth + shortcutWidth + 44;
-        double rowHeight = entries.Any(e => e.Detail != null) ? DetailRowHeight : RowHeight;
 
         var list = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
             IsItemClickEnabled = true,
-            MaxHeight = VisibleRows * rowHeight + 8, // fewer rows: shorter; never taller
+            MaxHeight = VisibleRows * RowHeight + 8, // fewer rows: shorter; never taller
             Padding = new Thickness(0, 4, 0, 4),
         };
         ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Disabled);
@@ -230,16 +228,15 @@ public static class ListMenu
         }
         else if (!string.IsNullOrEmpty(entry.Detail))
         {
-            // a drive: how full it is, and "120 GB free of 476 GB" below, at the right
-            var detail = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
-            if (entry.Fullness >= 0)
+            // a drive: "120 GB free of 476 GB" at the right
+            var detail = new TextBlock
             {
-                var bar = new ProgressBar { Minimum = 0, Maximum = 100, Value = Math.Clamp(entry.Fullness, 0, 1) * 100, Height = 4, MinHeight = 4 };
-                if (entry.Fullness >= 0.9)
-                    bar.Foreground = new SolidColorBrush(ColorHelper.FromArgb(0xFF, 0xD1, 0x34, 0x38)); // nearly full: red, like Explorer
-                detail.Children.Add(bar);
-            }
-            detail.Children.Add(new TextBlock { Text = entry.Detail, FontSize = 11, Opacity = 0.75, HorizontalAlignment = HorizontalAlignment.Right });
+                Text = entry.Detail,
+                FontSize = 11,
+                Opacity = 0.75,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
             Grid.SetColumn(detail, 2);
             grid.Children.Add(detail);
         }
@@ -248,8 +245,8 @@ public static class ListMenu
         {
             Content = grid,
             IsEnabled = entry.IsEnabled,
-            MinHeight = entry.Detail != null ? DetailRowHeight : RowHeight,
-            Height = entry.Detail != null ? DetailRowHeight : RowHeight,
+            MinHeight = RowHeight,
+            Height = RowHeight,
             Padding = new Thickness(12, 0, 12, 0),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
         };

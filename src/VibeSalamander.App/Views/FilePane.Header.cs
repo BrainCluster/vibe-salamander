@@ -167,18 +167,25 @@ public sealed partial class FilePane
             return;
         Core.Settings.DriveOptions driveOptions = _main.Settings.Drives;
         var entries = new List<MenuEntry>();
-        foreach (DriveButtonViewModel drive in ViewModel.VisibleDrives)
+        // grouped like Explorer: devices and drives, network locations, then the places
+        foreach (bool network in new[] { false, true })
         {
-            DriveEntryInfo d = drive.Drive;
-            string root = d.Root;
-            string? free = d.HasSize && d.TotalSize > 0
-                ? Loc.F("{0} free of {1}", Core.Formatting.Formats.ShortSize(d.FreeSpace), Core.Formatting.Formats.ShortSize(d.TotalSize))
-                : null;
-            double fullness = d.HasSize && d.TotalSize > 0 ? 1 - (double)d.FreeSpace / d.TotalSize : -1;
-            entries.Add(new MenuEntry($"{root.TrimEnd('\\')}   {d.Caption}", async () => await ViewModel.ChangeDriveAsync(root), "\uEDA2",
-                Detail: free, Fullness: fullness));
-            if (drive.SeparatorAfter)
+            var group = ViewModel.VisibleDrives.Where(v => v.Drive.Type == DriveType.Network == network).ToList();
+            if (group.Count == 0)
+                continue;
+            if (entries.Count > 0)
                 entries.Add(MenuEntry.Separator);
+            foreach (DriveButtonViewModel drive in group)
+            {
+                DriveEntryInfo d = drive.Drive;
+                string root = d.Root;
+                string? free = d.HasSize
+                    ? Loc.F("{0} free of {1}", Core.Formatting.Formats.ShortSize(d.FreeSpace), Core.Formatting.Formats.ShortSize(d.TotalSize))
+                    : null;
+                entries.Add(new MenuEntry($"{root.TrimEnd('\\')}   {d.Caption}", async () => await ViewModel.ChangeDriveAsync(root), DriveGlyph(d.Type), Detail: free));
+                if (drive.SeparatorAfter && drive != group[^1])
+                    entries.Add(MenuEntry.Separator);
+            }
         }
         entries.Add(MenuEntry.Separator);
         entries.Add(new MenuEntry(Loc.T("This PC"), async () => await ViewModel.NavigateAsync(ThisPcProvider.RootPath), "\uE7F4"));
@@ -201,8 +208,16 @@ public sealed partial class FilePane
         {
             Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft,
             ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
-        }, FocusList, characters: 30, widestDetail: Loc.F("{0} free of {1}", "999 GB", "9.99 TB"));
+        }, FocusList, characters: 25, widestDetail: Loc.F("{0} free of {1}", "999 GB", "9.99 TB"));
     }
+
+    /// <summary>The icon of a drive in the drive menu: disk, removable, CD/DVD, network, RAM disk.</summary>
+    private static string DriveGlyph(DriveType type) => type switch
+    {
+        DriveType.Removable => "\uE88E",
+        DriveType.Network => "\uE8CE",
+        _ => "\uEDA2",
+    };
 
     private void DirectoryLine_PointerPressed(object sender, PointerRoutedEventArgs e)
     {

@@ -4,9 +4,9 @@
 namespace VibeSalamander.ViewModels;
 
 /// <summary>An item of a command menu shown by the window (user menu, lists of opened files / directories, shares).</summary>
-/// <param name="Detail">small text at the right (a drive's free space), above it a bar when <paramref name="Fullness"/> is 0…1</param>
+/// <param name="Detail">small text at the right instead of a shortcut (a drive's free space)</param>
 public sealed record MenuEntry(string Text, Action? Invoke = null, string? Glyph = null, string? Shortcut = null,
-    bool IsSeparator = false, bool IsEnabled = true, string? Detail = null, double Fullness = -1)
+    bool IsSeparator = false, bool IsEnabled = true, string? Detail = null)
 {
     public static MenuEntry Separator { get; } = new(string.Empty, IsSeparator: true);
     public static MenuEntry Header(string text) => new(text, IsEnabled: false);
