@@ -24,6 +24,9 @@
   as a menu, with "add this folder".
 - **Opened files** (Alt+F11, or the document button at the end of the address bar): the files opened lately, newest
   first; choosing one goes to it and opens it again. How many are kept: Configuration → History (10 by default).
+- **List menus** (drives, hot paths, opened files, working directories, histories, the user menu) are 50 characters
+  wide and 10 rows high, scrolling beyond; a longer path slides sideways under the mouse or the keyboard, and its
+  tooltip shows all of it. A letter jumps to the next row starting with it (C for the C: drive).
 
 ![Thumbnails of a photo folder, documents in the other panel, in the dark theme](images/hero-dark.png)
 

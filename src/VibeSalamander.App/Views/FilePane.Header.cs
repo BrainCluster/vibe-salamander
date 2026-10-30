@@ -165,50 +165,38 @@ public sealed partial class FilePane
     {
         if (ViewModel == null || _main == null)
             return;
-        var menu = new MenuFlyout();
         Core.Settings.DriveOptions driveOptions = _main.Settings.Drives;
+        var entries = new List<MenuEntry>();
         foreach (DriveButtonViewModel drive in ViewModel.VisibleDrives)
         {
             string free = drive.Drive.HasSize ? $"   {Core.Formatting.Formats.ShortSize(drive.Drive.FreeSpace)} free" : string.Empty;
-            var item = new MenuFlyoutItem
-            {
-                Text = $"{drive.Drive.Root.TrimEnd('\\')}   {drive.Drive.Caption}{free}",
-                Icon = new FontIcon { Glyph = "\uEDA2" },
-            };
             string root = drive.Drive.Root;
-            item.Click += async (_, _) => await ViewModel.ChangeDriveAsync(root);
-            menu.Items.Add(item);
+            entries.Add(new MenuEntry($"{root.TrimEnd('\\')}   {drive.Drive.Caption}{free}", async () => await ViewModel.ChangeDriveAsync(root), "\uEDA2"));
             if (drive.SeparatorAfter)
-                menu.Items.Add(new MenuFlyoutSeparator());
+                entries.Add(MenuEntry.Separator);
         }
-        menu.Items.Add(new MenuFlyoutSeparator());
-        var thisPc = new MenuFlyoutItem { Text = Loc.T("This PC"), Icon = new FontIcon { Glyph = "\uE7F4" } };
-        thisPc.Click += async (_, _) => await ViewModel.NavigateAsync(ThisPcProvider.RootPath);
-        menu.Items.Add(thisPc);
+        entries.Add(MenuEntry.Separator);
+        entries.Add(new MenuEntry(Loc.T("This PC"), async () => await ViewModel.NavigateAsync(ThisPcProvider.RootPath), "\uE7F4"));
         if (driveOptions.MenuShowDocuments)
         {
             string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            var docs = new MenuFlyoutItem { Text = Loc.T("Documents"), Icon = new FontIcon { Glyph = "\uE8A5" } };
-            docs.Click += async (_, _) => await ViewModel.NavigateAsync(documents);
-            menu.Items.Add(docs);
+            entries.Add(new MenuEntry(Loc.T("Documents"), async () => await ViewModel.NavigateAsync(documents), "\uE8A5"));
         }
         if (driveOptions.MenuShowNetwork)
-        {
-            var network = new MenuFlyoutItem { Text = Loc.T("Network"), Icon = new FontIcon { Glyph = "\uE968" } };
-            network.Click += (_, _) => Core.Interop.ShellOperations.OpenInExplorer("shell:NetworkPlacesFolder");
-            menu.Items.Add(network);
-        }
+            entries.Add(new MenuEntry(Loc.T("Network"), () => Core.Interop.ShellOperations.OpenInExplorer("shell:NetworkPlacesFolder"), "\uE968"));
         if (driveOptions.MenuShowOtherPanelPath)
         {
             PaneViewModel other = _main.Left == ViewModel ? _main.Right : _main.Left;
             string otherPath = other.IsThisPc ? ThisPcProvider.RootPath : other.Path;
-            var asOther = new MenuFlyoutItem { Text = Loc.T("As Other Panel"), Icon = new FontIcon { Glyph = "\uE8AB" }, KeyboardAcceleratorTextOverride = "Ctrl+." };
-            asOther.Click += async (_, _) => await ViewModel.NavigateAsync(otherPath);
-            menu.Items.Add(asOther);
+            entries.Add(new MenuEntry(Loc.T("As Other Panel"), async () => await ViewModel.NavigateAsync(otherPath), "\uE8AB", "Ctrl+."));
         }
 
         // the hot paths have their own button (next to the working directories) and Shift+F9
-        menu.ShowAt(DriveMenuButton);
+        ListMenu.Show(DriveMenuButton, entries, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+        {
+            Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft,
+            ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
+        }, FocusList);
     }
 
     private void DirectoryLine_PointerPressed(object sender, PointerRoutedEventArgs e)

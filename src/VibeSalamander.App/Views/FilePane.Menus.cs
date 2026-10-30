@@ -56,39 +56,21 @@ public sealed partial class FilePane
         _menuAnchor = null;
         if (ViewModel == null)
             return;
-        var menu = new MenuFlyout();
-        foreach (MenuEntry entry in entries)
-        {
-            if (entry.IsSeparator)
-            {
-                menu.Items.Add(new MenuFlyoutSeparator());
-                continue;
-            }
-            // entries are data (paths, user menu names); only the fixed ones are translated
-            var item = new MenuFlyoutItem { Text = entry.IsEnabled ? entry.Text : Loc.T(entry.Text), IsEnabled = entry.IsEnabled };
-            if (entry.Glyph != null)
-                item.Icon = new FontIcon { Glyph = entry.Glyph };
-            if (entry.Shortcut != null)
-                item.KeyboardAcceleratorTextOverride = entry.Shortcut;
-            if (entry.Invoke is { } invoke)
-                item.Click += (_, _) => invoke();
-            menu.Items.Add(item);
-        }
-        menu.Closed += (_, _) => FocusList();
-
+        // entries are data (paths, user menu names); only the fixed ones are translated
+        var shown = entries.Select(e => e.IsEnabled || e.IsSeparator ? e : e with { Text = Loc.T(e.Text) }).ToList();
         FileItemViewModel? focused = ViewModel.FocusedItem;
         if (atCaret && focused != null && FileList.ContainerFromItem(focused) is ListViewItem container)
-            menu.ShowAt(container, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+            ListMenu.Show(container, shown, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
             {
                 Position = new Windows.Foundation.Point(40, container.ActualHeight),
                 ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
-            });
+            }, FocusList);
         else
-            menu.ShowAt(anchor ?? HistoryButton, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+            ListMenu.Show(anchor ?? HistoryButton, shown, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
             {
                 Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight,
                 ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
-            });
+            }, FocusList);
     }
 
     /// <summary>The Explorer "New" menu for this panel's directory, at the caret (or the mouse).</summary>
