@@ -34,7 +34,12 @@ public static class FileClipboard
         IReadOnlyList<IStorageItem> items = await ToStorageItemsAsync(paths);
         if (items.Count == 0)
             return;
-        var package = new DataPackage { RequestedOperation = cut ? DataPackageOperation.Move : DataPackageOperation.Copy };
+        // copied like Explorer copies: "copy or link" (Preferred DropEffect 5), so Explorer's menus (the desktop's
+        // too) offer Paste shortcut for it; cut is "move" only
+        var package = new DataPackage
+        {
+            RequestedOperation = cut ? DataPackageOperation.Move : DataPackageOperation.Copy | DataPackageOperation.Link,
+        };
         package.SetStorageItems(items, readOnly: !cut);
         Clipboard.SetContent(package);
         Clipboard.Flush(); // keep the data on the clipboard after the app exits
