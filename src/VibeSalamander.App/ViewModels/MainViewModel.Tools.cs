@@ -457,21 +457,40 @@ public sealed partial class MainViewModel
         foreach (string file in Settings.OpenedFiles.Take(OpenedFilesLimit))
         {
             string path = file;
-            entries.Add(new MenuEntry(path, async () =>
+            string? dir = Path.GetDirectoryName(path);
+            // a click: the panel goes to the file, with the caret on it; the right-click menu opens it
+            Action inPanel = async () =>
             {
-                string? dir = Path.GetDirectoryName(path);
                 if (dir != null && Directory.Exists(dir))
-                    await pane.NavigateAsync(dir, Path.GetFileName(path));
-                if (File.Exists(path))
                 {
-                    FileLauncher.Open(path, dir);
-                    RememberOpened(path);
+                    await pane.NavigateAsync(dir, Path.GetFileName(path));
+                    _host.FocusPane(pane);
                 }
                 else
                 {
-                    _host.Notify($"{path} no longer exists.");
+                    _host.Notify(Loc.F("{0} no longer exists.", path));
                 }
-            }, "\uE8A5"));
+            };
+            void IfThere(Action action)
+            {
+                if (File.Exists(path))
+                    action();
+                else
+                    _host.Notify(Loc.F("{0} no longer exists.", path));
+            }
+            var context = new List<MenuEntry>
+            {
+                new(Loc.T("Open in panel"), inPanel, "\uE8DA"),
+                new(Loc.T("Open file"), () => IfThere(() =>
+                {
+                    FileLauncher.Open(path, dir);
+                    RememberOpened(path);
+                }), "\uE8E5"),
+                new(Loc.T("Open with..."), () => IfThere(() => ShellOperations.OpenWith(_host.WindowHandle, path)), "\uE7AC"),
+                MenuEntry.Separator,
+                new(Loc.T("Copy path"), () => CopyText(path), "\uE8C8"),
+            };
+            entries.Add(new MenuEntry(path, inPanel, "\uE8A5", Context: context));
         }
         if (entries.Count == 1)
             entries.Add(new MenuEntry("(no files opened yet)", IsEnabled: false));

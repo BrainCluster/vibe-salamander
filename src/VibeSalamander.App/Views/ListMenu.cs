@@ -68,6 +68,7 @@ public static class ListMenu
 
         var actions = new Dictionary<object, Action>();
         var rows = new List<(ListViewItem Item, string Text)>();
+        var contexts = new List<(ListViewItem Item, IReadOnlyList<MenuEntry> Context)>();
         foreach (MenuEntry entry in entries)
         {
             ListViewItem item = Row(entry, labelWidth, shortcutWidth);
@@ -75,6 +76,8 @@ public static class ListMenu
             if (entry.IsSeparator)
                 continue;
             rows.Add((item, entry.Text));
+            if (entry.IsEnabled && entry.Context is { Count: > 0 } context)
+                contexts.Add((item, context));
             if (entry.IsEnabled && entry.Invoke is { } invoke)
             {
                 actions[item] = invoke;
@@ -116,6 +119,45 @@ public static class ListMenu
                 return;
             chosen = action;
             flyout.Hide();
+        }
+
+        // a row's own menu (right-click, the menu key, Shift+F10): its choice closes the list too
+        foreach (var (row, context) in contexts)
+        {
+            row.ContextRequested += (_, e) =>
+            {
+                var menu = new MenuFlyout();
+                bool first = true;
+                foreach (MenuEntry c in context)
+                {
+                    if (c.IsSeparator)
+                    {
+                        menu.Items.Add(new MenuFlyoutSeparator());
+                        continue;
+                    }
+                    var choice = new MenuFlyoutItem { Text = c.Text, IsEnabled = c.IsEnabled };
+                    if (first)
+                        choice.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold; // what a click does
+                    first = false;
+                    if (c.Glyph != null)
+                        choice.Icon = new FontIcon { Glyph = c.Glyph };
+                    if (c.Invoke is { } action)
+                        choice.Click += (_, _) =>
+                        {
+                            if (chosen != null)
+                                return;
+                            chosen = action;
+                            flyout.Hide();
+                        };
+                    menu.Items.Add(choice);
+                }
+                list.SelectedItem = row;
+                if (e.TryGetPosition(row, out Point point))
+                    menu.ShowAt(row, new FlyoutShowOptions { Position = point });
+                else
+                    menu.ShowAt(row, new FlyoutShowOptions { Position = new Point(40, row.ActualHeight) });
+                e.Handled = true;
+            };
         }
         list.ItemClick += (_, e) => Choose(e.ClickedItem);
         list.PreviewKeyDown += (_, e) =>

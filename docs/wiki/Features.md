@@ -23,7 +23,8 @@
 - **Hot path list** (Shift+F9; Ctrl+D in Total Commander's shortcuts, or the star button at the end of the address bar)
   as a menu, with "add this folder".
 - **Opened files** (Alt+F11, or the document button at the end of the address bar): the files opened lately, newest
-  first; choosing one goes to it and opens it again. How many are kept: Configuration → History (10 by default).
+  first; a click goes to it in the panel (the caret on it), the right-click menu opens it, opens it with another
+  app or copies its path. How many are kept: Configuration → History (10 by default).
 - **Command line history** (Alt+F8, or the clock button next to the hot paths button): the command chosen goes
   into the command line.
 - **List menus** (drives, hot paths, opened files, working directories, histories, the user menu) all have the same
