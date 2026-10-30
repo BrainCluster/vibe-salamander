@@ -276,6 +276,54 @@ public sealed partial class MainViewModel
             _host.Notify(Loc.F("Shortcuts that could not be created: {0}.", failed));
     }
 
+    /// <summary>
+    /// Ctrl+Shift+L: shortcuts (.lnk) to the marked items, put on the clipboard as files, so Paste (Ctrl+V) creates
+    /// them anywhere, here or in Explorer. They are made in a folder of the temporary files (old ones are cleaned up).
+    /// </summary>
+    private async Task CopyAsShortcutsAsync(PaneViewModel pane)
+    {
+        var items = pane.GetOperationItems().Where(i => !i.Entry.IsUpDir).ToList();
+        if (items.Count == 0 || !pane.HasDiskItems)
+            return;
+        string root = Path.Combine(Path.GetTempPath(), "VibeSalamander", "Shortcuts");
+        try
+        {
+            if (Directory.Exists(root))
+                foreach (string old in Directory.GetDirectories(root).Where(d => Directory.GetCreationTimeUtc(d) < DateTime.UtcNow.AddDays(-2)))
+                    Directory.Delete(old, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // cleaned up another time
+        }
+        string folder = Path.Combine(root, DateTime.Now.ToString("yyyyMMdd-HHmmss-fff", System.Globalization.CultureInfo.InvariantCulture));
+        var links = new List<string>();
+        try
+        {
+            Directory.CreateDirectory(folder);
+            foreach (FileItemViewModel item in items)
+            {
+                string target = item.Drive?.Root ?? item.Entry.FullPath;
+                string name = Path.GetFileName(target.TrimEnd('\\'));
+                if (string.IsNullOrEmpty(name))
+                    name = target.TrimEnd('\\').Replace(":", string.Empty); // a drive
+                string link = NewItemNames.UniquePath(folder, name + " - Shortcut", ".lnk");
+                ShellLink.Create(target, link);
+                links.Add(link);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _host.Notify(Loc.F("Shortcuts that could not be created: {0}.", items.Count - links.Count));
+        }
+        if (links.Count == 0)
+            return;
+        await FileClipboard.SetFilesAsync(links, cut: false);
+        _host.Notify(links.Count == 1
+            ? Loc.T("A shortcut is on the clipboard: Paste (Ctrl+V) puts it anywhere, also in Explorer.")
+            : Loc.F("{0} shortcuts are on the clipboard: Paste (Ctrl+V) puts them anywhere, also in Explorer.", links.Count), isError: false);
+    }
+
     /// <summary>Files → New: the Explorer "New" menu; the created item is then renamed in place.</summary>
     private async Task NewFromShellMenuAsync(PaneViewModel pane)
     {

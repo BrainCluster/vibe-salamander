@@ -54,6 +54,7 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | Ctrl+P | Security |
 | Alt+F5 / Alt+F6 | Pack / unpack |
 | Ctrl+X / Ctrl+C / Ctrl+V | Cut / copy / paste (Windows clipboard) |
+| Ctrl+Shift+L / Ctrl+S | Copy as shortcut / paste shortcut |
 | Alt+Ins / Alt+Shift+Ins / Ctrl+Alt+Ins | Copy full path / name / folder path as text |
 
 ## Marking
@@ -141,6 +142,7 @@ With *Shortcuts like: Total Commander* (Configuration → Keyboard). Your own ch
 | Ctrl+D | Hot path list |
 | Ctrl+Enter / Ctrl+Shift+Enter / Ctrl+P | Name / full path / folder to the command line |
 | Alt+F8 | Command line history |
+| Ctrl+Shift+L / Ctrl+Shift+V | Copy as shortcut / paste shortcut |
 | Shift+F6 | Rename in place |
 | Shift+F8, Shift+Del | Delete permanently |
 | F9 | The menu bar |

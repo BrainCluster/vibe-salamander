@@ -135,6 +135,7 @@ public sealed class KeyMap
         m.Bind(VK.Enter, C, CommandId.NameToCommandLine);
         m.Bind(VK.Enter, C | S, CommandId.FullNameToCommandLine);
         m.Bind(VK.F8, A, CommandId.CommandHistory);
+        m.Bind(VK.L, C | S, CommandId.CopyAsShortcut);
         m.Bind(VK.F10, S, CommandId.ContextMenu);
         m.Bind(VK.Apps, N, CommandId.ContextMenu);
 
@@ -225,6 +226,8 @@ public sealed class KeyMap
         m.Bind(VK.Enter, C | S, CommandId.FullNameToCommandLine);
         m.Bind(VK.P, C, CommandId.PathToCommandLine);
         m.Bind(VK.F8, A, CommandId.CommandHistory);
+        m.Bind(VK.L, C | S, CommandId.CopyAsShortcut);
+        m.Bind(VK.V, C | S, CommandId.PasteShortcut);
         m.Bind(VK.F1, C, CommandId.ViewBrief);
         m.Bind(VK.F2, C, CommandId.ViewDetailed);
         m.Bind(VK.F3, C, CommandId.SortByName);

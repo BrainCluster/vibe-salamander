@@ -177,4 +177,6 @@ public enum CommandId
     PathToCommandLine,
     // the earlier commands of the command line (Alt+F8)
     CommandHistory,
+    // shortcuts (.lnk) to the items, on the clipboard: Paste puts them anywhere, also in Explorer (Ctrl+Shift+L)
+    CopyAsShortcut,
 }

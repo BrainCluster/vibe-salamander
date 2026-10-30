@@ -105,6 +105,7 @@
                 <MenuFlyoutItem Text="Cut" Tag="ClipboardCut" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+X" />
                 <MenuFlyoutItem Text="Copy" Tag="ClipboardCopy" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+C" />
                 <MenuFlyoutItem Text="Paste" Tag="ClipboardPaste" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+V" />
+                <MenuFlyoutItem Text="Copy as Shortcut" Tag="CopyAsShortcut" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+L" />
                 <MenuFlyoutItem Text="Paste Shortcut" Tag="PasteShortcut" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+S" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Copy Path + Name as Text" Tag="CopyFullNameAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Ins" />

@@ -109,6 +109,91 @@ public static class ShellContextMenu
     }
 
     /// <summary>
+    /// Explorer's menu for the empty area of a folder (its background): View and Sort are left to Vibe Salamander,
+    /// the rest (Paste, Paste shortcut, New, Properties, the extensions' items) works as in Explorer. False when the
+    /// folder has no such menu (the caller shows the folder's own menu then).
+    /// </summary>
+    public static bool ShowBackground(IntPtr hwnd, string folder, int screenX, int screenY, bool extendedVerbs)
+    {
+        IntPtr pidl = IntPtr.Zero, desktopPtr = IntPtr.Zero, folderPtr = IntPtr.Zero, contextMenuPtr = IntPtr.Zero, hMenu = IntPtr.Zero;
+        IShellFolder? desktop = null, shellFolder = null;
+        IContextMenu? menu = null;
+        SubclassProc? subclass = null;
+        try
+        {
+            if (SHParseDisplayName(folder, IntPtr.Zero, out pidl, 0, out _) != 0 || pidl == IntPtr.Zero)
+                return false;
+            if (SHGetDesktopFolder(out desktopPtr) != 0)
+                return false;
+            desktop = (IShellFolder)Marshal.GetObjectForIUnknown(desktopPtr);
+            Guid iidShellFolder = typeof(IShellFolder).GUID;
+            if (desktop.BindToObject(pidl, IntPtr.Zero, ref iidShellFolder, out folderPtr) != 0 || folderPtr == IntPtr.Zero)
+                return false;
+            shellFolder = (IShellFolder)Marshal.GetObjectForIUnknown(folderPtr);
+            Guid iidContextMenu = typeof(IContextMenu).GUID;
+            if (shellFolder.CreateViewObject(hwnd, ref iidContextMenu, out contextMenuPtr) != 0 || contextMenuPtr == IntPtr.Zero)
+                return false;
+            menu = (IContextMenu)Marshal.GetObjectForIUnknown(contextMenuPtr);
+
+            hMenu = CreatePopupMenu();
+            uint flags = CMF_NORMAL | CMF_EXPLORE | (extendedVerbs ? CMF_EXTENDEDVERBS : 0);
+            if (menu.QueryContextMenu(hMenu, 0, FirstCommand, LastCommand, flags) < 0 || GetMenuItemCount(hMenu) <= 0)
+                return false;
+
+            IContextMenu2? menu2 = menu as IContextMenu2;
+            IContextMenu3? menu3 = menu as IContextMenu3;
+            subclass = (IntPtr h, uint msg, IntPtr wParam, IntPtr lParam, UIntPtr id, UIntPtr data) =>
+            {
+                if (msg is WM_INITMENUPOPUP or WM_DRAWITEM or WM_MEASUREITEM or WM_MENUCHAR)
+                {
+                    if (menu3 != null && menu3.HandleMenuMsg2(msg, wParam, lParam, out IntPtr result) == 0)
+                        return result;
+                    if (menu2 != null && menu2.HandleMenuMsg(msg, wParam, lParam) == 0)
+                        return IntPtr.Zero;
+                }
+                return DefSubclassProc(h, msg, wParam, lParam);
+            };
+            SetWindowSubclass(hwnd, subclass, SubclassId, UIntPtr.Zero);
+            SetForegroundWindow(hwnd);
+            int command = TrackPopupMenuEx(hMenu, TPM_RETURNCMD | TPM_RIGHTBUTTON, screenX, screenY, hwnd, IntPtr.Zero);
+            RemoveWindowSubclass(hwnd, subclass, SubclassId);
+            if (command < FirstCommand)
+                return true; // shown, nothing chosen
+
+            uint offset = (uint)command - FirstCommand;
+            var invoke = new CMINVOKECOMMANDINFOEX
+            {
+                cbSize = Marshal.SizeOf<CMINVOKECOMMANDINFOEX>(),
+                fMask = CMIC_MASK_UNICODE | CMIC_MASK_PTINVOKE,
+                hwnd = hwnd,
+                lpVerb = (IntPtr)offset,
+                lpVerbW = (IntPtr)offset,
+                lpDirectoryW = folder,
+                nShow = SW_SHOWNORMAL,
+                ptInvoke = new POINT { X = screenX, Y = screenY },
+            };
+            menu.InvokeCommand(ref invoke);
+            return true;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidCastException or ArgumentException)
+        {
+            return false;
+        }
+        finally
+        {
+            GC.KeepAlive(subclass);
+            if (hMenu != IntPtr.Zero) DestroyMenu(hMenu);
+            if (menu != null) Marshal.ReleaseComObject(menu);
+            if (shellFolder != null) Marshal.ReleaseComObject(shellFolder);
+            if (desktop != null) Marshal.ReleaseComObject(desktop);
+            if (contextMenuPtr != IntPtr.Zero) Marshal.Release(contextMenuPtr);
+            if (folderPtr != IntPtr.Zero) Marshal.Release(folderPtr);
+            if (desktopPtr != IntPtr.Zero) Marshal.Release(desktopPtr);
+            if (pidl != IntPtr.Zero) Marshal.FreeCoTaskMem(pidl);
+        }
+    }
+
+    /// <summary>
     /// The Explorer "New" menu (folder, shortcut, text document, Word document, ...) for a directory, shown at
     /// a screen position. Returns true when the user chose an item (the shell then creates it).
     /// </summary>
@@ -328,6 +413,12 @@ public static class ShellContextMenu
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetSubMenu(IntPtr hMenu, int nPos);
+
+    [DllImport("user32.dll")]
+    private static extern int GetMenuItemCount(IntPtr hMenu);
+
+    [DllImport("shell32.dll")]
+    private static extern int SHGetDesktopFolder(out IntPtr ppshf);
 
     private delegate IntPtr SubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, UIntPtr uIdSubclass, UIntPtr dwRefData);
 

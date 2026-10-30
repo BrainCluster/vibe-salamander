@@ -310,6 +310,7 @@ public sealed partial class FilePane
                 Script = !directory && count <= 1 && local ? Core.Interop.ScriptRunner.HostOf(path) : Core.Interop.ScriptHost.None,
                 CanUnpack = _main.Plugins.FindUnpacker(path) != null,
                 HasArchivePlugin = count <= 1 && archive && _main.Plugins.UnpackerPlugin(path) != null,
+                ClipboardHasFiles = local && ClipboardHasFiles(),
                 OffersWindowsMenu = offersWindowsMenu,
             };
         }
@@ -320,8 +321,22 @@ public sealed partial class FilePane
             Target = local ? ContextMenuTarget.LocalFolder : ContextMenuTarget.OtherFolder,
             MountedImageDrive = local ? imageDrive : null,
             IsRemotePanel = pane.IsRemote,
+            ClipboardHasFiles = local && ClipboardHasFiles(),
             OffersWindowsMenu = offersWindowsMenu,
         };
+    }
+
+    /// <summary>Files copied or cut (here or in Explorer) are on the clipboard.</summary>
+    private static bool ClipboardHasFiles()
+    {
+        try
+        {
+            return Windows.ApplicationModel.DataTransfer.Clipboard.GetContent().Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems);
+        }
+        catch (Exception ex) when (ex is System.Runtime.InteropServices.COMException or UnauthorizedAccessException)
+        {
+            return false; // another program holds the clipboard
+        }
     }
 
     private MenuFlyoutItem CommandItem(ContextMenuEntry entry, PaneViewModel pane)
@@ -435,7 +450,16 @@ public sealed partial class FilePane
         else if (item != null && !item.Entry.IsUpDir)
             paths = new List<string> { item.Entry.FullPath };
         else if (ViewModel.IsLocalDisk)
+        {
+            // the empty area or "..": Explorer's menu of the folder's background (New, Paste, Paste shortcut, ...)
+            if (ShellContextMenu.ShowBackground(_main.WindowHandle, ViewModel.Path, x, y, KeyboardState.IsDown(KeyboardState.Shift)))
+            {
+                _ = ViewModel.RefreshAsync(); // a pasted or new item shows at once
+                FocusList();
+                return;
+            }
             paths = new List<string> { ViewModel.Path };
+        }
         else
             return;
 

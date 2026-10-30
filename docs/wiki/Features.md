@@ -29,6 +29,9 @@
 
 - Copy, move, delete, rename in place (F2), change attributes and case, NTFS compression and encryption,
   properties and security.
+- **Shortcuts**: *Copy as shortcut* (Ctrl+Shift+L) puts shortcuts to the items on the clipboard, so Paste makes them
+  anywhere, also in Explorer; *Paste shortcut* (Ctrl+S) makes shortcuts to the copied files here. Both are in the
+  right-click menu when they apply, and the Windows menu of a folder's empty area has Explorer's Paste shortcut.
 - **Duplicate** (Alt+Shift+D; Shift+F5 in Total Commander's shortcuts): a copy next to the original, "name (2).ext",
   named in place.
 - **Multi-rename** (Shift+F2; Ctrl+M in Total Commander's shortcuts): many names at once from a mask (`[N]` name,

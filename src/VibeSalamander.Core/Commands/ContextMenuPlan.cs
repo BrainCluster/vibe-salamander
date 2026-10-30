@@ -66,6 +66,9 @@ public sealed record ContextMenuFacts
     /// <summary>The panel shows a server.</summary>
     public bool IsRemotePanel { get; init; }
 
+    /// <summary>The clipboard has files (copied or cut here or in Explorer): Paste shortcut is offered.</summary>
+    public bool ClipboardHasFiles { get; init; }
+
     /// <summary>The Windows context menu can be offered (files and drives on disk).</summary>
     public bool OffersWindowsMenu { get; init; }
 }
@@ -173,7 +176,8 @@ public static class ContextMenuPlan
                 Add("New (Windows)...", "", CommandId.NewMenu);
                 Separator();
                 Add("Paste", "", CommandId.ClipboardPaste);
-                Add("Paste shortcut", "", CommandId.PasteShortcut);
+                if (f.ClipboardHasFiles)
+                    Add("Paste shortcut", "", CommandId.PasteShortcut);
                 Separator();
                 Other(ContextMenuEntryKind.ViewSubmenu);
                 Other(ContextMenuEntryKind.SortSubmenu);
@@ -238,7 +242,10 @@ public static class ContextMenuPlan
         separator();
         Add("Cut", "", CommandId.ClipboardCut);
         Add("Copy", "", CommandId.ClipboardCopy);
+        Add(several ? "Copy as shortcuts" : "Copy as shortcut", "", CommandId.CopyAsShortcut);
         Add("Paste", "", CommandId.ClipboardPaste);
+        if (f.ClipboardHasFiles)
+            Add("Paste shortcut", "", CommandId.PasteShortcut);
         separator();
         Add(several ? $"Copy {count} items to other panel..." : "Copy to other panel...", "", CommandId.Copy);
         Add(several ? $"Move {count} items to other panel..." : "Move to other panel...", "", CommandId.Move);

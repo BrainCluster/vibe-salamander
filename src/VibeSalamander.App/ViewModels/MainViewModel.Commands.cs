@@ -28,6 +28,7 @@ public sealed partial class MainViewModel
         CommandId.Move or CommandId.Delete or CommandId.DeletePermanently or CommandId.ClipboardPaste =>
             _active.IsLocalDisk || _active.IsRemote || ArchivePanelCommands.Editable(_active) != null,
         CommandId.QuickRename or CommandId.CreateDirectory when _active.IsRemote => true,
+        CommandId.CopyAsShortcut => _active.HasDiskItems,
         CommandId.Duplicate or CommandId.MultiRename => _active.IsLocalDisk || (_active.HasDiskItems && command == CommandId.MultiRename),
         CommandId.QuickRename or CommandId.CreateDirectory or CommandId.EditNewFile or
         CommandId.ChangeAttributes or CommandId.ChangeCase or CommandId.ClipboardCut or
@@ -199,6 +200,7 @@ public sealed partial class MainViewModel
         t.Add(CommandId.ClipboardCopy, _ => Files.ClipboardSetAsync(cut: false));
         t.Add(CommandId.ClipboardPaste, _ => Files.ClipboardPasteAsync());
         t.Add(CommandId.PasteShortcut, p => PasteShortcutsAsync(p));
+        t.Add(CommandId.CopyAsShortcut, p => CopyAsShortcutsAsync(p));
         t.Add(CommandId.NewMenu, p => NewFromShellMenuAsync(p));
         t.AddSync(CommandId.CopyFullNameAsText, p => CopyText(string.Join(Environment.NewLine, p.GetOperationItems().Select(i => i.Entry.FullPath))));
         t.AddSync(CommandId.CopyNameAsText, p => CopyText(string.Join(Environment.NewLine, p.GetOperationItems().Select(i => i.Entry.Name))));

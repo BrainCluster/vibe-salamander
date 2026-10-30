@@ -58,7 +58,7 @@ public class ContextMenuPlanTests
         Assert.Equal(new[]
         {
             CommandId.Open, CommandId.OpenWith, CommandId.Edit,
-            CommandId.ClipboardCut, CommandId.ClipboardCopy, CommandId.ClipboardPaste,
+            CommandId.ClipboardCut, CommandId.ClipboardCopy, CommandId.CopyAsShortcut, CommandId.ClipboardPaste,
             CommandId.Copy, CommandId.Move, CommandId.QuickRename, CommandId.Delete,
             CommandId.Pack, CommandId.CopyFullNameAsText, CommandId.Properties,
         }, Commands(menu));
@@ -143,5 +143,27 @@ public class ContextMenuPlanTests
         CommandId[] serverFolder = Commands(Plan(new ContextMenuFacts { Target = ContextMenuTarget.OtherFolder, IsRemotePanel = true }));
         Assert.Equal(new[] { CommandId.CreateDirectory, CommandId.ClipboardPaste, CommandId.Refresh }, serverFolder);
         Assert.Equal(new[] { CommandId.Refresh }, Commands(Plan(new ContextMenuFacts { Target = ContextMenuTarget.OtherFolder })));
+    }
+
+    [Fact]
+    public void Paste_shortcut_when_the_clipboard_has_files()
+    {
+        Assert.DoesNotContain(CommandId.PasteShortcut, Commands(Plan(AFile)));
+        CommandId[] withFiles = Commands(Plan(AFile with { ClipboardHasFiles = true }));
+        Assert.Equal(withFiles.ToList().IndexOf(CommandId.ClipboardPaste) + 1, withFiles.ToList().IndexOf(CommandId.PasteShortcut));
+        var folder = new ContextMenuFacts { Target = ContextMenuTarget.LocalFolder };
+        Assert.DoesNotContain(CommandId.PasteShortcut, Commands(Plan(folder)));
+        Assert.Contains(CommandId.PasteShortcut, Commands(Plan(folder with { ClipboardHasFiles = true })));
+        Assert.Contains("Copy as shortcuts", Texts(Plan(AFile with { MarkedCount = 3 })));
+    }
+
+    [Fact]
+    public void Shortcut_keys_for_the_shortcuts()
+    {
+        KeyMap salamander = KeyMap.CreateSalamanderDefaults(), tc = KeyMap.CreateTotalCommanderDefaults();
+        Assert.Equal(CommandId.CopyAsShortcut, salamander.Resolve(VK.L, KeyModifiers.Ctrl | KeyModifiers.Shift));
+        Assert.Equal(CommandId.PasteShortcut, salamander.Resolve(VK.S, KeyModifiers.Ctrl));
+        Assert.Equal(CommandId.CopyAsShortcut, tc.Resolve(VK.L, KeyModifiers.Ctrl | KeyModifiers.Shift));
+        Assert.Equal(CommandId.PasteShortcut, tc.Resolve(VK.V, KeyModifiers.Ctrl | KeyModifiers.Shift));
     }
 }
