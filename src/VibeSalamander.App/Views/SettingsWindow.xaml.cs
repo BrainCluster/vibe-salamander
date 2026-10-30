@@ -40,6 +40,9 @@ public interface ISettingsHost
 
     /// <summary>Deletes the settings and restarts with the defaults (asks first).</summary>
     Task ResetConfigurationAsync(Dialogs dialogs);
+
+    /// <summary>A newer version was found on the About page: the main window offers it (what's new, Update now).</summary>
+    void OfferUpdate(Core.Updates.ReleaseInfo release);
 }
 
 /// <summary>
@@ -85,7 +88,7 @@ public sealed partial class SettingsWindow : Window
     /// <summary>Selects a page by its tag (see SettingsWindow.xaml, e.g. "General", "Confirmations", "Keyboard").</summary>
     public void ShowPage(string tag)
     {
-        foreach (object item in Nav.MenuItems)
+        foreach (object item in Nav.MenuItems.Concat(Nav.FooterMenuItems))
         {
             if (item is NavigationViewItem nvi && nvi.Tag as string == tag)
             {
@@ -142,6 +145,7 @@ public sealed partial class SettingsWindow : Window
             "UserMenu" => BuildUserMenuPage(),
             "Backup" => BuildBackupPage(),
             "Plugins" => BuildPluginsPage(),
+            "About" => BuildAboutPage(),
             _ => BuildGeneralPage(),
         };
     }
@@ -171,6 +175,62 @@ public sealed partial class SettingsWindow : Window
         }
         _debounce.Stop();
         _debounce.Start();
+    }
+
+    // ---- About ---------------------------------------------------------------------------------
+
+    /// <summary>Help → About as a page, and Check for Updates (the result is said here).</summary>
+    private UIElement BuildAboutPage()
+    {
+        StackPanel page = Page("About");
+        page.Children.Add(AboutContent.Build());
+
+        page.Children.Add(Section("Updates"));
+        var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = 0.8, Tag = "NoLoc", VerticalAlignment = VerticalAlignment.Center };
+        var check = new Button { Content = Loc.T("Check for Updates") };
+        var update = new Button { Content = Loc.T("Update..."), Visibility = Visibility.Collapsed, Style = Application.Current.Resources["AccentButtonStyle"] as Style };
+        Core.Updates.ReleaseInfo? found = null;
+        check.Click += async (_, _) =>
+        {
+            check.IsEnabled = false;
+            update.Visibility = Visibility.Collapsed;
+            status.Text = Loc.T("Checking for updates...");
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                found = await Updater.LatestAsync(cts.Token);
+                _vm.Settings.General.LastUpdateCheck = DateTime.UtcNow;
+                if (found != null && Core.Updates.UpdateCheck.IsNewer(found.Version, Updater.CurrentVersion))
+                {
+                    status.Text = Loc.F("Vibe Salamander {0} is available (you have {1}).", found.Version, Updater.CurrentVersion);
+                    update.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    status.Text = Loc.F("You have the newest version ({0}).", Updater.CurrentVersion);
+                }
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                status.Text = Loc.F("The update check didn't reach GitHub: {0}", ex.Message);
+            }
+            finally
+            {
+                check.IsEnabled = true;
+            }
+        };
+        update.Click += (_, _) =>
+        {
+            if (found != null)
+                _host.OfferUpdate(found);
+        };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
+        row.Children.Add(check);
+        row.Children.Add(update);
+        row.Children.Add(status);
+        page.Children.Add(row);
+        page.Children.Add(Hint(Loc.F("This is version {0}. Configuration → General has the daily check.", Updater.CurrentVersion)));
+        return page;
     }
 
     // ---- building blocks ---------------------------------------------------------------------

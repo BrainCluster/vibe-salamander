@@ -85,6 +85,14 @@ public sealed partial class MainWindow
         }
     }
 
+    /// <summary>The configuration's About page found a newer version: offered here, in front.</summary>
+    public void OfferUpdate(ReleaseInfo release)
+    {
+        _settingsWindow?.Close(); // it stays above the main window, so it would hide the dialog
+        BringToFront();
+        _ = OfferUpdateAsync(release);
+    }
+
     /// <summary>What's new, and how this copy is updated: Update now, Skip this version, or Later.</summary>
     private async Task OfferUpdateAsync(ReleaseInfo release)
     {

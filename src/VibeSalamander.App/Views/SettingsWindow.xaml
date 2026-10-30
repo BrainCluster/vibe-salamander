@@ -101,6 +101,11 @@
                     <NavigationViewItem.Icon><FontIcon Glyph="&#xE78C;" /></NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Content="About" Tag="About">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE946;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
             <ScrollViewer x:Name="PageScroller" Padding="28,16,28,24" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
                 <ContentPresenter x:Name="PageHost" MaxWidth="880" HorizontalAlignment="Left" />
             </ScrollViewer>
