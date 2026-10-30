@@ -16,7 +16,7 @@ Settings are kept in `%AppData%\VibeSalamander`, so they stay when you update or
 
 ## Portable zip
 
-1. Download `VibeSalamander-<version>-win-x64.zip` (or `…-win-arm64.zip`) from the same release.
+1. Download `VibeSalamander-<version>-portable-win-x64.zip` (or `…-portable-win-arm64.zip`) from the same release.
 2. Unzip it anywhere you like: `C:\Tools\VibeSalamander`, a USB stick, a synced folder.
 3. Run **`VibeSalamander.exe`** in the main folder. (The program and its libraries are in `lib`; the small
    `VibeSalamander.exe` next to it starts them.)

@@ -36,7 +36,7 @@ and precision) and gives it a native Windows 11 look, fewer dialogs and a transf
 alone without administrator rights (or for everyone into Program Files), with a Start menu entry and an uninstaller.
 Settings are kept in `%AppData%\VibeSalamander`.
 
-**Portable zip:** download `VibeSalamander-<version>-win-x64.zip` (or `win-arm64`), unzip it anywhere (a USB stick
+**Portable zip:** download `VibeSalamander-<version>-portable-win-x64.zip` (or `portable-win-arm64`), unzip it anywhere (a USB stick
 too) and run `VibeSalamander.exe`. Nothing is installed into Windows: settings are kept in a `Data` folder beside the
 program.
 

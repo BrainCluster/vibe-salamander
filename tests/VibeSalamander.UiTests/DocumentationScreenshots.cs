@@ -110,7 +110,7 @@ public sealed class DocumentationScreenshots : IDisposable
         app.OtherWindow("Configuration");
         Thread.Sleep(1000);
         Doc("configuration general");
-        foreach (string page in new[] { "Panels", "Views", "Appearance", "Colors", "Keyboard", "Toolbar" })
+        foreach (string page in new[] { "Panels", "Views", "Appearance", "Colors", "Keyboard", "Toolbar", "About" })
         {
             app.ClickNamed(page);
             Doc("configuration " + page.ToLowerInvariant());

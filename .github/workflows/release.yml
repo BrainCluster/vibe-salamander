@@ -126,7 +126,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType File -Force publish/VibeSalamander/portable.flag | Out-Null
-          $zip = "VibeSalamander-${{ needs.version.outputs.version }}-${{ matrix.rid }}.zip"
+          $zip = "VibeSalamander-${{ needs.version.outputs.version }}-portable-${{ matrix.rid }}.zip"
           Compress-Archive -Path publish/VibeSalamander -DestinationPath $zip
           "ZIP=$zip" >> $env:GITHUB_ENV
 

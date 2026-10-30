@@ -85,7 +85,7 @@ public static partial class UpdateCheck
 
     /// <summary>
     /// The file to update with: the installer ("...-win-x64-setup.exe") for an installed copy, the zip
-    /// ("...-win-x64.zip") for a portable one; for this processor (x64 or ARM64).
+    /// ("...-portable-win-x64.zip", before 0.8.4 "...-win-x64.zip": both end alike) for a portable one; for this processor (x64 or ARM64).
     /// </summary>
     public static ReleaseAsset? AssetFor(ReleaseInfo release, InstallKind kind, Architecture architecture)
     {

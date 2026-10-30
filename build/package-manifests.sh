@@ -10,8 +10,8 @@ version="$1"
 dist="$2"
 date="${3:-$(date -u +%F)}"
 repo="https://github.com/BrainCluster/vibe-salamander"
-x64="VibeSalamander-${version}-win-x64.zip"
-arm64="VibeSalamander-${version}-win-arm64.zip"
+x64="VibeSalamander-${version}-portable-win-x64.zip"
+arm64="VibeSalamander-${version}-portable-win-arm64.zip"
 sha_x64=${SHA_X64:-$(sha256sum "$dist/$x64" | cut -d' ' -f1)}
 sha_arm64=${SHA_ARM64:-$(sha256sum "$dist/$arm64" | cut -d' ' -f1)}
 # the installers (from 0.8.0): winget installs with them; the zips are the portable version (Scoop)
@@ -58,10 +58,10 @@ cat > "$root/bucket/vibe-salamander.json" <<JSON
     "autoupdate": {
         "architecture": {
             "64bit": {
-                "url": "${repo}/releases/download/v\$version/VibeSalamander-\$version-win-x64.zip"
+                "url": "${repo}/releases/download/v\$version/VibeSalamander-\$version-portable-win-x64.zip"
             },
             "arm64": {
-                "url": "${repo}/releases/download/v\$version/VibeSalamander-\$version-win-arm64.zip"
+                "url": "${repo}/releases/download/v\$version/VibeSalamander-\$version-portable-win-arm64.zip"
             }
         }
     }

@@ -238,6 +238,16 @@ public sealed class AppSession : IDisposable
     public void ClickNamed(string name, int settleMs = 1200)
     {
         AutomationElement element = Retry(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(name)), "something named " + name);
+        try
+        {
+            // in a list that scrolls (the configuration's pages), out of sight until scrolled to
+            element.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
+            Thread.Sleep(300);
+        }
+        catch (Exception)
+        {
+            // not scrollable: clicked where it is
+        }
         element.Click();
         Thread.Sleep(settleMs);
     }
