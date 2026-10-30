@@ -33,17 +33,29 @@ public static class ListMenu
     // a mix of letters, capitals, digits and path characters: the width of an ordinary 50 characters
     private const string Sample = "C:\\Users\\Name\\Documents\\Projects 2026\\report_v12.md";
 
-    public static void Show(FrameworkElement anchor, IReadOnlyList<MenuEntry> entries, FlyoutShowOptions options, Action? closed = null)
+    /// <summary>
+    /// The menu under the anchor. Its title is <paramref name="title"/>, or the header the entries start with
+    /// (<see cref="MenuEntry.Header"/>). Every list menu has the same size: the title, then 10 rows of an icon,
+    /// 50 characters and a shortcut.
+    /// </summary>
+    public static void Show(FrameworkElement anchor, string? title, IReadOnlyList<MenuEntry> entries, FlyoutShowOptions options, Action? closed = null)
     {
+        if (entries.Count > 0 && entries[0] is { IsSeparator: false, IsEnabled: false, Invoke: null } header)
+        {
+            title ??= header.Text;
+            entries = entries.Skip(1).ToList();
+        }
         double labelWidth = Measure(Sample[..VisibleCharacters], 14).Width;
-        double shortcutWidth = entries.Where(e => !string.IsNullOrEmpty(e.Shortcut)).Select(e => Measure(e.Shortcut!, 12).Width + 20).DefaultIfEmpty(0).Max();
+        // room for the longest shortcut there is, so every menu has the same width
+        double shortcutWidth = entries.Where(e => !string.IsNullOrEmpty(e.Shortcut)).Select(e => Measure(e.Shortcut!, 12).Width)
+            .Append(Measure("Ctrl+Shift+F12", 12).Width).Max() + 20;
+        double width = IconWidth + labelWidth + shortcutWidth + 44;
 
         var list = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
             IsItemClickEnabled = true,
-            Width = IconWidth + labelWidth + shortcutWidth + 44,
-            MaxHeight = VisibleRows * RowHeight + 8,
+            Height = VisibleRows * RowHeight + 8,
             Padding = new Thickness(0, 4, 0, 4),
         };
         ScrollViewer.SetHorizontalScrollMode(list, ScrollMode.Disabled);
@@ -73,7 +85,25 @@ public static class ListMenu
         presenter.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(0)));
         presenter.Setters.Add(new Setter(ScrollViewer.VerticalScrollModeProperty, ScrollMode.Disabled));
         presenter.Setters.Add(new Setter(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled));
-        var flyout = new Flyout { Content = list, FlyoutPresenterStyle = presenter };
+        var content = new Grid { Width = width };
+        content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        content.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        content.Children.Add(new TextBlock
+        {
+            Text = title ?? string.Empty,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            FontSize = 14,
+            Height = RowHeight,
+            Padding = new Thickness(16, 7, 16, 0),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+        var divider = new Border { Height = 1, Margin = new Thickness(8, 0, 8, 0), Background = new SolidColorBrush(ColorHelper.FromArgb(0x50, 0x80, 0x80, 0x80)) };
+        Grid.SetRow(divider, 1);
+        content.Children.Add(divider);
+        Grid.SetRow(list, 2);
+        content.Children.Add(list);
+        var flyout = new Flyout { Content = content, FlyoutPresenterStyle = presenter };
 
         Action? chosen = null;
         void Choose(object? clicked)
@@ -91,7 +121,7 @@ public static class ListMenu
                 Choose(list.SelectedItem);
                 e.Handled = true;
             }
-            else if (e.Key is >= VirtualKey.A and <= VirtualKey.Z or >= VirtualKey.Number0 and <= VirtualKey.Number9)
+            else if (rows.Count > 0 && e.Key is >= VirtualKey.A and <= VirtualKey.Z or >= VirtualKey.Number0 and <= VirtualKey.Number9)
             {
                 // the next row starting with the letter (C for the C: drive, a folder by its first letter)
                 char letter = (char)e.Key;

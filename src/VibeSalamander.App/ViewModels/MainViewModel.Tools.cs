@@ -138,7 +138,7 @@ public sealed partial class MainViewModel
     /// <summary>F9: the user menu at the caret.</summary>
     private void ShowUserMenu(PaneViewModel pane)
     {
-        var entries = new List<MenuEntry>();
+        var entries = new List<MenuEntry> { MenuEntry.Header("User menu") };
         foreach (UserMenuItem item in Settings.UserMenu)
         {
             if (item.IsSeparator)
@@ -149,7 +149,7 @@ public sealed partial class MainViewModel
             UserMenuItem command = item;
             entries.Add(new MenuEntry(item.Name, () => RunUserMenuItem(pane, command), "\uE756"));
         }
-        if (entries.Count > 0)
+        if (entries.Count > 1)
             entries.Add(MenuEntry.Separator);
         entries.Add(new MenuEntry(Loc.T("Edit User Menu..."), async () => await EditUserMenuAsync(), "\uE70F"));
         _host.ShowMenu(pane, entries, atCaret: true);

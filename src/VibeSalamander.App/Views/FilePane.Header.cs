@@ -192,7 +192,7 @@ public sealed partial class FilePane
         }
 
         // the hot paths have their own button (next to the working directories) and Shift+F9
-        ListMenu.Show(DriveMenuButton, entries, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+        ListMenu.Show(DriveMenuButton, Loc.T("Change drive"), entries, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
         {
             Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedLeft,
             ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,

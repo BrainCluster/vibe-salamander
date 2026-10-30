@@ -50,7 +50,7 @@ public sealed partial class FilePane
     /// <summary>The address bar button that asked for the next menu (it opens under it), else the working directories one.</summary>
     private FrameworkElement? _menuAnchor;
 
-    public void ShowMenu(IReadOnlyList<MenuEntry> entries, bool atCaret)
+    public void ShowMenu(IReadOnlyList<MenuEntry> entries, bool atCaret, string? title = null)
     {
         FrameworkElement? anchor = _menuAnchor;
         _menuAnchor = null;
@@ -58,15 +58,17 @@ public sealed partial class FilePane
             return;
         // entries are data (paths, user menu names); only the fixed ones are translated
         var shown = entries.Select(e => e.IsEnabled || e.IsSeparator ? e : e with { Text = Loc.T(e.Text) }).ToList();
+        if (title != null)
+            title = Loc.T(title);
         FileItemViewModel? focused = ViewModel.FocusedItem;
         if (atCaret && focused != null && FileList.ContainerFromItem(focused) is ListViewItem container)
-            ListMenu.Show(container, shown, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+            ListMenu.Show(container, title, shown, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
             {
                 Position = new Windows.Foundation.Point(40, container.ActualHeight),
                 ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
             }, FocusList);
         else
-            ListMenu.Show(anchor ?? HistoryButton, shown, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
+            ListMenu.Show(anchor ?? HistoryButton, title, shown, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions
             {
                 Placement = Microsoft.UI.Xaml.Controls.Primitives.FlyoutPlacementMode.BottomEdgeAlignedRight,
                 ShowMode = Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowMode.Standard,
