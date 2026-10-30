@@ -1367,6 +1367,7 @@
  "The first rule whose masks match and whose attribute conditions hold gives the name its color. ": "De eerste regel waarvan de maskers overeenkomen en waarvan de kenmerkvoorwaarden gelden, geeft de naam zijn kleur. ",
  "The focused item is not a shortcut, or its target cannot be resolved.": "Het gefocuste item is geen snelkoppeling, of het doel ervan kan niet worden bepaald.",
  "The folder of the self-extracting archive doesn't exist.": "De map van het zelfuitpakkende archief bestaat niet.",
+ "The folders of Commands → Open Folder (This PC is always there):": "De mappen van Opdrachten → Map openen (Deze pc staat er altijd):",
  "The full editor couldn't start ({0}): this is a plain text box.": "De volledige editor kon niet starten ({0}): dit is een eenvoudig tekstvak.",
  "The image was not mounted.": "De schijfkopie is niet gekoppeld.",
  "The language of menus, dialogs and messages.": "De taal van menu's, dialoogvensters en berichten.",

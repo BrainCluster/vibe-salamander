@@ -94,6 +94,14 @@ public sealed partial class MainViewModel : BindableBase
         Settings.Drives.Network ??= new DriveTypeOptions();
         Settings.Drives.HiddenDrives ??= new List<string>();
         Settings.Drives.SeparatorAfter ??= new List<string>();
+        if (Settings.Drives.MenuFolders == null)
+        {
+            Settings.Drives.MenuFolders = new List<string>();
+            if (Settings.Drives.MenuShowDocuments)
+                Settings.Drives.MenuFolders.Add("Documents");
+            if (Settings.Drives.MenuShowNetwork)
+                Settings.Drives.MenuFolders.Add("Network");
+        }
         Settings.History ??= new HistoryOptions();
         Settings.Plugins ??= new PluginOptions();
         Settings.Plugins.Disabled ??= new List<string>();

@@ -29,7 +29,8 @@
 - **List menus** (drives, hot paths, opened files, working directories, histories, the user menu) all have the same
   width (50 characters with icons and shortcuts) and a title; up to 10 rows, scrolling beyond; a longer path slides sideways under the mouse or the keyboard, and its
   tooltip shows all of it. A letter jumps to the next row starting with it (C for the C: drive).
-  The drive menu is narrower (25 characters) and shows each drive's free space at the right.
+  The drive menu is narrower (25 characters) and shows each drive's free space at the right; Configuration →
+  Change Drive Menu chooses which folders of Commands → Open Folder it lists too (Desktop, Downloads, Recycle Bin, ...).
 - **Drive bar and drive menu** are grouped (disks, removable and CD/DVD drives, network drives) with separators
   between the groups, and show the same icons for the kinds of drives.
 

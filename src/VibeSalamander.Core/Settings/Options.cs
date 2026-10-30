@@ -271,8 +271,12 @@ public sealed class DriveOptions
     /// <summary>Drive letters followed by a separator in the drive bar and the Change Drive menu.</summary>
     public List<string> SeparatorAfter { get; set; } = new();
 
+    /// <summary>Before <see cref="MenuFolders"/>: they become its first items.</summary>
     public bool MenuShowDocuments { get; set; } = true;
     public bool MenuShowNetwork { get; set; } = true;
+
+    /// <summary>The folders of Commands → Open Folder shown in the Change Drive menu ("Desktop", "Documents", ...); null: not chosen yet.</summary>
+    public List<string>? MenuFolders { get; set; }
     public bool MenuShowOtherPanelPath { get; set; } = true;
     public bool MenuShowHotPaths { get; set; } = true;
 }

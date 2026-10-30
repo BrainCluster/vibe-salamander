@@ -1367,6 +1367,7 @@
   "The first rule whose masks match and whose attribute conditions hold gives the name its color. ": "Barvu názvu určí první pravidlo, jehož masky odpovídají a jehož podmínky atributů jsou splněny. ",
   "The focused item is not a shortcut, or its target cannot be resolved.": "Položka s fokusem není zástupce, nebo nelze zjistit jeho cíl.",
   "The folder of the self-extracting archive doesn't exist.": "Složka samorozbalovacího archivu neexistuje.",
+  "The folders of Commands → Open Folder (This PC is always there):": "Složky z Příkazy → Otevřít adresář (Tento počítač je tam vždy):",
   "The full editor couldn't start ({0}): this is a plain text box.": "Plný editor se nepodařilo spustit ({0}): toto je jen textové pole.",
   "The image was not mounted.": "Bitová kopie nebyla připojena.",
   "The language of menus, dialogs and messages.": "Jazyk nabídek, dialogů a zpráv.",

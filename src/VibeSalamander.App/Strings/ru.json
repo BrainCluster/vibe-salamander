@@ -1367,6 +1367,7 @@
  "The first rule whose masks match and whose attribute conditions hold gives the name its color. ": "Имя получает цвет от первого правила, маски которого совпадают и условия атрибутов которого выполняются. ",
  "The focused item is not a shortcut, or its target cannot be resolved.": "Элемент под курсором не является ярлыком, или его объект не удаётся определить.",
  "The folder of the self-extracting archive doesn't exist.": "Папка самораспаковывающегося архива не существует.",
+ "The folders of Commands → Open Folder (This PC is always there):": "Папки из Команды → Открыть папку (Этот компьютер есть всегда):",
  "The full editor couldn't start ({0}): this is a plain text box.": "Полный редактор не запустился ({0}): это простое текстовое поле.",
  "The image was not mounted.": "Образ не был подключён.",
  "The language of menus, dialogs and messages.": "Язык меню, диалоговых окон и сообщений.",

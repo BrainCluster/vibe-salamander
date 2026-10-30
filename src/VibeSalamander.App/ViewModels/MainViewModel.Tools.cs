@@ -509,7 +509,34 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>Commands → Open Folder: special folders (file system ones open in the panel, the others in Explorer).</summary>
-    public async Task OpenSpecialFolderAsync(string key)
+    /// <summary>Commands → Open Folder's folders (also choosable for the Change Drive menu): key, name, icon.</summary>
+    public static IReadOnlyList<(string Key, string Name, string Glyph)> SpecialFolders { get; } = new[]
+    {
+        ("Desktop", "Desktop", "\uE8FC"),
+        ("Documents", "Documents", "\uE8A5"),
+        ("Downloads", "Downloads", "\uE896"),
+        ("Pictures", "Pictures", "\uEB9F"),
+        ("Music", "Music", "\uE8D6"),
+        ("Videos", "Videos", "\uE714"),
+        ("UserProfile", "User Profile", "\uE77B"),
+        ("Temp", "Temporary Files", "\uE8B7"),
+        ("Recent", "Recently Used Documents", "\uE81C"),
+        ("Templates", "Document Templates", "\uE8A5"),
+        ("SendTo", "Send To Directory", "\uE724"),
+        ("StartMenu", "Start Menu", "\uE8B7"),
+        ("Programs", "Program Groups", "\uE8B7"),
+        ("Startup", "Startup Group", "\uE8B7"),
+        ("ControlPanel", "Control Panel", "\uE713"),
+        ("Network", "Network", "\uE968"),
+        ("RecycleBin", "Recycle Bin", "\uE74D"),
+        ("Fonts", "Fonts", "\uE8D2"),
+        ("Printers", "Printers", "\uE749"),
+    };
+
+    public Task OpenSpecialFolderAsync(string key) => OpenSpecialFolderAsync(key, _active);
+
+    /// <summary>A special folder in the panel (Explorer opens the ones that aren't folders on disk: Control Panel, ...).</summary>
+    public async Task OpenSpecialFolderAsync(string key, PaneViewModel pane)
     {
         string? path = key switch
         {
@@ -532,8 +559,8 @@ public sealed partial class MainViewModel
         };
         if (path != null)
         {
-            await _active.NavigateAsync(path);
-            _host.FocusPane(_active);
+            await pane.NavigateAsync(path);
+            _host.FocusPane(pane);
             return;
         }
         string? shell = key switch

@@ -796,9 +796,32 @@ public sealed partial class SettingsWindow
         page.Children.Add(new Border { Child = grid, Style = ThemedStyle("SettingsCardStyle") });
 
         page.Children.Add(Section("Additional items in the Change Drive menu"));
-        page.Children.Add(Toggle("Documents", null, d.MenuShowDocuments, v => d.MenuShowDocuments = v));
-        page.Children.Add(Toggle("Network", null, d.MenuShowNetwork, v => d.MenuShowNetwork = v));
         page.Children.Add(Toggle("As other panel", "The directory of the other panel.", d.MenuShowOtherPanelPath, v => d.MenuShowOtherPanelPath = v));
+        page.Children.Add(Hint("The folders of Commands → Open Folder (This PC is always there):"));
+        d.MenuFolders ??= new List<string>();
+        var folders = new Grid { ColumnSpacing = 12, RowSpacing = 2 };
+        for (int c = 0; c < 3; c++)
+            folders.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        int index = 0;
+        foreach (var (key, name, _) in MainViewModel.SpecialFolders)
+        {
+            if (index % 3 == 0)
+                folders.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            string k = key;
+            var box = new CheckBox { Content = name, IsChecked = d.MenuFolders.Contains(k, StringComparer.OrdinalIgnoreCase), MinWidth = 0 };
+            box.Click += (_, _) =>
+            {
+                d.MenuFolders.RemoveAll(x => string.Equals(x, k, StringComparison.OrdinalIgnoreCase));
+                if (box.IsChecked == true)
+                    d.MenuFolders.Add(k);
+                Changed();
+            };
+            Grid.SetRow(box, index / 3);
+            Grid.SetColumn(box, index % 3);
+            folders.Children.Add(box);
+            index++;
+        }
+        page.Children.Add(new Border { Child = folders, Style = ThemedStyle("SettingsCardStyle") });
         return page;
     }
 

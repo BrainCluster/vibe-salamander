@@ -1370,6 +1370,7 @@
  "The first rule whose masks match and whose attribute conditions hold gives the name its color. ": "La primera regla cuyas máscaras coinciden y cuyas condiciones de atributos se cumplen da color al nombre. ",
  "The focused item is not a shortcut, or its target cannot be resolved.": "El elemento seleccionado no es un acceso directo o no se puede resolver su destino.",
  "The folder of the self-extracting archive doesn't exist.": "La carpeta del archivo autoextraíble no existe.",
+ "The folders of Commands → Open Folder (This PC is always there):": "Las carpetas de Comandos → Abrir carpeta (Este equipo siempre está):",
  "The full editor couldn't start ({0}): this is a plain text box.": "El editor completo no pudo iniciarse ({0}): esto es un cuadro de texto simple.",
  "The image was not mounted.": "No se montó la imagen.",
  "The language of menus, dialogs and messages.": "El idioma de los menús, cuadros de diálogo y mensajes.",

@@ -191,13 +191,16 @@ public sealed partial class FilePane
         }
         entries.Add(MenuEntry.Separator);
         entries.Add(new MenuEntry(Loc.T("This PC"), async () => await ViewModel.NavigateAsync(ThisPcProvider.RootPath), "\uE7F4"));
-        if (driveOptions.MenuShowDocuments)
+        // the folders of Commands → Open Folder chosen in Configuration → Change Drive Menu
+        List<string> folders = driveOptions.MenuFolders ?? new List<string>();
+        foreach (var (key, name, glyph) in MainViewModel.SpecialFolders)
         {
-            string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            entries.Add(new MenuEntry(Loc.T("Documents"), async () => await ViewModel.NavigateAsync(documents), "\uE8A5"));
+            if (!folders.Contains(key, StringComparer.OrdinalIgnoreCase))
+                continue;
+            string k = key;
+            PaneViewModel pane = ViewModel;
+            entries.Add(new MenuEntry(Loc.T(name), async () => await _main.OpenSpecialFolderAsync(k, pane), glyph));
         }
-        if (driveOptions.MenuShowNetwork)
-            entries.Add(new MenuEntry(Loc.T("Network"), () => Core.Interop.ShellOperations.OpenInExplorer("shell:NetworkPlacesFolder"), "\uE968"));
         if (driveOptions.MenuShowOtherPanelPath)
         {
             PaneViewModel other = _main.Left == ViewModel ? _main.Right : _main.Left;
