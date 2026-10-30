@@ -15,8 +15,6 @@ namespace VibeSalamander.ViewModels;
 /// <summary>A drive in the drive bar.</summary>
 public sealed class DriveButtonViewModel : BindableBase
 {
-    private ImageSource? _icon;
-
     public DriveButtonViewModel(DriveEntryInfo drive)
     {
         Drive = drive;
@@ -24,6 +22,40 @@ public sealed class DriveButtonViewModel : BindableBase
 
     public DriveEntryInfo Drive { get; }
     public string Letter => Drive.Root[..1];
+
+    /// <summary>The icon of the drive bar and the drive menu: disk, removable, CD/DVD, network.</summary>
+    public string Glyph => GlyphFor(Drive.Type);
+
+    public static string GlyphFor(DriveType type) => type switch
+    {
+        DriveType.Removable => "\uE88E",
+        DriveType.CDRom => "\uE958",
+        DriveType.Network => "\uE8CE",
+        _ => "\uEDA2",
+    };
+
+    /// <summary>The groups of the drive bar and the drive menu, in this order: disks, removable and CD/DVD, network drives.</summary>
+    public int Group => GroupOf(Drive.Type);
+
+    public static int GroupOf(DriveType type) => type switch
+    {
+        DriveType.Network => 2,
+        DriveType.Removable or DriveType.CDRom => 1,
+        _ => 0,
+    };
+
+    private bool _groupEnd;
+
+    /// <summary>The last drive of its group, another group follows: a separator after it.</summary>
+    public bool GroupEnd
+    {
+        get => _groupEnd;
+        set
+        {
+            if (SetProperty(ref _groupEnd, value))
+                OnPropertyChanged(nameof(SeparatorVisibility));
+        }
+    }
 
     private bool _separatorAfter;
 
@@ -38,16 +70,10 @@ public sealed class DriveButtonViewModel : BindableBase
         }
     }
 
-    public Microsoft.UI.Xaml.Visibility SeparatorVisibility => _separatorAfter ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+    public Microsoft.UI.Xaml.Visibility SeparatorVisibility => _separatorAfter || _groupEnd ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
     public string ToolTip => Drive.HasSize
         ? Drive.Caption + "\n" + Loc.F("{0} free of {1}", Formats.ShortSize(Drive.FreeSpace), Formats.ShortSize(Drive.TotalSize))
         : Drive.Caption;
-
-    public ImageSource? Icon
-    {
-        get => _icon;
-        set => SetProperty(ref _icon, value);
-    }
 }
 
 /// <summary>Arguments of <see cref="PaneViewModel.ListingChanged"/>: where the caret should be after a (re)load.</summary>
@@ -296,13 +322,7 @@ public sealed partial class PaneViewModel : BindableBase, IDisposable
     public string DisplayPath => _provider.GetDisplayPath(_path);
 
     /// <summary>Icon of the drive drop-down: This PC, or the kind of drive the panel is on.</summary>
-    public string DriveMenuGlyph => IsThisPc ? "\uE7F4" : CurrentDriveType switch
-    {
-        DriveType.Removable => "\uE88E",
-        DriveType.CDRom => "\uE958",
-        DriveType.Network => "\uE8CE",
-        _ => "\uEDA2",
-    };
+    public string DriveMenuGlyph => IsThisPc ? "\uE7F4" : DriveButtonViewModel.GlyphFor(CurrentDriveType);
     public bool IsThisPc => _provider is ThisPcProvider;
     public bool IsLocalDisk => _provider.IsLocalDisk;
 

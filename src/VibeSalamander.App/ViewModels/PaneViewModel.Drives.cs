@@ -20,13 +20,8 @@ public sealed partial class PaneViewModel
     public async Task LoadDrivesAsync()
     {
         IReadOnlyList<DriveEntryInfo> drives = await ThisPcProvider.QueryDrivesAsync();
-        var buttons = drives.Select(d => new DriveButtonViewModel(d)).ToList();
-        foreach (var b in buttons)
-        {
-            var entry = new FileEntry(b.Drive.Root, b.Drive.Root, true, 0, DateTime.MinValue, FileAttributes.Directory, tag: b.Drive);
-            _icons.Request(entry, icon => b.Icon = icon);
-        }
-        Drives = buttons;
+        // grouped like Explorer (disks, removable and CD/DVD, network drives), by letter within a group
+        Drives = drives.Select(d => new DriveButtonViewModel(d)).OrderBy(b => b.Group).ToList();
         OnPropertyChanged(nameof(VisibleDrives));
     }
 
@@ -36,11 +31,13 @@ public sealed partial class PaneViewModel
         get
         {
             DriveOptions? options = UiState.Drives;
-            if (options == null)
-                return _drives;
             foreach (DriveButtonViewModel d in _drives)
-                d.SeparatorAfter = options.SeparatorAfter.Contains(d.Letter, StringComparer.OrdinalIgnoreCase);
-            return _drives.Where(d => !options.HiddenDrives.Contains(d.Letter, StringComparer.OrdinalIgnoreCase)).ToList();
+                d.SeparatorAfter = options != null && options.SeparatorAfter.Contains(d.Letter, StringComparer.OrdinalIgnoreCase);
+            var visible = options == null ? _drives.ToList()
+                : _drives.Where(d => !options.HiddenDrives.Contains(d.Letter, StringComparer.OrdinalIgnoreCase)).ToList();
+            for (int i = 0; i < visible.Count; i++)
+                visible[i].GroupEnd = i + 1 < visible.Count && visible[i + 1].Group != visible[i].Group;
+            return visible;
         }
     }
 

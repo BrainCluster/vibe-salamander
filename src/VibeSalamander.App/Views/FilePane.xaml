@@ -230,14 +230,12 @@
                                 <Button Style="{StaticResource VibeDriveButtonStyle}" Click="DriveButton_Click"
                                         ToolTipService.ToolTip="{x:Bind ToolTip}">
                                     <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <Grid Width="16" Height="16">
-                                            <FontIcon Glyph="&#xEDA2;" FontFamily="{StaticResource VibeIconFont}" FontSize="13" />
-                                            <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16" />
-                                        </Grid>
+                                        <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="13" Width="16" />
                                         <TextBlock Text="{x:Bind Letter}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
-                                <!-- Configuration → Change Drive Menu and Drive Bar: separator after this drive -->
+                                <!-- between the groups (disks, removable, network), and after a drive chosen in
+                                     Configuration → Change Drive Menu and Drive Bar -->
                                 <Border Width="1" Margin="3,4" Background="{ThemeResource VibePaneBorderBrush}"
                                         Visibility="{x:Bind SeparatorVisibility, Mode=OneWay}" />
                             </StackPanel>
