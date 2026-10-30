@@ -98,6 +98,11 @@ public sealed class ReleaseScenarios : IDisposable
         WaitForText(app, t => t.Contains(_files.Photos, StringComparison.OrdinalIgnoreCase), "the hot path in the list");
         AppSession.Screenshot("r02 hot path list");
         app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
+        // the drive menu: free space and a fullness bar at the right
+        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F1, settleMs: 1200);
+        WaitForText(app, t => t.Contains("C:", StringComparison.OrdinalIgnoreCase) && t.Contains("free", StringComparison.OrdinalIgnoreCase) || t == "Change drive", "the drive menu");
+        AppSession.Screenshot("r02b drive menu");
+        app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
         app.GoTo("notes.md");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.RETURN, settleMs: 800);
         AutomationElement line = app.Window.FindFirstDescendant(cf => cf.ByAutomationId("CommandLine"));
