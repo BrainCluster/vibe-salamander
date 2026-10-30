@@ -34,6 +34,12 @@ public static class FolderViews
         "mp4", "mkv", "avi", "mov", "wmv", "webm", "m4v", "mpg", "mpeg", "3gp", "mts", "m2ts",
     };
 
+    /// <summary>A picture or a video, by its extension ("jpg", with or without the dot).</summary>
+    public static bool IsPictureOrVideo(string extension) => PictureExtensions.Contains(extension.TrimStart('.'));
+
+    /// <summary>The extensions of pictures and videos, with the dot (".jpg").</summary>
+    public static IEnumerable<string> PictureAndVideoExtensions => PictureExtensions.Select(e => "." + e);
+
     /// <summary>The key of a folder: its path without a trailing separator, in capitals (paths compare without case).</summary>
     public static string Key(string path)
     {

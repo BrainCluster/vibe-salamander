@@ -192,7 +192,7 @@ internal sealed partial class ViewerWindow : Window
         _bar.PrimaryCommands.Add(Button("Next file", "", () => _ = StepFileAsync(+1, imagesOnly: false)));
         _bar.SecondaryCommands.Add(Button("Full screen (F11)", "", ToggleFullScreen));
         _bar.SecondaryCommands.Add(Button("Edit (F4)", "", Edit));
-        _bar.SecondaryCommands.Add(Button("Open with the default app", "", () => Run(() => ShellOperations.Open(_path, Path.GetDirectoryName(_path)))));
+        _bar.SecondaryCommands.Add(Button("Open with the default app", "", () => Run(() => FileLauncher.Open(_path, Path.GetDirectoryName(_path)))));
         _bar.SecondaryCommands.Add(Button("Show in folder", "", () => Run(() => System.Diagnostics.Process.Start("explorer.exe", "/select,\"" + _path + "\"")?.Dispose())));
         _bar.SecondaryCommands.Add(Button("Copy path", "", () =>
         {

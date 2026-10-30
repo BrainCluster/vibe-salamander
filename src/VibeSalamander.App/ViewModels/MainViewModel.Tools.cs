@@ -464,7 +464,7 @@ public sealed partial class MainViewModel
                     await pane.NavigateAsync(dir, Path.GetFileName(path));
                 if (File.Exists(path))
                 {
-                    ShellOperations.Open(path, dir);
+                    FileLauncher.Open(path, dir);
                     RememberOpened(path);
                 }
                 else

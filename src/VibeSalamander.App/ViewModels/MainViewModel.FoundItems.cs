@@ -24,7 +24,7 @@ public sealed partial class MainViewModel
 
     /// <summary>Open on a found file: with its program (archives and directories open in a panel, see FindWindow).</summary>
     public void OpenFoundFile(FileEntry entry) =>
-        RunFoundFile(entry, Array.Empty<ProgramRule>(), () => ShellOperations.Open(entry.FullPath, Path.GetDirectoryName(entry.FullPath)));
+        RunFoundFile(entry, Array.Empty<ProgramRule>(), () => FileLauncher.Open(entry.FullPath, Path.GetDirectoryName(entry.FullPath)));
 
     /// <summary>F3 on a found file: Configuration → Viewers, else the associated program.</summary>
     public void ViewFoundFile(FileEntry entry) =>

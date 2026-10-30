@@ -410,7 +410,7 @@ public sealed partial class MainViewModel
         if (Settings.Viewer.UseBuiltInViewer)
             _host.OpenViewer(path, siblings ?? new[] { path });
         else
-            ShellOperations.Open(path, Path.GetDirectoryName(path));
+            FileLauncher.Open(path, Path.GetDirectoryName(path));
     }
 
     /// <summary>The built-in editor, or (switched off in Configuration → Editors) Windows' "edit" for the file.</summary>

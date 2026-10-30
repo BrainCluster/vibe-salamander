@@ -173,7 +173,7 @@ public sealed partial class PaneViewModel
         }
         else
         {
-            Core.Interop.ShellOperations.Open(e.FullPath, _path);
+            Services.FileLauncher.Open(e.FullPath, _path);
             FileOpened?.Invoke(this, e.FullPath);
         }
     }
