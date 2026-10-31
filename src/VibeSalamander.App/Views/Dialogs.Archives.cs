@@ -382,7 +382,8 @@ public sealed partial class Dialogs
             encrypted ? password.Password : null, chosenAdvanced);
     }
 
-    public sealed record UnpackAnswer(string Target, string Mask, bool ToSubfolder);
+    /// <param name="SubfolderFromArchive">the checkbox was set by the archive's root folder, not by hand: not a setting to keep</param>
+    public sealed record UnpackAnswer(string Target, string Mask, bool ToSubfolder, bool SubfolderFromArchive = false);
 
     /// <summary>Unpack (Alt+F6): where to (prefilled with the other panel), which files, one folder per archive.</summary>
     /// <param name="rootFolder">
@@ -404,7 +405,7 @@ public sealed partial class Dialogs
         body.Children.Add(row);
         body.Children.Add(subfolderRow);
         body.Children.Add(maskBox);
-        bool changedByHand = false;
+        bool changedByHand = false, fromArchive = false;
         subfolder.Click += (_, _) => changedByHand = true;
         if (rootFolder != null)
         {
@@ -416,8 +417,11 @@ public sealed partial class Dialogs
                 subfolder.DispatcherQueue.TryEnqueue(() =>
                 {
                     found.Text = Services.Loc.F("Root folder {0} found", root);
-                    if (!changedByHand)
+                    if (!changedByHand && subfolder.IsChecked == true)
+                    {
                         subfolder.IsChecked = false;
+                        fromArchive = true;
+                    }
                 });
             });
         }
@@ -444,7 +448,7 @@ public sealed partial class Dialogs
         if ((!enter && result != ContentDialogResult.Primary) || string.IsNullOrWhiteSpace(box.Text))
             return null;
         string m = maskBox.Text.Trim();
-        return new UnpackAnswer(box.Text.Trim(), m.Length == 0 ? "*.*" : m, subfolder.IsChecked == true);
+        return new UnpackAnswer(box.Text.Trim(), m.Length == 0 ? "*.*" : m, subfolder.IsChecked == true, fromArchive && !changedByHand);
     }
 
     /// <summary>The password of an encrypted archive; null when cancelled.</summary>

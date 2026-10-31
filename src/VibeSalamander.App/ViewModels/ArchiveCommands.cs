@@ -165,7 +165,8 @@ internal sealed class ArchiveCommands
         if (answer == null)
             return;
         o.UnpackMask = answer.Mask;
-        o.UnpackToSubfolder = answer.ToSubfolder;
+        if (!answer.SubfolderFromArchive)
+            o.UnpackToSubfolder = answer.ToSubfolder; // cleared for one archive's root folder: the next archive still gets its folder
         _main.SaveSettings();
 
         string target = PathUtil.Resolve(active.Path, answer.Target);
