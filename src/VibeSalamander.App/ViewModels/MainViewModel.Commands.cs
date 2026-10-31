@@ -29,6 +29,7 @@ public sealed partial class MainViewModel
             _active.IsLocalDisk || _active.IsRemote || ArchivePanelCommands.Editable(_active) != null,
         CommandId.QuickRename or CommandId.CreateDirectory when _active.IsRemote => true,
         CommandId.CopyAsShortcut => _active.HasDiskItems,
+        CommandId.RunAsAdministrator => _active.HasDiskItems,
         CommandId.Duplicate or CommandId.MultiRename => _active.IsLocalDisk || (_active.HasDiskItems && command == CommandId.MultiRename),
         CommandId.QuickRename or CommandId.CreateDirectory or CommandId.EditNewFile or
         CommandId.ChangeAttributes or CommandId.ChangeCase or CommandId.ClipboardCut or
@@ -180,6 +181,7 @@ public sealed partial class MainViewModel
         t.AddSync(CommandId.Edit, _ => EditFile());
         t.Add(CommandId.EditNewFile, _ => Files.EditNewFileAsync());
         t.AddSync(CommandId.OpenWith, _ => Files.OpenWith());
+        t.AddSync(CommandId.RunAsAdministrator, _ => Files.RunAsAdministrator());
         t.Add(CommandId.Copy, _ => Files.CopyOrMoveAsync(move: false));
         t.Add(CommandId.Move, _ => Files.CopyOrMoveAsync(move: true));
         t.Add(CommandId.Delete, _ => Files.DeleteAsync(permanent: false));

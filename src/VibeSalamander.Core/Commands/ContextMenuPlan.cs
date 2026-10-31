@@ -48,6 +48,9 @@ public sealed record ContextMenuFacts
     /// <summary>A script that can run in a console (one file, on a disk).</summary>
     public ScriptHost Script { get; init; }
 
+    /// <summary>A program, installer, script or shortcut on a disk: "Run as administrator".</summary>
+    public bool CanRunAsAdministrator { get; init; }
+
     /// <summary>A plugin can unpack the file.</summary>
     public bool CanUnpack { get; init; }
 
@@ -232,6 +235,8 @@ public static class ContextMenuPlan
             Add("Mount", "", CommandId.MountImage);
         if (directory || archive)
             Add("Open in other panel", "", CommandId.OpenInOtherPanel);
+        if (!directory && !several && f.CanRunAsAdministrator)
+            Add("Run as administrator", "\uE7EF", CommandId.RunAsAdministrator);
         if (!directory && !several)
         {
             Add("Open with...", "", CommandId.OpenWith);

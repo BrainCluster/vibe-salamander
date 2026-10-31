@@ -298,6 +298,7 @@ public sealed partial class FilePane
                 MountDiskImages = _main!.Settings.General.MountDiskImages,
                 Script = !directory && count <= 1 && local ? Core.Interop.ScriptRunner.HostOf(path) : Core.Interop.ScriptHost.None,
                 CanUnpack = _main.Plugins.FindUnpacker(path) != null,
+                CanRunAsAdministrator = !directory && count <= 1 && local && Core.Interop.ShellOperations.CanRunAsAdministrator(path),
                 HasArchivePlugin = count <= 1 && archive && _main.Plugins.UnpackerPlugin(path) != null,
                 ClipboardHasFiles = local && ClipboardHasFiles(),
                 OffersWindowsMenu = offersWindowsMenu,

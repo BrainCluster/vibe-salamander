@@ -179,4 +179,6 @@ public enum CommandId
     CommandHistory,
     // shortcuts (.lnk) to the items, on the clipboard: Paste puts them anywhere, also in Explorer (Ctrl+Shift+L)
     CopyAsShortcut,
+    // the focused program, installer, script or shortcut with administrator rights (Ctrl+Shift+Enter in Explorer)
+    RunAsAdministrator,
 }

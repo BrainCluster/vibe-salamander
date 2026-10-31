@@ -118,6 +118,40 @@ public static class ShellOperations
         });
     }
 
+    /// <summary>Programs, installers, scripts, consoles and shortcuts: what "Run as administrator" makes sense for.</summary>
+    public static bool CanRunAsAdministrator(string path) => Path.GetExtension(path).ToLowerInvariant() is
+        ".exe" or ".com" or ".bat" or ".cmd" or ".ps1" or ".msi" or ".msc" or ".lnk" or ".vbs" or ".cpl";
+
+    /// <summary>
+    /// Starts the file with administrator rights (Windows asks first, as for Explorer's "Run as administrator").
+    /// False when the question was answered No. Scripts run in a window that stays open, in their own folder.
+    /// </summary>
+    public static bool RunAsAdministrator(string path)
+    {
+        string directory = Path.GetDirectoryName(path) ?? Environment.CurrentDirectory;
+        ProcessStartInfo info = Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            // an elevated console starts in System32: the script's folder first
+            ".bat" or ".cmd" => new ProcessStartInfo("cmd.exe", $"/k \"cd /d \"{directory}\" && \"{path}\"\""),
+            ".ps1" => new ProcessStartInfo("powershell.exe", $"-NoExit -NoLogo -ExecutionPolicy Bypass -File \"{path}\""),
+            ".msi" => new ProcessStartInfo("msiexec.exe", $"/i \"{path}\""),
+            ".vbs" => new ProcessStartInfo("wscript.exe", $"\"{path}\""),
+            _ => new ProcessStartInfo(path),
+        };
+        info.UseShellExecute = true;
+        info.Verb = "runas";
+        info.WorkingDirectory = directory;
+        try
+        {
+            Process.Start(info)?.Dispose();
+            return true;
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            return false; // ERROR_CANCELLED: No at Windows' question
+        }
+    }
+
     /// <summary>Windows "Open with" chooser (Alt+F3 / Ctrl+Shift+F3; Vibe Salamander has no internal viewer).</summary>
     public static void OpenWith(IntPtr owner, string path)
     {

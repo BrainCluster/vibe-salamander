@@ -66,6 +66,18 @@ public class ContextMenuPlanTests
     }
 
     [Fact]
+    public void A_program_can_run_as_administrator()
+    {
+        IReadOnlyList<ContextMenuEntry> menu = Plan(AFile with { CanRunAsAdministrator = true });
+        Assert.Equal(new[] { CommandId.Open, CommandId.RunAsAdministrator, CommandId.OpenWith }, Commands(menu).Take(3));
+        Assert.DoesNotContain(CommandId.RunAsAdministrator, Commands(Plan(AFile)));
+        Assert.DoesNotContain(CommandId.RunAsAdministrator, Commands(Plan(AFile with { CanRunAsAdministrator = true, MarkedCount = 3 })));
+        Assert.True(Core.Interop.ShellOperations.CanRunAsAdministrator(@"C:\x\setup.EXE"));
+        Assert.True(Core.Interop.ShellOperations.CanRunAsAdministrator(@"C:\x\build.cmd"));
+        Assert.False(Core.Interop.ShellOperations.CanRunAsAdministrator(@"C:\x\notes.txt"));
+    }
+
+    [Fact]
     public void Several_marked_items_say_how_many_and_have_no_rename()
     {
         IReadOnlyList<ContextMenuEntry> menu = Plan(AFile with { MarkedCount = 4 });

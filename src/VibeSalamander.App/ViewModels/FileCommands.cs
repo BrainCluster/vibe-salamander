@@ -472,6 +472,27 @@ internal sealed class FileCommands
             ShellOperations.ShowProperties(_host.WindowHandle, drive.Root);
     }
 
+    /// <summary>The focused program, installer, script or shortcut with administrator rights (Windows asks first).</summary>
+    public void RunAsAdministrator()
+    {
+        FileItemViewModel? item = Active.FocusedItem;
+        if (item == null || item.Entry.IsDirectory || !Active.IsLocalDisk)
+            return;
+        if (!ShellOperations.CanRunAsAdministrator(item.Entry.FullPath))
+        {
+            _host.Notify(Services.Loc.F("\"{0}\" isn't a program, script or installer to run as administrator.", item.Entry.Name), isError: false);
+            return;
+        }
+        try
+        {
+            ShellOperations.RunAsAdministrator(item.Entry.FullPath);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            _host.Notify(Services.Loc.F("\"{0}\" couldn't be started: {1}", item.Entry.Name, ex.Message));
+        }
+    }
+
     public void OpenWith()
     {
         FileItemViewModel? item = Active.FocusedItem;

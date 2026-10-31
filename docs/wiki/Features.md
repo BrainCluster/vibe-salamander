@@ -72,6 +72,8 @@
 - F3 views and F4 edits in the built-in viewer and editor (below); Open with (Alt+F3), and per-mask viewers and
   editors of your own.
 - Right-click: a short *Vibe* menu with the most useful commands, and the full Windows context menu one click away.
+  Programs, installers, scripts and shortcuts have **Run as administrator** (Windows asks first; scripts run in their
+  own folder in a window that stays open).
 - New folders and files are created and named in place.
 
 ![The transfer panel](images/transfer-panel.png)
