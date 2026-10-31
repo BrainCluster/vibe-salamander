@@ -121,5 +121,12 @@
         <Setter Property="Margin" Value="0" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        <!-- the selected row's highlight shows where the keyboard is: no white focus rectangle around it -->
+        <Setter Property="UseSystemFocusVisuals" Value="False" />
+    </Style>
+
+    <!-- every other list too (the configuration's lists, the user menu, plugins) -->
+    <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+        <Setter Property="UseSystemFocusVisuals" Value="False" />
     </Style>
 </ResourceDictionary>

@@ -46,6 +46,10 @@ internal sealed partial class ViewerWindow
         if (_treeHost == null)
         {
             _tree = new TreeView { SelectionMode = TreeViewSelectionMode.Single, Padding = new Thickness(8, 4, 8, 4) };
+            // the selected node's highlight shows where the keyboard is: no focus rectangle around it
+            var nodeStyle = new Style(typeof(TreeViewItem));
+            nodeStyle.Setters.Add(new Setter(Control.UseSystemFocusVisualsProperty, false));
+            _tree.ItemContainerStyle = nodeStyle;
             _tree.Expanding += (_, e) => Realize(e.Node);
             _treeHost = new Grid();
             _treeHost.Children.Add(_tree);
