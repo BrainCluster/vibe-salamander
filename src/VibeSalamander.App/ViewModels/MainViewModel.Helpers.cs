@@ -65,6 +65,8 @@ public sealed partial class MainViewModel
             entries.Add(MenuEntry.Separator);
             entries.Add(new MenuEntry(Loc.F("Add this folder as hot path {0}", free), () => SetHotPath(free), "\uE710", $"Ctrl+Shift+{free}"));
         }
+        entries.Add(MenuEntry.Separator);
+        entries.Add(new MenuEntry(Loc.T("Configure..."), () => _host.ShowConfigurationPage("HotPaths"), "\uE713"));
         _host.ShowMenu(pane, entries, atCaret: false);
     }
 
