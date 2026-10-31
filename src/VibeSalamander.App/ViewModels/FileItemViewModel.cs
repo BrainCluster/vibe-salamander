@@ -224,13 +224,30 @@ public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
     }
 
     public string Glyph =>
-        Entry.IsUpDir ? "" :          // Up
-        IsDrive ? "" :                // HardDrive
-        Entry.IsDirectory ? "" :      // Folder
-        "";                           // Page
+        Entry.IsUpDir ? "\uE74A" :   // Up
+        IsDrive ? "\uEDA2" :         // HardDrive
+        UiState.IconPack == Core.Settings.IconPack.Windows
+            ? (Entry.IsDirectory ? "\uE8B7" : "\uE7C3") // Folder, Page (while Windows' icon loads, or without one)
+            : Core.Panels.FileIcons.Glyph(Core.Panels.FileIcons.KindOf(Entry));
 
-    public Brush GlyphBrush => _isCaret && UiState.FocusTextBrush is { } focusText ? focusText
-        : Entry.IsDirectory && !Entry.IsUpDir && !IsDrive ? UiState.FolderBrush : UiState.SecondaryTextBrush;
+    public Brush GlyphBrush
+    {
+        get
+        {
+            if (_isCaret && UiState.FocusTextBrush is { } focusText)
+                return focusText;
+            bool folder = Entry.IsDirectory && !Entry.IsUpDir && !IsDrive;
+            switch (UiState.IconPack)
+            {
+                case Core.Settings.IconPack.FluentMonochrome:
+                    return UiState.SecondaryTextBrush;
+                case Core.Settings.IconPack.Fluent when !folder && !Entry.IsUpDir && !IsDrive:
+                    return UiState.KindBrush(Core.Panels.FileIcons.KindOf(Entry)) ?? UiState.SecondaryTextBrush;
+                default:
+                    return folder ? UiState.FolderBrush : UiState.SecondaryTextBrush;
+            }
+        }
+    }
 
     public ImageSource? Icon
     {
@@ -242,7 +259,12 @@ public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
         }
     }
 
-    public Visibility GlyphVisibility => _icon == null ? Visibility.Visible : Visibility.Collapsed;
+    // Windows' icons: nothing while the icon loads (no other icon flashes first); the glyph only when there is none
+    public Visibility GlyphVisibility =>
+        _icon == null && (Entry.IsUpDir || _iconDone || UiState.IconPack != Core.Settings.IconPack.Windows)
+            ? Visibility.Visible : Visibility.Collapsed;
+
+    private bool _iconDone;
 
     // ---- large icons / thumbnails (Icons, Thumbnails, Tiles views) -----------------------------
 
@@ -299,13 +321,22 @@ public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
         });
     }
 
-    /// <summary>Called when the row becomes visible; loads the shell icon once.</summary>
-    public void EnsureIcon(Services.IconCache cache)
+    /// <summary>
+    /// Called when the row becomes visible; loads Windows' icon once. Generic: the icon of the file type only (simple
+    /// icons, archives, servers), never one read from the file itself.
+    /// </summary>
+    public void EnsureIcon(Services.IconCache cache, bool generic)
     {
         if (_iconRequested)
             return;
         _iconRequested = true;
-        cache.Request(Entry, icon => Icon = icon);
+        cache.Request(Entry, generic, icon =>
+        {
+            _iconDone = true;
+            if (icon == null)
+                OnPropertyChanged(nameof(GlyphVisibility));
+            Icon = icon;
+        });
     }
 
     public override string ToString() => Entry.Name;
@@ -343,6 +374,22 @@ public static class UiState
     public static Core.Settings.SizeFormat SizeFormat => _settings?.Panels.SizeFormat ?? Core.Settings.SizeFormat.Bytes;
     public static bool DirectoriesHaveExtensions => _settings?.Panels.DirectoriesHaveExtensions ?? false;
     public static bool DimHiddenItems => _settings?.Appearance.DimHiddenItems ?? true;
+    public static Core.Settings.IconPack IconPack => _settings?.Appearance.IconPack ?? Core.Settings.IconPack.Windows;
+
+    private static readonly Dictionary<Core.Panels.FileKind, Brush?> KindBrushes = new();
+
+    /// <summary>The colored icon pack's color for a kind of file (null: the secondary text color).</summary>
+    public static Brush? KindBrush(Core.Panels.FileKind kind)
+    {
+        if (!KindBrushes.TryGetValue(kind, out Brush? brush))
+        {
+            brush = Core.Panels.FileIcons.Color(kind) is uint rgb
+                ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb))
+                : null;
+            KindBrushes[kind] = brush;
+        }
+        return brush;
+    }
     public static int ThumbnailSize => Math.Clamp(_settings?.Appearance.ThumbnailSize ?? 112, MinThumbnailSize, MaxThumbnailSize);
 
     /// <summary>The thumbnail size slider: 64 pixels to Explorer's extra large icons (256).</summary>

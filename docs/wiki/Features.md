@@ -176,6 +176,8 @@
 - **Color schemes**: Vibe, Explorer, Altap Salamander classic, the terminal-inspired Yazi, Superfile, Tokyo Night,
   Gruvbox, Dracula, Nord, Solarized and GitHub (dark and light) and Phosphor, the retro Norton Commander and DOS
   Navigator, or your own — also **imported from a Visual Studio Code theme**. Files can be colored by mask.
+- **Icon packs** (Configuration → Appearance → Icons): Windows' own icons like File Explorer, or Vibe Salamander's
+  icons by kind of file (pictures, videos, music, archives, code, documents, ...) in color or in one color.
 - Dates as Windows shows them or as 2026-10-28, times in 24 or 12 hours; sizes in bytes, kilobytes or short.
 
 ![The Tokyo Night scheme](images/scheme-tokyo-night.png)

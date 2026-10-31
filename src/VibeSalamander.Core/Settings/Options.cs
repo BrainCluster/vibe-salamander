@@ -220,6 +220,22 @@ public sealed class AppearanceOptions
 
     /// <summary>Thumbnails view: size of the preview in pixels.</summary>
     public int ThumbnailSize { get; set; } = 112;
+
+    /// <summary>The icons of files and folders in the panels.</summary>
+    public IconPack IconPack { get; set; } = IconPack.Windows;
+}
+
+/// <summary>Configuration → Appearance → Icons.</summary>
+public enum IconPack
+{
+    /// <summary>Windows' own icons, like File Explorer (also on drives with simple icons: by file type).</summary>
+    Windows,
+
+    /// <summary>Vibe Salamander's icons by kind of file, in color.</summary>
+    Fluent,
+
+    /// <summary>The same icons in the panel's text color.</summary>
+    FluentMonochrome,
 }
 
 public enum TitleMode

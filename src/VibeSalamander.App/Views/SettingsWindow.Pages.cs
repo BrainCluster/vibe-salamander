@@ -301,6 +301,12 @@ public sealed partial class SettingsWindow
         page.Children.Add(Choice("Density", "Compact is Salamander-like; comfortable gives rows more room, like Files.",
             new[] { ("Compact", Density.Compact), ("Comfortable", Density.Comfortable) }, s.Density, v => s.Density = v));
         page.Children.Add(Toggle("Dim hidden and system items", null, a.DimHiddenItems, v => a.DimHiddenItems = v, display: true));
+        page.Children.Add(Choice("Icons", "The icons of files and folders in the panels.", new[]
+        {
+            ("Windows (like File Explorer)", IconPack.Windows),
+            ("Vibe Salamander, in color", IconPack.Fluent),
+            ("Vibe Salamander, one color", IconPack.FluentMonochrome),
+        }, a.IconPack, v => a.IconPack = v, display: true));
         page.Children.Add(Toggle("Show a maximize / restore button in the address bar", null, a.MaximizeButtonInAddressBar,
             v => a.MaximizeButtonInAddressBar = v, display: true));
 

@@ -33,12 +33,15 @@ public sealed class IconCache
     }
 
     /// <summary>Calls <paramref name="onLoaded"/> (on the UI thread) with the icon for the entry.</summary>
-    public void Request(FileEntry entry, Action<ImageSource?> onLoaded)
+    /// <param name="generic">the file type's icon only (simple icons, archives, servers): nothing is read from the file</param>
+    public void Request(FileEntry entry, bool generic, Action<ImageSource?> onLoaded)
     {
         if (entry.IsUpDir)
             return; // the up-dir uses its own glyph
 
-        (string key, string shellPath, bool useAttributes, uint attributes) = GetKey(entry);
+        (string key, string shellPath, bool useAttributes, uint attributes) = GetKey(entry, generic);
+        // an .exe or .lnk whose own icon can't be read gets its type's icon (not a different kind of icon)
+        var fallback = key.StartsWith("file:", StringComparison.Ordinal) ? GetKey(entry, generic: true) : default;
         if (_cache.TryGetValue(key, out ImageSource? cached))
         {
             onLoaded(cached);
@@ -58,6 +61,8 @@ public sealed class IconCache
             try
             {
                 pixels = LoadPixels(shellPath, useAttributes, attributes);
+                if (pixels == null && fallback.shellPath != null)
+                    pixels = LoadPixels(fallback.shellPath, fallback.useAttributes, fallback.attributes);
             }
             catch
             {
@@ -93,7 +98,7 @@ public sealed class IconCache
                 callback(source);
     }
 
-    private static (string key, string shellPath, bool useAttributes, uint attributes) GetKey(FileEntry entry)
+    private static (string key, string shellPath, bool useAttributes, uint attributes) GetKey(FileEntry entry, bool generic)
     {
         if (entry.Tag is DriveEntryInfo drive)
             return ("drive:" + drive.Root, drive.Root, false, 0);
@@ -102,7 +107,7 @@ public sealed class IconCache
             // special folders keep their own icons only when queried by path; generic folder icon is enough here
             return ("<dir>", "folder", true, FILE_ATTRIBUTE_DIRECTORY);
         }
-        if (PerFileExtensions.Contains(entry.Extension))
+        if (!generic && PerFileExtensions.Contains(entry.Extension))
             return ("file:" + entry.FullPath, entry.FullPath, false, 0);
         string ext = entry.Extension.Length > 0 ? "." + entry.Extension : "file";
         return ("ext:" + ext, ext, true, FILE_ATTRIBUTE_NORMAL);

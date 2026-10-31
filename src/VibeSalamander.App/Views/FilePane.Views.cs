@@ -34,9 +34,19 @@ public sealed partial class FilePane
             args.RegisterUpdateCallback(List_ContainerContentChanging);
             return;
         }
+        bool windowsIcons = UiState.IconPack == Core.Settings.IconPack.Windows;
+        if (windowsIcons)
+        {
+            // Configuration → Drives "simple icons", archives and servers: the file type's icon, not the file's own
+            bool generic = ViewModel?.CurrentDriveOptions?.SimpleIcons == true || ViewModel?.IsLocalDisk != true;
+            item.EnsureIcon(_main.Icons, generic);
+        }
+        else if (!FolderViews.IsPictureOrVideo(item.Entry.Extension) || item.Entry.IsDirectory)
+        {
+            return; // Vibe Salamander's icons: only pictures and videos have pictures of their own (thumbnails)
+        }
         if (ViewModel?.CurrentDriveOptions?.SimpleIcons == true)
-            return; // Configuration → Drives: generic icons on this kind of drive
-        item.EnsureIcon(_main.Icons);
+            return; // no pictures of their own on these drives (Configuration → Drives)
         double dips = _appliedView switch
         {
             ViewMode.Icons => 48,
