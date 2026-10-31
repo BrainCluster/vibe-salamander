@@ -396,8 +396,9 @@ public sealed partial class Dialogs
         var (row, box) = PathRow(defaultTarget, keepFileName: false);
         var maskBox = new TextBox { Header = "Files to unpack", Text = mask, MinWidth = 200, IsSpellCheckEnabled = false };
         var subfolder = new CheckBox { Content = $"Into a folder named after the archive ({subfolderExample})", IsChecked = toSubfolder };
-        var found = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Opacity = 0.75, TextWrapping = TextWrapping.Wrap, Tag = "NoLoc" };
-        var subfolderRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        // below the checkbox (its text already fills the dialog's width), lined up with the checkbox's text
+        var found = new TextBlock { Opacity = 0.75, TextWrapping = TextWrapping.Wrap, Tag = "NoLoc", Margin = new Thickness(28, -4, 0, 0), Visibility = Visibility.Collapsed };
+        var subfolderRow = new StackPanel { Spacing = 0 };
         subfolderRow.Children.Add(subfolder);
         subfolderRow.Children.Add(found);
         var body = new StackPanel { Spacing = 10 };
@@ -417,6 +418,7 @@ public sealed partial class Dialogs
                 subfolder.DispatcherQueue.TryEnqueue(() =>
                 {
                     found.Text = Services.Loc.F("Root folder {0} found", root);
+                    found.Visibility = Visibility.Visible;
                     if (!changedByHand && subfolder.IsChecked == true)
                     {
                         subfolder.IsChecked = false;
