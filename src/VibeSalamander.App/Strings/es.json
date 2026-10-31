@@ -1125,6 +1125,7 @@
  "Right-click opens the context menu": "El clic derecho abre el menú contextual",
  "Root Directory": "Carpeta raíz",
  "Root directory": "Carpeta raíz",
+ "Root folder {0} found": "Carpeta raíz {0} encontrada",
  "Run in cmd": "Ejecutar en cmd",
  "Run scripts in web pages": "Ejecutar scripts en páginas web",
  "Run with PowerShell": "Ejecutar con PowerShell",

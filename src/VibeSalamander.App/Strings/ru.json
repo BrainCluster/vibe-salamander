@@ -1124,6 +1124,7 @@
  "Right-click opens the context menu": "Щелчок правой кнопкой открывает контекстное меню",
  "Root Directory": "Корневая папка",
  "Root directory": "Корневая папка",
+ "Root folder {0} found": "Найдена корневая папка {0}",
  "Run in cmd": "Запустить в cmd",
  "Run scripts in web pages": "Выполнять скрипты на веб-страницах",
  "Run with PowerShell": "Запустить в PowerShell",

@@ -1124,6 +1124,7 @@
  "Right-click opens the context menu": "Rechtsklikken opent het contextmenu",
  "Root Directory": "Hoofdmap",
  "Root directory": "Hoofdmap",
+ "Root folder {0} found": "Hoofdmap {0} gevonden",
  "Run in cmd": "Uitvoeren in cmd",
  "Run scripts in web pages": "Scripts in webpagina's uitvoeren",
  "Run with PowerShell": "Uitvoeren met PowerShell",

@@ -1125,6 +1125,7 @@
   "Right-click opens the context menu": "Le clic droit ouvre le menu contextuel",
   "Root Directory": "Dossier racine",
   "Root directory": "Dossier racine",
+  "Root folder {0} found": "Dossier racine {0} trouvé",
   "Run in cmd": "Exécuter dans cmd",
   "Run scripts in web pages": "Exécuter les scripts des pages web",
   "Run with PowerShell": "Exécuter avec PowerShell",

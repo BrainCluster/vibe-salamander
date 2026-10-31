@@ -140,7 +140,27 @@ internal sealed class ArchiveCommands
         string defaultTarget = ArchiveRules.UnpackDefaultTarget(active.Path, Inactive.Path, Inactive.IsLocalDisk);
         string what = archives.Count == 1 ? $"\"{archives[0].Item.Entry.Name}\"" : Loc.F("{0} archives", archives.Count);
         string example = archives.Count == 1 ? Plugins.ArchiveBaseName(archives[0].Item.Entry.Name) + "\\" : "name\\";
-        var answer = await _host.Dialogs.UnpackAsync(what, defaultTarget, o.UnpackMask, o.UnpackToSubfolder, example);
+        // one archive with everything in one folder: that folder is enough (found while the dialog is open)
+        Task<string?>? rootFolder = null;
+        if (archives.Count == 1)
+        {
+            string path = archives[0].Item.Entry.FullPath;
+            IArchiver unpacker = archives[0].Archiver!;
+            rootFolder = Task.Run(async () =>
+            {
+                try
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    IReadOnlyList<ArchiveItem> list = await unpacker.ListAsync(path, cts.Token);
+                    return ArchiveRules.SingleRootFolder(list.Select(i => (i.Path, i.IsDirectory)));
+                }
+                catch (Exception)
+                {
+                    return null; // unreadable, encrypted names, too slow: the setting stays as it is
+                }
+            });
+        }
+        var answer = await _host.Dialogs.UnpackAsync(what, defaultTarget, o.UnpackMask, o.UnpackToSubfolder, example, rootFolder);
         _host.FocusPane(active);
         if (answer == null)
             return;

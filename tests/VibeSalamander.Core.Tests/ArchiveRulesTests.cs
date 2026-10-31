@@ -57,6 +57,18 @@ public class ArchiveRulesTests
     }
 
     [Fact]
+    public void A_single_root_folder_is_found()
+    {
+        Assert.Equal("photos", ArchiveRules.SingleRootFolder(new[] { ("photos/", true), ("photos/a.jpg", false), ("photos/2026/b.jpg", false) }));
+        Assert.Equal("photos", ArchiveRules.SingleRootFolder(new[] { ("photos\\a.jpg", false), ("Photos\\b.jpg", false) })); // no directory entries
+        Assert.Equal("src", ArchiveRules.SingleRootFolder(new[] { ("./src/a.cs", false) }));
+        Assert.Null(ArchiveRules.SingleRootFolder(new[] { ("photos/a.jpg", false), ("readme.txt", false) }));
+        Assert.Null(ArchiveRules.SingleRootFolder(new[] { ("a/x.txt", false), ("b/y.txt", false) }));
+        Assert.Null(ArchiveRules.SingleRootFolder(new[] { ("report.pdf", false) }));
+        Assert.Null(ArchiveRules.SingleRootFolder(Array.Empty<(string, bool)>()));
+    }
+
+    [Fact]
     public void Unpacking_goes_to_the_other_panel_when_it_is_on_a_disk()
     {
         Assert.Equal(@"D:\x\", ArchiveRules.UnpackDefaultTarget(@"C:\a", @"D:\x", otherPanelOnDisk: true));

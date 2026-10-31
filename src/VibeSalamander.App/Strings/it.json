@@ -1124,6 +1124,7 @@
   "Right-click opens the context menu": "Il clic destro apre il menu di scelta rapida",
   "Root Directory": "Cartella radice",
   "Root directory": "Cartella radice",
+  "Root folder {0} found": "Trovata la cartella radice {0}",
   "Run in cmd": "Esegui in cmd",
   "Run scripts in web pages": "Esegui gli script nelle pagine web",
   "Run with PowerShell": "Esegui con PowerShell",

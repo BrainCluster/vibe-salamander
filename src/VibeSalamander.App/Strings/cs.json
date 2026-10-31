@@ -1124,6 +1124,7 @@
   "Right-click opens the context menu": "Pravé tlačítko otevírá místní nabídku",
   "Root Directory": "Kořenový adresář",
   "Root directory": "Kořenový adresář",
+  "Root folder {0} found": "Nalezena kořenová složka {0}",
   "Run in cmd": "Spustit v cmd",
   "Run scripts in web pages": "Spouštět skripty na webových stránkách",
   "Run with PowerShell": "Spustit v PowerShellu",

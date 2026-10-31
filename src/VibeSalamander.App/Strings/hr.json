@@ -1125,6 +1125,7 @@
   "Right-click opens the context menu": "Desni klik otvara kontekstni izbornik",
   "Root Directory": "Korijenska mapa",
   "Root directory": "Korijenska mapa",
+  "Root folder {0} found": "Pronađena korijenska mapa {0}",
   "Run in cmd": "Pokreni u cmd-u",
   "Run scripts in web pages": "Pokreći skripte na web-stranicama",
   "Run with PowerShell": "Pokreni u PowerShellu",

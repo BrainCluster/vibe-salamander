@@ -1124,6 +1124,7 @@
   "Right-click opens the context menu": "Клацання правою кнопкою відкриває контекстне меню",
   "Root Directory": "Коренева папка",
   "Root directory": "Коренева папка",
+  "Root folder {0} found": "Знайдено кореневу папку {0}",
   "Run in cmd": "Запустити в cmd",
   "Run scripts in web pages": "Виконувати скрипти на веб-сторінках",
   "Run with PowerShell": "Запустити в PowerShell",

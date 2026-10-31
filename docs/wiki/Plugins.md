@@ -21,7 +21,8 @@ A separate download: [7-Zip](#7-zip). And you can [write your own](Writing-Plugi
 - **Pack** (Alt+F5) into ZIP (optionally AES-256 encrypted), TAR or TAR.GZ. **Pack → Advanced** has update modes
   (add, update, freshen, synchronize), path modes, splitting into volumes (`.001`, `.002`…, which unpack too),
   ZipCrypto for Windows Explorer, self-extracting `.exe` and NTFS times.
-- **Unpack** (Alt+F6) ZIP, 7z, RAR, TAR, gz, bz2, xz and lz, with passwords.
+- **Unpack** (Alt+F6) ZIP, 7z, RAR, TAR, gz, bz2, xz and lz, with passwords. An archive whose files are all in one
+  folder says so ("Root folder x found"), and isn't put in another folder named after the archive.
 - **Enter on an archive opens it like a folder**: copy single files out, and for ZIP and TAR copy or drop files
   in, delete them (F8) or move them out (F6).
 - Files → **Test Archive** unpacks every file in memory and checks its CRC; **Make Self-Extracting Archive** turns

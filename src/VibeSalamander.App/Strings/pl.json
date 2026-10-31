@@ -1124,6 +1124,7 @@
  "Right-click opens the context menu": "Prawy przycisk otwiera menu kontekstowe",
  "Root Directory": "Folder główny",
  "Root directory": "Folder główny",
+ "Root folder {0} found": "Znaleziono folder główny {0}",
  "Run in cmd": "Uruchom w cmd",
  "Run scripts in web pages": "Uruchamiaj skrypty na stronach",
  "Run with PowerShell": "Uruchom w PowerShell",

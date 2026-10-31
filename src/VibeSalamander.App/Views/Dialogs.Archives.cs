@@ -385,16 +385,42 @@ public sealed partial class Dialogs
     public sealed record UnpackAnswer(string Target, string Mask, bool ToSubfolder);
 
     /// <summary>Unpack (Alt+F6): where to (prefilled with the other panel), which files, one folder per archive.</summary>
-    public async Task<UnpackAnswer?> UnpackAsync(string what, string defaultTarget, string mask, bool toSubfolder, string subfolderExample)
+    /// <param name="rootFolder">
+    /// for one archive: its single root folder, found while the dialog is open (null: none). Then the archive's own
+    /// folder isn't needed: the checkbox is cleared (unless already changed by hand) and the folder named next to it.
+    /// </param>
+    public async Task<UnpackAnswer?> UnpackAsync(string what, string defaultTarget, string mask, bool toSubfolder, string subfolderExample,
+        Task<string?>? rootFolder = null)
     {
         var (row, box) = PathRow(defaultTarget, keepFileName: false);
         var maskBox = new TextBox { Header = "Files to unpack", Text = mask, MinWidth = 200, IsSpellCheckEnabled = false };
         var subfolder = new CheckBox { Content = $"Into a folder named after the archive ({subfolderExample})", IsChecked = toSubfolder };
+        var found = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Opacity = 0.75, TextWrapping = TextWrapping.Wrap, Tag = "NoLoc" };
+        var subfolderRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        subfolderRow.Children.Add(subfolder);
+        subfolderRow.Children.Add(found);
         var body = new StackPanel { Spacing = 10 };
         body.Children.Add(Text($"Unpack {what} to:"));
         body.Children.Add(row);
-        body.Children.Add(subfolder);
+        body.Children.Add(subfolderRow);
         body.Children.Add(maskBox);
+        bool changedByHand = false;
+        subfolder.Click += (_, _) => changedByHand = true;
+        if (rootFolder != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                string? root = await rootFolder.ConfigureAwait(false);
+                if (root == null)
+                    return;
+                subfolder.DispatcherQueue.TryEnqueue(() =>
+                {
+                    found.Text = Services.Loc.F("Root folder {0} found", root);
+                    if (!changedByHand)
+                        subfolder.IsChecked = false;
+                });
+            });
+        }
 
         ContentDialog dialog = NewDialog("Unpack", body);
         dialog.PrimaryButtonText = "Unpack";

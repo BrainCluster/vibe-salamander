@@ -62,4 +62,34 @@ public static class ArchiveRules
         string target = otherPanelOnDisk ? otherPanelPath : activePath;
         return target.EndsWith('\\') ? target : target + "\\";
     }
+
+    /// <summary>
+    /// The one folder everything in the archive is in ("photos" for photos/a.jpg, photos/b.jpg), or null: then a
+    /// folder named after the archive keeps its files together. A lone file isn't a root folder.
+    /// </summary>
+    public static string? SingleRootFolder(IEnumerable<(string Path, bool IsDirectory)> items)
+    {
+        string? root = null;
+        bool folder = false;
+        foreach (var (path, isDirectory) in items)
+        {
+            string p = path.Replace('/', '\\').TrimStart('\\');
+            while (p.StartsWith(".\\", StringComparison.Ordinal))
+                p = p[2..];
+            p = p.TrimEnd('\\');
+            if (p.Length == 0)
+                continue;
+            int slash = p.IndexOf('\\');
+            string first = slash < 0 ? p : p[..slash];
+            if (root == null)
+                root = first;
+            else if (!string.Equals(root, first, StringComparison.OrdinalIgnoreCase))
+                return null;
+            if (slash >= 0 || isDirectory)
+                folder = true;
+            else
+                return null; // a file at the top
+        }
+        return folder ? root : null;
+    }
 }

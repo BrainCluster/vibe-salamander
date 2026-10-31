@@ -1124,6 +1124,7 @@
   "Right-click opens the context menu": "Rechtsklick öffnet das Kontextmenü",
   "Root Directory": "Stammordner",
   "Root directory": "Stammordner",
+  "Root folder {0} found": "Stammordner {0} gefunden",
   "Run in cmd": "In cmd ausführen",
   "Run scripts in web pages": "Skripte in Webseiten ausführen",
   "Run with PowerShell": "Mit PowerShell ausführen",

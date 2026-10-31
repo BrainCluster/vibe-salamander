@@ -1124,6 +1124,7 @@
   "Right-click opens the context menu": "O clique com o botão direito abre o menu de contexto",
   "Root Directory": "Pasta Raiz",
   "Root directory": "Pasta raiz",
+  "Root folder {0} found": "Pasta raiz {0} encontrada",
   "Run in cmd": "Executar no cmd",
   "Run scripts in web pages": "Executar scripts em páginas web",
   "Run with PowerShell": "Executar com o PowerShell",
