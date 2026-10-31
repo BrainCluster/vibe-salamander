@@ -13,7 +13,9 @@ namespace VibeSalamander.Services;
 /// <summary>
 /// Loads Windows shell icons asynchronously and converts them to WinUI bitmaps. Icons are cached per
 /// extension; files with their own icons (.exe, .lnk, .ico, …) and drives are cached per path.
-/// Must be used from the UI thread; the shell calls run on background threads.
+/// Must be used from the UI thread; the shell calls run on two background threads of their own, in COM's
+/// single-threaded apartment as SHGetFileInfo requires (on thread-pool threads it sometimes returns nothing, and
+/// then a folder got no icon for the rest of the session).
 /// </summary>
 public sealed class IconCache
 {
@@ -25,11 +27,23 @@ public sealed class IconCache
     private readonly DispatcherQueue _dispatcher;
     private readonly Dictionary<string, ImageSource?> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<Action<ImageSource?>>> _pending = new(StringComparer.OrdinalIgnoreCase);
-    private readonly SemaphoreSlim _throttle = new(4);
+    private readonly System.Collections.Concurrent.BlockingCollection<Action> _work = new();
+    private readonly Dictionary<string, int> _failures = new(StringComparer.Ordinal);
 
     public IconCache(DispatcherQueue dispatcher)
     {
         _dispatcher = dispatcher;
+        for (int i = 0; i < 2; i++)
+        {
+            var thread = new Thread(() =>
+            {
+                foreach (Action work in _work.GetConsumingEnumerable())
+                    work();
+            })
+            { IsBackground = true, Name = "Shell icons" };
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+        }
     }
 
     /// <summary>Calls <paramref name="onLoaded"/> (on the UI thread) with the icon for the entry.</summary>
@@ -54,23 +68,21 @@ public sealed class IconCache
         }
         _pending[key] = new List<Action<ImageSource?>> { onLoaded };
 
-        _ = Task.Run(async () =>
+        _work.Add(() =>
         {
-            await _throttle.WaitAsync().ConfigureAwait(false);
-            IconPixels? pixels;
-            try
+            IconPixels? pixels = null;
+            for (int attempt = 0; attempt < 2 && pixels == null; attempt++)
             {
-                pixels = LoadPixels(shellPath, useAttributes, attributes);
-                if (pixels == null && fallback.shellPath != null)
-                    pixels = LoadPixels(fallback.shellPath, fallback.useAttributes, fallback.attributes);
-            }
-            catch
-            {
-                pixels = null;
-            }
-            finally
-            {
-                _throttle.Release();
+                try
+                {
+                    pixels = LoadPixels(shellPath, useAttributes, attributes);
+                    if (pixels == null && fallback.shellPath != null)
+                        pixels = LoadPixels(fallback.shellPath, fallback.useAttributes, fallback.attributes);
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException)
+                {
+                    pixels = null;
+                }
             }
             _dispatcher.TryEnqueue(() => Complete(key, pixels));
         });
@@ -92,7 +104,9 @@ public sealed class IconCache
         if (_cache.Count > 2000)
             foreach (string old in _cache.Keys.Where(k => k.StartsWith("file:", StringComparison.Ordinal)).ToList())
                 _cache.Remove(old);
-        _cache[key] = source;
+        // a failure isn't kept for good (the row shows the glyph, a later request tries again) unless it repeats
+        if (source != null || (_failures[key] = _failures.GetValueOrDefault(key) + 1) >= 3)
+            _cache[key] = source;
         if (_pending.Remove(key, out var callbacks))
             foreach (var callback in callbacks)
                 callback(source);
