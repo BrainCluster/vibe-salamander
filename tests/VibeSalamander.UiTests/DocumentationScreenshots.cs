@@ -119,6 +119,19 @@ public sealed class DocumentationScreenshots : IDisposable
     }
 
     [UiFact]
+    public void Icon_packs()
+    {
+        using AppSession app = Start(s =>
+        {
+            s.Left.Path = _files.Documents;
+            s.Right.Path = _files.Root;
+            s.Appearance.IconPack = VibeSalamander.Core.Settings.IconPack.Fluent;
+        });
+        Thread.Sleep(1500);
+        Doc("icons vibe salamander in color");
+    }
+
+    [UiFact]
     public void User_menu_and_about()
     {
         using AppSession app = Start();
