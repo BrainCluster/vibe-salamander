@@ -59,6 +59,7 @@ public static class ListMenu
         {
             SelectionMode = ListViewSelectionMode.Single,
             IsItemClickEnabled = true,
+            UseSystemFocusVisuals = false,
             MaxHeight = VisibleRows * RowHeight + 8, // fewer rows: shorter; never taller
             Padding = new Thickness(0, 4, 0, 4),
         };
@@ -224,6 +225,7 @@ public static class ListMenu
                 Height = 9,
                 Padding = new Thickness(12, 0, 12, 0),
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                UseSystemFocusVisuals = false, // the selected row's highlight shows where the keyboard is
                 Content = new Border
                 {
                     Height = 1,
@@ -297,6 +299,7 @@ public static class ListMenu
             Height = RowHeight,
             Padding = new Thickness(12, 0, 12, 0),
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            UseSystemFocusVisuals = false, // the selected row's highlight shows where the keyboard is
         };
         AutomationProperties.SetName(item, entry.Text);
 
