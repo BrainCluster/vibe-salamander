@@ -52,8 +52,26 @@ public sealed class PluginUi : IPluginUi
         return done.Task;
     }
 
-    private Dialogs DialogsFor(IPluginListWindow? owner) =>
-        owner is PluginListWindow { IsClosed: false } window ? window.Dialogs : _mainDialogs;
+    /// <summary>
+    /// Where a plugin's question shows: in the window it names, else in the plugin window in front (its window stays
+    /// above the main window, so a question there would be hidden behind it: SFTP's server identity while the
+    /// Connections window connects), else in the main window.
+    /// </summary>
+    private Dialogs DialogsFor(IPluginListWindow? owner)
+    {
+        if (owner is PluginListWindow { IsClosed: false } named)
+            return named.Dialogs;
+        IntPtr foreground = GetForegroundWindow();
+        foreach (PluginListWindow window in _windows)
+        {
+            if (!window.IsClosed && WinRT.Interop.WindowNative.GetWindowHandle(window) == foreground)
+                return window.Dialogs;
+        }
+        return _mainDialogs;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     public IPluginListWindow OpenListWindow(string title, IReadOnlyList<PluginColumn> columns)
     {
