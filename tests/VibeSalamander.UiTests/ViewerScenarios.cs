@@ -187,7 +187,7 @@ public sealed class ViewerScenarios : IDisposable
         app.Type(" unclosed", settleMs: 2000);
         AppSession.Screenshot("v16 editor json problem");
         AppSession.WaitUntil(() => editor.FindAllDescendants(cf => cf.ByControlType(ControlType.Text))
-            .Any(t => (t.Name ?? string.Empty).StartsWith("Line ", StringComparison.Ordinal)), "the problem in the status line", 8);
+            .Any(t => (t.Name ?? string.Empty).StartsWith("Line ", StringComparison.Ordinal)), "the problem in the status line", 20); // Monaco validates after a pause; the test machine is slow at times
         Close(editor);
         // closing with changes asks
         Button(editor, app, "Don't save").Click();
