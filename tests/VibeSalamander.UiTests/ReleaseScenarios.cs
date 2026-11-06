@@ -87,6 +87,29 @@ public sealed class ReleaseScenarios : IDisposable
     }
 
     [UiFact]
+    public void A_hot_path_with_a_shortcut_of_its_own()
+    {
+        using AppSession app = Start(s =>
+        {
+            s.MoreHotPaths.Add(new VibeSalamander.Core.Settings.HotPath
+            {
+                Path = _files.Photos,
+                Name = "Holiday photos",
+                Key = 0x48, // H
+                Modifiers = VibeSalamander.Core.Commands.KeyModifiers.Ctrl | VibeSalamander.Core.Commands.KeyModifiers.Alt,
+            });
+        });
+        FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_H);
+        AppSession.WaitUntil(() => app.Items(left: true).Contains("holiday 01.png"), "Ctrl+Alt+H going to the hot path", 10);
+        // and in the hot path menu, with its shortcut
+        app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F9, settleMs: 1200);
+        WaitForText(app, t => t.Contains("Holiday photos", StringComparison.Ordinal), "the more hot path in the menu");
+        AppSession.Screenshot("r02c more hot paths in the menu");
+        app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
+        NoErrors(app);
+    }
+
+    [UiFact]
     public void Hot_path_list_and_names_into_the_command_line()
     {
         using AppSession app = Start(s =>
