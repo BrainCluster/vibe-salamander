@@ -44,6 +44,15 @@ public sealed partial class MainViewModel
         await _active.NavigateAsync(path);
     }
 
+    /// <summary>A shortcut of one of the more hot paths (Configuration → Hot Paths): the active panel goes there.</summary>
+    public bool TryHotPathShortcut(int key, KeyModifiers modifiers)
+    {
+        if (HotPath.Find(Settings.MoreHotPaths, new KeyChord(key, modifiers)) is not { } hotPath)
+            return false;
+        _ = _active.NavigateAsync(hotPath.Path);
+        return true;
+    }
+
     /// <summary>Ctrl+D (Total Commander) / Shift+F9: the hot paths as a menu; the last item makes this folder one.</summary>
     private void ShowHotPaths(PaneViewModel pane)
     {
@@ -56,6 +65,12 @@ public sealed partial class MainViewModel
             string name = Settings.HotPathNames.Count > number && Settings.HotPathNames[number].Length > 0 ? Settings.HotPathNames[number] : path;
             string target = path;
             entries.Add(new MenuEntry(name == path ? path : $"{name}  —  {path}", () => _ = pane.NavigateAsync(target), "\uE728", $"Ctrl+{number}"));
+        }
+        foreach (HotPath more in Settings.MoreHotPaths.Where(h => h.Path.Length > 0))
+        {
+            string target = more.Path;
+            string text = more.Name.Length > 0 ? $"{more.Name}  —  {more.Path}" : more.Path;
+            entries.Add(new MenuEntry(text, () => _ = pane.NavigateAsync(target), "\uE728", more.Shortcut is { } chord ? KeyMap.Describe(chord) : null));
         }
         if (entries.Count == 1)
             entries.Add(new MenuEntry("(none yet)", IsEnabled: false));

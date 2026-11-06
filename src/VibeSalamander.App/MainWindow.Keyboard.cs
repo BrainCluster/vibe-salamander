@@ -68,6 +68,13 @@ public sealed partial class MainWindow
             return;
         }
 
+        // a hot path's own shortcut (Configuration → Hot Paths) comes before the commands: it was chosen for it
+        if (_vm.TryHotPathShortcut(key, mods))
+        {
+            e.Handled = true;
+            _vm.Active.EndQuickSearch();
+            return;
+        }
         CommandId command = _vm.KeyMap.Resolve(key, mods);
         // Configuration → Panels: Shift+1…9 goes to the hot paths too
         if (command == CommandId.None && mods == KeyModifiers.Shift && key >= VK.D0 + 1 && key <= VK.D0 + 9 && _vm.Settings.Panels.ShiftDigitGoesToHotPath)

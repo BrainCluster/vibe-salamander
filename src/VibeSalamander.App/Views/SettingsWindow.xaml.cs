@@ -898,7 +898,146 @@ public sealed partial class SettingsWindow : Window
             row.Children.Add(clear);
             page.Children.Add(Card($"Ctrl+{n}", null, row));
         }
+
+        // more of them, each with a shortcut of its own (or none: the menu and the bar have them)
+        page.Children.Add(Section("More hot paths"));
+        page.Children.Add(Hint("As many as you like, each with a shortcut of your own (with Ctrl or Alt, or a function key). They are in the hot path menu (Shift+F9) and on the hot path bar too."));
+        var more = new StackPanel { Spacing = 4 };
+        page.Children.Add(more);
+        void FillMore()
+        {
+            more.Children.Clear();
+            foreach (HotPath hotPath in s.MoreHotPaths)
+                more.Children.Add(MoreHotPathRow(hotPath, FillMore));
+        }
+        FillMore();
+        var add = IconButton("\uE710", "Add a hot path", "Add hot path");
+        add.HorizontalAlignment = HorizontalAlignment.Left;
+        add.Click += (_, _) =>
+        {
+            PaneViewModel active = _vm.Active;
+            s.MoreHotPaths.Add(new HotPath { Path = active.IsThisPc ? ThisPcProvider.RootPath : active.Path });
+            FillMore();
+            Changed();
+        };
+        page.Children.Add(add);
         return page;
+    }
+
+    /// <summary>One of the more hot paths: name, folder, its shortcut (pressed into the box), and Remove.</summary>
+    private Border MoreHotPathRow(HotPath hotPath, Action refill)
+    {
+        AppSettings s = _vm.Settings;
+        var name = new TextBox { Text = hotPath.Name, PlaceholderText = "name", Width = 140 };
+        name.TextChanged += (_, _) =>
+        {
+            if (name.Text == hotPath.Name)
+                return;
+            hotPath.Name = name.Text;
+            Changed();
+        };
+        var box = new TextBox { Text = hotPath.Path, PlaceholderText = "folder", Width = 300 };
+        box.TextChanged += (_, _) =>
+        {
+            string path = box.Text.Trim();
+            if (path == hotPath.Path)
+                return;
+            hotPath.Path = path;
+            Changed();
+        };
+        var browse = IconButton("\uED25", "Browse");
+        browse.Click += async (_, _) =>
+        {
+            string? folder = await _dialogs.PickFolderAsync();
+            if (folder != null)
+                box.Text = folder;
+        };
+        var current = IconButton("\uE8DA", "The active panel's directory");
+        current.Click += (_, _) =>
+        {
+            PaneViewModel active = _vm.Active;
+            box.Text = active.IsThisPc ? ThisPcProvider.RootPath : active.Path;
+        };
+
+        var note = Hint(string.Empty);
+        var shortcut = new TextBox
+        {
+            Text = hotPath.Shortcut is { } chord ? KeyMap.Describe(chord) : string.Empty,
+            PlaceholderText = Loc.T("Press a shortcut"),
+            IsReadOnly = true,
+            Width = 150,
+        };
+        ToolTipService.SetToolTip(shortcut, Loc.T("Click here and press the shortcut (with Ctrl or Alt, or a function key)"));
+        void Describe()
+        {
+            if (hotPath.Shortcut is not { } chord)
+            {
+                note.Text = string.Empty;
+                return;
+            }
+            CommandId command = _vm.KeyMap.Resolve(chord.Key, chord.Modifiers);
+            HotPath? other = s.MoreHotPaths.FirstOrDefault(h => h != hotPath && h.Shortcut == chord);
+            note.Text = other != null ? Loc.F("{0} is also the shortcut of the hot path {1}: the first one wins.", KeyMap.Describe(chord), other.Name.Length > 0 ? other.Name : other.Path)
+                : command != CommandId.None ? Loc.F("{0} is also \"{1}\": here it goes to this hot path instead.", KeyMap.Describe(chord), Loc.T(CommandCatalog.DisplayName(command)))
+                : string.Empty;
+        }
+        Describe();
+        shortcut.PreviewKeyDown += (_, e) =>
+        {
+            e.Handled = true;
+            int key = (int)e.Key;
+            if (key is 0x10 or 0x11 or 0x12 or 0xA0 or 0xA1 or 0xA2 or 0xA3 or 0xA4 or 0xA5 or 0x5B or 0x5C)
+                return; // a modifier on its own
+            var chord = new KeyChord(key, Services.KeyboardState.CurrentModifiers());
+            if (chord.Modifiers == KeyModifiers.None && key is 0x08 or 0x2E)
+            {
+                hotPath.Key = 0; // Backspace or Delete alone: no shortcut
+                hotPath.Modifiers = KeyModifiers.None;
+                shortcut.Text = string.Empty;
+                Describe();
+                Changed();
+                return;
+            }
+            if (!HotPath.IsUsableShortcut(chord))
+            {
+                note.Text = Loc.F("{0} can't be a hot path's shortcut: use Ctrl or Alt with it, or a function key.", KeyMap.Describe(chord));
+                return;
+            }
+            hotPath.Key = chord.Key;
+            hotPath.Modifiers = chord.Modifiers;
+            shortcut.Text = KeyMap.Describe(chord);
+            Describe();
+            Changed();
+        };
+        var clearKey = IconButton("\uE894", "No shortcut");
+        clearKey.Click += (_, _) =>
+        {
+            hotPath.Key = 0;
+            hotPath.Modifiers = KeyModifiers.None;
+            shortcut.Text = string.Empty;
+            Describe();
+            Changed();
+        };
+        var remove = IconButton("\uE74D", "Remove this hot path");
+        remove.Click += (_, _) =>
+        {
+            s.MoreHotPaths.Remove(hotPath);
+            refill();
+            Changed();
+        };
+
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        row.Children.Add(name);
+        row.Children.Add(box);
+        row.Children.Add(browse);
+        row.Children.Add(current);
+        row.Children.Add(shortcut);
+        row.Children.Add(clearKey);
+        row.Children.Add(remove);
+        var panel = new StackPanel { Spacing = 4 };
+        panel.Children.Add(row);
+        panel.Children.Add(note);
+        return new Border { Child = panel, Style = ThemedStyle("SettingsCardStyle") };
     }
 
     // ---- User menu ---------------------------------------------------------------------------

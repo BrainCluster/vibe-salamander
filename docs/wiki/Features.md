@@ -21,7 +21,8 @@
 - **All files of the subfolders** (Ctrl+B, Total Commander's branch view): every file below the folder in one list,
   to copy, delete, rename or compare them together; Ctrl+B again goes back.
 - **Hot path list** (Shift+F9; Ctrl+D in Total Commander's shortcuts, or the star button at the end of the address bar)
-  as a menu, with "add this folder".
+  as a menu, with "add this folder". Beyond Ctrl+1…9, Configuration → Hot Paths → **More hot paths** adds as many
+  as you like, each with a shortcut of your own (with Ctrl or Alt, or a function key).
 - **Opened files** (Alt+F11, or the document button at the end of the address bar): the files opened lately, newest
   first; a click goes to it in the panel (the caret on it), the right-click menu opens it, opens it with another
   app or copies its path. How many are kept: Configuration → History (10 by default).

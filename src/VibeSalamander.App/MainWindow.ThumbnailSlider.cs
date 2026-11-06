@@ -130,6 +130,24 @@ public sealed partial class MainWindow
             button.Click += Toolbar_Click;
             HotPathBar.Children.Add(button);
         }
+        foreach (Core.Settings.HotPath more in _vm.Settings.MoreHotPaths.Where(h => h.Path.Length > 0))
+        {
+            string path = more.Path;
+            string label = more.Name.Length > 0 ? more.Name
+                : path == Core.FileSystem.ThisPcProvider.RootPath ? Loc.T("This PC")
+                : Path.GetFileName(path.TrimEnd('\\')) is { Length: > 0 } name ? name : path;
+            var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+            content.Children.Add(new FontIcon { Glyph = "\uE734", FontFamily = IconFont, FontSize = 12 });
+            content.Children.Add(new TextBlock { Text = label, FontSize = 12 });
+            var button = new Button { Style = ToolButtonStyle, Content = content };
+            ToolTipService.SetToolTip(button, more.Shortcut is { } chord ? $"{path}  ({KeyMap.Describe(chord)})" : path);
+            button.Click += async (_, _) =>
+            {
+                await _vm.Active.NavigateAsync(path);
+                PaneView(_vm.Active).FocusList();
+            };
+            HotPathBar.Children.Add(button);
+        }
 
         UserMenuBar.Children.Clear();
         foreach (Core.Tools.UserMenuItem item in _vm.Settings.UserMenu)

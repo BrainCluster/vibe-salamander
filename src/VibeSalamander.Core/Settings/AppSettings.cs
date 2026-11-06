@@ -182,6 +182,9 @@ public sealed class AppSettings
     /// <summary>Names of the hot paths (shown in menus and on the hot path bar; "" = the directory name).</summary>
     public List<string> HotPathNames { get; set; } = Enumerable.Repeat(string.Empty, 10).ToList();
 
+    /// <summary>Hot paths beyond Ctrl+1…9, each with an optional shortcut of its own.</summary>
+    public List<HotPath> MoreHotPaths { get; set; } = new();
+
     /// <summary>Changes to the default keyboard shortcuts (Configuration → Keyboard).</summary>
     public List<KeyBindingOverride> KeyBindings { get; set; } = new();
 

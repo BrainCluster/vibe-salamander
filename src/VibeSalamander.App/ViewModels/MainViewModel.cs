@@ -111,6 +111,7 @@ public sealed partial class MainViewModel : BindableBase
         Settings.Viewers ??= new List<ProgramRule>();
         Settings.Editors ??= new List<ProgramRule>();
         Settings.CommandLineHistory ??= new List<string>();
+        Settings.MoreHotPaths ??= new List<HotPath>();
         Settings.HotPathNames ??= new List<string>();
         while (Settings.HotPathNames.Count < 10)
             Settings.HotPathNames.Add(string.Empty);
