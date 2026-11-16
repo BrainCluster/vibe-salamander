@@ -19,31 +19,12 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
     {
         try
         {
-            DeleteTree(_root);
+            TestFiles.DeleteTree(_root);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // a temp folder left behind is not a test failure
         }
-    }
-
-    /// <summary>Deletes a test folder: links are removed without going into them, read-only files are deleted too.</summary>
-    private static void DeleteTree(string directory)
-    {
-        var all = new EnumerationOptions { AttributesToSkip = 0 };
-        foreach (string dir in Directory.GetDirectories(directory, "*", all))
-        {
-            if ((File.GetAttributes(dir) & FileAttributes.ReparsePoint) != 0)
-                Directory.Delete(dir);
-            else
-                DeleteTree(dir);
-        }
-        foreach (string file in Directory.GetFiles(directory, "*", all))
-        {
-            File.SetAttributes(file, FileAttributes.Normal);
-            File.Delete(file);
-        }
-        Directory.Delete(directory);
     }
 
     private string P(string relative) => Path.Combine(_root, relative);
@@ -56,49 +37,6 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         return path;
     }
 
-    /// <summary>A directory junction (mklink /J needs no administrator rights, unlike symbolic links).</summary>
-    private static void Junction(string link, string target)
-    {
-        var start = new ProcessStartInfo("cmd.exe", $"/c mklink /J \"{link}\" \"{target}\"")
-        {
-            CreateNoWindow = true,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-        using Process process = Process.Start(start)!;
-        process.WaitForExit();
-        Assert.True(Directory.Exists(link), "the junction could not be created: " + process.StandardError.ReadToEnd());
-        Assert.True((File.GetAttributes(link) & FileAttributes.ReparsePoint) != 0);
-    }
-
-    /// <summary>Answers prompts through functions and counts them.</summary>
-    private sealed class Callbacks : IOperationCallbacks
-    {
-        public Func<ConflictInfo, ConflictChoice> Conflict { get; init; } = _ => ConflictChoice.Overwrite;
-        public Func<OperationError, ErrorChoice> Error { get; init; } = _ => ErrorChoice.Skip;
-        public List<OperationError> Errors { get; } = new();
-        public int Conflicts { get; private set; }
-
-        public Task<ConflictChoice> ResolveConflictAsync(ConflictInfo conflict)
-        {
-            Conflicts++;
-            return Task.FromResult(Conflict(conflict));
-        }
-
-        public Task<ErrorChoice> ResolveErrorAsync(OperationError error)
-        {
-            Errors.Add(error);
-            return Task.FromResult(Error(error));
-        }
-    }
-
-    /// <summary>Reports synchronously (Progress&lt;T&gt; would post to a thread pool and arrive late).</summary>
-    private sealed class SyncProgress(Action<OperationProgress> report) : IProgress<OperationProgress>
-    {
-        public void Report(OperationProgress value) => report(value);
-    }
-
     // ---- links: nothing outside the operation is deleted ----------------------------------------------
 
     [Fact]
@@ -106,10 +44,10 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
     {
         Make(@"outside\keep.txt", "precious");
         Make(@"src\dir\own.txt", "own");
-        Junction(P(@"src\dir\link"), P("outside"));
+        TestFiles.Junction(P(@"src\dir\link"), P("outside"));
         Directory.CreateDirectory(P(@"dst\dir")); // an existing folder of the same name: the move copies (merge)
 
-        OperationResult result = await new FileOperationEngine(new Callbacks()).MoveAsync(new[] { P(@"src\dir") }, P("dst"));
+        OperationResult result = await new FileOperationEngine(new OperationAnswers()).MoveAsync(new[] { P(@"src\dir") }, P("dst"));
 
         Assert.False(result.Cancelled);
         Assert.Equal("precious", File.ReadAllText(P(@"outside\keep.txt"))); // the folder the link pointed to is untouched
@@ -123,9 +61,9 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
     public async Task Copy_of_a_junction_pointing_back_up_ends_and_reports_it()
     {
         Make(@"src\a.txt", "a");
-        Junction(P(@"src\loop"), P("src"));
+        TestFiles.Junction(P(@"src\loop"), P("src"));
 
-        var callbacks = new Callbacks();
+        var callbacks = new OperationAnswers();
         OperationResult result = await new FileOperationEngine(callbacks).CopyAsync(new[] { P("src") }, P("dst") + "\\");
 
         Assert.False(result.Cancelled);
@@ -139,9 +77,9 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
     {
         Make(@"outside\keep.txt", "precious");
         Make(@"del\own.txt");
-        Junction(P(@"del\link"), P("outside"));
+        TestFiles.Junction(P(@"del\link"), P("outside"));
 
-        OperationResult result = await new FileOperationEngine(new Callbacks()).DeleteAsync(new[] { P("del") });
+        OperationResult result = await new FileOperationEngine(new OperationAnswers()).DeleteAsync(new[] { P("del") });
 
         Assert.Equal(0, result.Failed);
         Assert.False(Directory.Exists(P("del")));
@@ -156,7 +94,7 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         Make(@"src\a.txt", "new");
         Make(@"dst\a.txt", "old"); // the move has to copy (and then delete the source)
         var locked = new FileStream(P(@"src\a.txt"), FileMode.Open, FileAccess.Read, FileShare.Read); // readable, not deletable
-        var callbacks = new Callbacks
+        var callbacks = new OperationAnswers
         {
             Error = _ =>
             {
@@ -186,7 +124,7 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         Make(@"src\dir\b.txt", "new b");
         Make(@"dst\dir\a.txt", "old a");
 
-        OperationResult result = await new FileOperationEngine(new Callbacks { Conflict = _ => ConflictChoice.Skip })
+        OperationResult result = await new FileOperationEngine(new OperationAnswers { Conflict = _ => ConflictChoice.Skip })
             .MoveAsync(new[] { P(@"src\dir") }, P("dst"));
 
         Assert.Equal(1, result.Skipped);
@@ -204,13 +142,13 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         File.WriteAllBytes(big, new byte[48 * 1024 * 1024]);
         Directory.CreateDirectory(P(@"dst\dir")); // the move copies
         using var cancel = new CancellationTokenSource();
-        var progress = new SyncProgress(p =>
+        var progress = new ImmediateProgress(p =>
         {
             if (!p.Analyzing && p.CurrentSource.EndsWith("big.bin", StringComparison.OrdinalIgnoreCase))
                 cancel.Cancel(); // as the copy of the big file starts
         });
 
-        OperationResult result = await new FileOperationEngine(new Callbacks(), progress).MoveAsync(new[] { P(@"src\dir") }, P("dst"), cancel.Token);
+        OperationResult result = await new FileOperationEngine(new OperationAnswers(), progress).MoveAsync(new[] { P(@"src\dir") }, P("dst"), cancel.Token);
 
         Assert.True(result.Cancelled);
         Assert.False(File.Exists(P(@"dst\dir\big.bin")));
@@ -224,10 +162,10 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         File.WriteAllBytes(P(@"src\a.bin"), new byte[2_000_000]);
         File.WriteAllBytes(P(@"src\b.bin"), new byte[1_000_000]);
         var reports = new List<OperationProgress>();
-        var progress = new SyncProgress(p => { lock (reports) reports.Add(p); });
+        var progress = new ImmediateProgress(p => { lock (reports) reports.Add(p); });
 
         string target = Directory.CreateDirectory(P("dst")).FullName;
-        var callbacks = new Callbacks();
+        var callbacks = new OperationAnswers();
         await new FileOperationEngine(callbacks, progress).CopyAsync(new[] { P("src") }, target);
 
         Assert.Empty(callbacks.Errors);
@@ -248,7 +186,7 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         string target = Make(@"dst\a.txt", "old");
         File.SetAttributes(target, FileAttributes.Hidden | FileAttributes.System | FileAttributes.ReadOnly);
 
-        var callbacks = new Callbacks();
+        var callbacks = new OperationAnswers();
         OperationResult result = await new FileOperationEngine(callbacks).CopyAsync(new[] { a }, P("dst"));
 
         Assert.Empty(callbacks.Errors);
@@ -264,7 +202,7 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         Make(@"src\dir\sub\c.txt");
         Make(@"dst\dir", "a file named like the folder");
 
-        var callbacks = new Callbacks();
+        var callbacks = new OperationAnswers();
         OperationResult result = await new FileOperationEngine(callbacks).MoveAsync(new[] { P(@"src\dir") }, P("dst"));
 
         Assert.Single(callbacks.Errors);
@@ -281,7 +219,7 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         Make(@"del\free.txt");
         using (new FileStream(P(@"del\locked.txt"), FileMode.Open, FileAccess.Read, FileShare.None))
         {
-            OperationResult result = await new FileOperationEngine(new Callbacks()).DeleteAsync(new[] { P("del") });
+            OperationResult result = await new FileOperationEngine(new OperationAnswers()).DeleteAsync(new[] { P("del") });
             Assert.True(result.Failed >= 1);
         }
         Assert.True(File.Exists(P(@"del\locked.txt")));
@@ -295,7 +233,7 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
     {
         string file = Make(@"names\report.txt", "r");
         Directory.CreateDirectory(P(@"names\folder"));
-        var engine = new FileOperationEngine(new Callbacks());
+        var engine = new FileOperationEngine(new OperationAnswers());
 
         OperationResult a = await engine.MoveAsync(new[] { file }, P(@"names\Report.TXT"));
         OperationResult b = await engine.MoveAsync(new[] { P(@"names\folder") }, P(@"names\FOLDER"));
@@ -313,7 +251,7 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         string deep = Path.Combine(Enumerable.Range(1, 7).Select(i => $"level {i} " + new string('x', 40)).ToArray());
         string file = Make(Path.Combine("long", deep, "file.txt"), "deep");
         Assert.True(file.Length > 300);
-        var engine = new FileOperationEngine(new Callbacks());
+        var engine = new FileOperationEngine(new OperationAnswers());
 
         OperationResult copied = await engine.CopyAsync(new[] { P("long") }, P("copy") + "\\");
         Assert.Equal(0, copied.Failed);
@@ -335,7 +273,7 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
     {
         string name = "zażółć gęślą jaźń – 日本語 😀.txt";
         string file = Make(Path.Combine("ünï", name), "ü");
-        await new FileOperationEngine(new Callbacks()).CopyAsync(new[] { P("ünï") }, P("dst") + "\\");
+        await new FileOperationEngine(new OperationAnswers()).CopyAsync(new[] { P("ünï") }, P("dst") + "\\");
         Assert.Equal("ü", File.ReadAllText(P(Path.Combine("dst", "ünï", name))));
         Assert.True(File.Exists(file));
     }
@@ -349,7 +287,7 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         File.SetAttributes(file, FileAttributes.ReadOnly | FileAttributes.Hidden);
         Directory.SetLastWriteTime(P(@"src\dir"), time);
 
-        await new FileOperationEngine(new Callbacks()).CopyAsync(new[] { P(@"src\dir") }, P("dst") + "\\");
+        await new FileOperationEngine(new OperationAnswers()).CopyAsync(new[] { P(@"src\dir") }, P("dst") + "\\");
 
         string copy = P(@"dst\dir\old.txt");
         Assert.Equal(time, File.GetLastWriteTime(copy));

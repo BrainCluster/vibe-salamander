@@ -8,13 +8,13 @@ using FlaUI.Core.WindowsAPI;
 namespace VibeSalamander.UiTests;
 
 /// <summary>
-/// How long the program takes to start and how much memory it uses, on the dummy files and on a folder of 50,000
+/// How long the program takes to start and how much memory it uses, on the dummy files and on a folder of 20,000
 /// files (roadmap T4). The numbers go to measurements.md beside the screenshots (the UI test run's page shows
 /// them), to compare from release to release; the limits here only catch a change that makes things many times worse.
 /// </summary>
 public sealed class MeasurementScenarios : IDisposable
 {
-    private const int ManyCount = 50_000;
+    private const int ManyCount = 20_000;
     private readonly DummyFiles _files = new();
     private readonly string _many = Directory.CreateTempSubdirectory("vibe-ui-many").FullName;
 
@@ -68,26 +68,26 @@ public sealed class MeasurementScenarios : IDisposable
                }))
         {
             startMany = app.ReadyAfter;
-            AppSession.WaitUntil(() => app.Items().Contains("file 00000.txt"), "the folder of 50,000 files");
+            AppSession.WaitUntil(() => app.Items().Contains("file 00000.txt"), "the folder of 20,000 files");
             var clock = Stopwatch.StartNew();
             app.Press(VirtualKeyShort.END, settleMs: 0);
-            AppSession.WaitUntil(() => app.Caret() == $"file {ManyCount - 1:00000}.txt", "the caret on the last of 50,000 files", 30);
+            AppSession.WaitUntil(() => app.Caret() == $"file {ManyCount - 1:00000}.txt", "the caret on the last of 20,000 files", 30);
             toEnd = clock.Elapsed;
             memoryMany = Memory(app);
-            AppSession.Screenshot("90 a folder of 50,000 files");
+            AppSession.Screenshot("90 a folder of 20,000 files");
             string log = app.ErrorLogText();
             Assert.True(log.Length == 0, "The error log has entries:\n" + log);
         }
 
         lines.Add($"| Start until both panels are listed (to about 0.2 s) | {Milliseconds(start)} |");
         lines.Add($"| Memory after the start | {Megabytes(memory)} |");
-        lines.Add($"| Start with a folder of 50,000 files in the left panel | {Milliseconds(startMany)} |");
-        lines.Add($"| End key: the caret on the last of the 50,000 files (to about 0.2 s) | {Milliseconds(toEnd)} |");
-        lines.Add($"| Memory with the folder of 50,000 files | {Megabytes(memoryMany)} |");
+        lines.Add($"| Start with a folder of 20,000 files in the left panel | {Milliseconds(startMany)} |");
+        lines.Add($"| End key: the caret on the last of the 20,000 files (to about 0.2 s) | {Milliseconds(toEnd)} |");
+        lines.Add($"| Memory with the folder of 20,000 files | {Megabytes(memoryMany)} |");
         File.WriteAllLines(Path.Combine(AppSession.ScreenshotFolder, "measurements.md"), lines);
 
         Assert.True(start.TotalSeconds < 45, $"the start took {start.TotalSeconds:0.0} s");
-        Assert.True(startMany.TotalSeconds < 60, $"the start with 50,000 files took {startMany.TotalSeconds:0.0} s");
-        Assert.True(memoryMany < 2L * 1024 * 1024 * 1024, $"{Megabytes(memoryMany)} with a folder of 50,000 files");
+        Assert.True(startMany.TotalSeconds < 60, $"the start with 20,000 files took {startMany.TotalSeconds:0.0} s");
+        Assert.True(memoryMany < 2L * 1024 * 1024 * 1024, $"{Megabytes(memoryMany)} with a folder of 20,000 files");
     }
 }

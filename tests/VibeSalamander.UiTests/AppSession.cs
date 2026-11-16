@@ -81,7 +81,7 @@ public sealed class AppSession : IDisposable
                 "the app to be ready after its start (it says: \"" + State() + "\")", 60);
             ReadyAfter = SinceLaunch.Elapsed;
             Timing.Add("Starting the app (until it is ready)", ReadyAfter);
-            Timing.Pause(1500); // icons, the window settling at its size
+            Timing.Pause(500); // icons, the window settling at its size
         }
         catch (Exception)
         {
@@ -233,20 +233,20 @@ public sealed class AppSession : IDisposable
 
     // ---- the keyboard ------------------------------------------------------------------------------------
 
-    public void Press(VirtualKeyShort key, int settleMs = 400)
+    public void Press(VirtualKeyShort key, int settleMs = 250)
     {
         Keyboard.Press(key);
         Keyboard.Release(key);
         Settle(settleMs);
     }
 
-    public void Press(VirtualKeyShort modifier, VirtualKeyShort key, int settleMs = 400)
+    public void Press(VirtualKeyShort modifier, VirtualKeyShort key, int settleMs = 250)
     {
         Keyboard.TypeSimultaneously(modifier, key);
         Settle(settleMs);
     }
 
-    public void Type(string text, int settleMs = 400)
+    public void Type(string text, int settleMs = 250)
     {
         Keyboard.Type(text);
         Settle(settleMs);
@@ -267,19 +267,19 @@ public sealed class AppSession : IDisposable
         AutomationElement bar = Retry(() => Window.FindFirstDescendant(cf => cf.ByAutomationId("MainMenu")), "the menu bar");
         AutomationElement top = Retry(() => bar.FindFirstDescendant(cf => cf.ByName(menu)), "the menu " + menu);
         top.Click();
-        Timing.Pause(600);
+        Timing.Pause(300); // the menu opens; its items are waited for by name
         for (int i = 0; i < items.Length; i++)
         {
             string item = items[i];
             AutomationElement entry = Retry(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(item).And(cf.ByControlType(ControlType.MenuItem))),
                 "the menu item " + item);
             entry.Click();
-            Settle(700);
+            Settle(500);
             // a click that lands while the menu is still opening is lost: the menu stays open, so click once more
             if (i == items.Length - 1 && StillThere(entry))
             {
                 entry.Click();
-                Settle(700);
+                Settle(500);
             }
         }
     }
@@ -301,14 +301,14 @@ public sealed class AppSession : IDisposable
         Window.FindFirstDescendant(cf => cf.ByName(name).And(cf.ByControlType(ControlType.Button))), "the button " + name, seconds);
 
     /// <summary>Waits for the button and clicks it.</summary>
-    public void Click(string button, int settleMs = 600)
+    public void Click(string button, int settleMs = 400)
     {
         Button(button).Click();
         Settle(settleMs);
     }
 
     /// <summary>Clicks something with this name anywhere on the desktop (a tab of a plugin window, a page of Configuration).</summary>
-    public void ClickNamed(string name, int settleMs = 1200)
+    public void ClickNamed(string name, int settleMs = 700)
     {
         AutomationElement element = Retry(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(name)), "something named " + name);
         try

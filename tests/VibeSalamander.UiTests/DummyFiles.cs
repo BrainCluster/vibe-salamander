@@ -18,7 +18,21 @@ public sealed class DummyFiles : IDisposable
     public string Documents => Path.Combine(Root, "Documents");
     public string Photos => Path.Combine(Root, "Photos");
     public string Target => Path.Combine(Root, "Target");
-    public string Many => Path.Combine(Root, "Many files");
+
+    /// <summary>
+    /// A folder of 5,000 files. One test wants it, so in a temp folder it's made when first asked for (in a folder
+    /// with a name of its own, as the documentation pictures use, it's there from the start).
+    /// </summary>
+    public string Many
+    {
+        get
+        {
+            string path = Path.Combine(Root, "Many files");
+            if (!Directory.Exists(path))
+                Timing.Measure("Making the dummy files", () => MakeMany(path));
+            return path;
+        }
+    }
 
     /// <summary>A file of each kind the viewer and the editor know.</summary>
     public string Samples => Path.Combine(Root, "Samples");
@@ -27,13 +41,54 @@ public sealed class DummyFiles : IDisposable
     public DummyFiles(string? root = null)
     {
         Root = root ?? Path.Combine(Path.GetTempPath(), "vibe-ui-" + Guid.NewGuid().ToString("N")[..8]);
-        Timing.Measure("Making the dummy files", Create);
+        Timing.Measure("Making the dummy files", () =>
+        {
+            if (Directory.Exists(Root))
+                new DummyFilesCleaner(Root).Dispose(); // left over from an earlier run
+            // the files are made once for the run and copied for each test (times and attributes come along)
+            CopyTree(Template.Value.Root, Root);
+            Directory.CreateDirectory(Target);
+            if (root != null)
+                MakeMany(Path.Combine(Root, "Many files"));
+        });
+    }
+
+    /// <summary>The files every test starts from, made once (deleted when the test run ends).</summary>
+    private static readonly Lazy<DummyFiles> Template = new(() =>
+    {
+        var template = new DummyFiles(Path.Combine(Path.GetTempPath(), "vibe-ui-template-" + Environment.ProcessId), template: true);
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => new DummyFilesCleaner(template.Root).Dispose();
+        return template;
+    });
+
+    private DummyFiles(string root, bool template)
+    {
+        _ = template;
+        Root = root;
+        if (Directory.Exists(Root))
+            new DummyFilesCleaner(Root).Dispose();
+        Create();
+    }
+
+    private static void MakeMany(string folder)
+    {
+        Directory.CreateDirectory(folder);
+        for (int i = 0; i < 5000; i++)
+            File.WriteAllText(Path.Combine(folder, $"file {i:0000}.txt"), "x");
+    }
+
+    private static void CopyTree(string from, string to)
+    {
+        Directory.CreateDirectory(to);
+        var all = new EnumerationOptions { AttributesToSkip = 0 };
+        foreach (string file in Directory.GetFiles(from, "*", all))
+            File.Copy(file, Path.Combine(to, Path.GetFileName(file))); // keeps the time and the attributes
+        foreach (string directory in Directory.GetDirectories(from, "*", all))
+            CopyTree(directory, Path.Combine(to, Path.GetFileName(directory)));
     }
 
     private void Create()
     {
-        if (Directory.Exists(Root))
-            new DummyFilesCleaner(Root).Dispose(); // left over from an earlier run
         Directory.CreateDirectory(Root);
         var time = new DateTime(2026, 3, 14, 9, 26, 53);
 
@@ -78,10 +133,6 @@ public sealed class DummyFiles : IDisposable
 
         ViewerSamples(Samples, Path.Combine(Photos, "holiday 01.png"), time);
 
-        Directory.CreateDirectory(Target);
-        Directory.CreateDirectory(Many);
-        for (int i = 0; i < 5000; i++)
-            File.WriteAllText(Path.Combine(Many, $"file {i:0000}.txt"), "x");
     }
 
     /// <summary>Text of many lines, JSON, XML, YAML, Markdown, a notebook, a web page, a PDF, a sound, source code.</summary>

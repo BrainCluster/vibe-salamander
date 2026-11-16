@@ -18,16 +18,16 @@ public sealed class PerformanceCollection : ICollectionFixture<PerformanceFiles>
 }
 
 /// <summary>
-/// The files the measurements run on, made once: a folder of 50,000 files, 5,000 small text files, a tree of 2,000
-/// files and a 128 MB text file. The times go to a table (the file named by VIBE_BENCHMARKS, else a temp file) that
+/// The files the measurements run on, made once: a folder of 20,000 files, 2,000 small text files, a tree of 1,000
+/// files and a 64 MB text file (enough to see a slowdown, small enough to make in a few seconds). The times go to a table (the file named by VIBE_BENCHMARKS, else a temp file) that
 /// the build shows in its summary.
 /// </summary>
 public sealed class PerformanceFiles : IDisposable
 {
-    public const int ManyCount = 50_000;
-    public const int TextCount = 5_000;
-    public const int TreeCount = 2_000;
-    public const long BigBytes = 128L * 1024 * 1024;
+    public const int ManyCount = 20_000;
+    public const int TextCount = 2_000;
+    public const int TreeCount = 1_000;
+    public const long BigBytes = 64L * 1024 * 1024;
 
     public string Root { get; } = Directory.CreateTempSubdirectory("vibe-speed").FullName;
     public string Many => Path.Combine(Root, "many");
@@ -103,26 +103,26 @@ public sealed class PerformanceTests(PerformanceFiles files)
         new LocalFileSystemProvider().ListAsync(from.Many, new ListingOptions { ShowHidden = true }, CancellationToken.None);
 
     [Fact]
-    public async Task Listing_a_folder_of_50000_files()
+    public async Task Listing_a_large_folder()
     {
-        DirectoryListing listing = await files.MeasureAsync("List a folder of 50,000 files", 10, () => ListMany(files));
+        DirectoryListing listing = await files.MeasureAsync("List a folder of 20,000 files", 10, () => ListMany(files));
 
         Assert.Null(listing.Error);
         Assert.Equal(PerformanceFiles.ManyCount, listing.Entries.Count(e => !e.IsUpDir));
     }
 
     [Fact]
-    public async Task Sorting_50000_files()
+    public async Task Sorting_a_large_folder()
     {
         List<FileEntry> entries = (await ListMany(files)).Entries.Where(e => !e.IsUpDir).ToList();
 
-        List<FileEntry> byName = await files.MeasureAsync("Sort 50,000 files by name", 10,
+        List<FileEntry> byName = await files.MeasureAsync("Sort 20,000 files by name", 10,
             () => Task.FromResult(new EntryComparer(SortMode.Name, descending: false).Sort(entries)));
-        await files.MeasureAsync("Sort 50,000 files by extension, descending", 10,
+        await files.MeasureAsync("Sort 20,000 files by extension, descending", 10,
             () => Task.FromResult(new EntryComparer(SortMode.Extension, descending: true).Sort(entries)));
 
         Assert.Equal("file 00000.log", byName[0].Name);
-        Assert.Equal("file 49999.txt", byName[^1].Name);
+        Assert.Equal("file 19999.log", byName[^1].Name);
     }
 
     [Fact]
@@ -130,10 +130,10 @@ public sealed class PerformanceTests(PerformanceFiles files)
     {
         int byName = 0, byText = 0;
 
-        await files.MeasureAsync("Find *.log among 50,000 files", 10, () => FileSearcher.SearchAsync(
+        await files.MeasureAsync("Find *.log among 20,000 files", 10, () => FileSearcher.SearchAsync(
             new SearchCriteria { Directories = new[] { files.Many }, Mask = new WildcardMask("*.log") },
             _ => Interlocked.Increment(ref byName), null, CancellationToken.None));
-        await files.MeasureAsync("Find a text in 5,000 files", 30, () => FileSearcher.SearchAsync(
+        await files.MeasureAsync("Find a text in 2,000 files", 30, () => FileSearcher.SearchAsync(
             new SearchCriteria { Directories = new[] { files.Texts }, Texts = new[] { new TextCondition("needle") } },
             _ => Interlocked.Increment(ref byText), null, CancellationToken.None));
 
@@ -144,7 +144,7 @@ public sealed class PerformanceTests(PerformanceFiles files)
     [Fact]
     public async Task Finding_duplicates()
     {
-        DuplicateResult result = await files.MeasureAsync("Find duplicates among 5,000 files (by content)", 60,
+        DuplicateResult result = await files.MeasureAsync("Find duplicates among 2,000 files (by content)", 60,
             () => DuplicateFinder.FindAsync(new DuplicateCriteria { Directories = new[] { files.Texts } }, null, CancellationToken.None));
 
         Assert.Single(result); // the files with "needle" are the same; the others have their number in them
@@ -152,11 +152,11 @@ public sealed class PerformanceTests(PerformanceFiles files)
     }
 
     [Fact]
-    public async Task Copying_a_tree_of_2000_files()
+    public async Task Copying_a_tree_of_small_files()
     {
         string target = Path.Combine(files.Root, "copy of tree");
 
-        OperationResult result = await files.MeasureAsync("Copy a tree of 2,000 small files", 120,
+        OperationResult result = await files.MeasureAsync("Copy a tree of 1,000 small files", 120,
             () => new FileOperationEngine(new NoQuestions()).CopyAsync(new[] { files.Tree }, target));
 
         Assert.Equal(PerformanceFiles.TreeCount, result.Succeeded);
@@ -167,7 +167,7 @@ public sealed class PerformanceTests(PerformanceFiles files)
     public async Task Opening_a_large_text_file()
     {
         Task? indexing = null;
-        using TextFile file = await files.MeasureAsync("Open a 128 MB text file and show its first lines", 5, async () =>
+        using TextFile file = await files.MeasureAsync("Open a 64 MB text file and show its first lines", 5, async () =>
         {
             TextFile opened = TextFile.Open(files.Big);
             indexing = opened.IndexAsync(CancellationToken.None); // the lines are found in the background, as in the viewer
@@ -177,13 +177,13 @@ public sealed class PerformanceTests(PerformanceFiles files)
             return opened;
         });
 
-        await files.MeasureAsync("Index all lines of the 128 MB text file", 120, async () =>
+        await files.MeasureAsync("Index all lines of the 64 MB text file", 120, async () =>
         {
             await indexing!;
             return file.LineCount;
         });
 
-        Assert.True(file.LineCount > 1_000_000, $"{file.LineCount} lines");
+        Assert.True(file.LineCount > 500_000, $"{file.LineCount} lines");
     }
 
     private sealed class NoQuestions : IOperationCallbacks

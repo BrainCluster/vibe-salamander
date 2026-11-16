@@ -87,11 +87,11 @@ deep tree, open a 2 GB text file, search content of 10,000 files), with generous
 a tenfold regression fails the build; a UI test that records startup-to-first-listing time and memory
 after showing a 50,000-file folder, printed in the `ui-screenshots` README.
 *Done when:* the numbers are in every CI run and a line in the release notes template asks to compare them.
-*Status (0.8.9):* `PerformanceTests` (Core): listing and sorting 50,000 files, finding names and text, duplicates,
-copying a tree, opening and indexing a 128 MB text file, each with a generous limit; the times are in the
-summary of every *Build and release* run. `MeasurementScenarios` (UI): start time, the End key in a folder of
-50,000 files and memory, on the `ui-screenshots` page. Smaller than planned (50,000 files, 128 MB) to keep the
-runs short. Open: the line in the release notes.
+*Status (0.8.9, sizes reduced after it):* `PerformanceTests` (Core): listing and sorting 20,000 files, finding
+names and text, duplicates, copying a tree, opening and indexing a 64 MB text file, each with a generous limit; the
+times are in the summary of every *Build and release* run. `MeasurementScenarios` (UI): start time, the End key in
+a folder of 20,000 files and memory, on the `ui-screenshots` page. Smaller than first planned (100,000 files, 2 GB)
+to keep the runs short. Open: the line in the release notes.
 
 **T5. Translations checked by a test.**
 The eleven language files have between 1,707 and 1,714 entries: some are missing texts. Verified absent:

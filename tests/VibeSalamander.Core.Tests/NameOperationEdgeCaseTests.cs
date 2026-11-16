@@ -15,29 +15,11 @@ public sealed class NameOperationEdgeCaseTests : IDisposable
     {
         try
         {
-            DeleteTree(_root);
+            TestFiles.DeleteTree(_root);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
         }
-    }
-
-    private static void DeleteTree(string directory)
-    {
-        var all = new EnumerationOptions { AttributesToSkip = 0 };
-        foreach (string dir in Directory.GetDirectories(directory, "*", all))
-        {
-            if ((File.GetAttributes(dir) & FileAttributes.ReparsePoint) != 0)
-                Directory.Delete(dir);
-            else
-                DeleteTree(dir);
-        }
-        foreach (string file in Directory.GetFiles(directory, "*", all))
-        {
-            File.SetAttributes(file, FileAttributes.Normal);
-            File.Delete(file);
-        }
-        Directory.Delete(directory);
     }
 
     private string P(string relative) => Path.Combine(_root, relative);
@@ -48,18 +30,6 @@ public sealed class NameOperationEdgeCaseTests : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, "x");
         return path;
-    }
-
-    private static void Junction(string link, string target)
-    {
-        using Process process = Process.Start(new ProcessStartInfo("cmd.exe", $"/c mklink /J \"{link}\" \"{target}\"")
-        {
-            CreateNoWindow = true,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-        })!;
-        process.WaitForExit();
-        Assert.True(Directory.Exists(link));
     }
 
     private sealed class Answers : IOperationCallbacks
@@ -84,7 +54,7 @@ public sealed class NameOperationEdgeCaseTests : IDisposable
     {
         Make(@"outside\Keep Me.TXT");
         Make(@"Sel\Sub Dir\Some File.TXT");
-        Junction(P(@"Sel\Link"), P("outside"));
+        TestFiles.Junction(P(@"Sel\Link"), P("outside"));
 
         OperationResult result = await NameAndAttributeOperations.ChangeCaseAsync(new[] { P("Sel") }, CaseMode.Lower, CasePart.WholeName,
             includeSubdirectories: true, new Answers());
@@ -102,7 +72,7 @@ public sealed class NameOperationEdgeCaseTests : IDisposable
     {
         string outside = Make(@"outside\file.txt");
         string inside = Make(@"sel\file.txt");
-        Junction(P(@"sel\link"), P("outside"));
+        TestFiles.Junction(P(@"sel\link"), P("outside"));
 
         await NameAndAttributeOperations.ChangeAttributesAsync(new[] { P("sel") },
             new AttributeChange { Set = FileAttributes.Hidden, IncludeSubdirectories = true }, new Answers());

@@ -22,7 +22,7 @@ public sealed class FileOperationSafetyTests : IDisposable
     {
         try
         {
-            DeleteTree(_root);
+            TestFiles.DeleteTree(_root);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -36,8 +36,8 @@ public sealed class FileOperationSafetyTests : IDisposable
     public async Task Copy_onto_the_same_file_through_a_junction_changes_nothing()
     {
         string file = Make(@"real\a.txt", "precious");
-        Junction(P("alias"), P("real"));
-        var callbacks = new Callbacks(); // would answer Overwrite
+        TestFiles.Junction(P("alias"), P("real"));
+        var callbacks = new OperationAnswers(); // would answer Overwrite
 
         OperationResult result = await new FileOperationEngine(callbacks).CopyAsync(new[] { file }, P("alias"));
 
@@ -51,8 +51,8 @@ public sealed class FileOperationSafetyTests : IDisposable
     public async Task Move_onto_the_same_file_through_a_junction_keeps_it()
     {
         string file = Make(@"real\a.txt", "precious");
-        Junction(P("alias"), P("real"));
-        var callbacks = new Callbacks();
+        TestFiles.Junction(P("alias"), P("real"));
+        var callbacks = new OperationAnswers();
 
         OperationResult result = await new FileOperationEngine(callbacks).MoveAsync(new[] { file }, P("alias"));
 
@@ -67,8 +67,8 @@ public sealed class FileOperationSafetyTests : IDisposable
     {
         Make(@"real\dir\a.txt", "a");
         Make(@"real\dir\sub\b.txt", "b");
-        Junction(P("alias"), P("real"));
-        var callbacks = new Callbacks();
+        TestFiles.Junction(P("alias"), P("real"));
+        var callbacks = new OperationAnswers();
 
         // "alias\dir" exists and is "real\dir": a merge would copy every file onto itself and then delete it
         OperationResult result = await new FileOperationEngine(callbacks).MoveAsync(new[] { P(@"real\dir") }, P("alias"));
@@ -85,8 +85,8 @@ public sealed class FileOperationSafetyTests : IDisposable
         // dst\dir\link leads to src\dir\data: merging src\dir into dst\dir meets the same files under two names
         Make(@"src\dir\data\keep.txt", "precious");
         Directory.CreateDirectory(P(@"dst\dir"));
-        Junction(P(@"dst\dir\data"), P(@"src\dir\data"));
-        var callbacks = new Callbacks();
+        TestFiles.Junction(P(@"dst\dir\data"), P(@"src\dir\data"));
+        var callbacks = new OperationAnswers();
 
         OperationResult result = await new FileOperationEngine(callbacks).MoveAsync(new[] { P(@"src\dir") }, P("dst"));
 
@@ -101,8 +101,8 @@ public sealed class FileOperationSafetyTests : IDisposable
     {
         string file = Make(@"src\a.txt", "precious");
         Directory.CreateDirectory(P("dst"));
-        HardLink(P(@"dst\a.txt"), file);
-        var callbacks = new Callbacks();
+        TestFiles.HardLink(P(@"dst\a.txt"), file);
+        var callbacks = new OperationAnswers();
 
         OperationResult result = await new FileOperationEngine(callbacks).MoveAsync(new[] { file }, P("dst"));
 
@@ -119,8 +119,8 @@ public sealed class FileOperationSafetyTests : IDisposable
     {
         Make(@"src\dir\a.txt", "a");
         Directory.CreateDirectory(P(@"src\dir\sub"));
-        Junction(P("into"), P(@"src\dir\sub")); // "into" is a folder inside the source
-        var callbacks = new Callbacks();
+        TestFiles.Junction(P("into"), P(@"src\dir\sub")); // "into" is a folder inside the source
+        var callbacks = new OperationAnswers();
         var engine = new FileOperationEngine(callbacks);
 
         OperationResult result = move
@@ -137,7 +137,7 @@ public sealed class FileOperationSafetyTests : IDisposable
     public async Task A_folder_is_never_moved_into_itself()
     {
         Make(@"src\dir\a.txt", "a");
-        var callbacks = new Callbacks();
+        var callbacks = new OperationAnswers();
 
         OperationResult result = await new FileOperationEngine(callbacks).MoveAsync(new[] { P(@"src\dir") }, P(@"src\dir\inner"));
 
@@ -151,8 +151,8 @@ public sealed class FileOperationSafetyTests : IDisposable
     {
         string a = Make(@"id\a.txt", "a");
         string b = Make(@"id\b.txt", "a");
-        HardLink(P(@"id\a-link.txt"), a);
-        Junction(P("id-alias"), P("id"));
+        TestFiles.HardLink(P(@"id\a-link.txt"), a);
+        TestFiles.Junction(P("id-alias"), P("id"));
 
         Assert.True(FileIdentity.IsSame(a, P(@"id\a-link.txt")));
         Assert.True(FileIdentity.IsSame(a, P(@"id-alias\a.txt")));
@@ -186,7 +186,7 @@ public sealed class FileOperationSafetyTests : IDisposable
             File.SetLastWriteTimeUtc(Make($@"src\dir\{name}.txt", "new " + name), source);
         File.SetLastWriteTimeUtc(Make(@"dst\dir\a.txt", "old a"), older);
         File.SetLastWriteTimeUtc(Make(@"dst\dir\b.txt", "old b"), newer);
-        var callbacks = new Callbacks { Conflict = _ => answer };
+        var callbacks = new OperationAnswers { Conflict = _ => answer };
         var engine = new FileOperationEngine(callbacks);
 
         OperationResult result = move
@@ -228,7 +228,7 @@ public sealed class FileOperationSafetyTests : IDisposable
     {
         string file = Make(@"src\a.txt", "content");
         int checks = 0;
-        var callbacks = new Callbacks { Error = _ => ErrorChoice.Retry };
+        var callbacks = new OperationAnswers { Error = _ => ErrorChoice.Retry };
         var engine = new FileOperationEngine(callbacks)
         {
             Options = new EngineOptions { VerifyCopies = true },
@@ -249,7 +249,7 @@ public sealed class FileOperationSafetyTests : IDisposable
         string file = Make(@"src\dir\a.txt", "content");
         File.SetAttributes(file, FileAttributes.ReadOnly); // the bad copy is read-only too, and still goes
         Directory.CreateDirectory(P(@"dst\dir")); // the move copies
-        var callbacks = new Callbacks { Error = _ => ErrorChoice.Skip };
+        var callbacks = new OperationAnswers { Error = _ => ErrorChoice.Skip };
         var engine = new FileOperationEngine(callbacks)
         {
             Options = new EngineOptions { VerifyCopies = true },
@@ -274,7 +274,7 @@ public sealed class FileOperationSafetyTests : IDisposable
         Make(@"src\dir\c.txt", "c");
         Directory.CreateDirectory(P(@"dst\dir")); // a move copies
         bool deleted = false;
-        var progress = new SyncProgress(p =>
+        var progress = new ImmediateProgress(p =>
         {
             if (!deleted && !p.Analyzing && p.CurrentSource.EndsWith("a.txt", StringComparison.OrdinalIgnoreCase))
             {
@@ -282,7 +282,7 @@ public sealed class FileOperationSafetyTests : IDisposable
                 File.Delete(P(@"src\dir\b.txt")); // another program deletes it after the plan was made
             }
         });
-        var callbacks = new Callbacks();
+        var callbacks = new OperationAnswers();
         var engine = new FileOperationEngine(callbacks, progress);
 
         OperationResult result = move
@@ -302,7 +302,7 @@ public sealed class FileOperationSafetyTests : IDisposable
     {
         string file = Make(@"src\a.txt", "new");
         string target = Make(@"dst\a.txt", "old");
-        var callbacks = new Callbacks(); // Overwrite, then Skip the error
+        var callbacks = new OperationAnswers(); // Overwrite, then Skip the error
         OperationResult result;
         using (new FileStream(target, FileMode.Open, FileAccess.Read, FileShare.Read)) // open in another program
             result = await new FileOperationEngine(callbacks).MoveAsync(new[] { file }, P("dst"));
@@ -318,7 +318,7 @@ public sealed class FileOperationSafetyTests : IDisposable
     {
         Make(@"src\dir\a.txt", "a");
         Make(@"dst\dir\b.txt", "b");
-        var callbacks = new Callbacks { Conflict = c => c.IsMerge ? ConflictChoice.Skip : ConflictChoice.Overwrite };
+        var callbacks = new OperationAnswers { Conflict = c => c.IsMerge ? ConflictChoice.Skip : ConflictChoice.Overwrite };
         var engine = new FileOperationEngine(callbacks) { Options = new EngineOptions { ConfirmDirectoryMerge = true } };
 
         OperationResult result = await engine.MoveAsync(new[] { P(@"src\dir") }, P("dst"));
@@ -339,7 +339,7 @@ public sealed class FileOperationSafetyTests : IDisposable
         File.WriteAllBytes(P(@"src\big.bin"), data);
         FileOperationEngine? engine = null;
         bool paused = false;
-        var progress = new SyncProgress(p =>
+        var progress = new ImmediateProgress(p =>
         {
             if (paused || p.Analyzing || !p.CurrentSource.EndsWith("big.bin", StringComparison.OrdinalIgnoreCase))
                 return;
@@ -352,7 +352,7 @@ public sealed class FileOperationSafetyTests : IDisposable
                 running.Paused = false;
             });
         });
-        engine = new FileOperationEngine(new Callbacks(), progress);
+        engine = new FileOperationEngine(new OperationAnswers(), progress);
         var clock = Stopwatch.StartNew();
 
         OperationResult result = await engine.CopyAsync(new[] { P(@"src\big.bin") }, P("dst") + "\\");
@@ -373,7 +373,7 @@ public sealed class FileOperationSafetyTests : IDisposable
         string file = Make(@"src\dir\a.txt", "main");
         File.WriteAllText(file + ":meta", "stream"); // as the Zone.Identifier of a download
         Directory.CreateDirectory(P(@"dst\dir")); // a move copies
-        var engine = new FileOperationEngine(new Callbacks());
+        var engine = new FileOperationEngine(new OperationAnswers());
 
         if (move)
             await engine.MoveAsync(new[] { P(@"src\dir") }, P("dst"));
@@ -391,7 +391,7 @@ public sealed class FileOperationSafetyTests : IDisposable
         string file = Make(@"src\dir\ro.txt", "r");
         File.SetAttributes(file, FileAttributes.ReadOnly);
         Directory.CreateDirectory(P(@"dst\dir")); // the move copies, then deletes the read-only source
-        var callbacks = new Callbacks();
+        var callbacks = new OperationAnswers();
 
         OperationResult result = await new FileOperationEngine(callbacks).MoveAsync(new[] { P(@"src\dir") }, P("dst"));
 
@@ -407,7 +407,7 @@ public sealed class FileOperationSafetyTests : IDisposable
     {
         Make(@"src\Photos\a.jpg", "a");
         Make(@"dst\photos\b.jpg", "b");
-        var callbacks = new Callbacks();
+        var callbacks = new OperationAnswers();
 
         OperationResult result = await new FileOperationEngine(callbacks).MoveAsync(new[] { P(@"src\Photos") }, P("dst"));
 
@@ -448,79 +448,4 @@ public sealed class FileOperationSafetyTests : IDisposable
 
     private static string Describe(Dictionary<string, string> files) =>
         string.Join("; ", files.OrderBy(f => f.Key, StringComparer.OrdinalIgnoreCase).Select(f => $"{f.Key} = {f.Value}"));
-
-    /// <summary>A directory junction (mklink /J needs no administrator rights, unlike symbolic links).</summary>
-    private static void Junction(string link, string target)
-    {
-        Mklink("/J", link, target);
-        Assert.True(Directory.Exists(link), "the junction could not be created");
-        Assert.True((File.GetAttributes(link) & FileAttributes.ReparsePoint) != 0);
-    }
-
-    /// <summary>A second name for the same file (mklink /H needs no administrator rights).</summary>
-    private static void HardLink(string link, string target)
-    {
-        Mklink("/H", link, target);
-        Assert.True(File.Exists(link), "the hard link could not be created");
-    }
-
-    private static void Mklink(string kind, string link, string target)
-    {
-        var start = new ProcessStartInfo("cmd.exe", $"/c mklink {kind} \"{link}\" \"{target}\"")
-        {
-            CreateNoWindow = true,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-        using Process process = Process.Start(start)!;
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        Assert.True(process.ExitCode == 0, $"mklink {kind} failed: {error}");
-    }
-
-    private static void DeleteTree(string directory)
-    {
-        var all = new EnumerationOptions { AttributesToSkip = 0 };
-        foreach (string dir in Directory.GetDirectories(directory, "*", all))
-        {
-            if ((File.GetAttributes(dir) & FileAttributes.ReparsePoint) != 0)
-                Directory.Delete(dir);
-            else
-                DeleteTree(dir);
-        }
-        foreach (string file in Directory.GetFiles(directory, "*", all))
-        {
-            File.SetAttributes(file, FileAttributes.Normal);
-            File.Delete(file);
-        }
-        Directory.Delete(directory);
-    }
-
-    /// <summary>Answers prompts through functions and counts them.</summary>
-    private sealed class Callbacks : IOperationCallbacks
-    {
-        public Func<ConflictInfo, ConflictChoice> Conflict { get; init; } = _ => ConflictChoice.Overwrite;
-        public Func<OperationError, ErrorChoice> Error { get; init; } = _ => ErrorChoice.Skip;
-        public List<OperationError> Errors { get; } = new();
-        public int Conflicts { get; private set; }
-
-        public Task<ConflictChoice> ResolveConflictAsync(ConflictInfo conflict)
-        {
-            Conflicts++;
-            return Task.FromResult(Conflict(conflict));
-        }
-
-        public Task<ErrorChoice> ResolveErrorAsync(OperationError error)
-        {
-            Errors.Add(error);
-            return Task.FromResult(Error(error));
-        }
-    }
-
-    /// <summary>Reports synchronously (Progress&lt;T&gt; would post to a thread pool and arrive late).</summary>
-    private sealed class SyncProgress(Action<OperationProgress> report) : IProgress<OperationProgress>
-    {
-        public void Report(OperationProgress value) => report(value);
-    }
 }
