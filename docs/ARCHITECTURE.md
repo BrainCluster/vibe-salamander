@@ -152,13 +152,16 @@ window (`Services/WindowOwner`).
   `CanExecute` greys out what doesn't apply. The view model reaches the window only through `IUiHost`
   (dialogs, menus, notifications, focus), which `MainWindow` implements.
 * **File operations.** `FileOperationEngine` plans first (tree walk, totals), then executes with CopyFileEx
-  (attributes, times and alternate streams kept; long paths; links copied as links, never followed), with
+  (attributes, times and alternate streams kept; long paths; a junction or link to a folder has its content
+  copied, a link that leads back up is left out, and a move or delete removes only the link itself), with
   pause/cancel, conflict and error questions through `IOperationCallbacks`, optional verification, and
   `SpeedLimiter`s. `TransfersViewModel` owns the queue: every copy, move, permanent delete, pack, unpack,
   upload and download is a row in the transfer panel. `TransferScheduler` decides which waiting rows may
   start (`ParallelTransfers`, default 3; one per disk by default). Questions from all transfers go through
   one dialog gate (`UiOperationCallbacks` → `Dialogs`), so prompts never collide. Recycle Bin deletes use
   the shell (`ShellOperations`).
+  Paths are compared by text *and* by identity (`Interop/FileIdentity`: volume and file id, final path), because
+  a junction, hard link or subst drive can make a "different" target the source itself.
 * **Icons and thumbnails.** Glyphs render immediately; `IconCache` loads shell icons on two STA threads of
   its own (SHGetFileInfo is unreliable on thread-pool threads), cached per extension, or per path for
   `.exe/.lnk/.ico` and drives. Icon packs (Windows, Vibe color, Vibe one color) are chosen through Core's

@@ -145,6 +145,21 @@ public sealed class FileOperationEngine : IPausable
                         return Cancelled(result);
                     continue;
                 }
+                // the same item reached through another path (a junction, a hard link, a subst drive): "overwriting the
+                // target" would overwrite the source itself, and a move would then delete it
+                if ((File.Exists(dest) || Directory.Exists(dest)) && Interop.FileIdentity.IsSame(source, dest))
+                {
+                    if (!await HandleErrorAsync(source, move ? "Cannot move an item onto itself." : "Cannot copy an item onto itself.", result))
+                        return Cancelled(result);
+                    continue;
+                }
+                // ...or a target folder that a link leads into the source folder from
+                if (isDir && Interop.FileIdentity.IsSameOrInside(dest, source))
+                {
+                    if (!await HandleErrorAsync(source, move ? "Cannot move a directory into itself." : "Cannot copy a directory into itself.", result))
+                        return Cancelled(result);
+                    continue;
+                }
 
                 result.CreatedTopLevelNames.Add(Path.GetFileName(dest));
                 if (move && SameVolume(source, dest) && !Directory.Exists(dest) && !File.Exists(dest))
@@ -327,6 +342,14 @@ public sealed class FileOperationEngine : IPausable
         bool overwrite = false;
         if (File.Exists(target) || Directory.Exists(target))
         {
+            if (File.Exists(target) && Interop.FileIdentity.IsSame(step.Source, target))
+            {
+                // inside a folder reached through a link (or a hard link of the file): the "target" is the source itself
+                if (!await HandleErrorAsync(step.Source, _kind == OperationKind.Move ? "Cannot move an item onto itself." : "Cannot copy an item onto itself.", result))
+                    return false;
+                Done(step.Size);
+                return true;
+            }
             ConflictChoice choice = await ResolveConflictAsync(step.Source, target, isDirectory: Directory.Exists(target));
             switch (choice)
             {
@@ -944,9 +967,24 @@ public sealed class FileOperationEngine : IPausable
             throw new Win32Exception(error);
         }
         // Configuration → General: the copy is read again and compared with the original
-        if (Options.VerifyCopies && !Tools.DirectoryComparer.ContentEqual(LongPath(source), LongPath(target), _ct))
+        if (Options.VerifyCopies && !ContentCheck(LongPath(source), LongPath(target), _ct))
+        {
+            // a copy that differs isn't the file: it goes, so nothing looks copied that isn't (and Retry copies anew
+            // instead of failing on "the file exists")
+            ClearReadOnly(target);
+            try
+            {
+                File.Delete(target);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+            }
             throw new IOException(L.T("The copy differs from the original (checked after copying)."));
+        }
     }
+
+    /// <summary>Compares a copy with its original after copying (tests replace it to make a copy "differ").</summary>
+    internal Func<string, string, CancellationToken, bool> ContentCheck { get; set; } = Tools.DirectoryComparer.ContentEqual;
 
     /// <summary>Adds the \\?\ prefix for paths beyond MAX_PATH.</summary>
     private static string LongPath(string path)

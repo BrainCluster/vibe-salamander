@@ -55,10 +55,18 @@ for the dangerous combinations.
 not arrive; no partial target left), every conflict answer × file/directory × "for all", the target inside
 the source, the same file as source and target, names differing only in case, read-only / hidden / system
 targets, files locked by another program, paths over 260 characters on both sides, junctions and symbolic
-links (copied as links, never followed, a move never deletes a link's target), alternate data streams,
+links (their content copied, a move never deletes a link's target), alternate data streams,
 a full target disk, the source disappearing during the copy, pause and resume inside a large file,
 verification failing.
 *Done when:* each case is a test; every failure found is fixed or, if it is a decision, written down here.
+*Status (stage 1):* `FileOperationSafetyTests` covers the matrix except a full disk (needs a small volume of its
+own). Found and fixed: a target that is the source itself through a junction, hard link or subst drive was offered
+as an ordinary overwrite (now recognized by file identity and refused); a folder copied into a link that leads
+inside it was copied into itself; a copy that failed verification stayed in the target and Retry could never
+succeed. **Open decision:** an overwrite writes over the old file in place (as Explorer and Salamander do), so
+cancelling it or a failure midway (disk full, source unplugged) loses the old file. Safer: copy to a temporary
+name beside it and swap when complete (`ReplaceFile`), at the cost of room for both files during the copy. The
+test for it is written and skipped until this is decided.
 
 **T3. Administrator rights for single operations.**
 Copying into `Program Files` or deleting in `Windows` fails with "access denied" (verified: only
