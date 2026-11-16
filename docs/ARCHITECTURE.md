@@ -300,6 +300,11 @@ the translation (`{ "Copy": "Kopiraj" }`); a missing entry stays English.
   "ready" or "busy: ..."; `AppSession` waits for "ready" after the start and after every key and click, and
   `WaitReady()` waits for something long. Anything new that takes time and isn't a panel listing announces
   itself with `AppActivity.Begin("what")` and disposes the result when done.
+* **The UI run accounts for its time**: `Timing` adds up starting and closing the app, the dummy files, fixed
+  pauses (`Timing.Pause`, never `Thread.Sleep`) and waits; the run's page (`ui-screenshots`) shows the totals and
+  every test's seconds. Look there before making the tests faster, and prefer a wait for a state to a longer pause.
+  The dummy files are made once per run and copied for each test (`DummyFiles`); the file operation tests share
+  `TestFiles`, `OperationAnswers` and `ImmediateProgress`.
 * **Speed is measured**: `PerformanceTests` (Core, with limits; times in the build's summary) and
   `MeasurementScenarios` (start time and memory, on the `ui-screenshots` page).
 * Building needs Windows (WinUI 3). On another system nothing can be built or run: push and read the
