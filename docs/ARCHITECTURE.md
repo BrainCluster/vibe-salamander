@@ -6,7 +6,7 @@ spirit of the [Files](https://github.com/files-community/files) app.
 
 > Vibe Salamander is to Altap Salamander what Files is to Windows File Explorer.
 
-This document describes the code as of **0.8.8**. Read it before changing anything; [ROADMAP.md](ROADMAP.md)
+This document describes the code as of **0.8.9**. Read it before changing anything; [ROADMAP.md](ROADMAP.md)
 says what to build next. When the code and this document disagree, the code is right: fix the document in
 the same commit.
 
