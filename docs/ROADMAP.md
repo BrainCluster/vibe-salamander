@@ -1,158 +1,373 @@
-# Vibe Salamander – Roadmap and Salamander parity checklist
+# Vibe Salamander – Roadmap
 
-The checklist below is generated from Open Salamander's main menu (`src/menu4.cpp`) and hotkeys.
-Phase numbers say when each item is planned. `[x]` = implemented, `[~]` = partly, `[ ]` = not yet.
+Written at **0.8.8** (November 2026), from a review of the whole code base. It has three parts:
 
-## Phases
+1. [Where the project stands](#where-the-project-stands)
+2. [The road to 1.0 and after](#the-road-to-10-and-after): what to build next, in order, with where and "done when"
+3. [Salamander parity checklist](#salamander-parity-checklist): every Open Salamander command and plugin, and its state
 
-1. **Shell & navigation** – window layout, dual panes, drive bars, This PC, listing, sorting,
-   caret/marks, keyboard navigation, basic file operations through the Windows shell, settings.
-2. **Operations engine** – own copy/move/delete engine with Salamander progress & conflict dialogs,
-   in-place quick rename, change attributes/case, find files (Alt+F7), filter, selection dialogs,
-   clipboard, drag & drop, Explorer context menu.
-   *Decision:* no internal viewer. F3 opens files in their default Windows app, Alt+F3 / Ctrl+Shift+F3
-   show the Windows "Open with" chooser.
-   *Decision:* no modal progress dialog. Copy, move and permanent delete run in a **transfer panel**
-   below the file panels (WinSCP-style queue, up to 3 at once, pause/resume/cancel per item); the
-   panels stay usable while transfers run. Conflict and error questions name the transfer they belong to.
-3. **Power features** – configuration dialog, key customization, view modes (Brief/Detailed/Icons/
-   Thumbnails/Tiles), column chooser & resizing, hot paths, user menu, compare directories,
-   directory sizes, drive information, command line integration, network drives.
-4. **Plugins** – plugin loader and Plugins Manager (done), archives: pack ZIP/TAR/TAR.GZ, unpack
-   ZIP/7z/RAR/TAR/gz/bz2/xz/lz, browse archives in the panels and copy files out (done); later:
-   changing archives in place (done), FTP/SFTP (first version done),
-   picture viewer, checksum, renamer, file compare, disk map (done: cushion treemap, blocks, sunburst,
-   columns) … (ports of Salamander plugins).
+Read [ARCHITECTURE.md](ARCHITECTURE.md) first: it has the structure, the rules and the recipes
+("How to add things") this roadmap relies on. Tick items off here in the commit that finishes them.
 
-## Left / Right panel menu
-| Command | Keys | Phase | Done |
-|---|---|---|---|
-| Change drive | Alt+F1 / Alt+F2 | 1 | [x] |
-| Back / Forward | Alt+Left / Alt+Right | 1 | [x] |
-| Parent directory | Backspace | 1 | [x] |
-| Root directory | Shift+Backspace | 1 | [x] |
-| Path from other panel | Ctrl+. | 1 | [x] |
-| Hot paths 1-9 (set / go; listed in the drive menu; no 0: Windows uses Ctrl+Shift+0) | Ctrl+Shift+1-9 / Ctrl+1-9 | 3 | [x] |
-| Sort by Name/Ext/Size/Date/Attr | Ctrl+F3…F6 | 1 | [x] |
-| Views (Brief, Detailed, Icons, Thumbnails, Tiles) | Alt+1…5 | 3 | [x] |
-| Show directory/header/information line | | 1 | [~] |
-| Choose columns (header right-click), resize columns (header grips) | | 3 | [x] |
-| Maximize/restore panel | Ctrl+F11 | 1 | [x] |
-| Swap panels | Ctrl+U | 1 | [x] |
-| Filter | Ctrl+F12 | 2 | [x] |
-| Refresh | Ctrl+F9 / Ctrl+R | 1 | [x] |
+## Where the project stands
 
-## Files menu
-| Command | Keys | Phase | Done |
-|---|---|---|---|
-| Open / execute | Enter | 1 | [x] |
-| Quick rename (in place, the name label itself becomes editable) | F2 | 2 | [x] |
-| Open in default app / Open with (no internal viewer) | F3 / Alt+F3, Ctrl+Shift+F3 | 2 | [x] |
-| Edit / Edit with / Edit new file | F4 / Ctrl+Shift+F4 / Shift+F4 | 1 (system editor) | [~] |
-| Copy / Move-rename | F5 / F6 | 1 (shell) / 2 (engine) | [x] |
-| Copy/move target dialog with Browse and "don't show again" (then straight into the other panel) | F5 / F6 | 2 | [x] |
-| Delete (Recycle Bin / permanent) | F8, Del / Shift+Del | 1 | [x] |
-| Email (Simple MAPI) | Ctrl+E | 3 | [x] |
-| Properties | Alt+Enter | 1 | [x] |
-| Security | Ctrl+P | 3 | [x] |
-| Change attributes | Ctrl+F2 | 2 | [x] |
-| NTFS compress/uncompress/encrypt/decrypt | | 3 | [x] |
-| Change case | Ctrl+F7 | 2 | [x] |
-| Convert | Ctrl+K | 4 | [ ] |
-| Pack / Unpack (archive plugin; in the transfer panel, with passwords for ZIP/7z/RAR) | Alt+F5 / Alt+F6 | 4 | [x] |
-| New (shell "New" menu; the new item is renamed in place) | | 3 | [x] |
-| Exit | Alt+F4 | 1 | [x] |
+In five weeks Vibe Salamander went from nothing to almost all of Open Salamander's commands, plus things
+Salamander never had (a transfer queue, a built-in viewer and editor, compare and synchronize, FTP/SFTP in
+the panels, Disk Map, an installer with updates, twelve languages). Feature parity is no longer the gap.
 
-## Edit menu
-| Command | Keys | Phase | Done |
-|---|---|---|---|
-| Cut / Copy / Paste (clipboard) | Ctrl+X / Ctrl+C / Ctrl+V | 2 | [x] |
-| Paste shortcut | Ctrl+S | 3 | [x] |
-| Copy full name / name / path / UNC path as text | Alt+Ins, Alt+Shift+Ins, Ctrl+Alt+Ins, Ctrl+Shift+Ins | 1 | [~] |
-| Mark / unmark item | Insert, Space | 1 | [x] |
-| Select… / Unselect… (mask) | Num + / Num − | 2 | [x] |
-| Invert selection | Num * | 1 | [x] |
-| Select all / Unselect all | Ctrl+A / Ctrl+D | 1 | [x] |
-| Restore selection | Ctrl+W | 2 | [x] |
-| Save / load selection | Ctrl+Shift+F5 / F6 | 3 | [x] |
-| Select/unselect same extension / name | Shift+Num± / Ctrl+Shift+Num± | 2 | [x] |
-| Hide selected / unselected names, show hidden names | | 3 | [x] |
-| Go to previous / next selected | Alt+Up / Alt+Down | 2 | [x] |
+What is missing is what makes people trust a file manager with their files:
 
-## Commands menu
-| Command | Keys | Phase | Done |
-|---|---|---|---|
-| Create directory | F7 | 1 | [x] |
-| Change directory | Shift+F7 | 1 | [x] |
-| Compare directories | Ctrl+F10 | 3 | [x] |
-| Calculate occupied space / directory sizes | Alt+F10 / Ctrl+Shift+F10 | 3 | [x] |
-| Drive information (flyout) | Ctrl+F1 | 3 | [x] |
-| Find files and directories | Alt+F7 | 2 | [x] |
-| Make file list (to the clipboard) | Ctrl+M | 3 | [x] |
-| Go to shortcut target | Ctrl+T | 2 | [x] |
-| Opened files / working directories lists | Alt+F11 / Alt+F12 | 3 | [x] |
-| Connect / disconnect network drive, shares | F11 / F12 / Ctrl+Shift+F9 | 3 | [x] |
-| Command shell | Num / | 1 | [x] |
-| User menu (with editor and $(variables)) | F9 | 3 | [x] |
-| Open folder (Desktop, Computer, Control Panel, Recycle Bin …) | | 3 | [x] |
-| Open active folder in Explorer | Shift+F3 | 1 | [x] |
+* **It is young and unsigned.** Windows warns on every download, no bug has been reported by a user yet
+  (the issue tracker is empty), and the copy engine has run on few real machines.
+* **A few behaviors can surprise in costly ways**: files that live in the cloud are downloaded by tools
+  that only meant to look at them, and a copy into a protected folder just fails.
+* **Speed is a principle but isn't measured.** Nothing would notice if a change made listings slower.
+* **The plugin contracts are still free to change**, which is fine before 1.0 and must stop at 1.0.
 
-## Plugins menu
-| Command | Phase | Done |
+So the order is: **trust first (0.9), then a stable 1.0, then reach (1.x)**. New features that don't serve
+the current milestone wait, unless BrainCluster asks for them — his requests always come first.
+
+## The road to 1.0 and after
+
+Each item says what to do, why, where it goes in the code, and when it is done. Within a milestone the
+items are in the recommended order. "Verified absent" means a search of the 0.8.8 code found nothing.
+
+### 0.9 — Trust
+
+**T1. Cloud files are never downloaded by accident.**
+OneDrive, iCloud and Dropbox keep files as online-only placeholders; reading one downloads it. Find (text),
+Find Duplicates, Compare Directories by content, Checksums, Disk Map, quick view and thumbnails read files,
+so a search for text in `Documents` can pull down a whole cloud drive. Verified absent: no code looks at the
+placeholder attributes.
+*Where:* `FileEntry` (keep `FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS` / `RECALL_ON_OPEN` / `OFFLINE`; they come
+with the listing for free), a Core rule "may this tool read this file's content" used by `FileSearcher`,
+`DuplicateFinder`, `DirectoryComparer`, the Checksum plugin, `QuickViewPanel` and `ThumbnailCache`;
+a cloud state mark in the panel (online-only / available / pinned).
+*Done when:* content tools skip online-only files and say how many they skipped, with a choice to include
+them; quick view and thumbnails of an online-only file show its icon, never its content; explicit commands
+(F3, F5, Enter) work as before; Core tests cover the rule.
+
+**T2. A data-safety test matrix for the copy engine.**
+`FileOperationEngine` is the code that can lose files. It has edge-case tests; it needs a systematic matrix
+for the dangerous combinations.
+*Where:* `tests/VibeSalamander.Core.Tests` (new file), fixes in `Core/Operations`.
+*Cases:* a move across volumes that fails or is cancelled midway (nothing deleted from the source that did
+not arrive; no partial target left), every conflict answer × file/directory × "for all", the target inside
+the source, the same file as source and target, names differing only in case, read-only / hidden / system
+targets, files locked by another program, paths over 260 characters on both sides, junctions and symbolic
+links (copied as links, never followed, a move never deletes a link's target), alternate data streams,
+a full target disk, the source disappearing during the copy, pause and resume inside a large file,
+verification failing.
+*Done when:* each case is a test; every failure found is fixed or, if it is a decision, written down here.
+
+**T3. Administrator rights for single operations.**
+Copying into `Program Files` or deleting in `Windows` fails with "access denied" (verified: only
+*Run as administrator* for programs exists). Explorer offers to continue as administrator.
+*Where:* a small elevated helper process started on demand with the `runas` verb, which runs the same
+`FileOperationEngine` for the failed items and reports progress over a pipe; the question goes through
+`IOperationCallbacks` like other errors ("Continue as administrator / Skip / Cancel", with "for all").
+*Done when:* copy, move, delete, rename, new folder and attribute changes in protected folders succeed after
+one Windows prompt per transfer; the main program never runs elevated; declining leaves a normal error.
+
+**T4. Measured speed.**
+*Where:* a benchmark set in the Core tests (list 100,000 files, sort them, quick search, plan a copy of a
+deep tree, open a 2 GB text file, search content of 10,000 files), with generous upper limits as tests so
+a tenfold regression fails the build; a UI test that records startup-to-first-listing time and memory
+after showing a 50,000-file folder, printed in the `ui-screenshots` README.
+*Done when:* the numbers are in every CI run and a line in the release notes template asks to compare them.
+
+**T5. Translations checked by a test.**
+The eleven language files have between 1,707 and 1,714 entries: some are missing texts. Verified absent:
+no test compares them.
+*Where:* a Core test that reads `src/VibeSalamander.App/Strings/*.json`: every file has the same keys;
+placeholders (`{0}`) match between key and value; every literal passed to `Loc.T` / `Loc.F` / `L.T` and
+every text in XAML that `Loc.Translate` would translate has a key (a source scan with a small allow-list).
+*Done when:* the test passes and fails for a text added without translations.
+
+**T6. Accessibility.**
+Only a handful of controls have automation names; a keyboard-first program should be fully usable with a
+screen reader and in high contrast.
+*Where:* `AutomationProperties.Name` on every button, bar and list that has only an icon; the panel rows
+announce name, size, date and "marked"; live regions for notifications and transfer completion; every
+window reachable and closable by keyboard; high-contrast themes checked in each color scheme.
+*Done when:* a UI test walks every window with UI Automation and finds no unnamed interactive element,
+and Narrator reads a panel row sensibly (BrainCluster checks by ear).
+
+**T7. Code signing.** *(needs BrainCluster: an account and a decision)*
+SmartScreen's warning is the first thing every new user sees, and the updater installs unsigned files.
+*Options to evaluate:* a free open-source signing program such as SignPath Foundation, Azure's Trusted
+Signing, or a bought certificate. *Where:* a signing step in `release.yml` for the program, the starter,
+the installer and the 7-Zip plugin; `Updater` then verifies the downloaded file's signature and publisher,
+not only its SHA-256.
+*Done when:* a release installs without the warning's "unknown publisher" and the updater refuses a file
+that isn't signed by the same publisher.
+
+**T8. Flaky UI tests are fixed, not retried.**
+The history shows waits being lengthened for slow test machines. Replace fixed sleeps in
+`tests/VibeSalamander.UiTests` with waits for a state the app exposes (a named status element that says
+"listing done", "editor ready"), so a red UI run always means a real problem.
+
+### 1.0 — Stable
+
+**S1. Freeze the plugin contracts.**
+*Where:* `Contracts.cs`: review every interface once for names and gaps (below), add
+`IVibePlugin.MinimumHostVersion` (default: any) and refuse a plugin that needs a newer host with a clear
+reason in the Plugins Manager; a test project that compiles `samples/HelloPlugin` against the published
+contracts of the previous release. From 1.0 on, contracts only grow, by members with defaults.
+*Gaps to close before the freeze:*
+- a **viewer contract** (`IPluginViewer`: masks it handles, a window through `IPluginUi`, or a picture it
+  draws) so formats can be added without touching the app;
+- **panel columns and an information line from a file system plugin** (permissions and owner on SFTP);
+- **per-plugin settings page** in Configuration → Plugins (today: forms the plugin opens itself);
+- `IPluginFileSystem`: free space, change permissions, symbolic link targets, resume of a broken transfer.
+
+**S2. The last parity items** (each small; see the checklist for details):
+Convert (Ctrl+K: line endings and encodings; `TextDocuments` already does the work), Plugins → Last
+command (Ctrl+I), Copy UNC path as text (Ctrl+Shift+Ins), Edit with (Ctrl+Shift+F4), show/hide the directory
+line, rename and new folder inside ZIP/TAR archives, icon overlays (the shell's overlay index from
+`SHGetFileInfo`, drawn over the icon in `IconCache`; this is also how OneDrive and Git clients show state).
+
+**S3. Windows integration** (verified absent; an installer task each, off by default):
+"Open in Vibe Salamander" in Explorer's folder menu; `vibesalamander <folder>` on the PATH; optionally
+Win+E / the default folder handler. *Where:* `build/installer/VibeSalamander.iss` (registry, removed on
+uninstall), `StartupArguments` already takes folders.
+
+**S4. Undo for the last operation.**
+Ctrl+Z after a wrong F6 or a slip of a drag: undo the last rename, move, copy (delete the copies, asked
+first) or Recycle Bin delete, as Explorer does. Salamander doesn't have it; people who come from Explorer
+miss it, and it fits "trust". *Where:* a journal of finished operations in Core (`Operations/`), one new
+`CommandId.Undo`; only operations whose result is unchanged are offered.
+
+**S5. 1.0 housekeeping.**
+The README's "still young" note reviewed, a `CONTRIBUTING.md` (build, tests, the commit style, how
+translations work), a security policy (how to report a vulnerability), issue templates checked, the wiki
+complete for every command, the first-run page (*First Steps*) shown once after an update with what's new.
+
+### 1.x — Reach
+
+In rough order of how many people each one serves. Each is a plugin unless noted, so 1.0's contracts must
+be able to carry them (that is the test of S1).
+
+| | What | Notes |
 |---|---|---|
-| Plugins manager (Configuration → Plugins: list, turn on/off, plugins folder) | 4 | [x] |
-| One submenu per plugin with its commands | 4 | [x] |
-| Archive plugin: pack ZIP / TAR / TAR.GZ, unpack ZIP, 7z, RAR, TAR (+gz/bz2/xz/lz), gz, bz2, xz, lz | 4 | [x] |
-| Archive plugin: test archive, make self-extracting archive (ZIP → .exe), archive comment (ZIP) | 4 | [x] |
-| Browse archives like directories (Enter on an archive; address bar, chevrons, ".." back out) | 4 | [x] |
-| Copy files and directories out of an archive (F5 / Alt+F6, into the transfer panel) | 4 | [x] |
-| Open a file in an archive (Enter / F3: temporary copy, opened with its program) | 4 | [x] |
-| Checksum plugin: calculate CRC32 / MD5 / SHA-1 / SHA-256 / SHA-512 (non-blocking window, copy to clipboard, save SFV / MD5 / SHA files), verify checksum files (Ctrl+Shift+V, Focus), configuration | 4 | [x] |
-| Change archives in place (copy into, delete, rename inside) | 4 | [ ] |
-| Last command (Ctrl+I) | 4 | [ ] |
+| R1 | **Phones and cameras (MTP)** | Windows Portable Devices as an `IPluginFileSystem` (`mtp://device/…`), shown in This PC and the drive menu. The most common reason people open Explorer next to a file manager. Verified absent. |
+| R2 | **Network** | Browse computers and their shares (`\\server` lists its shares; a Network item in This PC), remembered credentials through Windows' own dialog. Salamander's Network plugin. Today only mapped drives and typed UNC paths work. |
+| R3 | **More servers** | WebDAV and S3-compatible storage as file system plugins; for FTP/SFTP: resume, compare and synchronize a local directory with a server (reuse `DirectorySync`), keep-alive, a transfer log. |
+| R4 | **Tabs in each panel** | *Decision needed (below).* Folder tabs per panel as Total Commander has them; Salamander never did. |
+| R5 | **Instant name search** | Use the Windows Search index (or Everything, when installed) for name searches in indexed places, falling back to walking the disk. In `FileSearcher`, behind an option. |
+| R6 | **Split and combine files; encrypt, decrypt, shred** | Salamander's File Splitter and Encrypt plugins, as one "File tools" plugin. |
+| R7 | **Master password** | Optional password for saved server passwords (today protected by the Windows account through DPAPI), as in Salamander's Security page. |
+| R8 | **More formats in the viewer** | Through the viewer contract of S1: databases (DBF, CSV as a table, SQLite), fonts, Office documents' text. |
+| R9 | **Workspaces** | Save and restore both panels' folders, views and sort as a named layout, with a shortcut. |
 
-## Options menu
-| Command | Phase | Done |
-|---|---|---|
-| Configuration window (General, Recycle Bin, Confirmations, Panels, Views, Appearance, Colors, Main Window, Drives, Change Drive Menu, Viewers, Editors, History, Keyboard, Toolbar, Hot Paths, User Menu, Backup — as in Open Salamander) | 3 | [x] |
-| Confirmations: permanent delete, non-empty directory delete, overwrite, hidden/system delete and overwrite, directory merge, NTFS compress/encrypt, drag & drop; messages for Find close/stop, create target path, Always on Top, exit, exit with running transfers, email, create missing directory | 3 | [x] |
-| Recycle Bin: never / always / by file masks | 3 | [x] |
-| Panel options: select includes directories, name casing, size format, typing to command line, Shift+digit hot paths, right-click marks, slow-click rename, drag threshold, regional / numerical / newest-first sorting, directories with extensions | 3 | [x] |
-| Appearance: single-click open, dim hidden items, panel font and size, information line format, thumbnail size, maximize button in address bar | 3 | [x] |
-| Colors: schemes (Vibe, Explorer, terminal-inspired Yazi / Superfile / Tokyo Night / Gruvbox / Dracula / Nord / Phosphor, Norton Commander, DOS Navigator, Custom) with file type colors, cursor-bar text color, live preview; file highlighting by mask and attributes | 3 | [x] |
-| Main window title (full path / directory / custom prefix); single instance; beep when background transfers finish | 3 | [x] |
-| Drives: auto-refresh and simple icons per drive type, refresh on activation, fallback for inaccessible directories; Change Drive menu (hidden drives, separators, extra items) | 3 | [x] |
-| Viewers / editors by file mask (default Windows app otherwise); history options and command line history | 3 | [x] |
-| Languages: English, Hrvatski, Čeština, Deutsch, Español, Français, Italiano, Nederlands, Polski, Português (Brasil), Русский, Українська (Configuration → General → Language, restart to apply) | 4 | [x] |
-| Security / master password, icon overlays | 4 | [ ] |
-| Show/hide bars (toolbars, drive bars, command line, F-key bar, transfer panel) | 1 | [x] |
-| F-key bar follows held Ctrl / Alt / Shift (F1–F12) | 2 | [x] |
-| Ask for copy/move target (on/off, Configuration → Confirmations) | 2 | [x] |
-| Fewer dialogs: F7 / Shift+F4 create "New Folder" / "New Text Document.txt" and rename in place; Shift+F7 edits the address bar; Recycle Bin delete without confirmation (Options toggle); errors as self-closing notifications; transfer failures shown in the transfer row (new) | 2 | [x] |
-| Transfer panel: Clear finished / Clear all | 2 | [x] |
-| Address bar in Windows 11 style: This PC › drive › folders, clickable segments, subfolder chevrons, click empty area to type (new) | 2 | [x] |
-| Transfer panel: background queue, parallel transfers, pause/resume/cancel (new, WinSCP-style) | 2 | [x] |
-| Customize toolbar; hot path bar and user menu bar | 3 | [x] |
-| Always on top | 1 | [x] |
-| Export / import / save / reset configuration | 3 | [x] |
-| Key customization (any command, conflicts moved, reset to Salamander defaults) | 3 | [x] |
-| Density: Compact / Comfortable (new) | 1 | [x] |
-| Theme: system / light / dark (new) | 1 | [x] |
+### Not planned
 
-## Panel behavior
-| Behavior | Phase | Done |
+* **Anything but two panels** as the main layout (a folder tree pane, a single-pane mode).
+* **Registry editor, Undelete, Windows Mobile, UnCHM, Automation scripting** (Salamander plugins): other
+  tools do these better today; the user menu covers scripting. A third party can write them as plugins.
+* **A Store (MSIX) package**: the app is deliberately unpackaged (shell integration, plugins in a folder,
+  portable mode). Revisit only if signing through the Store becomes the only practical route.
+* **Telemetry.** The error log stays on the user's computer.
+
+### Decisions for BrainCluster
+
+1. **Signing (T7):** which route, and under whose name the publisher appears.
+2. **Tabs (R4):** in keeping with "what made Salamander great", or a step toward Total Commander? If yes, it
+   is large and touches `PaneViewModel`, settings and the keyboard; better decided before 1.0 even if
+   built after.
+3. **Undo (S4):** wanted for 1.0, or later?
+4. **Administrator helper (T3):** acceptable to ship a second small executable in `lib\`?
+5. **1.0 date:** the plan above is roughly 0.9 = T1–T8, 1.0 = S1–S5. Anything that must be in 1.0 that
+   isn't listed?
+
+### Working rules (for whoever builds this, human or model)
+
+* One user-visible change per commit, on `main`, described in one sentence in the user's terms.
+* A feature is finished when it has: Core tests for its rules, a UI test scenario if it has UI,
+  translations in all eleven files, the wiki / README text, and a line in the next `docs/releases/<version>.md`.
+* Keep decisions in Core `*Rules` classes; keep long work in the transfer panel; never add a modal
+  progress dialog; never make a plugin touch WinUI.
+* Settings only grow: new properties with safe defaults, nothing renamed. `CommandId` names are stored in
+  users' settings: never rename one.
+* The app can only be built and run on Windows. Without it, push and read the workflow results and the
+  `ui-screenshots` branch before calling something done; say plainly what was not run.
+* When Salamander's behavior is the question, read Open Salamander's source rather than guessing.
+* Release when a milestone item or a batch of fixes is worth having: raise `<Version>`, write the notes, push.
+
+---
+
+## Salamander parity checklist
+
+Generated from Open Salamander's main menu (`src/menu4.cpp`) and hotkeys, corrected against the 0.8.8
+code. `[x]` = implemented, `[~]` = partly (what's missing is named), `[ ]` = not yet (roadmap item in
+brackets).
+
+### History: the phases that built it
+
+1. **Shell & navigation** – window layout, dual panes, drive bars, This PC, listing, sorting, caret/marks,
+   keyboard navigation, settings. *Done.*
+2. **Operations engine** – own copy/move/delete engine, in-place rename, attributes/case, find, filter,
+   selection, clipboard, drag & drop, Explorer context menu. *Done.*
+   *Decision:* no modal progress dialog; everything runs in the **transfer panel**.
+   *Superseded decision:* "no internal viewer" — since 0.6 there is a built-in viewer (F3) and editor (F4);
+   the Windows app is still one setting away.
+3. **Power features** – configuration, key customization, views, columns, hot paths, user menu, compare
+   directories, sizes, drive information, command line, network drives. *Done.*
+4. **Plugins** – loader and manager, archives (pack, unpack, browse, change in place), FTP/SFTP, checksums,
+   Disk Map, 7-Zip. *Done; the remaining plugin ports are in the table at the end.*
+
+### Left / Right panel menu
+| Command | Keys | Done |
 |---|---|---|
-| `..` up-dir; in a drive root it leads to This PC | 1 | [x] |
-| This PC: drives with label, type, total, free, fullness bar | 1 | [x] |
-| Quick search by typing (Salamander style) | 1 | [x] |
-| Tab switches panels; Ctrl+Left/Right open in other panel | 1 | [x] |
-| Auto-refresh on file system changes (keeps caret and marks) | 1 | [x] |
-| Hidden/system files toggle (Ctrl+H) | 1 | [x] |
-| Real shell icons, overlays | 1 (icons) / 3 (overlays) | [~] |
-| Drag & drop between panels and to/from Explorer | 2 | [x] |
-| Mouse rectangle selection from empty space (Ctrl toggles), with auto-scroll (new) | 3 | [x] |
-| Live drives: a plugged-in USB drive or memory card opens in the focused panel; panels leave a drive that is pulled out (This PC); drive bars update (new) | 4 | [x] |
-| Context menu (shell) | 2 | [x] |
-| Vibe Salamander context menu (common commands, View / Sort by, Windows menu at the bottom; Shift+right-click = Windows menu) | 4 | [x] |
-| Disk images: Enter mounts .iso / .img / .vhd(x) and opens the drive in the other panel; Unmount in the context menu; Open With for other programs | 4 | [x] |
-| Thumbnails | 3 | [x] |
+| Change drive | Alt+F1 / Alt+F2 | [x] |
+| Back / Forward | Alt+Left / Alt+Right | [x] |
+| Parent directory | Backspace | [x] |
+| Root directory | Shift+Backspace | [x] |
+| Path from other panel | Ctrl+. | [x] |
+| Hot paths 1-9 (set / go; own button and menu, Shift+F9; more hot paths with shortcuts of their own; no 0: Windows uses Ctrl+Shift+0) | Ctrl+Shift+1-9 / Ctrl+1-9 | [x] |
+| Sort by Name/Ext/Size/Date/Attr | Ctrl+F3…F6 | [x] |
+| Views (Brief, Detailed, Icons, Thumbnails, Tiles; Classic or Modern folder views) | Alt+1…5 | [x] |
+| Show directory / header / information line | | [~] header and information line; the directory line can't be hidden (S2) |
+| Choose columns (header right-click), resize columns (header grips) | | [x] |
+| Maximize/restore panel | Ctrl+F11 | [x] |
+| Swap panels | Ctrl+U | [x] |
+| Filter | Ctrl+F12 | [x] |
+| Refresh | Ctrl+F9 / Ctrl+R | [x] |
+
+### Files menu
+| Command | Keys | Done |
+|---|---|---|
+| Open / execute | Enter | [x] |
+| Quick rename (in place) | F2 | [x] |
+| View (built-in viewer; per-mask viewers; Windows app) / Open with | F3 / Alt+F3, Ctrl+Shift+F3 | [x] |
+| Edit (built-in editor; per-mask editors) / Edit new file | F4 / Shift+F4 | [x] |
+| Edit with | Ctrl+Shift+F4 | [ ] (S2) |
+| Copy / Move-rename (target dialog with Browse and "don't show again") | F5 / F6 | [x] |
+| Delete (Recycle Bin / permanent) | F8, Del / Shift+Del | [x] |
+| Email (Simple MAPI) | Ctrl+E | [x] |
+| Properties | Alt+Enter | [x] |
+| Security | Ctrl+P | [x] |
+| Change attributes | Ctrl+F2 | [x] |
+| NTFS compress/uncompress/encrypt/decrypt | | [x] |
+| Change case | Ctrl+F7 | [x] |
+| Convert (line endings, encodings) | Ctrl+K | [ ] (S2) |
+| Pack / Unpack (in the transfer panel, with passwords) | Alt+F5 / Alt+F6 | [x] |
+| New (shell "New" menu; the new item is renamed in place) | | [x] |
+| Run as administrator (new) | | [x] |
+| Exit | Alt+F4 | [x] |
+
+### Edit menu
+| Command | Keys | Done |
+|---|---|---|
+| Cut / Copy / Paste (clipboard) | Ctrl+X / Ctrl+C / Ctrl+V | [x] |
+| Paste shortcut; Copy as shortcut (new) | Ctrl+S; Ctrl+Shift+L | [x] |
+| Copy full name / name / path as text | Alt+Ins, Alt+Shift+Ins, Ctrl+Alt+Ins | [x] |
+| Copy UNC path as text | Ctrl+Shift+Ins | [ ] (S2) |
+| Mark / unmark item | Insert, Space | [x] |
+| Select… / Unselect… (mask) | Num + / Num − | [x] |
+| Invert selection | Num * | [x] |
+| Select all / Unselect all | Ctrl+A / Ctrl+D | [x] |
+| Restore selection | Ctrl+W | [x] |
+| Save / load selection | Ctrl+Shift+F5 / F6 | [x] |
+| Select/unselect same extension / name | Shift+Num± / Ctrl+Shift+Num± | [x] |
+| Hide selected / unselected names, show hidden names | | [x] |
+| Go to previous / next selected | Alt+Up / Alt+Down | [x] |
+
+### Commands menu
+| Command | Keys | Done |
+|---|---|---|
+| Create directory | F7 | [x] |
+| Change directory | Shift+F7 | [x] |
+| Compare directories (and synchronize: new) | Ctrl+F10 | [x] |
+| Calculate occupied space / directory sizes | Alt+F10 / Ctrl+Shift+F10 | [x] |
+| Drive information (flyout) | Ctrl+F1 | [x] |
+| Find files and directories (text rows, regular expressions, hex, inside ZIP files) | Alt+F7 | [x] |
+| Make file list (to the clipboard) | Ctrl+M | [x] |
+| Go to shortcut target | Ctrl+T | [x] |
+| Opened files / working directories lists | Alt+F11 / Alt+F12 | [x] |
+| Connect / disconnect network drive, shares | F11 / F12 / Ctrl+Shift+F9 | [x] |
+| Command shell | Num / | [x] |
+| User menu (with editor and $(variables)) | F9 | [x] |
+| Open folder (Desktop, Computer, Control Panel, Recycle Bin …) | | [x] |
+| Open active folder in Explorer | Shift+F3 | [x] |
+
+### Plugins menu
+| Command | Done |
+|---|---|
+| Plugins manager (Configuration → Plugins: list, turn on/off, plugins folder) | [x] |
+| One submenu per plugin with its commands; plugin commands in a file's context menu | [x] |
+| Archives: pack ZIP / TAR / TAR.GZ (7z with the 7-Zip plugin), unpack ZIP, 7z, RAR, TAR (+gz/bz2/xz/lz) | [x] |
+| Archives: test, self-extracting archive (ZIP → .exe), ZIP comment, split volumes | [x] |
+| Browse archives like directories; copy out; open and edit a file inside | [x] |
+| Change archives in place: copy into, delete, move out (ZIP, TAR; 7z with the 7-Zip plugin) | [~] rename and new folder inside (S2) |
+| Checksums: calculate and verify CRC32 / MD5 / SHA-1 / SHA-256 / SHA-512 | [x] |
+| Last command (Ctrl+I) | [ ] (S2) |
+
+### Options menu
+| Command | Done |
+|---|---|
+| Configuration window with Open Salamander's pages, plus search, Plugins, Backup and About | [x] |
+| Confirmations (delete, overwrite, hidden/system, merge, NTFS, drag & drop, exit with running transfers, …) | [x] |
+| Recycle Bin: never / always / by file masks | [x] |
+| Panel options (casing, size format, sorting, typing to the command line, right-click marks, drag threshold, …) | [x] |
+| Appearance: single-click open, dim hidden items, panel font, information line format, thumbnail size, icon packs | [x] |
+| Colors: schemes, file type colors, highlighting by mask and attributes, VS Code theme import | [x] |
+| Main window title; single instance; beep when background transfers finish | [x] |
+| Drives: auto-refresh and simple icons per drive type; Change Drive menu (hidden drives, extra items) | [x] |
+| Viewers / editors by file mask; history options and command line history | [x] |
+| Languages (English and eleven translations) | [x] |
+| Key customization (any command, conflicts moved, Salamander or Total Commander defaults) | [x] |
+| Customize toolbar; hot path bar and user menu bar; show/hide bars | [x] |
+| Export / import / save / reset configuration | [x] |
+| Always on top; density; theme | [x] |
+| Security / master password | [ ] (R7) |
+| Icon overlays | [ ] (S2) |
+
+### Panel behavior
+| Behavior | Done |
+|---|---|
+| `..` up-dir; in a drive root it leads to This PC | [x] |
+| This PC: drives with label, type, total, free, fullness bar | [x] |
+| Quick search by typing (Salamander style) | [x] |
+| Tab switches panels; Ctrl+Left/Right open in other panel | [x] |
+| Auto-refresh on file system changes (keeps caret and marks) | [x] |
+| Hidden/system files toggle (Ctrl+H) | [x] |
+| Real shell icons | [x] |
+| Icon overlays | [ ] (S2) |
+| Drag & drop between panels and to/from Explorer; rectangle selection | [x] |
+| Live drives (plugged in / pulled out) | [x] |
+| Context menu: Vibe Salamander's, with the Windows menu at the bottom (Shift+right-click = Windows menu) | [x] |
+| Disk images: Enter mounts .iso / .img / .vhd(x); Unmount in the context menu | [x] |
+| Thumbnails | [x] |
+| Cloud files shown with their state and never downloaded by accident | [ ] (T1) |
+
+### Open Salamander's plugins
+
+The left column was written from memory of Open Salamander's `src/plugins` folder, not generated from it:
+check it against that folder before relying on it for a "nothing is missing" claim.
+
+| Salamander plugin | In Vibe Salamander | State |
+|---|---|---|
+| ZIP, TAR, UnRAR, 7-Zip, UnCAB, UnARJ, UnLHA, UnISO, UnFAT, PAK | Archive plugin (built in) + 7-Zip plugin (the rarer formats through 7z.exe); disk images mount as drives | [x] |
+| Zip2SFX | Archive plugin: Make self-extracting archive | [x] |
+| FTP Client, WinSCP | FTP / SFTP plugin (built in) | [x] resume and synchronize: R3 |
+| Checksum | Checksum plugin (built in) | [x] |
+| DiskMap | Disk Map plugin (built in), four views | [x] |
+| PictView, Internal Viewer, IEViewer | the built-in viewer (pictures, text/hex, Markdown / HTML) | [x] |
+| File Comparator | Compare Files (in the app) | [x] |
+| Renamer | Multi-rename (in the app) | [x] |
+| Check Version | Help → Check for Updates | [x] |
+| Network | mapped drives and typed UNC paths only | [ ] (R2) |
+| File Splitter, Encrypt | | [ ] (R6) |
+| Database Viewer | | [ ] (R8) |
+| UnMIME, UnCHM | | [ ] through the viewer contract, if asked for |
+| Automation, Registry Editor, Undelete, Windows Mobile | | not planned |
+
+### Beyond Salamander (already there)
+
+Transfer panel with queue, one transfer per disk, speed limits and graphs, verification, *when done*;
+built-in viewer for text of any size, trees, Markdown, notebooks, pictures, PDF, audio and video; Monaco
+editor with checking and live preview; Compare Files; synchronize directories; Find Duplicates; quick view;
+flat view; multi-rename; duplicate; Total Commander key scheme; Windows 11 address bar and list menus;
+Modern folder views; color schemes and VS Code theme import; icon packs; installer, portable mode and
+self-update; Scoop and winget; error log; UI tests that drive the real app.
