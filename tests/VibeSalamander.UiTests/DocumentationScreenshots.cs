@@ -27,7 +27,7 @@ public sealed class DocumentationScreenshots : IDisposable
             configure?.Invoke(s);
         }, prepareHome);
         AppSession.WaitUntil(() => app.Items().Count > 3, "the panels");
-        Thread.Sleep(1500); // icons and thumbnails
+        Timing.Pause(1500); // icons and thumbnails
         return app;
     }
 
@@ -108,7 +108,7 @@ public sealed class DocumentationScreenshots : IDisposable
         using AppSession app = Start();
         app.Menu("Options", "Configuration...");
         app.OtherWindow("Configuration");
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
         Doc("configuration general");
         foreach (string page in new[] { "Panels", "Views", "Appearance", "Colors", "Keyboard", "Toolbar", "About" })
         {
@@ -127,7 +127,7 @@ public sealed class DocumentationScreenshots : IDisposable
             s.Right.Path = _files.Root;
             s.Appearance.IconPack = VibeSalamander.Core.Settings.IconPack.Fluent;
         });
-        Thread.Sleep(1500);
+        Timing.Pause(1500);
         Doc("icons vibe salamander in color");
     }
 
@@ -139,7 +139,7 @@ public sealed class DocumentationScreenshots : IDisposable
         Doc("user menu");
         app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
         app.Menu("Help", "About Vibe Salamander");
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
         Doc("about");
         app.Press(VirtualKeyShort.ESCAPE);
     }
@@ -149,19 +149,19 @@ public sealed class DocumentationScreenshots : IDisposable
     {
         using AppSession app = Start(s => s.Left.Path = _files.Root);
         app.Menu("Plugins", "Plugins Manager...");
-        Thread.Sleep(1500);
+        Timing.Pause(1500);
         Doc("plugins manager");
         app.Press(VirtualKeyShort.ESCAPE, settleMs: 800);
         app.CloseOtherWindows();
 
         app.Menu("Plugins", "FTP / SFTP", "Connect to FTP / SFTP Server...");
-        Thread.Sleep(1500);
+        Timing.Pause(1500);
         Doc("ftp connect");
         app.Press(VirtualKeyShort.ESCAPE, settleMs: 800);
         app.CloseOtherWindows();
 
         app.Menu("Plugins", "Disk Map", "Show disk map");
-        Thread.Sleep(4000);
+        Timing.Pause(4000);
         Doc("disk map blocks");
         foreach (string view in new[] { "Sunburst", "Columns", "Classic" })
         {
@@ -192,7 +192,7 @@ public sealed class DocumentationScreenshots : IDisposable
 
         app.GoTo("archive.zip");
         app.Menu("Plugins", "Archives", "Test archive");
-        Thread.Sleep(2500);
+        Timing.Pause(2500);
         Doc("test archive");
         app.CloseOtherWindows();
     }
@@ -210,14 +210,14 @@ public sealed class DocumentationScreenshots : IDisposable
             File.Copy(dll, Path.Combine(folder, "HelloPlugin.dll"));
         });
         app.Menu("Plugins", "Hello");
-        Thread.Sleep(800);
+        Timing.Pause(800);
         Doc("hello menu");
         app.Press(VirtualKeyShort.ESCAPE, settleMs: 400);
         app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
 
         app.Menu("Plugins", "Hello", "Largest files here...");
         app.OtherWindow("Largest files");
-        Thread.Sleep(2000);
+        Timing.Pause(2000);
         Doc("hello largest files");
         app.CloseOtherWindows();
     }
@@ -233,7 +233,7 @@ public sealed class DocumentationScreenshots : IDisposable
         var window = app.OtherWindow(name + " - ");
         window.Focus();
         window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
-        Thread.Sleep(settleMs);
+        Timing.Pause(settleMs);
         return window;
     }
 
@@ -247,7 +247,7 @@ public sealed class DocumentationScreenshots : IDisposable
         {
             // closed already
         }
-        Thread.Sleep(600);
+        Timing.Pause(600);
     }
 
     [UiFact]
@@ -288,7 +288,7 @@ public sealed class DocumentationScreenshots : IDisposable
         {
             // the question didn't come
         }
-        Thread.Sleep(600);
+        Timing.Pause(600);
     }
 
     [UiFact]

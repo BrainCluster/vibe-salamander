@@ -158,7 +158,7 @@ public sealed class Scenarios : IDisposable
         using AppSession app = Start();
         app.Menu("Options", "Configuration...");
         var configuration = app.OtherWindow("Configuration");
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
         AppSession.Screenshot("31 configuration");
         configuration.Close();
         NoErrors(app);
@@ -173,7 +173,7 @@ public sealed class Scenarios : IDisposable
             s.Right.Path = "thispc:";
         });
         AppSession.WaitUntil(() => app.Items(left: false).Count > 0, "the drives");
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
         AppSession.Screenshot("40 this pc dark");
         NoErrors(app);
     }
@@ -186,7 +186,7 @@ public sealed class Scenarios : IDisposable
             s.ViewStyle = ViewStyle.Modern;
             s.Left.Path = "thispc:";
         });
-        Thread.Sleep(2500);
+        Timing.Pause(2500);
         AppSession.Screenshot("41 modern views");
         NoErrors(app);
     }
@@ -200,7 +200,7 @@ public sealed class Scenarios : IDisposable
         app.Press(VirtualKeyShort.F5, settleMs: 500);
         AppSession.WaitUntil(() => app.Window.FindFirstDescendant(cf => cf.ByName("Kopiraj").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))) != null,
             "the copy dialog in Croatian (its Kopiraj button)");
-        Thread.Sleep(500);
+        Timing.Pause(500);
         AppSession.Screenshot("42 croatian copy dialog");
         app.Press(VirtualKeyShort.ESCAPE);
         NoErrors(app);

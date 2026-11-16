@@ -142,9 +142,9 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.F10);
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
         app.WaitReady(60); // the sizes are calculated
-        Thread.Sleep(500);
+        Timing.Pause(500);
         AppSession.Screenshot("67 directory sizes");
         NoErrors(app);
     }
@@ -154,7 +154,7 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_1); // remember Documents
-        Thread.Sleep(800);
+        Timing.Pause(800);
         app.GoTo("Projects");
         app.Press(VirtualKeyShort.ENTER, settleMs: 1000);
         AppSession.WaitUntil(() => app.Items().Contains("Vibe"), "inside Projects");
@@ -276,7 +276,7 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         app.Menu("Plugins", "Disk Map", "Show disk map");
-        Thread.Sleep(4000);
+        Timing.Pause(4000);
         AppSession.Screenshot("77 disk map");
         app.CloseOtherWindows();
         NoErrors(app);
@@ -288,7 +288,7 @@ public sealed class MoreScenarios : IDisposable
         using AppSession app = Start();
         app.GoTo("report.txt");
         app.Menu("Plugins", "Checksum", "Calculate Checksums...");
-        Thread.Sleep(2000);
+        Timing.Pause(2000);
         AppSession.Screenshot("78 checksums");
         app.Press(VirtualKeyShort.ESCAPE);
         app.CloseOtherWindows();
@@ -317,7 +317,7 @@ public sealed class MoreScenarios : IDisposable
                 s.Colors.Scheme = scheme;
                 s.Right.Path = _files.Photos;
             });
-            Thread.Sleep(1000);
+            Timing.Pause(1000);
             AppSession.Screenshot(name);
             NoErrors(app);
         }
@@ -331,7 +331,7 @@ public sealed class MoreScenarios : IDisposable
             s.WindowHeight = 600;
         }))
         {
-            Thread.Sleep(1000);
+            Timing.Pause(1000);
             AppSession.Screenshot("83 comfortable small window");
             // in a narrow panel the names still show (other columns step aside)
             var name = app.Row("report.txt").FindFirstDescendant(cf => cf.ByName("report").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text)));

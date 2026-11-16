@@ -27,6 +27,11 @@ public sealed class DummyFiles : IDisposable
     public DummyFiles(string? root = null)
     {
         Root = root ?? Path.Combine(Path.GetTempPath(), "vibe-ui-" + Guid.NewGuid().ToString("N")[..8]);
+        Timing.Measure("Making the dummy files", Create);
+    }
+
+    private void Create()
+    {
         if (Directory.Exists(Root))
             new DummyFilesCleaner(Root).Dispose(); // left over from an earlier run
         Directory.CreateDirectory(Root);

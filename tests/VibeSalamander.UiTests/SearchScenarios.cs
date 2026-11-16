@@ -160,7 +160,7 @@ public sealed class SearchScenarios : IDisposable
         AutomationElement show = Named(app, find, "Show in Panel", ControlType.Button);
         AppSession.WaitUntil(() => show.IsEnabled, "results to show", 15);
         show.Click();
-        Thread.Sleep(1500);
+        Timing.Pause(1500);
         AppSession.Screenshot("s02 results in the panel");
         AppSession.WaitUntil(() => app.Items().Any(n => n.Contains("report", StringComparison.OrdinalIgnoreCase)), "the found file in the panel");
         find.Close();
@@ -176,14 +176,14 @@ public sealed class SearchScenarios : IDisposable
         File.WriteAllText(Path.Combine(_files.Target, "other.txt"), content + "!");
         using AppSession app = Start(s => s.Left.Path = _files.Target, waitFor: "photo.txt");
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.F7);
-        Thread.Sleep(1500);
+        Timing.Pause(1500);
         Window duplicates = app.OtherWindow("Find Duplicate");
         Named(app, duplicates, "Find", ControlType.Button).Click();
         WaitUntilOr(() => HasText(app, duplicates, "photo (copy).txt"), "the duplicates", 20, () => Texts(app, duplicates));
         Named(app, duplicates, "Select duplicates", ControlType.Button).Click();
-        Thread.Sleep(800);
+        Timing.Pause(800);
         Named(app, app.Automation.GetDesktop(), "All but the newest", ControlType.MenuItem).Click();
-        Thread.Sleep(800);
+        Timing.Pause(800);
         AppSession.Screenshot("s03 duplicates");
         AppSession.WaitUntil(() => HasText(app, duplicates, "Delete 1 selected"), "one copy selected", 5);
         duplicates.Close();
@@ -201,10 +201,10 @@ public sealed class SearchScenarios : IDisposable
         WaitUntilOr(() => HasText(app, compare, "report.txt"), "the differences", 20, () => Texts(app, compare));
         AppSession.Screenshot("s04 compare list");
         Named(app, compare, "Synchronize (", ControlType.Button).Click();
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
         app.Press(VirtualKeyShort.ENTER); // the dialog's Synchronize
         AppSession.WaitUntil(() => File.Exists(Path.Combine(_files.Target, "report.txt")), "report.txt copied to the right", 30);
-        Thread.Sleep(2500);
+        Timing.Pause(2500);
         AppSession.Screenshot("s05 after synchronizing");
         // one way without mirroring: what is only on the right stays
         Assert.True(File.Exists(Path.Combine(_files.Target, "only on the right.txt")));
@@ -257,10 +257,10 @@ public sealed class SearchScenarios : IDisposable
         using AppSession app = Start(waitFor: "Program.cs");
         app.GoTo("Program.cs");
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_C);
-        Thread.Sleep(1500);
+        Timing.Pause(1500);
         Window compare = app.OtherWindow("Program.cs ↔");
         app.WaitReady(60); // WebView2 and Monaco started and the text is in the editor, however long that takes here
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
         AppSession.Screenshot("s07 compare files");
         // the status line ("Difference 1 of 1"), or the compared text itself (the diff editor's page is in the
         // accessibility tree too: UI Automation sometimes keeps reading the status line as it was before)
@@ -278,7 +278,7 @@ public sealed class SearchScenarios : IDisposable
         using AppSession app = Start(s => s.Left.Path = _files.Target, waitFor: "plan.txt");
         app.GoTo("plan.txt");
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_D);
-        Thread.Sleep(1500);
+        Timing.Pause(1500);
         AppSession.Screenshot("g01 duplicate named in place");
         app.Press(VirtualKeyShort.ENTER, settleMs: 1000); // keeps the suggested name
         string copy = Path.Combine(_files.Target, "plan (2).txt");

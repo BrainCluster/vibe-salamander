@@ -45,7 +45,7 @@ public sealed class ViewerScenarios : IDisposable
         app.Press(VirtualKeyShort.F3, settleMs: 300);
         Window viewer = app.OtherWindow(name + " - ");
         viewer.Focus();
-        Thread.Sleep(settleMs);
+        Timing.Pause(settleMs);
         return viewer;
     }
 
@@ -59,7 +59,7 @@ public sealed class ViewerScenarios : IDisposable
         {
             // closed already
         }
-        Thread.Sleep(500);
+        Timing.Pause(500);
     }
 
     // ---- the viewer ---------------------------------------------------------------------------------------------
@@ -156,9 +156,9 @@ public sealed class ViewerScenarios : IDisposable
         app.Press(VirtualKeyShort.F4, settleMs: 300);
         Window editor = app.OtherWindow(name + " - ");
         app.WaitReady(60); // WebView2 and Monaco started and the text is in the editor, however long that takes here
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
         editor.Focus();
-        Thread.Sleep(500);
+        Timing.Pause(500);
         return editor;
     }
 
@@ -192,7 +192,7 @@ public sealed class ViewerScenarios : IDisposable
         Close(editor);
         // closing with changes asks
         Button(editor, app, "Don't save").Click();
-        Thread.Sleep(800);
+        Timing.Pause(800);
         Assert.DoesNotContain("unclosed", File.ReadAllText(Sample("config.json")), StringComparison.Ordinal);
         NoErrors(app);
     }
@@ -211,7 +211,7 @@ public sealed class ViewerScenarios : IDisposable
         AppSession.Screenshot("v17 editor markdown preview");
         Close(editor);
         Button(editor, app, "Don't save").Click();
-        Thread.Sleep(800);
+        Timing.Pause(800);
         NoErrors(app);
     }
 

@@ -79,12 +79,13 @@ jobs:
           if ($trx) {
             [xml]$x = Get-Content $trx.FullName
             $ns = @{ t = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010" }
-            $lines += "| Test | Result |", "|---|---|"
+            $lines += "| Test | Result | Seconds |", "|---|---|---:|"
             $failures = @()
             foreach ($r in (Select-Xml -Xml $x -XPath "//t:UnitTestResult" -Namespace $ns)) {
               $n = $r.Node
               $name = ($n.testName -split '\.')[-1] -replace '_', ' '
-              $lines += "| $name | $($n.outcome) |"
+              $seconds = if ($n.duration) { '{0:N1}' -f ([TimeSpan]::Parse($n.duration)).TotalSeconds } else { '' }
+              $lines += "| $name | $($n.outcome) | $seconds |"
               $msg = $n.Output.ErrorInfo.Message
               if ($msg) { $failures += "### $name", "", '```', $msg.Trim(), '```', "" }
             }
@@ -92,6 +93,12 @@ jobs:
             if ($failures) { $lines += "## Failures", "" ; $lines += $failures }
           } else {
             $lines += "No test results (the tests didn't run).", ""
+          }
+          $timing = Join-Path $shots "timing.md"
+          if (Test-Path $timing) {
+            $lines += "## Where the time went", ""
+            $lines += Get-Content $timing
+            $lines += ""
           }
           $measured = Join-Path $shots "measurements.md"
           if (Test-Path $measured) {

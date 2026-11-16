@@ -80,7 +80,8 @@ public sealed class AppSession : IDisposable
             WaitUntil(() => State() == "ready" && Window.FindFirstDescendant(cf => cf.ByControlType(ControlType.ListItem)) != null,
                 "the app to be ready after its start (it says: \"" + State() + "\")", 60);
             ReadyAfter = SinceLaunch.Elapsed;
-            Thread.Sleep(1500); // icons, the window settling at its size
+            Timing.Add("Starting the app (until it is ready)", ReadyAfter);
+            Timing.Pause(1500); // icons, the window settling at its size
         }
         catch (Exception)
         {
@@ -138,10 +139,11 @@ public sealed class AppSession : IDisposable
     /// </summary>
     private void Settle(int milliseconds)
     {
-        Thread.Sleep(milliseconds);
+        Timing.Pause(milliseconds);
         var clock = Stopwatch.StartNew();
         while (clock.Elapsed.TotalSeconds < 5 && State().StartsWith("busy", StringComparison.Ordinal))
             Thread.Sleep(50);
+        Timing.Add("Waiting while the app is busy (after keys and clicks)", clock.Elapsed);
     }
 
     // ---- finding things ----------------------------------------------------------------------------------
@@ -190,7 +192,10 @@ public sealed class AppSession : IDisposable
             try
             {
                 if (condition())
+                {
+                    Timing.Add("Waiting for a state", clock.Elapsed);
                     return;
+                }
             }
             catch (Exception)
             {
@@ -262,7 +267,7 @@ public sealed class AppSession : IDisposable
         AutomationElement bar = Retry(() => Window.FindFirstDescendant(cf => cf.ByAutomationId("MainMenu")), "the menu bar");
         AutomationElement top = Retry(() => bar.FindFirstDescendant(cf => cf.ByName(menu)), "the menu " + menu);
         top.Click();
-        Thread.Sleep(600);
+        Timing.Pause(600);
         for (int i = 0; i < items.Length; i++)
         {
             string item = items[i];
@@ -310,7 +315,7 @@ public sealed class AppSession : IDisposable
         {
             // in a list that scrolls (the configuration's pages), out of sight until scrolled to
             element.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
-            Thread.Sleep(300);
+            Timing.Pause(300);
         }
         catch (Exception)
         {
@@ -343,9 +348,9 @@ public sealed class AppSession : IDisposable
                 // closed already
             }
         }
-        Thread.Sleep(500);
+        Timing.Pause(500);
         Window.SetForeground(); // the keys go to the main window again
-        Thread.Sleep(300);
+        Timing.Pause(300);
     }
 
     // ---- the mouse ---------------------------------------------------------------------------------------
@@ -362,11 +367,11 @@ public sealed class AppSession : IDisposable
         try
         {
             Mouse.MoveTo(from);
-            Thread.Sleep(300);
+            Timing.Pause(300);
             Mouse.Down(MouseButton.Left);
-            Thread.Sleep(300);
+            Timing.Pause(300);
             Mouse.MoveTo(new System.Drawing.Point(from.X + 30, from.Y + 12)); // past the drag threshold
-            Thread.Sleep(500);
+            Timing.Pause(500);
             Mouse.MoveTo(to);
         }
         finally
@@ -376,12 +381,12 @@ public sealed class AppSession : IDisposable
         for (int i = 0; i < 6; i++)
         {
             Mouse.MoveTo(new System.Drawing.Point(to.X + (i % 2 == 0 ? 4 : -4), to.Y));
-            Thread.Sleep(120);
+            Timing.Pause(120);
         }
         whileOver?.Invoke();
-        Thread.Sleep(400);
+        Timing.Pause(400);
         Mouse.Up(MouseButton.Left);
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
     }
 
     /// <summary>A point on the name of a row (where a drag starts: the empty part of a row starts a selection rectangle).</summary>
@@ -401,17 +406,17 @@ public sealed class AppSession : IDisposable
     public static void DoubleClick(System.Drawing.Point at)
     {
         Mouse.MoveTo(at);
-        Thread.Sleep(150);
+        Timing.Pause(150);
         Mouse.DoubleClick();
-        Thread.Sleep(800);
+        Timing.Pause(800);
     }
 
     public static void RightClick(System.Drawing.Point at)
     {
         Mouse.MoveTo(at);
-        Thread.Sleep(150);
+        Timing.Pause(150);
         Mouse.RightClick();
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
     }
 
     // ---- what to look at -----------------------------------------------------------------------------------
@@ -423,11 +428,13 @@ public sealed class AppSession : IDisposable
     public static string Screenshot(string name, bool workArea = false)
     {
         Rectangle screen = workArea ? System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea : System.Windows.Forms.Screen.PrimaryScreen!.Bounds;
+        var clock = Stopwatch.StartNew();
         using var bitmap = new Bitmap(screen.Width, screen.Height);
         using (Graphics g = Graphics.FromImage(bitmap))
             g.CopyFromScreen(screen.Location, Point.Empty, screen.Size);
         string path = Path.Combine(ScreenshotFolder, name + ".png");
         bitmap.Save(path, ImageFormat.Png);
+        Timing.Add("Screenshots", clock.Elapsed);
         return path;
     }
 
@@ -441,6 +448,20 @@ public sealed class AppSession : IDisposable
     }
 
     public void Dispose()
+    {
+        var closing = Stopwatch.StartNew();
+        try
+        {
+            DisposeCore();
+        }
+        finally
+        {
+            Timing.Add("Closing the app", closing.Elapsed);
+            Timing.Write();
+        }
+    }
+
+    private void DisposeCore()
     {
         try
         {

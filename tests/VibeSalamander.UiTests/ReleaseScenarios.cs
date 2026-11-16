@@ -139,11 +139,11 @@ public sealed class ReleaseScenarios : IDisposable
     {
         using AppSession app = Start();
         app.Menu("Help", "First Steps...");
-        Thread.Sleep(1200);
+        Timing.Pause(1200);
         AppSession.Screenshot("r03 first steps");
         FlaUI.Core.AutomationElements.ComboBox keys = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByControlType(ControlType.ComboBox))?.AsComboBox(), "the shortcuts choice");
         keys.Select(1);
-        Thread.Sleep(600);
+        Timing.Pause(600);
         app.Click("OK", settleMs: 1500);
         // the F-key bar follows: F2 refreshes in Total Commander
         WaitForText(app, t => t == "Refresh", "Total Commander's F2 in the F-key bar");
@@ -167,7 +167,7 @@ public sealed class ReleaseScenarios : IDisposable
         Window viewer = app.OtherWindow("holiday 01.png - ");
         viewer.Focus();
         app.WaitReady(60); // the picture is loaded
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
         app.Press(VirtualKeyShort.KEY_W, settleMs: 600);
         app.Press(VirtualKeyShort.KEY_M, settleMs: 600);
         app.Press(VirtualKeyShort.F11, settleMs: 1500);
@@ -177,7 +177,7 @@ public sealed class ReleaseScenarios : IDisposable
         app.Press(VirtualKeyShort.RIGHT, settleMs: 1200); // decoded ahead
         Assert.StartsWith("holiday 02", viewer.Name ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         viewer.Close();
-        Thread.Sleep(500);
+        Timing.Pause(500);
         NoErrors(app);
     }
 
@@ -191,15 +191,15 @@ public sealed class ReleaseScenarios : IDisposable
         app.Press(VirtualKeyShort.F4, settleMs: 300);
         Window editor = app.OtherWindow("unsorted.json - ");
         app.WaitReady(60); // WebView2 and Monaco started and the text is in the editor, however long that takes here
-        Thread.Sleep(1000);
+        Timing.Pause(1000);
         editor.Focus();
         // the overflow of the toolbar, then Sort keys
         AutomationElement more = AppSession.Retry(() => editor.FindFirstDescendant(cf => cf.ByAutomationId("MoreButton")), "the toolbar's More button");
         more.Click();
-        Thread.Sleep(800);
+        Timing.Pause(800);
         AutomationElement sort = AppSession.Retry(() => app.Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("Sort keys")), "Sort keys");
         sort.Click();
-        Thread.Sleep(1200);
+        Timing.Pause(1200);
         AppSession.Screenshot("r05 editor keys sorted");
         editor.Focus();
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_S, settleMs: 1500);
@@ -209,7 +209,7 @@ public sealed class ReleaseScenarios : IDisposable
             return text.IndexOf("apple", StringComparison.Ordinal) is >= 0 and var a && a < text.IndexOf("zebra", StringComparison.Ordinal);
         }, "the keys sorted and saved", 8);
         editor.Close();
-        Thread.Sleep(500);
+        Timing.Pause(500);
         NoErrors(app);
     }
 
