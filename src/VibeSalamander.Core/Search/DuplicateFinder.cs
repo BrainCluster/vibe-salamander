@@ -32,6 +32,12 @@ public sealed class DuplicateCriteria
 
     /// <summary>How many files are read at the same time for the content.</summary>
     public int Parallelism { get; init; }
+
+    /// <summary>
+    /// Also read files that are only in the cloud (OneDrive...) to compare their content: reading them downloads them.
+    /// Off: they are left out of the content comparison (<see cref="DuplicateResult.OnlineOnlySkipped"/>).
+    /// </summary>
+    public bool IncludeOnlineOnly { get; init; }
 }
 
 /// <summary>Files that are duplicates of each other.</summary>
@@ -40,6 +46,18 @@ public sealed record DuplicateGroup(IReadOnlyList<FileEntry> Files, long Size)
 {
     /// <summary>The space the copies take beyond one of them.</summary>
     public long Wasted => Files.Skip(1).Sum(f => f.Size);
+}
+
+/// <summary>The groups found, and how many files only in the cloud were left out because their content wasn't read.</summary>
+public sealed class DuplicateResult(IReadOnlyList<DuplicateGroup> groups, int onlineOnlySkipped) : IReadOnlyList<DuplicateGroup>
+{
+    /// <summary>Files only in the cloud that could have been duplicates (same size) but weren't read.</summary>
+    public int OnlineOnlySkipped { get; } = onlineOnlySkipped;
+
+    public DuplicateGroup this[int index] => groups[index];
+    public int Count => groups.Count;
+    public IEnumerator<DuplicateGroup> GetEnumerator() => groups.GetEnumerator();
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
 /// <summary>How far the duplicate search is.</summary>
@@ -54,9 +72,9 @@ public static class DuplicateFinder
 {
     private const int Edge = 16 * 1024;
 
-    public static Task<IReadOnlyList<DuplicateGroup>> FindAsync(DuplicateCriteria criteria, IProgress<DuplicateProgress>? progress,
+    public static Task<DuplicateResult> FindAsync(DuplicateCriteria criteria, IProgress<DuplicateProgress>? progress,
         CancellationToken ct) =>
-        Task.Run<IReadOnlyList<DuplicateGroup>>(() =>
+        Task.Run(() =>
         {
             var walk = new WalkOptions { IncludeHidden = criteria.IncludeHidden, SkipFolders = criteria.SkipFolders };
             var files = new List<FileEntry>();
@@ -78,7 +96,7 @@ public static class DuplicateFinder
         }, ct);
 
     /// <summary>Groups listed files (testable without a walk).</summary>
-    internal static IReadOnlyList<DuplicateGroup> Group(IReadOnlyList<FileEntry> files, DuplicateCriteria criteria,
+    internal static DuplicateResult Group(IReadOnlyList<FileEntry> files, DuplicateCriteria criteria,
         IProgress<DuplicateProgress>? progress, CancellationToken ct)
     {
         bool byName = criteria.Kind.HasFlag(DuplicateKind.Name);
@@ -88,9 +106,15 @@ public static class DuplicateFinder
             .Select(g => g.ToList())
             .Where(g => g.Count > 1);
         List<List<FileEntry>> candidates = groups.Select(WithoutHardLinks).Where(g => g.Count > 1).ToList();
-
+        int onlineOnly = 0;
         if (criteria.Kind.HasFlag(DuplicateKind.Content))
         {
+            if (!criteria.IncludeOnlineOnly)
+            {
+                // reading them would download them from the cloud: they can't be compared, so they are left out
+                onlineOnly = candidates.Sum(g => g.Count(f => CloudFiles.IsOnlineOnly(f)));
+                candidates = candidates.Select(g => g.Where(f => !CloudFiles.IsOnlineOnly(f)).ToList()).Where(g => g.Count > 1).ToList();
+            }
             int parallel = Math.Clamp(criteria.Parallelism > 0 ? criteria.Parallelism : Environment.ProcessorCount, 1, 8);
             // the edges first (small files: all of it), then the whole file where the edges are the same
             candidates = Refine(candidates, f => f.Size <= 2 * Edge ? HashAll(f.FullPath, ct) : HashEdges(f.FullPath, f.Size), "Comparing",
@@ -101,11 +125,12 @@ public static class DuplicateFinder
             candidates = small;
         }
 
-        return candidates
+        List<DuplicateGroup> found = candidates
             .Select(g => new DuplicateGroup(g.OrderBy(f => f.FullPath, StringComparer.CurrentCultureIgnoreCase).ToList(), bySize ? g[0].Size : -1))
             .OrderByDescending(g => g.Wasted)
             .ThenBy(g => g.Files[0].Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
+        return new DuplicateResult(found, onlineOnly);
     }
 
     /// <summary>Splits each group by a hash of its files; unreadable files drop out.</summary>

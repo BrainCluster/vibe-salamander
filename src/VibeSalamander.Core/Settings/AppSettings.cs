@@ -79,6 +79,9 @@ public sealed class SavedSearch
     public bool Hidden { get; set; } = true;
     public bool InsideArchives { get; set; }
 
+    /// <summary>Also read files that are only in the cloud (reading them downloads them).</summary>
+    public bool CloudFiles { get; set; }
+
     /// <summary>Sizes as typed ("10 MB"); empty = no limit.</summary>
     public string MinSize { get; set; } = string.Empty;
     public string MaxSize { get; set; } = string.Empty;

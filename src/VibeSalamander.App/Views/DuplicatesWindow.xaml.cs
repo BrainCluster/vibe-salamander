@@ -176,6 +176,7 @@ public sealed partial class DuplicatesWindow : Window
             Mask = new WildcardMask(string.IsNullOrWhiteSpace(NamedBox.Text) ? "*.*" : NamedBox.Text),
             Kind = kind,
             IncludeHidden = HiddenBox.IsChecked == true,
+            IncludeOnlineOnly = CloudBox.IsChecked == true,
             SkipFolders = string.IsNullOrWhiteSpace(SkipFoldersBox.Text) ? null : new WildcardMask(SkipFoldersBox.Text),
             MinSize = min!.Value,
         };
@@ -196,7 +197,8 @@ public sealed partial class DuplicatesWindow : Window
         var clock = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            _groups = await DuplicateFinder.FindAsync(criteria, progress, _cts.Token);
+            DuplicateResult found = await DuplicateFinder.FindAsync(criteria, progress, _cts.Token);
+            _groups = found;
             foreach (DuplicateGroup group in _groups)
             {
                 _rows.Add(new DuplicateHeaderRow(group));
@@ -213,6 +215,8 @@ public sealed partial class DuplicatesWindow : Window
                 : Loc.F("{0} groups, {1} files  ·  {2} could be freed", _groups.Count.ToString("N0"),
                       _groups.Sum(g => g.Files.Count).ToString("N0"), Formats.ShortSize(wasted))
                   + "  ·  " + Loc.F("{0} s", clock.Elapsed.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.CurrentCulture));
+            if (found.OnlineOnlySkipped > 0) // Cloud-only files: off
+                StatusText.Text += "  ·  " + Loc.F("{0} files only in the cloud weren't read", found.OnlineOnlySkipped.ToString("N0"));
         }
         catch (OperationCanceledException)
         {

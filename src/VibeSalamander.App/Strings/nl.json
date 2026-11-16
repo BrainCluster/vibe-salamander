@@ -1714,5 +1714,12 @@
   "{0}  (Ctrl+{1})": "{0}  (Ctrl+{1})",
   "{0} - Vibe Salamander": "{0} - Vibe Salamander",
   "TAR.GZ (gzip)": "TAR.GZ (gzip)",
-  "Windows Explorer": "Verkenner"
+  "Windows Explorer": "Verkenner",
+  "Cloud-only files": "Bestanden alleen in de cloud",
+  "Read files that are only in the cloud (OneDrive, iCloud, Dropbox) too: reading them downloads them.": "Ook bestanden lezen die alleen in de cloud staan (OneDrive, iCloud, Dropbox): lezen downloadt ze.",
+  "Also compare files that are only in the cloud (downloads them)": "Ook bestanden vergelijken die alleen in de cloud staan (downloadt ze)",
+  "{0} files only in the cloud weren't read": "{0} bestanden alleen in de cloud zijn niet gelezen",
+  "This file is only in the cloud: quick view doesn't download it.": "Dit bestand staat alleen in de cloud: snelle weergave downloadt het niet.",
+  "F3 opens it (and downloads it).": "F3 opent het (en downloadt het).",
+  "Only in the cloud: not read": "Alleen in de cloud: niet gelezen"
 }

@@ -84,6 +84,8 @@
                 <CheckBox x:Name="NameBox" Content="Name" MinWidth="0" />
                 <CheckBox x:Name="SizeBox" Content="Size" MinWidth="0" />
                 <CheckBox x:Name="HiddenBox" Content="Hidden and system" MinWidth="0" Margin="24,0,0,0" />
+                <CheckBox x:Name="CloudBox" Content="Cloud-only files" MinWidth="0"
+                          ToolTipService.ToolTip="Read files that are only in the cloud (OneDrive, iCloud, Dropbox) too: reading them downloads them." />
             </StackPanel>
         </Grid>
 

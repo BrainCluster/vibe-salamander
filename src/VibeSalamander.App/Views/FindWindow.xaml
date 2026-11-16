@@ -76,6 +76,8 @@
                 <CheckBox x:Name="DirectoriesBox" Content="Find directories too" IsChecked="True" MinWidth="0" />
                 <CheckBox x:Name="HiddenBox" Content="Hidden and system" IsChecked="True" MinWidth="0" />
                 <CheckBox x:Name="ArchivesBox" Content="Inside ZIP files" MinWidth="0" />
+                <CheckBox x:Name="CloudBox" Content="Cloud-only files" MinWidth="0"
+                          ToolTipService.ToolTip="Read files that are only in the cloud (OneDrive, iCloud, Dropbox) too: reading them downloads them." />
             </StackPanel>
             <ToggleButton x:Name="MoreButton" Grid.Row="3" Grid.Column="2" MinWidth="130" Click="More_Click">
                 <StackPanel Orientation="Horizontal" Spacing="6">

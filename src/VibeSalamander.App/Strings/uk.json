@@ -1714,5 +1714,12 @@
   "UP-DIR": "UP-DIR",
   "{0}  (Ctrl+{1})": "{0}  (Ctrl+{1})",
   "{0} - Vibe Salamander": "{0} - Vibe Salamander",
-  "Windows Explorer": "Провідник"
+  "Windows Explorer": "Провідник",
+  "Cloud-only files": "Файли лише в хмарі",
+  "Read files that are only in the cloud (OneDrive, iCloud, Dropbox) too: reading them downloads them.": "Читати й файли, які є лише в хмарі (OneDrive, iCloud, Dropbox): під час читання вони завантажуються.",
+  "Also compare files that are only in the cloud (downloads them)": "Порівнювати й файли, які є лише в хмарі (завантажує їх)",
+  "{0} files only in the cloud weren't read": "Не прочитано файлів лише в хмарі: {0}",
+  "This file is only in the cloud: quick view doesn't download it.": "Цей файл є лише в хмарі: швидкий перегляд його не завантажує.",
+  "F3 opens it (and downloads it).": "F3 відкриває його (і завантажує).",
+  "Only in the cloud: not read": "Лише в хмарі: не прочитано"
 }

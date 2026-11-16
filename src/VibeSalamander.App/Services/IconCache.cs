@@ -121,7 +121,8 @@ public sealed class IconCache
             // special folders keep their own icons only when queried by path; generic folder icon is enough here
             return ("<dir>", "folder", true, FILE_ATTRIBUTE_DIRECTORY);
         }
-        if (!generic && PerFileExtensions.Contains(entry.Extension))
+        // a file's own icon is read from the file: one only in the cloud would be downloaded for it
+        if (!generic && PerFileExtensions.Contains(entry.Extension) && !CloudFiles.IsOnlineOnly(entry))
             return ("file:" + entry.FullPath, entry.FullPath, false, 0);
         string ext = entry.Extension.Length > 0 ? "." + entry.Extension : "file";
         return ("ext:" + ext, ext, true, FILE_ATTRIBUTE_NORMAL);

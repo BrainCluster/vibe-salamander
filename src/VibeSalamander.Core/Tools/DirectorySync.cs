@@ -71,6 +71,7 @@ public static class DirectorySync
         IProgress<string>? progress, CancellationToken ct) =>
         Task.Run<IReadOnlyList<CompareDifference>>(() =>
         {
+            options.ResetCounts(); // the files only in the cloud that weren't read: options.OnlineOnlyNotCompared
             var result = new List<CompareDifference>();
             Compare(leftRoot, rightRoot, string.Empty, options, result, progress, ct);
             return result;

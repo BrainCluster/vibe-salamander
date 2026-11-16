@@ -287,6 +287,7 @@ public sealed partial class FindWindow : Window
             Directories = DirectoriesBox.IsChecked == true,
             Hidden = HiddenBox.IsChecked == true,
             InsideArchives = ArchivesBox.IsChecked == true,
+            CloudFiles = CloudBox.IsChecked == true,
             MinSize = MinSizeBox.Text,
             MaxSize = MaxSizeBox.Text,
             Modified = (ModifiedBox.SelectedItem as ComboBoxItem)?.Tag as string ?? "Any",
@@ -332,6 +333,7 @@ public sealed partial class FindWindow : Window
         DirectoriesBox.IsChecked = form.Directories;
         HiddenBox.IsChecked = form.Hidden;
         ArchivesBox.IsChecked = form.InsideArchives;
+        CloudBox.IsChecked = form.CloudFiles;
         MinSizeBox.Text = form.MinSize;
         MaxSizeBox.Text = form.MaxSize;
         ModifiedBox.SelectedIndex = Math.Max(0, Array.IndexOf(ModifiedChoices, form.Modified));
@@ -509,6 +511,8 @@ public sealed partial class FindWindow : Window
             status = summary.Found == 1 ? Loc.T("1 item found") : Loc.F("{0} items found", summary.Found.ToString("N0"));
             if (reading)
                 status += "  ·  " + Loc.F("{0} files read ({1})", summary.FilesChecked.ToString("N0"), Formats.ShortSize(summary.BytesRead));
+            if (summary.OnlineOnlySkipped > 0) // Cloud-only files: off
+                status += "  ·  " + Loc.F("{0} files only in the cloud weren't read", summary.OnlineOnlySkipped.ToString("N0"));
             status += "  ·  " + Loc.F("{0} s", clock.Elapsed.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.CurrentCulture));
         }
         catch (OperationCanceledException)

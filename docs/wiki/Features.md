@@ -18,6 +18,12 @@
   that keeps the cursor and the marks.
 - **Quick view** (Ctrl+Q): the other panel shows the item under the cursor — a picture, the start of a text, what's
   in a folder — and follows the cursor.
+- **Cloud files stay in the cloud.** Files that OneDrive, iCloud or Dropbox keep only online are downloaded only
+  when you open, view, copy or move one. Tools that just look — Find with text, Find Duplicates, Compare
+  Directories by content, quick view, thumbnails, program icons, checksums of a marked folder — leave them alone
+  and say how many they didn't read; the **Cloud-only files** box (Find, Find Duplicates) and "Also compare files that are only in the cloud"
+  (Compare Directories) read them too. The Attr column shows O for a file only in the cloud, P for one always kept
+  on this device and U for one whose space may be freed, as Windows' `attrib` does.
 - **All files of the subfolders** (Ctrl+B, Total Commander's branch view): every file below the folder in one list,
   to copy, delete, rename or compare them together; Ctrl+B again goes back.
 - **Hot path list** (Shift+F9; Ctrl+D in Total Commander's shortcuts, or the star button at the end of the address bar)

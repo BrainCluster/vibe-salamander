@@ -45,12 +45,15 @@ public sealed class ThumbnailCache
     private readonly List<Job> _generateQueue = new();
     private int _running;
 
-    internal sealed class Job(string key, string path, bool isDirectory, uint size)
+    internal sealed class Job(string key, string path, bool isDirectory, uint size, bool onlineOnly)
     {
         public readonly string Key = key;
         public readonly string Path = path;
         public readonly bool IsDirectory = isDirectory;
         public readonly uint Size = size;
+
+        /// <summary>Only in the cloud: Windows' thumbnail cache is asked, nothing is generated (it would download the file).</summary>
+        public readonly bool OnlineOnly = onlineOnly;
         public readonly List<Ticket> Waiters = new();
         public bool LookedUp;
         public bool Running;
@@ -127,7 +130,7 @@ public sealed class ThumbnailCache
         }
         else
         {
-            job = new Job(key, entry.FullPath, entry.IsDirectory, size);
+            job = new Job(key, entry.FullPath, entry.IsDirectory, size, CloudFiles.IsOnlineOnly(entry));
             _jobs[key] = job;
             _lookupQueue.Add(job);
         }
@@ -200,7 +203,7 @@ public sealed class ThumbnailCache
             _running--;
         }
 
-        if (image == null && lookupOnly)
+        if (image == null && lookupOnly && !job.OnlineOnly)
         {
             // not in Windows' thumbnail cache: generated after the cached ones of the visible rows
             job.LookedUp = true;

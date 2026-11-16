@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using System.Text.Json.Serialization;
+using VibeSalamander.Core.FileSystem;
+
 namespace VibeSalamander.Core.Tools;
 
 /// <summary>What Compare Directories (Ctrl+F10) looks at.</summary>
@@ -14,6 +17,22 @@ public sealed class CompareOptions
 
     /// <summary>Mark both files when their contents differ (reads the files; slower).</summary>
     public bool ByContent { get; set; }
+
+    /// <summary>
+    /// Compare the content of files only in the cloud (OneDrive...) too: reading them downloads them. Off: such a
+    /// file is compared by size, date and attributes only (<see cref="OnlineOnlyNotCompared"/>).
+    /// </summary>
+    public bool ContentOfOnlineOnly { get; set; }
+
+    private int _onlineOnlyNotCompared;
+
+    /// <summary>Files only in the cloud whose content the last comparison didn't read (not saved).</summary>
+    [JsonIgnore]
+    public int OnlineOnlyNotCompared => Volatile.Read(ref _onlineOnlyNotCompared);
+
+    internal void ResetCounts() => Interlocked.Exchange(ref _onlineOnlyNotCompared, 0);
+
+    internal void CountOnlineOnly() => Interlocked.Increment(ref _onlineOnlyNotCompared);
 
     /// <summary>After marking, a window lists the differences (all the way down) and synchronizes them.</summary>
     public bool ShowList { get; set; } = true;
@@ -47,6 +66,9 @@ public sealed class CompareResult
     public HashSet<string> Left { get; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> Right { get; } = new(StringComparer.OrdinalIgnoreCase);
     public bool Identical => Left.Count == 0 && Right.Count == 0;
+
+    /// <summary>Files only in the cloud whose content wasn't compared (it would have downloaded them).</summary>
+    public int OnlineOnlyNotCompared { get; set; }
 }
 
 /// <summary>
@@ -64,6 +86,7 @@ public static class DirectoryComparer
         IReadOnlyList<Item> right, CompareOptions options, CancellationToken ct = default) =>
         Task.Run(() =>
         {
+            options.ResetCounts();
             var result = new CompareResult();
             var rightByName = right.GroupBy(i => i.Name, StringComparer.OrdinalIgnoreCase)
                                    .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -99,6 +122,7 @@ public static class DirectoryComparer
             foreach (Item r in right)
                 if (!leftNames.Contains(r.Name))
                     result.Right.Add(r.Name); // only on the right
+            result.OnlineOnlyNotCompared = options.OnlineOnlyNotCompared;
             return result;
         }, ct);
 
@@ -113,6 +137,12 @@ public static class DirectoryComparer
             return Difference.Both;
         if (options.ByDate && !options.SameTime(l.LastWrite, r.LastWrite))
             return l.LastWrite > r.LastWrite ? Difference.LeftNewer : Difference.RightNewer;
+        if (options.ByContent && !sizeDiffers && !options.ContentOfOnlineOnly &&
+            (CloudFiles.IsOnlineOnly(l.Attributes) || CloudFiles.IsOnlineOnly(r.Attributes)))
+        {
+            options.CountOnlineOnly(); // reading it would download it: the size, date and attributes have to do
+            return Difference.None;
+        }
         if (options.ByContent && (sizeDiffers || !ContentEqual(leftPath, rightPath, ct)))
             return Difference.Both;
         return Difference.None;

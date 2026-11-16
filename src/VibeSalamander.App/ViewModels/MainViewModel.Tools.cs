@@ -117,9 +117,12 @@ public sealed partial class MainViewModel
             _host.ShowCompareWindow(Left.Path, Right.Path, options);
             return;
         }
-        _host.Notify(result.Identical
-            ? "The directories are identical."
-            : Loc.F("Differences marked: {0} in the left panel, {1} in the right panel.", inLeft, inRight), isError: false);
+        string message = result.Identical
+            ? Loc.T("The directories are identical.")
+            : Loc.F("Differences marked: {0} in the left panel, {1} in the right panel.", inLeft, inRight);
+        if (result.OnlineOnlyNotCompared > 0) // compared by size and date only: reading them would download them
+            message += " " + Loc.F("{0} files only in the cloud weren't read", result.OnlineOnlyNotCompared.ToString("N0"));
+        _host.Notify(message, isError: false);
     }
 
     private UserMenuContext UserMenuContextFor(PaneViewModel pane)

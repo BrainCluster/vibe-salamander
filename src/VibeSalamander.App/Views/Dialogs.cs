@@ -332,6 +332,15 @@ public sealed partial class Dialogs
         var byDate = new CheckBox { Content = "Date and time (the newer file is marked)", IsChecked = current.ByDate };
         var bySize = new CheckBox { Content = "Size", IsChecked = current.BySize };
         var byContent = new CheckBox { Content = "Content (reads the files, slower)", IsChecked = current.ByContent };
+        var cloud = new CheckBox
+        {
+            Content = "Also compare files that are only in the cloud (downloads them)",
+            IsChecked = current.ContentOfOnlineOnly,
+            Margin = new Thickness(28, 0, 0, 0),
+        };
+        cloud.IsEnabled = current.ByContent; // only content is read
+        byContent.Checked += (_, _) => cloud.IsEnabled = true;
+        byContent.Unchecked += (_, _) => cloud.IsEnabled = false;
         var byAttributes = new CheckBox { Content = "Attributes (read-only, hidden, system)", IsChecked = current.ByAttributes };
         var subdirs = new CheckBox { Content = "Compare the content of subdirectories", IsChecked = current.Subdirectories };
         var list = new CheckBox { Content = "Show the list of differences (to synchronize them)", IsChecked = current.ShowList };
@@ -340,6 +349,7 @@ public sealed partial class Dialogs
         body.Children.Add(byDate);
         body.Children.Add(bySize);
         body.Children.Add(byContent);
+        body.Children.Add(cloud);
         body.Children.Add(byAttributes);
         body.Children.Add(new Border { Height = 8 });
         body.Children.Add(subdirs);
@@ -356,6 +366,7 @@ public sealed partial class Dialogs
             ByDate = byDate.IsChecked == true,
             BySize = bySize.IsChecked == true,
             ByContent = byContent.IsChecked == true,
+            ContentOfOnlineOnly = cloud.IsChecked == true,
             ByAttributes = byAttributes.IsChecked == true,
             Subdirectories = subdirs.IsChecked == true,
             ShowList = list.IsChecked == true,

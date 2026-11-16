@@ -1714,5 +1714,12 @@
   "UP-DIR": "UP-DIR",
   "{0}  (Ctrl+{1})": "{0}  (Ctrl+{1})",
   "{0} - Vibe Salamander": "{0} - Vibe Salamander",
-  "Windows Explorer": "Explorador de Arquivos"
+  "Windows Explorer": "Explorador de Arquivos",
+  "Cloud-only files": "Arquivos somente na nuvem",
+  "Read files that are only in the cloud (OneDrive, iCloud, Dropbox) too: reading them downloads them.": "Ler também os arquivos que estão somente na nuvem (OneDrive, iCloud, Dropbox): lê-los faz o download deles.",
+  "Also compare files that are only in the cloud (downloads them)": "Comparar também os arquivos que estão somente na nuvem (faz o download deles)",
+  "{0} files only in the cloud weren't read": "{0} arquivos somente na nuvem não foram lidos",
+  "This file is only in the cloud: quick view doesn't download it.": "Este arquivo está somente na nuvem: a visualização rápida não faz o download dele.",
+  "F3 opens it (and downloads it).": "F3 o abre (e faz o download).",
+  "Only in the cloud: not read": "Somente na nuvem: não lido"
 }

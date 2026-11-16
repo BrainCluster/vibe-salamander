@@ -147,6 +147,13 @@ internal sealed class QuickViewPanel : Grid
                 return;
             }
             _facts.Text = $"{Formats.ShortSize(entry.Size)}  ·  {Formats.Date(entry.LastWrite)} {Formats.Time(entry.LastWrite)}";
+            if (CloudFiles.IsOnlineOnly(entry))
+            {
+                // quick view follows the caret: reading would download every cloud file the caret passes
+                Only(_message);
+                _message.Text = Loc.T("This file is only in the cloud: quick view doesn't download it.") + "\n" + Loc.T("F3 opens it (and downloads it).");
+                return;
+            }
             if (ViewerModes.IsImage(path) && !path.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
             {
                 var bitmap = new BitmapImage { DecodePixelWidth = Math.Max(64, (int)Math.Min(2048, ActualWidth * (XamlRoot?.RasterizationScale ?? 1))) };

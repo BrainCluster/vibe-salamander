@@ -1714,5 +1714,12 @@
   "{0}: {1} free of {2}, {3}": "{0}: {1} slobodno od {2}, {3}",
   "──── Separator ────": "──── Razdjelnik ────",
   "TAR.GZ (gzip)": "TAR.GZ (gzip)",
-  "Windows Explorer": "Eksplorer za datoteke"
+  "Windows Explorer": "Eksplorer za datoteke",
+  "Cloud-only files": "Datoteke samo u oblaku",
+  "Read files that are only in the cloud (OneDrive, iCloud, Dropbox) too: reading them downloads them.": "Čitaj i datoteke koje su samo u oblaku (OneDrive, iCloud, Dropbox): čitanjem se preuzimaju.",
+  "Also compare files that are only in the cloud (downloads them)": "Usporedi i datoteke koje su samo u oblaku (preuzima ih)",
+  "{0} files only in the cloud weren't read": "{0} datoteka samo u oblaku nije pročitano",
+  "This file is only in the cloud: quick view doesn't download it.": "Ova je datoteka samo u oblaku: brzi pregled je ne preuzima.",
+  "F3 opens it (and downloads it).": "F3 je otvara (i preuzima).",
+  "Only in the cloud: not read": "Samo u oblaku: nije pročitano"
 }

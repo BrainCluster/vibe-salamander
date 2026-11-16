@@ -184,6 +184,8 @@ public sealed partial class CompareWindow : Window
             StatusText.Text = (_all.Count == 0 ? Loc.T("The directories are identical.")
                     : Loc.F("{0} differences", _all.Count.ToString("N0")))
                 + "  ·  " + Loc.F("{0} s", clock.Elapsed.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.CurrentCulture));
+            if (_options.OnlineOnlyNotCompared > 0) // compared by size and date only: reading them would download them
+                StatusText.Text += "  ·  " + Loc.F("{0} files only in the cloud weren't read", _options.OnlineOnlyNotCompared.ToString("N0"));
         }
         catch (OperationCanceledException)
         {

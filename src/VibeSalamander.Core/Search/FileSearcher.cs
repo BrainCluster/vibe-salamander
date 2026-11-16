@@ -50,6 +50,12 @@ public sealed class SearchCriteria
     /// <summary>Look inside ZIP files (names and content of what is in them).</summary>
     public bool InsideArchives { get; init; }
 
+    /// <summary>
+    /// Also read files that are only in the cloud (OneDrive...): reading them downloads them. Off: they are found by
+    /// name, size and date, but their content isn't searched (<see cref="SearchSummary.OnlineOnlySkipped"/>).
+    /// </summary>
+    public bool IncludeOnlineOnly { get; init; }
+
     /// <summary>How many files are read at the same time for the text rows (0 = by the number of processors).</summary>
     public int Parallelism { get; init; }
 
@@ -78,7 +84,8 @@ public sealed record SearchHit(FileEntry Entry, string? Archive, ContentMatch? M
 public readonly record struct SearchProgress(string Directory, long FilesChecked, long BytesRead);
 
 /// <summary>What a finished search found.</summary>
-public readonly record struct SearchSummary(int Found, long FilesChecked, long BytesRead);
+/// <param name="OnlineOnlySkipped">Files only in the cloud whose content wasn't read (it would have downloaded them).</param>
+public readonly record struct SearchSummary(int Found, long FilesChecked, long BytesRead, int OnlineOnlySkipped = 0);
 
 /// <summary>
 /// Find Files and Directories (Alt+F7): names by masks, size, date, attributes and depth, and text rows inside the
@@ -94,6 +101,7 @@ public static class FileSearcher
         public long Checked;
         public long Bytes;
         public long LastReport;
+        public int OnlineOnly;
         public string Current = string.Empty;
     }
 
@@ -157,6 +165,15 @@ public static class FileSearcher
                     bool archive = criteria.InsideArchives && IsArchive(entry.Name);
                     if (!fits && !archive)
                         continue;
+                    if (queue != null && !criteria.IncludeOnlineOnly && CloudFiles.IsOnlineOnly(entry))
+                    {
+                        // reading it would download it from the cloud: found by its name, size and date only
+                        if (fits && matcher.IsEmpty)
+                            Hit(new SearchHit(entry, null, null));
+                        if (archive || !matcher.IsEmpty && fits)
+                            Interlocked.Increment(ref counters.OnlineOnly);
+                        continue;
+                    }
                     if (queue != null)
                         await queue.Writer.WriteAsync(entry, ct);
                     else
@@ -170,7 +187,7 @@ public static class FileSearcher
             await Task.WhenAll(tasks);
             Volatile.Write(ref counters.Current, string.Empty);
             Report(force: true);
-            return new SearchSummary(counters.Found, counters.Checked, counters.Bytes);
+            return new SearchSummary(counters.Found, counters.Checked, counters.Bytes, counters.OnlineOnly);
         }, ct);
 
     private static async Task WorkAsync(ChannelReader<FileEntry> reader, SearchCriteria criteria, ContentMatcher matcher,

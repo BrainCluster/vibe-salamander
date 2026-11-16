@@ -48,6 +48,9 @@ internal sealed class CalculateSession
         public required string FullPath { get; init; }
         public long Size { get; init; }
         public Dictionary<HashKind, string>? Hashes { get; set; }
+
+        /// <summary>In a marked folder, only in the cloud: not read (it would be downloaded). A marked file is read.</summary>
+        public bool OnlineOnly { get; init; }
     }
 
     public void Start()
@@ -83,6 +86,7 @@ internal sealed class CalculateSession
         CancellationToken token = _cancel.Token;
         var rows = new List<IPluginRow>();
         long total = 0;
+        int onlineOnly = 0;
         try
         {
             // the files: marked files, and the content of marked directories
@@ -98,21 +102,31 @@ internal sealed class CalculateSession
                     if (token.IsCancellationRequested)
                         break;
                     long size = 0;
+                    bool cloud = false;
                     try
                     {
-                        size = new FileInfo(file).Length;
+                        var info = new FileInfo(file);
+                        size = info.Length;
+                        // a file the user marked is read whatever it costs; the content of a marked folder isn't downloaded
+                        cloud = item.IsDirectory && CloudFiles.IsOnlineOnly(info.Attributes);
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                     {
                         // the size stays unknown; reading reports the problem
                     }
-                    var result = new FileResult { RelativePath = Path.GetRelativePath(_baseDirectory, file), FullPath = file, Size = size };
+                    var result = new FileResult
+                    {
+                        RelativePath = Path.GetRelativePath(_baseDirectory, file), FullPath = file, Size = size, OnlineOnly = cloud,
+                    };
                     var cells = new List<string> { result.RelativePath, Formats.ExactSize(size) };
                     cells.AddRange(_kinds.Select(_ => string.Empty));
                     IPluginRow row = window.AddRow(cells);
                     row.Tag = result;
                     rows.Add(row);
-                    total += size;
+                    if (cloud)
+                        onlineOnly++;
+                    else
+                        total += size;
                 }
             }
             if (rows.Count == 0 && !token.IsCancellationRequested)
@@ -131,6 +145,11 @@ internal sealed class CalculateSession
                 if (token.IsCancellationRequested)
                 {
                     SetHashCells(row, T("Canceled"));
+                    continue;
+                }
+                if (result.OnlineOnly)
+                {
+                    SetHashCells(row, T("Only in the cloud: not read"));
                     continue;
                 }
                 SetHashCells(row, T("Calculating..."));
@@ -169,7 +188,8 @@ internal sealed class CalculateSession
                 window.SetProgress(null);
                 window.SetStatus(_cancel.IsCancellationRequested
                     ? T("Canceled")
-                    : T("Right-click an item to copy a checksum to the clipboard."));
+                    : T("Right-click an item to copy a checksum to the clipboard.")
+                      + (onlineOnly > 0 ? "  ·  " + string.Format(T("{0} files only in the cloud weren't read"), onlineOnly.ToString("N0")) : string.Empty));
                 window.UpdateButton("close", T("Close"));
                 window.UpdateButton("save", enabled: rows.Any(r => ((FileResult)r.Tag!).Hashes != null));
             }

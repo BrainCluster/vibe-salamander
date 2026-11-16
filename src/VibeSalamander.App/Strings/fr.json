@@ -1714,5 +1714,12 @@
   "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...": "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...",
   "notepad.exe, C:\\Tools\\viewer.exe ...": "notepad.exe, C:\\Tools\\viewer.exe ...",
   "{0} - Vibe Salamander": "{0} - Vibe Salamander",
-  "Windows Explorer": "Explorateur de fichiers"
+  "Windows Explorer": "Explorateur de fichiers",
+  "Cloud-only files": "Fichiers uniquement dans le cloud",
+  "Read files that are only in the cloud (OneDrive, iCloud, Dropbox) too: reading them downloads them.": "Lire aussi les fichiers qui sont uniquement dans le cloud (OneDrive, iCloud, Dropbox) : les lire les télécharge.",
+  "Also compare files that are only in the cloud (downloads them)": "Comparer aussi les fichiers uniquement dans le cloud (les télécharge)",
+  "{0} files only in the cloud weren't read": "{0} fichiers uniquement dans le cloud n'ont pas été lus",
+  "This file is only in the cloud: quick view doesn't download it.": "Ce fichier est uniquement dans le cloud : l'aperçu rapide ne le télécharge pas.",
+  "F3 opens it (and downloads it).": "F3 l'ouvre (et le télécharge).",
+  "Only in the cloud: not read": "Uniquement dans le cloud : non lu"
 }

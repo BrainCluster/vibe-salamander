@@ -97,6 +97,7 @@ public static class SearchForm
             RequiredAttributes = required,
             ExcludedAttributes = excluded,
             InsideArchives = form.InsideArchives,
+            IncludeOnlineOnly = form.CloudFiles,
             Parallelism = parallelism,
         };
         problem = criteria.Problem();
@@ -121,6 +122,7 @@ public static class SearchForm
         Directories = s.Directories,
         Hidden = s.Hidden,
         InsideArchives = s.InsideArchives,
+        CloudFiles = s.CloudFiles,
         MinSize = s.MinSize,
         MaxSize = s.MaxSize,
         Modified = s.Modified,

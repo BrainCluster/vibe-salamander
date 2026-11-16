@@ -46,6 +46,12 @@ a cloud state mark in the panel (online-only / available / pinned).
 *Done when:* content tools skip online-only files and say how many they skipped, with a choice to include
 them; quick view and thumbnails of an online-only file show its icon, never its content; explicit commands
 (F3, F5, Enter) work as before; Core tests cover the rule.
+*Status (stage 2):* `Core/FileSystem/CloudFiles` (recall-on-data-access or offline = online-only). Find with text
+and inside ZIP files, Find Duplicates by content and Compare Directories by content (marks and the list) skip such
+files, count them in their status, and have a box to include them; quick view says the file is only in the cloud;
+thumbnails come only from Windows' thumbnail cache; .exe / .lnk / .ico icons are the type's; Checksums reads a
+file the user marked but not the cloud-only files inside a marked folder. The Attr column shows O / P / U. Still
+open: a cloud icon in the panel rows (the Attr letters are the only mark so far).
 
 **T2. A data-safety test matrix for the copy engine.**
 `FileOperationEngine` is the code that can lose files. It has edge-case tests; it needs a systematic matrix
@@ -347,7 +353,7 @@ brackets).
 | Context menu: Vibe Salamander's, with the Windows menu at the bottom (Shift+right-click = Windows menu) | [x] |
 | Disk images: Enter mounts .iso / .img / .vhd(x); Unmount in the context menu | [x] |
 | Thumbnails | [x] |
-| Cloud files shown with their state and never downloaded by accident | [ ] (T1) |
+| Cloud files shown with their state and never downloaded by accident | [~] the panel mark is the Attr column's O / P / U; a cloud icon in the rows is open (T1) |
 
 ### Open Salamander's plugins
 

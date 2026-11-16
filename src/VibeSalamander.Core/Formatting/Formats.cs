@@ -101,7 +101,10 @@ public static class Formats
         _ => CultureInfo.CurrentCulture.DateTimeFormat.LongTimePattern.Contains('t'),
     };
 
-    /// <summary>Attribute letters in Salamander order: R H S A, plus C (compressed), E (encrypted), O (offline).</summary>
+    /// <summary>
+    /// Attribute letters in Salamander order: R H S A, plus C (compressed), E (encrypted), O (offline: also a file only in
+    /// the cloud), P (always kept on this device) and U (its space may be freed), as Windows' "attrib" shows them.
+    /// </summary>
     public static string Attributes(FileAttributes a)
     {
         var sb = new StringBuilder(6);
@@ -111,7 +114,9 @@ public static class Formats
         if ((a & FileAttributes.Archive) != 0) sb.Append('A');
         if ((a & FileAttributes.Compressed) != 0) sb.Append('C');
         if ((a & FileAttributes.Encrypted) != 0) sb.Append('E');
-        if ((a & FileAttributes.Offline) != 0) sb.Append('O');
+        if ((a & (FileAttributes.Offline | FileSystem.CloudFiles.RecallOnDataAccess)) != 0) sb.Append('O');
+        if ((a & FileSystem.CloudFiles.Pinned) != 0) sb.Append('P');
+        if ((a & FileSystem.CloudFiles.Unpinned) != 0) sb.Append('U');
         return sb.ToString();
     }
 }
