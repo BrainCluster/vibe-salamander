@@ -1707,5 +1707,12 @@
   "{0} transfers are still running or queued.\nCancel them and exit?": "{0} trasferimenti ancora in corso o in coda.\nAnnullarli e uscire?",
   "{0}: not ready": "{0}: non pronta",
   "{0}: {1} free of {2}, {3}": "{0}: {1} liberi su {2}, {3}",
-  "──── Separator ────": "──── Separatore ────"
+  "──── Separator ────": "──── Separatore ────",
+  "Recent": "Recenti",
+  "Startup": "Esecuzione automatica",
+  "Temp": "Temporanei",
+  "UP-DIR": "UP-DIR",
+  "{0}  (Ctrl+{1})": "{0}  (Ctrl+{1})",
+  "{0} - Vibe Salamander": "{0} - Vibe Salamander",
+  "Windows Explorer": "Esplora file"
 }

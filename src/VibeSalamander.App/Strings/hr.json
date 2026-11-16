@@ -1712,5 +1712,7 @@
   "{0} transfers are still running or queued.\nCancel them and exit?": "Prijenosa još u tijeku ili u redu čekanja: {0}.\nOtkazati ih i izaći?",
   "{0}: not ready": "{0}: nije spreman",
   "{0}: {1} free of {2}, {3}": "{0}: {1} slobodno od {2}, {3}",
-  "──── Separator ────": "──── Razdjelnik ────"
+  "──── Separator ────": "──── Razdjelnik ────",
+  "TAR.GZ (gzip)": "TAR.GZ (gzip)",
+  "Windows Explorer": "Eksplorer za datoteke"
 }

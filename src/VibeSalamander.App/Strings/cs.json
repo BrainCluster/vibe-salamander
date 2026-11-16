@@ -1705,5 +1705,14 @@
   "{0} transfers are still running or queued.\nCancel them and exit?": "Přenosy probíhající nebo ve frontě: {0}.\nZrušit je a ukončit?",
   "{0}: not ready": "{0}: nepřipraveno",
   "{0}: {1} free of {2}, {3}": "{0}: {1} volných z {2}, {3}",
-  "──── Separator ────": "──── Oddělovač ────"
+  "──── Separator ────": "──── Oddělovač ────",
+  " KB": " KB",
+  "Temp": "Dočasné",
+  "UP-DIR": "UP-DIR",
+  "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...": "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...",
+  "notepad.exe, C:\\Tools\\viewer.exe ...": "notepad.exe, C:\\Tools\\viewer.exe ...",
+  "{0}  (Ctrl+{1})": "{0}  (Ctrl+{1})",
+  "{0} - Vibe Salamander": "{0} - Vibe Salamander",
+  "TAR.GZ (gzip)": "TAR.GZ (gzip)",
+  "Windows Explorer": "Průzkumník souborů"
 }

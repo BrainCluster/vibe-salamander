@@ -1705,5 +1705,14 @@
  "{0} transfers are still running or queued.\nCancel them and exit?": "Передач, которые ещё выполняются или ожидают в очереди: {0}.\nОтменить их и выйти?",
  "{0}: not ready": "{0}: не готов",
  "{0}: {1} free of {2}, {3}": "{0}: свободно {1} из {2}, {3}",
- "──── Separator ────": "──── Разделитель ────"
+ "──── Separator ────": "──── Разделитель ────",
+  " KB": " КБ",
+  "Temp": "Временные",
+  "UP-DIR": "UP-DIR",
+  "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...": "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...",
+  "notepad.exe, C:\\Tools\\viewer.exe ...": "notepad.exe, C:\\Tools\\viewer.exe ...",
+  "{0}  (Ctrl+{1})": "{0}  (Ctrl+{1})",
+  "{0} - Vibe Salamander": "{0} - Vibe Salamander",
+  "TAR.GZ (gzip)": "TAR.GZ (gzip)",
+  "Windows Explorer": "Проводник"
 }

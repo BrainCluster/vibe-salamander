@@ -1709,5 +1709,10 @@
   "{0} transfers are still running or queued.\nCancel them and exit?": "{0} transferts sont encore en cours ou en attente.\nLes annuler et quitter ?",
   "{0}: not ready": "{0} : non prêt",
   "{0}: {1} free of {2}, {3}": "{0} : {1} libres sur {2}, {3}",
-  "──── Separator ────": "──── Séparateur ────"
+  "──── Separator ────": "──── Séparateur ────",
+  "UP-DIR": "UP-DIR",
+  "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...": "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...",
+  "notepad.exe, C:\\Tools\\viewer.exe ...": "notepad.exe, C:\\Tools\\viewer.exe ...",
+  "{0} - Vibe Salamander": "{0} - Vibe Salamander",
+  "Windows Explorer": "Explorateur de fichiers"
 }

@@ -1705,5 +1705,14 @@
  "{0} transfers are still running or queued.\nCancel them and exit?": "{0} overdrachten zijn nog bezig of in wachtrij.\nAnnuleren en afsluiten?",
  "{0}: not ready": "{0}: niet gereed",
  "{0}: {1} free of {2}, {3}": "{0}: {1} vrij van {2}, {3}",
- "──── Separator ────": "──── Scheidingslijn ────"
+ "──── Separator ────": "──── Scheidingslijn ────",
+  " KB": " KB",
+  "Temp": "Tijdelijk",
+  "UP-DIR": "UP-DIR",
+  "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...": "cmd.exe, notepad.exe, C:\\Tools\\tool.exe ...",
+  "notepad.exe, C:\\Tools\\viewer.exe ...": "notepad.exe, C:\\Tools\\viewer.exe ...",
+  "{0}  (Ctrl+{1})": "{0}  (Ctrl+{1})",
+  "{0} - Vibe Salamander": "{0} - Vibe Salamander",
+  "TAR.GZ (gzip)": "TAR.GZ (gzip)",
+  "Windows Explorer": "Verkenner"
 }

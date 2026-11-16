@@ -1707,5 +1707,12 @@
   "{0} transfers are still running or queued.\nCancel them and exit?": "Передач, що ще виконуються або в черзі: {0}.\nСкасувати їх і вийти?",
   "{0}: not ready": "{0}: не готовий",
   "{0}: {1} free of {2}, {3}": "{0}: вільно {1} з {2}, {3}",
-  "──── Separator ────": "──── Роздільник ────"
+  "──── Separator ────": "──── Роздільник ────",
+  "Recent": "Нещодавні",
+  "Startup": "Автозавантаження",
+  "Temp": "Тимчасові",
+  "UP-DIR": "UP-DIR",
+  "{0}  (Ctrl+{1})": "{0}  (Ctrl+{1})",
+  "{0} - Vibe Salamander": "{0} - Vibe Salamander",
+  "Windows Explorer": "Провідник"
 }
