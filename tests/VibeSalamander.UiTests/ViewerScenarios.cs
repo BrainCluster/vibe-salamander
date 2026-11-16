@@ -155,7 +155,8 @@ public sealed class ViewerScenarios : IDisposable
         app.GoTo(name);
         app.Press(VirtualKeyShort.F4, settleMs: 300);
         Window editor = app.OtherWindow(name + " - ");
-        Thread.Sleep(6000); // WebView2 and Monaco start
+        app.WaitReady(60); // WebView2 and Monaco started and the text is in the editor, however long that takes here
+        Thread.Sleep(1000);
         editor.Focus();
         Thread.Sleep(500);
         return editor;

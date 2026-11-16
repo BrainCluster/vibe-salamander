@@ -166,7 +166,8 @@ public sealed class ReleaseScenarios : IDisposable
         app.Press(VirtualKeyShort.F3, settleMs: 300);
         Window viewer = app.OtherWindow("holiday 01.png - ");
         viewer.Focus();
-        Thread.Sleep(2500);
+        app.WaitReady(60); // the picture is loaded
+        Thread.Sleep(1000);
         app.Press(VirtualKeyShort.KEY_W, settleMs: 600);
         app.Press(VirtualKeyShort.KEY_M, settleMs: 600);
         app.Press(VirtualKeyShort.F11, settleMs: 1500);
@@ -189,7 +190,8 @@ public sealed class ReleaseScenarios : IDisposable
         app.GoTo("unsorted.json");
         app.Press(VirtualKeyShort.F4, settleMs: 300);
         Window editor = app.OtherWindow("unsorted.json - ");
-        Thread.Sleep(6000); // WebView2 and Monaco start
+        app.WaitReady(60); // WebView2 and Monaco started and the text is in the editor, however long that takes here
+        Thread.Sleep(1000);
         editor.Focus();
         // the overflow of the toolbar, then Sort keys
         AutomationElement more = AppSession.Retry(() => editor.FindFirstDescendant(cf => cf.ByAutomationId("MoreButton")), "the toolbar's More button");

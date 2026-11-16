@@ -259,7 +259,8 @@ public sealed class SearchScenarios : IDisposable
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_C);
         Thread.Sleep(1500);
         Window compare = app.OtherWindow("Program.cs ↔");
-        Thread.Sleep(6000); // WebView2 and Monaco start
+        app.WaitReady(60); // WebView2 and Monaco started and the text is in the editor, however long that takes here
+        Thread.Sleep(1000);
         AppSession.Screenshot("s07 compare files");
         // the status line ("Difference 1 of 1"), or the compared text itself (the diff editor's page is in the
         // accessibility tree too: UI Automation sometimes keeps reading the status line as it was before)

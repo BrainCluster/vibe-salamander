@@ -142,7 +142,9 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.F10);
-        Thread.Sleep(2000);
+        Thread.Sleep(1000);
+        app.WaitReady(60); // the sizes are calculated
+        Thread.Sleep(500);
         AppSession.Screenshot("67 directory sizes");
         NoErrors(app);
     }

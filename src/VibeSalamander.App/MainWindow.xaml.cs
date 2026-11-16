@@ -71,6 +71,7 @@ public sealed partial class MainWindow : Window, IUiHost, ISettingsHost
         };
         _vm.Left.PropertyChanged += Pane_PropertyChanged;
         _vm.Right.PropertyChanged += Pane_PropertyChanged;
+        WatchAppState();
         _vm.CaretMoveRequested += (_, e) => PaneView(e.Pane).MoveCaret(e.Index);
 
         TransfersView.Initialize(_vm.Transfers);

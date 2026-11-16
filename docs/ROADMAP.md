@@ -69,10 +69,8 @@ verification failing.
 own). Found and fixed: a target that is the source itself through a junction, hard link or subst drive was offered
 as an ordinary overwrite (now recognized by file identity and refused); a folder copied into a link that leads
 inside it was copied into itself; a copy that failed verification stayed in the target and Retry could never
-succeed. **Open decision:** an overwrite writes over the old file in place (as Explorer and Salamander do), so
-cancelling it or a failure midway (disk full, source unplugged) loses the old file. Safer: copy to a temporary
-name beside it and swap when complete (`ReplaceFile`), at the cost of room for both files during the copy. The
-test for it is written and skipped until this is decided.
+succeed. **Decided (BrainCluster, 2026-11-16):** an overwrite keeps writing over the old file in place, as Explorer and
+Salamander do; cancelling it or a failure midway loses the old file. No temporary-name-and-swap.
 
 **T3. Administrator rights for single operations.**
 Copying into `Program Files` or deleting in `Windows` fails with "access denied" (verified: only
@@ -89,6 +87,11 @@ deep tree, open a 2 GB text file, search content of 10,000 files), with generous
 a tenfold regression fails the build; a UI test that records startup-to-first-listing time and memory
 after showing a 50,000-file folder, printed in the `ui-screenshots` README.
 *Done when:* the numbers are in every CI run and a line in the release notes template asks to compare them.
+*Status (0.8.9):* `PerformanceTests` (Core): listing and sorting 50,000 files, finding names and text, duplicates,
+copying a tree, opening and indexing a 128 MB text file, each with a generous limit; the times are in the
+summary of every *Build and release* run. `MeasurementScenarios` (UI): start time, the End key in a folder of
+50,000 files and memory, on the `ui-screenshots` page. Smaller than planned (50,000 files, 128 MB) to keep the
+runs short. Open: the line in the release notes.
 
 **T5. Translations checked by a test.**
 The eleven language files have between 1,707 and 1,714 entries: some are missing texts. Verified absent:
@@ -118,8 +121,13 @@ that isn't signed by the same publisher.
 
 **T8. Flaky UI tests are fixed, not retried.**
 The history shows waits being lengthened for slow test machines. Replace fixed sleeps in
-`tests/VibeSalamander.UiTests` with waits for a state the app exposes (a named status element that says
-"listing done", "editor ready"), so a red UI run always means a real problem.
+`tests/VibeSalamander.UiTests` with waits for a state the app exposes, so a red UI run always means a real problem.
+*Status (0.8.9):* the main window has an element that isn't displayed, `AppState`: "ready", or "busy: panel"
+(listing, calculating sizes), "busy: editor" / "busy: compare files" (until Monaco has the text), "busy: viewer"
+(`Services/AppActivity`). The tests wait for "ready" at the start, after every key and click (on top of the short
+pause that was there), and instead of the 6-second guesses for the editor. Open: the remaining fixed pauses are
+before screenshots and around the mouse; plugin windows (Disk Map, Checksums) and dialogs don't report their
+state yet.
 
 ### 1.0 — Stable
 

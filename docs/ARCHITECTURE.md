@@ -61,7 +61,7 @@ VibeSalamander.sln                         (.NET 10, net10.0-windows10.0.22621.0
 │      ├─ MainWindow.*.cs   the window, split by area (menus, toolbar, keyboard, transfers, updates, …)
 │      ├─ ViewModels/       MainViewModel.* (commands), PaneViewModel.* (a panel), TransfersViewModel, command classes
 │      ├─ Views/            FilePane.* (a panel), AddressBar, ListMenu, dialogs, tool windows, Viewer/
-│      ├─ Services/         icons, thumbnails, plugins, shell menu, clipboard, Loc, updater, taskbar
+│      ├─ Services/         icons, thumbnails, plugins, shell menu, clipboard, Loc, updater, taskbar, AppActivity
 │      ├─ Strings/          <code>.json translations (11 languages besides English)
 │      └─ Assets/Editor/    editor.html, diff.html (the pages that host Monaco)
 ├─ samples/HelloPlugin                     a complete plugin in one file (the wiki's tutorial)
@@ -296,6 +296,12 @@ the translation (`{ "Copy": "Kopiraj" }`); a missing entry stays English.
   and saves a screenshot per step. `DocumentationScreenshots` produces the pictures in `docs/wiki/images`.
   Environment: `VIBE_APP_EXE`, `VIBE_SCREENSHOTS`, `VIBE_HELLO_PLUGIN`.
 * Elements the UI tests need are found by name or automation id; give new controls one.
+* **The UI tests don't guess how long things take.** The main window's `AppState` element (not displayed) says
+  "ready" or "busy: ..."; `AppSession` waits for "ready" after the start and after every key and click, and
+  `WaitReady()` waits for something long. Anything new that takes time and isn't a panel listing announces
+  itself with `AppActivity.Begin("what")` and disposes the result when done.
+* **Speed is measured**: `PerformanceTests` (Core, with limits; times in the build's summary) and
+  `MeasurementScenarios` (start time and memory, on the `ui-screenshots` page).
 * Building needs Windows (WinUI 3). On another system nothing can be built or run: push and read the
   workflow results and the `ui-screenshots` branch.
 

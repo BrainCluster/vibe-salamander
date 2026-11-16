@@ -94,6 +94,7 @@ internal sealed class CompareFilesWindow : Window
         };
         Closed += (_, _) =>
         {
+            EndStarting();
             WindowPlacements.Save(this, _options.CompareWindow);
             _main.SaveSettings();
         };
@@ -249,7 +250,32 @@ internal sealed class CompareFilesWindow : Window
 
     // ---- opening ----------------------------------------------------------------------------------------------
 
+
+    /// <summary>From the window's start until the files are in the editor (the UI tests wait for it: AppActivity).</summary>
+    private IDisposable? _starting = AppActivity.Begin("compare files");
+    private bool _awaitingPage;
+
+    private void EndStarting()
+    {
+        _awaitingPage = false;
+        _starting?.Dispose();
+        _starting = null;
+    }
+
     private async Task OpenAsync()
+    {
+        try
+        {
+            await OpenCoreAsync();
+        }
+        finally
+        {
+            if (!_awaitingPage)
+                EndStarting(); // no editor page to wait for (an error, no WebView2, comparing again)
+        }
+    }
+
+    private async Task OpenCoreAsync()
     {
         if (_l.Dirty || _r.Dirty)
         {
@@ -342,6 +368,7 @@ internal sealed class CompareFilesWindow : Window
                 };
                 _pending = (leftText, rightText, language, _binary);
                 _core.Navigate("https://vibe-editor.local/Editor/diff.html");
+                _awaitingPage = _starting != null;
             }
             else
             {
@@ -418,6 +445,7 @@ internal sealed class CompareFilesWindow : Window
                 }
                 break;
             case "loaded":
+                EndStarting();
                 _l.Saved = _l.Version = m.GetProperty("left").GetInt32();
                 _r.Saved = _r.Version = m.GetProperty("right").GetInt32();
                 UpdateTitle();

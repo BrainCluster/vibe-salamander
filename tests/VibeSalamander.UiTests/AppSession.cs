@@ -49,7 +49,7 @@ public sealed class AppSession : IDisposable
     public string Home { get; }
     public Application App { get; }
     public UIA3Automation Automation { get; } = new();
-    public Window Window { get; private set; }
+    public Window Window { get; private set; } = null!;
 
     /// <param name="prepareHome">Called with the settings folder before the app starts (to put a plugin into it).</param>
     /// <param name="arguments">The program's command line (-L folder, -R folder, -P 2).</param>
@@ -70,10 +70,78 @@ public sealed class AppSession : IDisposable
         start.Environment[AppPaths.HomeVariable] = Home;
         foreach (string argument in arguments ?? Array.Empty<string>())
             start.ArgumentList.Add(argument);
+        SinceLaunch = Stopwatch.StartNew();
         App = Application.Launch(start);
-        Window = App.GetMainWindow(Automation, TimeSpan.FromSeconds(60)) ?? throw new InvalidOperationException("No main window.");
-        Window.SetForeground();
-        Thread.Sleep(1500); // the first listing, icons, the window settling at its size
+        try
+        {
+            Window = App.GetMainWindow(Automation, TimeSpan.FromSeconds(60)) ?? throw new InvalidOperationException("No main window.");
+            Window.SetForeground();
+            // the app says when it's ready, and the panels have their first listing
+            WaitUntil(() => State() == "ready" && Window.FindFirstDescendant(cf => cf.ByControlType(ControlType.ListItem)) != null,
+                "the app to be ready after its start (it says: \"" + State() + "\")", 60);
+            ReadyAfter = SinceLaunch.Elapsed;
+            Thread.Sleep(1500); // icons, the window settling at its size
+        }
+        catch (Exception)
+        {
+            try
+            {
+                App.Kill(); // a test that fails here has no session to dispose
+            }
+            catch (Exception)
+            {
+                // gone already
+            }
+            throw;
+        }
+    }
+
+    /// <summary>Running since the app was started.</summary>
+    public Stopwatch SinceLaunch { get; }
+
+    /// <summary>How long the start took: until the app said "ready" with the panels listed.</summary>
+    public TimeSpan ReadyAfter { get; }
+
+    // ---- ready or busy -----------------------------------------------------------------------------------
+
+    private AutomationElement? _state;
+
+    /// <summary>
+    /// What the app says it's doing: "ready", or "busy: panel" / "busy: editor" / "busy: viewer" (listing, calculating,
+    /// the editor starting, the viewer loading). "" when it can't be asked just now.
+    /// </summary>
+    public string State()
+    {
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
+            try
+            {
+                _state ??= Window.FindFirstDescendant(cf => cf.ByAutomationId("AppState"));
+                if (_state != null)
+                    return _state.Name ?? string.Empty;
+            }
+            catch (Exception)
+            {
+                _state = null; // the element went stale: looked up again
+            }
+        }
+        return string.Empty;
+    }
+
+    /// <summary>Waits until the app says it's ready (however slow the machine is); fails when it stays busy.</summary>
+    public void WaitReady(double seconds = 30) =>
+        WaitUntil(() => State() == "ready", "the app to be ready", seconds);
+
+    /// <summary>
+    /// After a key or a click: the pause a user's eye would need, and then for as long as the app says it's busy
+    /// (at most 5 s, without failing: a dialog may be waiting for the next key while something still runs).
+    /// </summary>
+    private void Settle(int milliseconds)
+    {
+        Thread.Sleep(milliseconds);
+        var clock = Stopwatch.StartNew();
+        while (clock.Elapsed.TotalSeconds < 5 && State().StartsWith("busy", StringComparison.Ordinal))
+            Thread.Sleep(50);
     }
 
     // ---- finding things ----------------------------------------------------------------------------------
@@ -164,19 +232,19 @@ public sealed class AppSession : IDisposable
     {
         Keyboard.Press(key);
         Keyboard.Release(key);
-        Thread.Sleep(settleMs);
+        Settle(settleMs);
     }
 
     public void Press(VirtualKeyShort modifier, VirtualKeyShort key, int settleMs = 400)
     {
         Keyboard.TypeSimultaneously(modifier, key);
-        Thread.Sleep(settleMs);
+        Settle(settleMs);
     }
 
     public void Type(string text, int settleMs = 400)
     {
         Keyboard.Type(text);
-        Thread.Sleep(settleMs);
+        Settle(settleMs);
     }
 
     /// <summary>Puts the caret on an item by typing its start (quick search), then ends the quick search.</summary>
@@ -201,12 +269,12 @@ public sealed class AppSession : IDisposable
             AutomationElement entry = Retry(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(item).And(cf.ByControlType(ControlType.MenuItem))),
                 "the menu item " + item);
             entry.Click();
-            Thread.Sleep(700);
+            Settle(700);
             // a click that lands while the menu is still opening is lost: the menu stays open, so click once more
             if (i == items.Length - 1 && StillThere(entry))
             {
                 entry.Click();
-                Thread.Sleep(700);
+                Settle(700);
             }
         }
     }
@@ -231,7 +299,7 @@ public sealed class AppSession : IDisposable
     public void Click(string button, int settleMs = 600)
     {
         Button(button).Click();
-        Thread.Sleep(settleMs);
+        Settle(settleMs);
     }
 
     /// <summary>Clicks something with this name anywhere on the desktop (a tab of a plugin window, a page of Configuration).</summary>
@@ -249,7 +317,7 @@ public sealed class AppSession : IDisposable
             // not scrollable: clicked where it is
         }
         element.Click();
-        Thread.Sleep(settleMs);
+        Settle(settleMs);
     }
 
     /// <summary>A text of the main window with exactly this content, or null.</summary>

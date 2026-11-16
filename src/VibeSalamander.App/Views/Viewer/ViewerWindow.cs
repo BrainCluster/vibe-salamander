@@ -421,6 +421,7 @@ internal sealed partial class ViewerWindow : Window
     private async Task Guarded(Func<Task> show)
     {
         string path = _path;
+        using IDisposable loading = AppActivity.Begin("viewer"); // the UI tests wait for it
         try
         {
             await show();

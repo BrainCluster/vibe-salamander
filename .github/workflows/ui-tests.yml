@@ -93,6 +93,12 @@ jobs:
           } else {
             $lines += "No test results (the tests didn't run).", ""
           }
+          $measured = Join-Path $shots "measurements.md"
+          if (Test-Path $measured) {
+            $lines += "## Measurements", ""
+            $lines += Get-Content $measured
+            $lines += ""
+          }
           $lines += "## Screenshots", ""
           foreach ($png in (Get-ChildItem $shots -Filter *.png | Sort-Object Name)) {
             $lines += "### $($png.BaseName)", "", "![$($png.BaseName)](<$($png.Name)>)", ""

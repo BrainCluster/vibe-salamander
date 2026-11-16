@@ -109,6 +109,7 @@ internal sealed partial class EditorWindow : Window
         };
         Closed += (_, _) =>
         {
+            EndStarting();
             _watcher?.Dispose();
             _checkTimer.Stop();
             WindowPlacements.Save(this, _options.EditorWindow);
@@ -325,7 +326,32 @@ internal sealed partial class EditorWindow : Window
 
     // ---- loading -------------------------------------------------------------------------------------------
 
+
+    /// <summary>From the window's start until the text is in the editor (the UI tests wait for it: AppActivity).</summary>
+    private IDisposable? _starting = AppActivity.Begin("editor");
+    private bool _awaitingPage;
+
+    private void EndStarting()
+    {
+        _awaitingPage = false;
+        _starting?.Dispose();
+        _starting = null;
+    }
+
     private async Task OpenAsync(TextEncoding? encoding = null)
+    {
+        try
+        {
+            await OpenCoreAsync(encoding);
+        }
+        finally
+        {
+            if (!_awaitingPage)
+                EndStarting(); // no editor page to wait for (an error, the plain text box, a reload)
+        }
+    }
+
+    private async Task OpenCoreAsync(TextEncoding? encoding)
     {
         LoadedText loaded;
         try
@@ -374,6 +400,7 @@ internal sealed partial class EditorWindow : Window
                 };
                 _pendingText = loaded.Text;
                 _core.Navigate("https://vibe-editor.local/Editor/editor.html");
+                _awaitingPage = _starting != null;
             }
             else
             {
@@ -505,6 +532,7 @@ internal sealed partial class EditorWindow : Window
                 }
                 break;
             case "loaded":
+                EndStarting();
                 _version = _savedVersion = m.GetProperty("version").GetInt32();
                 _otherChange = false;
                 UpdateTitle();

@@ -363,25 +363,6 @@ public sealed class FileOperationSafetyTests : IDisposable
         Assert.Equal(data, File.ReadAllBytes(P(@"dst\big.bin")));
     }
 
-    [Fact(Skip = "Decision pending (roadmap T2): an overwrite writes over the old file in place, as Explorer and Salamander do, so cancelling or failing midway loses the old file.")]
-    public async Task Cancelling_an_overwrite_midway_keeps_the_old_target()
-    {
-        Directory.CreateDirectory(P("src"));
-        File.WriteAllBytes(P(@"src\big.bin"), new byte[48 * 1024 * 1024]);
-        string target = Make(@"dst\big.bin", "old");
-        using var cancel = new CancellationTokenSource();
-        var progress = new SyncProgress(p =>
-        {
-            if (!p.Analyzing && p.CurrentSource.EndsWith("big.bin", StringComparison.OrdinalIgnoreCase))
-                cancel.Cancel();
-        });
-
-        OperationResult result = await new FileOperationEngine(new Callbacks(), progress).CopyAsync(new[] { P(@"src\big.bin") }, P("dst"), cancel.Token);
-
-        Assert.True(result.Cancelled);
-        Assert.Equal("old", File.ReadAllText(target));
-    }
-
     // ---- what the copy keeps ------------------------------------------------------------------------------
 
     [Theory]

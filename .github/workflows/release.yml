@@ -56,7 +56,17 @@ jobs:
           restore-keys: nuget-
 
       - name: Test
+        env:
+          VIBE_BENCHMARKS: ${{ runner.temp }}\benchmarks.md
         run: dotnet test tests/VibeSalamander.Core.Tests/VibeSalamander.Core.Tests.csproj -c Release --blame-hang-timeout 5m
+
+      # how long listing, sorting, searching and copying took (PerformanceTests), to compare from run to run
+      - name: Speed (in the run's summary)
+        if: always()
+        shell: pwsh
+        run: |
+          $file = Join-Path $env:RUNNER_TEMP "benchmarks.md"
+          if (Test-Path $file) { @("## Speed", "") + (Get-Content $file) | Add-Content $env:GITHUB_STEP_SUMMARY }
 
       - name: Build the app
         run: dotnet build src/VibeSalamander.App/VibeSalamander.App.csproj -c Release -p:Platform=x64
@@ -105,7 +115,17 @@ jobs:
 
       - name: Test
         if: matrix.platform == 'x64'
+        env:
+          VIBE_BENCHMARKS: ${{ runner.temp }}\benchmarks.md
         run: dotnet test tests/VibeSalamander.Core.Tests/VibeSalamander.Core.Tests.csproj -c Release --blame-hang-timeout 5m
+
+      # how long listing, sorting, searching and copying took (PerformanceTests), to compare from run to run
+      - name: Speed (in the run's summary)
+        if: always() && matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          $file = Join-Path $env:RUNNER_TEMP "benchmarks.md"
+          if (Test-Path $file) { @("## Speed", "") + (Get-Content $file) | Add-Content $env:GITHUB_STEP_SUMMARY }
 
       - name: Publish
         shell: pwsh
