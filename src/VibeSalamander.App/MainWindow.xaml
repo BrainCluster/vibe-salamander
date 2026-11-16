@@ -18,9 +18,9 @@
             <RowDefinition Height="Auto" /> <!-- F-key bar -->
         </Grid.RowDefinitions>
 
-        <!-- "ready" or "busy: ..." for the UI tests: not displayed, and not in the view screen readers go through -->
-        <TextBlock x:Name="AppState" Grid.Row="0" Width="1" Height="1" Opacity="0" IsHitTestVisible="False" Tag="NoLoc"
-                   HorizontalAlignment="Left" VerticalAlignment="Top" AutomationProperties.AccessibilityView="Raw" />
+        <!-- "ready" or "busy: ..." for the UI tests: there for UI Automation (so not collapsed), but nothing to see -->
+        <TextBlock x:Name="AppState" Grid.Row="0" Width="1" Height="1" FontSize="1" Foreground="Transparent"
+                   IsHitTestVisible="False" Tag="NoLoc" HorizontalAlignment="Left" VerticalAlignment="Top" />
 
         <!-- custom title bar (drag region) -->
         <Grid x:Name="AppTitleBar" Grid.Row="0" Padding="12,0,140,0" ColumnSpacing="10">
