@@ -185,11 +185,11 @@ public sealed class MoreScenarios : IDisposable
     public void A_file_only_in_the_cloud_has_a_cloud_over_its_icon()
     {
         // a file whose content isn't here (Offline: what a cloud service's placeholder also reads as)
-        string cloud = Doc("in the cloud.txt");
+        string cloud = Doc("cloudfile.txt");
         File.WriteAllText(cloud, "content elsewhere");
         File.SetAttributes(cloud, FileAttributes.Offline | FileAttributes.Archive);
         using AppSession app = Start();
-        app.GoTo("in the cloud.txt");
+        app.GoTo("cloudfile.txt");
 
         var marks = AppSession.Retry(() =>
         {
