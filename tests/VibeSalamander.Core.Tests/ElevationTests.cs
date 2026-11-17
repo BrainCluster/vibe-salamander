@@ -325,7 +325,8 @@ public sealed class ElevationTests : IDisposable
         File.WriteAllBytes(P(@"src\big.bin"), data);
         var progress = new List<long>();
 
-        using (var helper = Connected(out Task served))
+        Task served;
+        using (var helper = Connected(out served))
         {
             helper.CreateDirectory(P(@"dst\sub"));
             helper.CopyFile(P(@"src\big.bin"), P(@"dst\sub\big.bin"), overwrite: false, (total, done) =>
