@@ -16,6 +16,8 @@
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Ftp\VibeSalamander.Plugins.Ftp.csproj" />
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.DiskMap\VibeSalamander.Plugins.DiskMap.csproj" />
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.SevenZip\VibeSalamander.Plugins.SevenZip.csproj" />
+    <!-- the administrator helper, built beside the tests: ElevationTests start it (without administrator rights) -->
+    <ProjectReference Include="..\..\src\VibeSalamander.Elevated\VibeSalamander.Elevated.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

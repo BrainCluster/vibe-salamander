@@ -1721,5 +1721,13 @@
   "{0} files only in the cloud weren't read": "{0} datoteka samo u oblaku nije pročitano",
   "This file is only in the cloud: quick view doesn't download it.": "Ova je datoteka samo u oblaku: brzi pregled je ne preuzima.",
   "F3 opens it (and downloads it).": "F3 je otvara (i preuzima).",
-  "Only in the cloud: not read": "Samo u oblaku: nije pročitano"
+  "Only in the cloud: not read": "Samo u oblaku: nije pročitano",
+  "Continue as administrator": "Nastavi kao administrator",
+  "Couldn't continue as administrator: {0}": "Nije moguće nastaviti kao administrator: {0}",
+  "The administrator helper doesn't belong to this version of Vibe Salamander.": "Administratorski pomoćnik ne pripada ovoj verziji programa Vibe Salamander.",
+  "The administrator helper couldn't do it.": "Administratorski pomoćnik to nije uspio.",
+  "The administrator helper has ended.": "Administratorski pomoćnik je završio.",
+  "The administrator helper answered something it shouldn't.": "Administratorski pomoćnik odgovorio je nešto neočekivano.",
+  "The administrator helper didn't start.": "Administratorski pomoćnik nije se pokrenuo.",
+  "Another program connected instead of the administrator helper.": "Umjesto administratorskog pomoćnika spojio se drugi program."
 }

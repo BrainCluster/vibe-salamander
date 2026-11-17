@@ -30,6 +30,17 @@ dotnet publish (Join-Path $repo 'src\VibeSalamander.App\VibeSalamander.App.cspro
     -c Release -r $Runtime -p:Platform=$platform --self-contained true -p:PublishReadyToRun=true -o $lib
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
+# the administrator helper, beside the program: published on its own, and only its own files go into lib
+# (the libraries and the runtime it shares with the program are there already, compiled ahead of time)
+$elevated = Join-Path $out '.elevated'
+dotnet publish (Join-Path $repo 'src\VibeSalamander.Elevated\VibeSalamander.Elevated.csproj') `
+    -c Release -r $Runtime --self-contained true -o $elevated
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+foreach ($file in 'VibeSalamander.Elevated.exe', 'VibeSalamander.Elevated.dll', 'VibeSalamander.Elevated.deps.json', 'VibeSalamander.Elevated.runtimeconfig.json') {
+    Copy-Item (Join-Path $elevated $file) $lib
+}
+Remove-Item $elevated -Recurse -Force
+
 # the starter, into the main folder
 dotnet publish (Join-Path $repo 'src\VibeSalamander.Launcher\VibeSalamander.Launcher.csproj') -c Release -o $starter
 if ($LASTEXITCODE) { exit $LASTEXITCODE }

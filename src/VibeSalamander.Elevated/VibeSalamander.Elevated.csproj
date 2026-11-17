@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    VibeSalamander.Elevated.exe, beside the program in "lib": started as administrator (Windows asks the user) when a
+    copy, move or delete is denied access in a protected folder and the user chooses "Continue as administrator".
+    It only makes the changes the program asks for over its own pipe, and ends with the transfer.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <AssemblyName>VibeSalamander.Elevated</AssemblyName>
+    <RootNamespace>VibeSalamander.Elevated</RootNamespace>
+    <ApplicationIcon>..\VibeSalamander.App\Assets\VibeSalamander.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\VibeSalamander.Core\VibeSalamander.Core.csproj" />
+  </ItemGroup>
+</Project>

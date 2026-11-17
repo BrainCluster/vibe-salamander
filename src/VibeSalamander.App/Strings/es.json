@@ -1721,5 +1721,13 @@
   "{0} files only in the cloud weren't read": "{0} archivos solo en la nube no se leyeron",
   "This file is only in the cloud: quick view doesn't download it.": "Este archivo solo está en la nube: la vista rápida no lo descarga.",
   "F3 opens it (and downloads it).": "F3 lo abre (y lo descarga).",
-  "Only in the cloud: not read": "Solo en la nube: no leído"
+  "Only in the cloud: not read": "Solo en la nube: no leído",
+  "Continue as administrator": "Continuar como administrador",
+  "Couldn't continue as administrator: {0}": "No se pudo continuar como administrador: {0}",
+  "The administrator helper doesn't belong to this version of Vibe Salamander.": "El asistente de administrador no pertenece a esta versión de Vibe Salamander.",
+  "The administrator helper couldn't do it.": "El asistente de administrador no pudo hacerlo.",
+  "The administrator helper has ended.": "El asistente de administrador ha terminado.",
+  "The administrator helper answered something it shouldn't.": "El asistente de administrador respondió algo inesperado.",
+  "The administrator helper didn't start.": "El asistente de administrador no se inició.",
+  "Another program connected instead of the administrator helper.": "Otro programa se conectó en lugar del asistente de administrador."
 }

@@ -402,6 +402,12 @@ public sealed class TransfersViewModel : BindableBase
         Items.CollectionChanged += (_, _) => Changed();
     }
 
+    /// <summary>
+    /// Continuing as administrator where a transfer is denied access (the helper beside the program; null when it isn't
+    /// there). Every transfer that needs it starts its own helper, with one Windows prompt.
+    /// </summary>
+    public Core.Operations.Elevation.IElevation? Elevation { get; set; }
+
     /// <summary>Waits until the item may start (on the UI thread). Throws OperationCanceledException when cancelled while queued.</summary>
     private async Task AcquireSlotAsync(TransferItemViewModel item, CancellationToken ct)
     {
@@ -573,6 +579,7 @@ public sealed class TransfersViewModel : BindableBase
             var engine = new FileOperationEngine(new ItemCallbacks(item, _dispatcher, _dialogs), new ItemProgress(item, _dispatcher))
             {
                 Options = _engineOptions(),
+                Elevation = Elevation,
             };
             engine.Limiters = new[] { item.Limiter, SharedLimiter };
             item.Pausable = engine;

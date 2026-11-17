@@ -1721,5 +1721,13 @@
   "{0} files only in the cloud weren't read": "{0} souborů jen v cloudu nebylo přečteno",
   "This file is only in the cloud: quick view doesn't download it.": "Tento soubor je jen v cloudu: rychlé zobrazení ho nestahuje.",
   "F3 opens it (and downloads it).": "F3 ho otevře (a stáhne).",
-  "Only in the cloud: not read": "Jen v cloudu: nepřečteno"
+  "Only in the cloud: not read": "Jen v cloudu: nepřečteno",
+  "Continue as administrator": "Pokračovat jako správce",
+  "Couldn't continue as administrator: {0}": "Nelze pokračovat jako správce: {0}",
+  "The administrator helper doesn't belong to this version of Vibe Salamander.": "Pomocník správce nepatří k této verzi Vibe Salamander.",
+  "The administrator helper couldn't do it.": "Pomocník správce to nedokázal.",
+  "The administrator helper has ended.": "Pomocník správce skončil.",
+  "The administrator helper answered something it shouldn't.": "Pomocník správce odpověděl něco, co neměl.",
+  "The administrator helper didn't start.": "Pomocník správce se nespustil.",
+  "Another program connected instead of the administrator helper.": "Místo pomocníka správce se připojil jiný program."
 }

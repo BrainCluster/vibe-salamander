@@ -251,12 +251,16 @@ public sealed partial class Dialogs
             body.Children.Add(Text(context, secondary: true));
         body.Children.Add(Text(e.Path, bold: true));
         body.Children.Add(Text(e.Message));
-        return ChooseAsync("Error", body, new[]
+        var buttons = new List<(string, ErrorChoice, bool)>
         {
-            ("Retry", ErrorChoice.Retry, true),
+            ("Retry", ErrorChoice.Retry, !e.CanElevate),
             ("Skip", ErrorChoice.Skip, false),
             ("Skip All", ErrorChoice.SkipAll, false),
-        }, ErrorChoice.Cancel);
+        };
+        // access denied in a protected folder: once for the whole transfer, with one Windows prompt
+        if (e.CanElevate)
+            buttons.Insert(0, ("Continue as administrator", ErrorChoice.Elevate, true));
+        return ChooseAsync("Error", body, buttons.ToArray(), ErrorChoice.Cancel);
     }
 
     // ---- copy / move target (F5 / F6) --------------------------------------------------------

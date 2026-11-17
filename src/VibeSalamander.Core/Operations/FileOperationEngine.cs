@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using VibeSalamander.Core.Localization;
+using VibeSalamander.Core.Operations.Elevation;
 
 namespace VibeSalamander.Core.Operations;
 
@@ -32,6 +33,25 @@ public sealed class FileOperationEngine : IPausable
 
     /// <summary>Speed limits the copies keep to (this transfer's own, and the one for all transfers).</summary>
     public IReadOnlyList<SpeedLimiter> Limiters { get; set; } = Array.Empty<SpeedLimiter>();
+
+    /// <summary>
+    /// Continues as administrator where access is denied (a protected folder): the error question offers it, and once
+    /// the user said yes (one Windows prompt), every step of this transfer that is denied goes to the helper. Null:
+    /// not offered (no helper beside the program).
+    /// </summary>
+    public IElevation? Elevation { get; set; }
+
+    /// <summary>The changes this process makes itself (tests put in one that is denied access).</summary>
+    internal IFileOps Local { get; set; } = LocalFileOps.Instance;
+
+    /// <summary>This process already runs as administrator (then there is nothing more to ask for).</summary>
+    internal Func<bool> IsElevated { get; set; } = () => ElevationRules.IsElevated;
+
+    /// <summary>The helper of this transfer, once started; it ends with the transfer.</summary>
+    private IElevatedSession? _session;
+
+    /// <summary>Windows' prompt was declined (or the helper couldn't start): not offered again in this transfer.</summary>
+    private bool _elevationRefused;
     private bool _skipAllErrors;
     private long _totalBytes, _doneBytes, _currentDone, _currentTotal;
 
@@ -76,14 +96,28 @@ public sealed class FileOperationEngine : IPausable
     /// single source is the new name; a non-existing path with several sources is created as a directory.
     /// </summary>
     public Task<OperationResult> CopyAsync(IReadOnlyList<string> sources, string target, CancellationToken cancellationToken = default) =>
-        Task.Run(() => TransferAsync(sources, target, move: false, cancellationToken), cancellationToken);
+        Task.Run(() => EndingHelperAsync(TransferAsync(sources, target, move: false, cancellationToken)), cancellationToken);
 
     public Task<OperationResult> MoveAsync(IReadOnlyList<string> sources, string target, CancellationToken cancellationToken = default) =>
-        Task.Run(() => TransferAsync(sources, target, move: true, cancellationToken), cancellationToken);
+        Task.Run(() => EndingHelperAsync(TransferAsync(sources, target, move: true, cancellationToken)), cancellationToken);
 
     /// <summary>Permanently deletes files and directory trees (Recycle Bin deletes go through the shell).</summary>
     public Task<OperationResult> DeleteAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken = default) =>
-        Task.Run(() => DeletePermanentlyAsync(paths, cancellationToken), cancellationToken);
+        Task.Run(() => EndingHelperAsync(DeletePermanentlyAsync(paths, cancellationToken)), cancellationToken);
+
+    /// <summary>The operation, then the end of its administrator helper (if it had one).</summary>
+    private async Task<OperationResult> EndingHelperAsync(Task<OperationResult> operation)
+    {
+        try
+        {
+            return await operation.ConfigureAwait(false);
+        }
+        finally
+        {
+            _session?.Dispose();
+            _session = null;
+        }
+    }
 
     // ---- plan --------------------------------------------------------------------------------
 
@@ -377,6 +411,7 @@ public sealed class FileOperationEngine : IPausable
         }
 
         bool copied = false;
+        IFileOps ops = Local;
         while (true)
         {
             try
@@ -384,16 +419,16 @@ public sealed class FileOperationEngine : IPausable
                 if (!copied)
                 {
                     if (overwrite)
-                        PrepareOverwrite(target);
-                    CopyOneFile(step.Source, target, overwrite);
+                        PrepareOverwrite(ops, target);
+                    CopyOneFile(ops, step.Source, target, overwrite);
                     copied = true; // a Retry after the source couldn't be deleted (a move) doesn't copy again
                     if (Options.ClearReadOnlyFromCd && IsOnCdRom(step.Source))
-                        ClearReadOnly(target);
+                        ClearReadOnly(ops, target);
                 }
                 if (step.DeleteSource)
                 {
-                    ClearReadOnly(step.Source);
-                    File.Delete(step.Source);
+                    ClearReadOnly(ops, step.Source);
+                    ops.DeleteFile(step.Source);
                 }
                 result.Succeeded++;
                 break;
@@ -404,7 +439,12 @@ public sealed class FileOperationEngine : IPausable
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception)
             {
-                ErrorChoice choice = await AskErrorAsync(step.Source, Interop.FileLocks.Explain(ex, step.Source, target));
+                ErrorChoice choice = await AskErrorAsync(step.Source, Interop.FileLocks.Explain(ex, step.Source, target), ex, ops != Local);
+                if (choice == ErrorChoice.Elevate)
+                {
+                    ops = _session!; // again, as administrator
+                    continue;
+                }
                 if (choice == ErrorChoice.Retry) continue;
                 if (choice == ErrorChoice.Cancel) return false;
                 result.Failed++;
@@ -437,18 +477,24 @@ public sealed class FileOperationEngine : IPausable
             }
             return true;
         }
+        IFileOps ops = Local;
         while (true)
         {
             try
             {
                 if (File.Exists(step.Target))
                     throw new IOException("A file with the same name as the directory already exists.");
-                Directory.CreateDirectory(step.Target);
+                ops.CreateDirectory(step.Target);
                 break;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                ErrorChoice choice = await AskErrorAsync(step.Target, Interop.FileLocks.Explain(ex, step.Target));
+                ErrorChoice choice = await AskErrorAsync(step.Target, Interop.FileLocks.Explain(ex, step.Target), ex, ops != Local);
+                if (choice == ErrorChoice.Elevate)
+                {
+                    ops = _session!;
+                    continue;
+                }
                 if (choice == ErrorChoice.Retry) continue;
                 if (choice == ErrorChoice.Cancel) return false;
                 result.Failed++;
@@ -464,15 +510,16 @@ public sealed class FileOperationEngine : IPausable
 
     private Task<bool> FinishDirectoryAsync(FinishDirStep step, OperationResult result)
     {
-        try
+        void Finish(IFileOps ops)
         {
             if (Directory.Exists(step.Target))
             {
                 var info = new DirectoryInfo(step.Source);
-                Directory.SetLastWriteTime(step.Target, info.LastWriteTime);
+                ops.SetLastWriteTime(step.Target, info.LastWriteTime, isDirectory: true);
                 FileAttributes attr = info.Attributes & (FileAttributes.Hidden | FileAttributes.System | FileAttributes.Archive | FileAttributes.ReadOnly);
-                if (attr != 0)
-                    File.SetAttributes(step.Target, File.GetAttributes(step.Target) | attr);
+                FileAttributes now = File.GetAttributes(step.Target);
+                if (attr != 0 && (now & attr) != attr)
+                    ops.SetAttributes(step.Target, (now | attr) & ~FileAttributes.Directory);
             }
             if (step.DeleteSource && step.IsLink)
             {
@@ -480,17 +527,33 @@ public sealed class FileOperationEngine : IPausable
                 // after a problem inside it the link stays too
                 bool problems = _problemsBefore.TryGetValue(step.Source, out int before) && result.Failed + result.Skipped > before;
                 if (!problems)
-                    Directory.Delete(step.Source); // removes only the link
+                    ops.DeleteDirectory(step.Source); // removes only the link
             }
             else if (step.DeleteSource && Directory.Exists(step.Source) && !Directory.EnumerateFileSystemEntries(step.Source).Any())
             {
-                ClearReadOnly(step.Source);
-                Directory.Delete(step.Source);
+                ClearReadOnly(ops, step.Source);
+                ops.DeleteDirectory(step.Source);
             }
+        }
+
+        try
+        {
+            Finish(Local);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // timestamps / removal of an emptied source directory are best effort
+            // timestamps / removal of an emptied source directory are best effort; as administrator when this
+            // transfer already has the helper
+            if (_session != null && ElevationRules.IsAccessDenied(ex))
+            {
+                try
+                {
+                    Finish(_session);
+                }
+                catch (Exception again) when (again is IOException or UnauthorizedAccessException)
+                {
+                }
+            }
         }
         return Task.FromResult(true);
     }
@@ -500,20 +563,23 @@ public sealed class FileOperationEngine : IPausable
         _currentSource = step.Source;
         _currentTarget = step.Target;
         Report(force: false);
+        IFileOps ops = Local;
         while (true)
         {
             try
             {
-                if (step.IsDirectory)
-                    Directory.Move(step.Source, step.Target);
-                else
-                    File.Move(step.Source, step.Target);
+                ops.Move(step.Source, step.Target, step.IsDirectory);
                 result.Succeeded++;
                 break;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                ErrorChoice choice = await AskErrorAsync(step.Source, Interop.FileLocks.Explain(ex, step.Source));
+                ErrorChoice choice = await AskErrorAsync(step.Source, Interop.FileLocks.Explain(ex, step.Source), ex, ops != Local);
+                if (choice == ErrorChoice.Elevate)
+                {
+                    ops = _session!;
+                    continue;
+                }
                 if (choice == ErrorChoice.Retry) continue;
                 if (choice == ErrorChoice.Cancel) return false;
                 result.Failed++;
@@ -550,21 +616,27 @@ public sealed class FileOperationEngine : IPausable
                 ct.ThrowIfCancellationRequested();
                 _currentSource = step.Source;
                 Report(force: false);
+                IFileOps ops = Local;
                 while (true)
                 {
                     try
                     {
-                        ClearReadOnly(step.Source);
+                        ClearReadOnly(ops, step.Source);
                         if (step.IsDirectory)
-                            Directory.Delete(step.Source, recursive: false);
+                            ops.DeleteDirectory(step.Source);
                         else
-                            File.Delete(step.Source);
+                            ops.DeleteFile(step.Source);
                         result.Succeeded++;
                         break;
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                     {
-                        ErrorChoice choice = await AskErrorAsync(step.Source, Interop.FileLocks.Explain(ex, step.Source));
+                        ErrorChoice choice = await AskErrorAsync(step.Source, Interop.FileLocks.Explain(ex, step.Source), ex, ops != Local);
+                        if (choice == ErrorChoice.Elevate)
+                        {
+                            ops = _session!;
+                            continue;
+                        }
                         if (choice == ErrorChoice.Retry) continue;
                         if (choice == ErrorChoice.Cancel) return Cancelled(result);
                         result.Failed++;
@@ -698,12 +770,55 @@ public sealed class FileOperationEngine : IPausable
         return choice;
     }
 
-    private async Task<ErrorChoice> AskErrorAsync(string path, string message)
+    /// <summary>
+    /// Asks about a failed step. "Access denied" can be done as administrator: the question offers it (once per
+    /// transfer); after a yes, <see cref="ErrorChoice.Elevate"/> comes back without asking for every denied step, and
+    /// the step runs again through <see cref="_session"/>. <paramref name="asAdministrator"/>: the step already ran as
+    /// administrator (and was denied all the same).
+    /// </summary>
+    private async Task<ErrorChoice> AskErrorAsync(string path, string message, Exception error, bool asAdministrator)
+    {
+        if (!asAdministrator && ElevationRules.IsAccessDenied(error))
+        {
+            if (_session != null)
+                return ErrorChoice.Elevate; // the user said yes for this transfer
+            if (Elevation != null && !_elevationRefused && !_skipAllErrors && !IsElevated())
+            {
+                ErrorChoice choice = await AskErrorAsync(new OperationError(path, message, CanElevate: true)).ConfigureAwait(false);
+                if (choice != ErrorChoice.Elevate)
+                    return choice;
+                PauseClock();
+                try
+                {
+                    _session = await Elevation.StartAsync(_ct).ConfigureAwait(false);
+                    return ErrorChoice.Elevate;
+                }
+                catch (ElevationRefusedException)
+                {
+                    _elevationRefused = true; // asked once more, without the offer
+                }
+                catch (Exception ex) when (ex is IOException or Win32Exception)
+                {
+                    _elevationRefused = true;
+                    message += "\n" + L.F("Couldn't continue as administrator: {0}", ex.Message);
+                }
+                finally
+                {
+                    ResumeClock();
+                }
+            }
+        }
+        return await AskErrorAsync(path, message);
+    }
+
+    private Task<ErrorChoice> AskErrorAsync(string path, string message) => AskErrorAsync(new OperationError(path, message));
+
+    private async Task<ErrorChoice> AskErrorAsync(OperationError error)
     {
         if (_skipAllErrors)
             return ErrorChoice.Skip;
         PauseClock();
-        ErrorChoice choice = await _callbacks.ResolveErrorAsync(new OperationError(path, message)).ConfigureAwait(false);
+        ErrorChoice choice = await _callbacks.ResolveErrorAsync(error).ConfigureAwait(false);
         ResumeClock();
         if (choice == ErrorChoice.SkipAll)
         {
@@ -879,14 +994,14 @@ public sealed class FileOperationEngine : IPausable
     /// Before overwriting: Windows refuses to copy over a read-only, hidden or system file. The copy then gets the
     /// source's attributes.
     /// </summary>
-    private static void PrepareOverwrite(string path)
+    private static void PrepareOverwrite(IFileOps ops, string path)
     {
         try
         {
             FileAttributes attr = File.GetAttributes(path);
             const FileAttributes blocking = FileAttributes.ReadOnly | FileAttributes.Hidden | FileAttributes.System;
             if ((attr & blocking) != 0)
-                File.SetAttributes(path, attr & ~blocking);
+                ops.SetAttributes(path, attr & ~blocking);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -894,13 +1009,13 @@ public sealed class FileOperationEngine : IPausable
         }
     }
 
-    private static void ClearReadOnly(string path)
+    private static void ClearReadOnly(IFileOps ops, string path)
     {
         try
         {
             FileAttributes attr = File.GetAttributes(path);
             if ((attr & FileAttributes.ReadOnly) != 0)
-                File.SetAttributes(path, attr & ~FileAttributes.ReadOnly);
+                ops.SetAttributes(path, attr & ~(FileAttributes.ReadOnly | FileAttributes.Directory));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -922,26 +1037,12 @@ public sealed class FileOperationEngine : IPausable
         }
     }
 
-    // ---- CopyFileEx --------------------------------------------------------------------------
+    // ---- copying a file ----------------------------------------------------------------------
 
-    private const uint COPY_FILE_FAIL_IF_EXISTS = 0x1;
-    private const uint COPY_FILE_ALLOW_DECRYPTED_DESTINATION = 0x8;
-    private const uint PROGRESS_CONTINUE = 0;
-    private const uint PROGRESS_CANCEL = 1;
-    private const int ERROR_REQUEST_ABORTED = 1235;
-
-    private delegate uint CopyProgressRoutine(long totalFileSize, long totalBytesTransferred, long streamSize,
-        long streamBytesTransferred, uint streamNumber, uint callbackReason, IntPtr sourceFile, IntPtr destinationFile, IntPtr data);
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, EntryPoint = "CopyFileExW")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CopyFileEx(string existingFileName, string newFileName, CopyProgressRoutine? progressRoutine,
-        IntPtr data, ref int cancel, uint copyFlags);
-
-    private void CopyOneFile(string source, string target, bool overwrite)
+    private void CopyOneFile(IFileOps ops, string source, string target, bool overwrite)
     {
         long counted = 0;
-        CopyProgressRoutine routine = (total, transferred, _, _, _, _, _, _, _) =>
+        ops.CopyFile(LongPath(source), LongPath(target), overwrite, (total, transferred) =>
         {
             _currentTotal = total;
             _currentDone = transferred;
@@ -953,28 +1054,17 @@ public sealed class FileOperationEngine : IPausable
                 counted = transferred;
             }
             WaitWhilePaused();
-            return _ct.IsCancellationRequested ? PROGRESS_CANCEL : PROGRESS_CONTINUE;
-        };
-        int cancel = 0;
-        uint flags = COPY_FILE_ALLOW_DECRYPTED_DESTINATION | (overwrite ? 0 : COPY_FILE_FAIL_IF_EXISTS);
-        bool ok = CopyFileEx(LongPath(source), LongPath(target), routine, IntPtr.Zero, ref cancel, flags);
-        int error = Marshal.GetLastWin32Error();
-        GC.KeepAlive(routine);
-        if (!ok)
-        {
-            if (error == ERROR_REQUEST_ABORTED && _ct.IsCancellationRequested)
-                throw new OperationCanceledException(_ct);
-            throw new Win32Exception(error);
-        }
+            return !_ct.IsCancellationRequested;
+        });
         // Configuration → General: the copy is read again and compared with the original
         if (Options.VerifyCopies && !ContentCheck(LongPath(source), LongPath(target), _ct))
         {
             // a copy that differs isn't the file: it goes, so nothing looks copied that isn't (and Retry copies anew
             // instead of failing on "the file exists")
-            ClearReadOnly(target);
+            ClearReadOnly(ops, target);
             try
             {
-                File.Delete(target);
+                ops.DeleteFile(target);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {

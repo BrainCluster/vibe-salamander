@@ -1721,5 +1721,13 @@
   "{0} files only in the cloud weren't read": "Не прочитано файлов только в облаке: {0}",
   "This file is only in the cloud: quick view doesn't download it.": "Этот файл есть только в облаке: быстрый просмотр его не скачивает.",
   "F3 opens it (and downloads it).": "F3 открывает его (и скачивает).",
-  "Only in the cloud: not read": "Только в облаке: не прочитан"
+  "Only in the cloud: not read": "Только в облаке: не прочитан",
+  "Continue as administrator": "Продолжить от имени администратора",
+  "Couldn't continue as administrator: {0}": "Не удалось продолжить от имени администратора: {0}",
+  "The administrator helper doesn't belong to this version of Vibe Salamander.": "Помощник администратора не относится к этой версии Vibe Salamander.",
+  "The administrator helper couldn't do it.": "Помощнику администратора не удалось это сделать.",
+  "The administrator helper has ended.": "Помощник администратора завершил работу.",
+  "The administrator helper answered something it shouldn't.": "Помощник администратора ответил что-то неожиданное.",
+  "The administrator helper didn't start.": "Помощник администратора не запустился.",
+  "Another program connected instead of the administrator helper.": "Вместо помощника администратора подключилась другая программа."
 }

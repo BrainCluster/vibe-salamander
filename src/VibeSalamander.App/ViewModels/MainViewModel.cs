@@ -128,6 +128,8 @@ public sealed partial class MainViewModel : BindableBase
             },
             () => Math.Clamp(Settings.General.ParallelTransfers, 1, 8),
             () => Settings.General.TransfersOnePerDisk);
+        if (Core.Operations.Elevation.ElevationLauncher.FindHelper() is { } helper)
+            Transfers.Elevation = new Core.Operations.Elevation.ElevationLauncher(helper, () => host.WindowHandle); // Windows' prompt belongs to the window
         Transfers.SharedLimit = Math.Max(0, Settings.TransfersSpeedLimit);
         Transfers.ShowGraphs = Settings.TransfersGraphs;
         Transfers.PropertyChanged += (_, e) =>

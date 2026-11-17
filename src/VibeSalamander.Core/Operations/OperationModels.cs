@@ -36,6 +36,9 @@ public enum ErrorChoice
     Skip,
     SkipAll,
     Cancel,
+
+    /// <summary>Do it again as administrator (offered when <see cref="OperationError.CanElevate"/>).</summary>
+    Elevate,
 }
 
 public sealed record ConflictInfo(
@@ -62,7 +65,8 @@ public sealed class EngineOptions
     public bool VerifyCopies { get; init; }
 }
 
-public sealed record OperationError(string Path, string Message);
+/// <param name="CanElevate">Access was denied, and continuing as administrator can be offered.</param>
+public sealed record OperationError(string Path, string Message, bool CanElevate = false);
 
 /// <summary>Something the transfer panel can pause and resume (the copy engine, plugin jobs).</summary>
 public interface IPausable
