@@ -1,13 +1,22 @@
-# Every push to main: a quick check - the tests and an x64 build of the app (a few minutes).
-# When the version in Directory.Build.props has no release yet: the full x64 and ARM64 builds, and the
-# GitHub release "v<version>" with both zips and the notes from docs/releases/<version>.md.
-# To release: raise <Version> in Directory.Build.props, add docs/releases/<version>.md, push.
+# Every push to main: an x64 build of the app, the starter and the example plugin, without tests.
+# Started by hand (gh workflow run release.yml --ref <branch> -f tests=...): the same build with Core tests:
+#   tests=all (the default) every test, before a release; tests=CloudFilesTests, TranslationTests only the tests whose
+#   names contain these (a feature's own tests), or a dotnet test filter expression; tests=none only the build.
+# When the version in Directory.Build.props has no release yet: all Core tests, the full x64 and ARM64 builds, and
+# the GitHub release "v<version>" with both zips and the notes from docs/releases/<version>.md.
+# To release: run both workflows with tests=all on the branch, then raise <Version> in Directory.Build.props, add
+# docs/releases/<version>.md, push to main.
 name: Build and release
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      tests:
+        description: "all, none, or the test classes / names to run (comma-separated), or a dotnet test filter"
+        type: string
+        default: all
 
 permissions:
   contents: write
@@ -55,14 +64,29 @@ jobs:
           key: nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
           restore-keys: nuget-
 
+      # only when started by hand: a push to main builds without tests (the tests ran on the branch)
       - name: Test
+        id: test
+        if: github.event_name == 'workflow_dispatch' && inputs.tests != 'none'
+        shell: pwsh
         env:
           VIBE_BENCHMARKS: ${{ runner.temp }}\benchmarks.md
-        run: dotnet test tests/VibeSalamander.Core.Tests/VibeSalamander.Core.Tests.csproj -c Release --blame-hang-timeout 5m
+          TESTS: ${{ inputs.tests }}
+        run: |
+          $tests = "$env:TESTS".Trim()
+          $filter = @()
+          if ($tests -and $tests -ne 'all') {
+            if ($tests -notmatch '[=~!&|]') {
+              $tests = (($tests -split ',') | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { "FullyQualifiedName~$_" }) -join '|'
+            }
+            $filter = @('--filter', $tests)
+            "Only the tests matching: $tests"
+          }
+          dotnet test tests/VibeSalamander.Core.Tests/VibeSalamander.Core.Tests.csproj -c Release --blame-hang-timeout 5m @filter
 
       # how long listing, sorting, searching and copying took (PerformanceTests), to compare from run to run
       - name: Speed (in the run's summary)
-        if: always()
+        if: always() && steps.test.outcome != 'skipped'
         shell: pwsh
         run: |
           $file = Join-Path $env:RUNNER_TEMP "benchmarks.md"

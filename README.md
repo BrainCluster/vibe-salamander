@@ -116,7 +116,7 @@ walks through [`samples/HelloPlugin`](samples/HelloPlugin), a complete plugin in
 ## About this project
 
 Vibe Salamander's code was written by **Claude** (Anthropic's AI model), with **BrainCluster** guiding, testing and
-deciding. About 250 automated tests check it, including UI tests that drive the real app on every push (their
+deciding. About 600 automated tests check it, including UI tests that drive the real app before every release (their
 screenshots are on the [`ui-screenshots`](https://github.com/BrainCluster/vibe-salamander/tree/ui-screenshots)
 branch). It is still young (version 0.x): keep backups of anything important, as with any file manager.
 

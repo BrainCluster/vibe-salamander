@@ -274,16 +274,23 @@ the translation (`{ "Copy": "Kopiraj" }`); a missing entry stays English.
 * `Core/Updates/UpdateCheck` reads GitHub's latest release and picks the asset for this install kind
   (`InstallKind`: installer, portable zip, Scoop, built from source) and architecture; `Services/Updater` downloads it, checks its SHA-256 when GitHub gives one, and either runs
   the installer silently or replaces a portable copy's files with a small script after exit.
-* Workflows (`.github/workflows`), all on pushes to `main` only:
+* Workflows (`.github/workflows`):
 
   | Workflow | Does |
   |---|---|
-  | `release.yml` | Core tests + x64 build + starter + sample plugin + installer script check. When `<Version>` in `Directory.Build.props` has no GitHub release yet: builds x64 and ARM64, installers, portable zips, the 7-Zip plugin, creates release `v<version>` with `docs/releases/<version>.md` as notes, then commits the Scoop and winget files |
-  | `ui-tests.yml` | builds the app, runs the UI tests on a Windows runner, force-pushes screenshots and results to the `ui-screenshots` branch |
+  | `release.yml` | On a push to `main`: x64 build + starter + sample plugin + installer script check, **no tests**. Started by hand with `-f tests=…`: the same with Core tests (`all`, `none`, or names such as `CloudFilesTests, TranslationTests`). When `<Version>` in `Directory.Build.props` has no GitHub release yet: builds x64 and ARM64, installers, portable zips, the 7-Zip plugin, creates release `v<version>` with `docs/releases/<version>.md` as notes, then commits the Scoop and winget files |
+  | `ui-tests.yml` | **Only started by hand** (`-f tests=all` or names such as `SearchScenarios`): builds the app, runs the UI tests on a Windows runner, force-pushes screenshots and results to `ui-screenshots` (all tests) or `ui-screenshots-partial` (some) |
   | `wiki.yml` | copies `docs/wiki` to the GitHub wiki (edit the pages here, never on GitHub) |
   | `winget.yml` | submits the release to microsoft/winget-pkgs (needs the `WINGET_TOKEN` secret), retried daily |
 
-* **To release:** raise `<Version>` in `Directory.Build.props`, add `docs/releases/<version>.md`, push to `main`.
+* **Which tests run when** (BrainCluster's rule):
+  - *A feature or fix:* only its own tests, on the work branch:
+    `gh workflow run release.yml --ref <branch> -f tests=CloudFilesTests` and, when it has UI,
+    `gh workflow run ui-tests.yml --ref <branch> -f tests=SearchScenarios`. No new test: `-f tests=none` (build only).
+  - *Before a release:* everything, on the branch: both workflows with `-f tests=all`, both green.
+  - A push to `main` only builds; the release itself runs all Core tests again before publishing.
+* **To release:** the full run above, then raise `<Version>` in `Directory.Build.props`, add
+  `docs/releases/<version>.md`, push to `main`.
 * The binaries are not code-signed (SmartScreen warns); see the roadmap.
 
 ## Tests
@@ -307,8 +314,9 @@ the translation (`{ "Copy": "Kopiraj" }`); a missing entry stays English.
   `TestFiles`, `OperationAnswers` and `ImmediateProgress`.
 * **Speed is measured**: `PerformanceTests` (Core, with limits; times in the build's summary) and
   `MeasurementScenarios` (start time and memory, on the `ui-screenshots` page).
-* Building needs Windows (WinUI 3). On another system nothing can be built or run: push and read the
-  workflow results and the `ui-screenshots` branch.
+* Building needs Windows (WinUI 3). On another system nothing can be built or run: push a branch, start the
+  workflows on it (see *Which tests run when*) and read their results and the `ui-screenshots` /
+  `ui-screenshots-partial` branch.
 
 ## How to add things
 

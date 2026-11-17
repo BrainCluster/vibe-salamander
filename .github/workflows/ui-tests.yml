@@ -1,18 +1,24 @@
-# Every push to main: Vibe Salamander is started on dummy files and used like a user would (keys, menus, dialogs),
-# with a screenshot of every step. The screenshots and the results go to the "ui-screenshots" branch (one commit,
-# replaced each run): open its README on GitHub to look through them.
+# Started by hand (gh workflow run ui-tests.yml --ref <branch> [-f tests=...]): Vibe Salamander is started on dummy
+# files and used like a user would (keys, menus, dialogs), with a screenshot of every step.
+#   tests=all (the default): every scenario, before a release. The screenshots and results go to the "ui-screenshots"
+#     branch (one commit, replaced each run): open its README on GitHub to look through them.
+#   tests=SearchScenarios, ViewerScenarios: only the tests whose names contain these (a feature's own tests), or a
+#     dotnet test filter expression. The results go to the "ui-screenshots-partial" branch, so the full run's page stays.
 name: UI tests
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      tests:
+        description: "all, or the test classes / names to run (comma-separated), or a dotnet test filter"
+        type: string
+        default: all
 
 permissions:
   contents: write
 
 concurrency:
-  group: ui-tests
+  group: ui-tests-${{ inputs.tests == 'all' && 'all' || 'partial' }}
   cancel-in-progress: true
 
 jobs:
@@ -57,24 +63,38 @@ jobs:
 
       - name: UI tests
         shell: pwsh
+        env:
+          TESTS: ${{ inputs.tests }}
         run: |
+          $tests = "$env:TESTS".Trim()
+          $filter = @()
+          if ($tests -and $tests -ne 'all') {
+            if ($tests -notmatch '[=~!&|]') {
+              $tests = (($tests -split ',') | ForEach-Object { $_.Trim() } | Where-Object { $_ } | ForEach-Object { "FullyQualifiedName~$_" }) -join '|'
+            }
+            $filter = @('--filter', $tests)
+            "Only the tests matching: $tests"
+          }
           $hello = Get-ChildItem samples/HelloPlugin/bin -Recurse -Filter HelloPlugin.dll -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($hello) { $env:VIBE_HELLO_PLUGIN = $hello.FullName }
           $exe = Get-ChildItem src/VibeSalamander.App/bin -Recurse -Filter VibeSalamander.exe | Select-Object -First 1
           $env:VIBE_APP_EXE = $exe.FullName
           $env:VIBE_SCREENSHOTS = Join-Path $env:RUNNER_TEMP "ui-screenshots"
           dotnet test tests/VibeSalamander.UiTests/VibeSalamander.UiTests.csproj -c Release `
-            --logger "trx;LogFileName=ui.trx" --results-directory (Join-Path $env:RUNNER_TEMP "ui-results") --blame-hang-timeout 10m
+            --logger "trx;LogFileName=ui.trx" --results-directory (Join-Path $env:RUNNER_TEMP "ui-results") --blame-hang-timeout 10m @filter
 
-      - name: Publish the screenshots (branch ui-screenshots)
+      - name: Publish the screenshots (branch ui-screenshots, or ui-screenshots-partial for some tests)
         if: always()
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          TESTS: ${{ inputs.tests }}
         run: |
           $shots = Join-Path $env:RUNNER_TEMP "ui-screenshots"
           New-Item -ItemType Directory -Force $shots | Out-Null
-          $lines = @("# UI test run", "", "Commit ${{ github.sha }}, $(Get-Date -Format 'yyyy-MM-dd HH:mm') UTC, run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})", "")
+          $all = -not "$env:TESTS".Trim() -or "$env:TESTS".Trim() -eq 'all'
+          $branch = if ($all) { "ui-screenshots" } else { "ui-screenshots-partial" }
+          $lines = @("# UI test run" + $(if ($all) { "" } else { ": only $env:TESTS" }), "", "Commit ${{ github.sha }} (${{ github.ref_name }}), $(Get-Date -Format 'yyyy-MM-dd HH:mm') UTC, run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})", "")
           $trx = Get-ChildItem (Join-Path $env:RUNNER_TEMP "ui-results") -Recurse -Filter *.trx -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($trx) {
             [xml]$x = Get-Content $trx.FullName
@@ -112,9 +132,9 @@ jobs:
           }
           Set-Content -Path (Join-Path $shots "README.md") -Value $lines -Encoding utf8
           Set-Location $shots
-          git init -q -b ui-screenshots
+          git init -q -b $branch
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add -A
           git commit -q -m "UI test screenshots for ${{ github.sha }}"
-          git push -q --force "https://x-access-token:$env:GH_TOKEN@github.com/${{ github.repository }}.git" ui-screenshots
+          git push -q --force "https://x-access-token:$env:GH_TOKEN@github.com/${{ github.repository }}.git" $branch

@@ -211,10 +211,13 @@ be able to carry them (that is the test of S1).
   progress dialog; never make a plugin touch WinUI.
 * Settings only grow: new properties with safe defaults, nothing renamed. `CommandId` names are stored in
   users' settings: never rename one.
-* The app can only be built and run on Windows. Without it, push and read the workflow results and the
-  `ui-screenshots` branch before calling something done; say plainly what was not run.
+* The app can only be built and run on Windows. Without it, push a branch, start the workflows on it and read
+  their results before calling something done; say plainly what was not run.
+* Tests: for a feature or fix run only its own tests (`-f tests=<its test classes>`); run everything
+  (`-f tests=all`, both workflows) only before a release. See ARCHITECTURE.md, *Which tests run when*.
 * When Salamander's behavior is the question, read Open Salamander's source rather than guessing.
-* Release when a milestone item or a batch of fixes is worth having: raise `<Version>`, write the notes, push.
+* Release when a milestone item or a batch of fixes is worth having: the full test run, then raise `<Version>`,
+  write the notes, push.
 
 ---
 
