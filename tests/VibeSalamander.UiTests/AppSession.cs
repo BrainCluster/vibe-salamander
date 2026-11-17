@@ -133,9 +133,19 @@ public sealed class AppSession : IDisposable
 
     private static bool IsReady(string state) => state.StartsWith("ready", StringComparison.Ordinal);
 
-    /// <summary>Waits until the app says it's ready (however slow the machine is); fails when it stays busy.</summary>
-    public void WaitReady(double seconds = 30) =>
-        WaitUntil(() => IsReady(State()), "the app to be ready (it says: \"" + State() + "\")", seconds);
+    /// <summary>Waits until the app says it's ready (however slow the machine is); fails when it stays busy, with the app's error log.</summary>
+    public void WaitReady(double seconds = 30)
+    {
+        try
+        {
+            WaitUntil(() => IsReady(State()), "the app to be ready", seconds);
+        }
+        catch (TimeoutException ex)
+        {
+            string log = ErrorLogText();
+            throw new TimeoutException($"{ex.Message} (it says: \"{State()}\")" + (log.Length > 0 ? "\nError log:\n" + log : string.Empty), ex);
+        }
+    }
 
     /// <summary>
     /// Ready, and a moment for what was drawn to reach the screen (before a screenshot: thumbnails, a window's

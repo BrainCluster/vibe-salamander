@@ -193,6 +193,8 @@ internal sealed class MapSession
             }
             catch (Exception ex)
             {
+                // a picture that can't be drawn is a fault: logged with where it happened, and said in the window
+                VibeSalamander.Core.Diagnostics.ErrorLog.Exception("Disk Map: drawing " + view.Name, ex);
                 _window.SetStatus(ex.Message);
             }
         });
