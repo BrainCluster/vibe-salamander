@@ -11,8 +11,12 @@ namespace VibeSalamander;
 // (the element "AppState", with nothing to see).
 public sealed partial class MainWindow
 {
+    /// <summary>The window's queue, taken on the UI thread: the Window's own property can't be read from another one.</summary>
+    private Microsoft.UI.Dispatching.DispatcherQueue? _appStateQueue;
+
     private void WatchAppState()
     {
+        _appStateQueue = DispatcherQueue;
         AppActivity.Changed += UpdateAppState;
         _vm.Left.PropertyChanged += AppState_PaneChanged;
         _vm.Right.PropertyChanged += AppState_PaneChanged;
@@ -29,9 +33,12 @@ public sealed partial class MainWindow
 
     private void UpdateAppState()
     {
-        if (!DispatcherQueue.HasThreadAccess)
+        // a plugin or a worker can report from another thread
+        if (_appStateQueue is not { } queue)
+            return;
+        if (!queue.HasThreadAccess)
         {
-            DispatcherQueue.TryEnqueue(UpdateAppState);
+            queue.TryEnqueue(UpdateAppState);
             return;
         }
         string state = _vm.Left.IsBusy || _vm.Right.IsBusy ? "busy: panel" : AppActivity.State;

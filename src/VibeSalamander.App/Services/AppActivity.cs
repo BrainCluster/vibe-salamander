@@ -27,18 +27,31 @@ public static class AppActivity
     public static void DialogOpened()
     {
         Interlocked.Increment(ref _dialogs);
-        Changed?.Invoke();
+        RaiseChanged();
     }
 
     /// <summary>A dialog has closed.</summary>
     public static void DialogClosed()
     {
         Interlocked.Decrement(ref _dialogs);
-        Changed?.Invoke();
+        RaiseChanged();
     }
 
     /// <summary>Something started or ended (raised on the thread that did it).</summary>
     public static event Action? Changed;
+
+    /// <summary>Tells the listeners; a listener's failure never reaches the code that reported (a plugin, a worker).</summary>
+    private static void RaiseChanged()
+    {
+        try
+        {
+            Changed?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            Core.Diagnostics.ErrorLog.Exception("App state", ex);
+        }
+    }
 
     /// <summary>"ready", or "busy: editor, viewer".</summary>
     public static string State
@@ -66,7 +79,7 @@ public static class AppActivity
             work.Queue = queue;
             timer.Start();
         }
-        Changed?.Invoke();
+        RaiseChanged();
         return work;
     }
 
@@ -91,7 +104,7 @@ public static class AppActivity
                 else
                     timer.Stop();
             }
-            Changed?.Invoke();
+            RaiseChanged();
         }
     }
 }

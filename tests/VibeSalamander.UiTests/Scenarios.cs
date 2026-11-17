@@ -87,8 +87,8 @@ public sealed class Scenarios : IDisposable
         using AppSession app = Start();
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the documents");
 
-        app.Press(VirtualKeyShort.F7);
-        app.WaitDialog();
+        app.Press(VirtualKeyShort.F7); // a new folder, named in place
+        app.WaitNameEditor();
         AppSession.Screenshot("12 create directory");
         app.Type("New things");
         app.Press(VirtualKeyShort.ENTER);
