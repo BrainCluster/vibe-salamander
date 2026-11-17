@@ -174,6 +174,24 @@ public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
     }
 
     public Visibility NameVisibility => _isRenaming ? Visibility.Collapsed : Visibility.Visible;
+
+    // ---- cloud files (OneDrive, iCloud, Dropbox): a small mark over the icon, as Explorer's status column shows ----
+
+    private CloudState Cloud => Entry.IsUpDir || IsDrive ? CloudState.Local : CloudFiles.State(Entry.Attributes);
+
+    /// <summary>A cloud over the icon: the file is only in the cloud (opening it downloads it).</summary>
+    public Visibility OnlineOnlyVisibility => Cloud == CloudState.OnlineOnly ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>A check over the icon: "Always keep on this device".</summary>
+    public Visibility AlwaysKeptVisibility => Cloud == CloudState.AlwaysKept ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>What the mark means, for screen readers and the tooltip.</summary>
+    public string CloudText => Cloud switch
+    {
+        CloudState.OnlineOnly => Loc.T("Only in the cloud"),
+        CloudState.AlwaysKept => Loc.T("Always kept on this device"),
+        _ => string.Empty,
+    };
     public Visibility RenameVisibility => _isRenaming ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>Hidden/system items are drawn dimmed.</summary>

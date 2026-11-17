@@ -181,6 +181,26 @@ public sealed class MoreScenarios : IDisposable
         NoErrors(app);
     }
 
+    [UiFact]
+    public void A_file_only_in_the_cloud_has_a_cloud_over_its_icon()
+    {
+        // a file whose content isn't here (Offline: what a cloud service's placeholder also reads as)
+        string cloud = Doc("in the cloud.txt");
+        File.WriteAllText(cloud, "content elsewhere");
+        File.SetAttributes(cloud, FileAttributes.Offline | FileAttributes.Archive);
+        using AppSession app = Start();
+        app.GoTo("in the cloud.txt");
+
+        var marks = AppSession.Retry(() =>
+        {
+            var found = app.List().FindAllDescendants(cf => cf.ByName("Only in the cloud"));
+            return found.Length > 0 ? found : null;
+        }, "the cloud mark");
+        AppSession.Screenshot("64 cloud mark");
+        Assert.Single(marks); // only that file: report.txt and the others are here
+        NoErrors(app);
+    }
+
     // ---- archives -------------------------------------------------------------------------------------------
 
     [UiFact]

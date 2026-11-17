@@ -1731,5 +1731,7 @@
   "The administrator helper didn't start.": "Pomocnik administratora nie uruchomił się.",
   "Another program connected instead of the administrator helper.": "Zamiast pomocnika administratora połączył się inny program.",
   "Access denied": "Odmowa dostępu",
-  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Ten folder wymaga uprawnień administratora. Windows zapyta o nie raz, a potem operacja zostanie wykonana jako administrator."
+  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Ten folder wymaga uprawnień administratora. Windows zapyta o nie raz, a potem operacja zostanie wykonana jako administrator.",
+  "Only in the cloud": "Tylko w chmurze",
+  "Always kept on this device": "Zawsze przechowywane na tym urządzeniu"
 }

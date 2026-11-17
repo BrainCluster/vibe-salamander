@@ -1731,5 +1731,7 @@
   "The administrator helper didn't start.": "L'assistant administrateur n'a pas démarré.",
   "Another program connected instead of the administrator helper.": "Un autre programme s'est connecté à la place de l'assistant administrateur.",
   "Access denied": "Accès refusé",
-  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Ce dossier nécessite des droits d'administrateur. Windows les demande une fois, puis l'opération est effectuée en tant qu'administrateur."
+  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Ce dossier nécessite des droits d'administrateur. Windows les demande une fois, puis l'opération est effectuée en tant qu'administrateur.",
+  "Only in the cloud": "Uniquement dans le cloud",
+  "Always kept on this device": "Toujours conservé sur cet appareil"
 }

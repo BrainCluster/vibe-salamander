@@ -1731,5 +1731,7 @@
   "The administrator helper didn't start.": "Administratorski pomoćnik nije se pokrenuo.",
   "Another program connected instead of the administrator helper.": "Umjesto administratorskog pomoćnika spojio se drugi program.",
   "Access denied": "Pristup odbijen",
-  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Ova mapa traži administratorska prava. Windows ih jednom zatraži, a zatim se radnja izvrši kao administrator."
+  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Ova mapa traži administratorska prava. Windows ih jednom zatraži, a zatim se radnja izvrši kao administrator.",
+  "Only in the cloud": "Samo u oblaku",
+  "Always kept on this device": "Uvijek se čuva na ovom uređaju"
 }

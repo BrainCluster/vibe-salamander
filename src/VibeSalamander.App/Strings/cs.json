@@ -1731,5 +1731,7 @@
   "The administrator helper didn't start.": "Pomocník správce se nespustil.",
   "Another program connected instead of the administrator helper.": "Místo pomocníka správce se připojil jiný program.",
   "Access denied": "Přístup odepřen",
-  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Tato složka vyžaduje práva správce. Windows se na ně jednou zeptá a pak se to provede jako správce."
+  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Tato složka vyžaduje práva správce. Windows se na ně jednou zeptá a pak se to provede jako správce.",
+  "Only in the cloud": "Pouze v cloudu",
+  "Always kept on this device": "Vždy uchováno v tomto zařízení"
 }

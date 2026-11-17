@@ -1731,5 +1731,7 @@
   "The administrator helper didn't start.": "Помічник адміністратора не запустився.",
   "Another program connected instead of the administrator helper.": "Замість помічника адміністратора під'єдналася інша програма.",
   "Access denied": "Доступ заборонено",
-  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Для цієї папки потрібні права адміністратора. Windows запитає їх один раз, потім дію буде виконано від імені адміністратора."
+  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Для цієї папки потрібні права адміністратора. Windows запитає їх один раз, потім дію буде виконано від імені адміністратора.",
+  "Only in the cloud": "Лише в хмарі",
+  "Always kept on this device": "Завжди зберігається на цьому пристрої"
 }

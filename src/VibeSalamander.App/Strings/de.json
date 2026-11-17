@@ -1731,5 +1731,7 @@
   "The administrator helper didn't start.": "Der Administrator-Helfer ist nicht gestartet.",
   "Another program connected instead of the administrator helper.": "Statt des Administrator-Helfers hat sich ein anderes Programm verbunden.",
   "Access denied": "Zugriff verweigert",
-  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Dieser Ordner braucht Administratorrechte. Windows fragt einmal danach, dann wird es als Administrator ausgeführt."
+  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Dieser Ordner braucht Administratorrechte. Windows fragt einmal danach, dann wird es als Administrator ausgeführt.",
+  "Only in the cloud": "Nur in der Cloud",
+  "Always kept on this device": "Immer auf diesem Gerät behalten"
 }
