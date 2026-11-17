@@ -94,7 +94,8 @@ jobs:
           New-Item -ItemType Directory -Force $shots | Out-Null
           $all = -not "$env:TESTS".Trim() -or "$env:TESTS".Trim() -eq 'all'
           $branch = if ($all) { "ui-screenshots" } else { "ui-screenshots-partial" }
-          $lines = @("# UI test run" + $(if ($all) { "" } else { ": only $env:TESTS" }), "", "Commit ${{ github.sha }} (${{ github.ref_name }}), $(Get-Date -Format 'yyyy-MM-dd HH:mm') UTC, run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})", "")
+          $title = if ($all) { "# UI test run" } else { "# UI test run: only $env:TESTS" }
+          $lines = @($title, "", "Commit ${{ github.sha }} (${{ github.ref_name }}), $(Get-Date -Format 'yyyy-MM-dd HH:mm') UTC, run [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})", "")
           $trx = Get-ChildItem (Join-Path $env:RUNNER_TEMP "ui-results") -Recurse -Filter *.trx -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($trx) {
             [xml]$x = Get-Content $trx.FullName
