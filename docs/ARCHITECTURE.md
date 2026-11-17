@@ -43,7 +43,8 @@ VibeSalamander.sln                         (.NET 10, net10.0-windows10.0.22621.0
 │  │   ├─ FileSystem/   IFileSystemProvider, FileEntry, local disk, This PC, found list, masks, paths
 │  │   ├─ Panels/       sorting, marking and quick search, history, view modes, folder views, pointer rules
 │  │   ├─ Commands/     CommandId, CommandCatalog, KeyMap (Salamander / Total Commander), menu and panel rules
-│  │   ├─ Operations/   FileOperationEngine, transfer scheduling, speed limits, rename/attribute operations
+│  │   ├─ Operations/   FileOperationEngine, transfer scheduling, speed limits, rename/attribute operations;
+│  │   │                Elevation/: the administrator helper (IFileOps, protocol, launcher)
 │  │   ├─ Search/       FileSearcher, ContentMatcher, FileWalker, DuplicateFinder
 │  │   ├─ Tools/        directory compare and sync, file comparison, multi-rename, NTFS, user menu
 │  │   ├─ Viewing/      TextFile (any size), encodings, text/byte search, structured trees, HTML rendering
@@ -57,6 +58,7 @@ VibeSalamander.sln                         (.NET 10, net10.0-windows10.0.22621.0
 │  ├─ VibeSalamander.Plugins.Ftp           built-in: FTP, FTPS (FluentFTP), SFTP (SSH.NET)
 │  ├─ VibeSalamander.Plugins.SevenZip      NOT built in: a separate download that drives 7z.exe
 │  ├─ VibeSalamander.Launcher              the starter VibeSalamander.exe (net48, runs lib\VibeSalamander.exe)
+│  ├─ VibeSalamander.Elevated              lib\VibeSalamander.Elevated.exe: the administrator helper (all code in Core)
 │  └─ VibeSalamander.App                   WinUI 3 desktop app (unpackaged, self-contained WinAppSDK 1.8; ≈29,000 lines)
 │      ├─ MainWindow.*.cs   the window, split by area (menus, toolbar, keyboard, transfers, updates, …)
 │      ├─ ViewModels/       MainViewModel.* (commands), PaneViewModel.* (a panel), TransfersViewModel, command classes
@@ -162,6 +164,19 @@ window (`Services/WindowOwner`).
   the shell (`ShellOperations`).
   Paths are compared by text *and* by identity (`Interop/FileIdentity`: volume and file id, final path), because
   a junction, hard link or subst drive can make a "different" target the source itself.
+* **Administrator rights for one transfer** (`Core/Operations/Elevation`). Every change the engine makes goes
+  through `IFileOps` (copy, new folder, delete, move, attributes, time): `LocalFileOps` in this process, or an
+  `IElevatedSession`. When a step is denied access (`ElevationRules.IsAccessDenied`: codes 5 and 1314), the error
+  question offers **Continue as administrator** (`OperationError.CanElevate`), unless the program already runs
+  elevated, the helper isn't beside it, or Windows' prompt was declined in this transfer. On yes,
+  `ElevationLauncher` starts `lib\VibeSalamander.Elevated.exe` with `runas` (one prompt, owned by the main window)
+  and every later denied step of *that* transfer goes to the helper without asking; the helper ends with the
+  transfer. Locked down: a random pipe name, the pipe only for the current user and one client, the program
+  accepts only the process it started (`GetNamedPipeClientProcessId`) and the helper only the program that
+  started it (`GetNamedPipeServerProcessId`); the helper does only the seven changes, only on full drive or share
+  paths (no device paths), with settable attributes only; JSON lines with a version in the hello, 256 KB per line.
+  The main program never runs elevated. Not yet through the helper: in-place rename (F2), F7's new folder and
+  the attributes dialog, which don't run in the engine.
 * **Icons and thumbnails.** Glyphs render immediately; `IconCache` loads shell icons on two STA threads of
   its own (SHGetFileInfo is unreliable on thread-pool threads), cached per extension, or per path for
   `.exe/.lnk/.ico` and drives. Icon packs (Windows, Vibe color, Vibe one color) are chosen through Core's

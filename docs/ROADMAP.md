@@ -80,6 +80,11 @@ Copying into `Program Files` or deleting in `Windows` fails with "access denied"
 `IOperationCallbacks` like other errors ("Continue as administrator / Skip / Cancel", with "for all").
 *Done when:* copy, move, delete, rename, new folder and attribute changes in protected folders succeed after
 one Windows prompt per transfer; the main program never runs elevated; declining leaves a normal error.
+*Status (stage 5):* copy, move and permanent delete (with their new folders, times and attributes) go through
+`Core/Operations/Elevation` and `lib\VibeSalamander.Elevated.exe` (see ARCHITECTURE, "Administrator rights for
+one transfer"); `ElevationTests` cover the engine flow, the helper's protocol and the real helper program.
+Left: in-place rename (F2), F7's new folder and the attributes dialog, which don't run in the engine; and a test
+of the Windows prompt itself, which the build machines (already administrator) can't show.
 
 **T4. Measured speed.**
 *Where:* a benchmark set in the Core tests (list 100,000 files, sort them, quick search, plan a copy of a
@@ -198,8 +203,7 @@ be able to carry them (that is the test of S1).
    is large and touches `PaneViewModel`, settings and the keyboard; better decided before 1.0 even if
    built after.
 3. **Undo (S4):** wanted for 1.0, or later?
-4. **Administrator helper (T3):** acceptable to ship a second small executable in `lib\`?
-5. **1.0 date:** the plan above is roughly 0.9 = T1–T8, 1.0 = S1–S5. Anything that must be in 1.0 that
+4. **1.0 date:** the plan above is roughly 0.9 = T1–T8, 1.0 = S1–S5. Anything that must be in 1.0 that
    isn't listed?
 
 ### Working rules (for whoever builds this, human or model)
