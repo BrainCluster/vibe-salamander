@@ -25,13 +25,13 @@
                 <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16"
                        HorizontalAlignment="Left" VerticalAlignment="Center" />
                 <!-- cloud files: a cloud (only in the cloud) or a check (always kept on this device) over the icon -->
-                <Border Width="11" Height="11" CornerRadius="6" Margin="8,0,0,1" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                <Border Width="12" Height="12" CornerRadius="6" Background="{ThemeResource VibePaneBackgroundBrush}" Margin="9,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom"
                         Visibility="{x:Bind OnlineOnlyVisibility}"
                         ToolTipService.ToolTip="{x:Bind CloudText}" AutomationProperties.Name="{x:Bind CloudText}">
-                    <TextBlock Text="&#xE753;" FontFamily="{StaticResource VibeIconFont}" FontSize="9" Foreground="{x:Bind TextBrush, Mode=OneWay}"
+                    <TextBlock Text="&#xE753;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-                <Border Width="11" Height="11" CornerRadius="6" Margin="8,0,0,1" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                <Border Width="12" Height="12" CornerRadius="6" Background="{ThemeResource VibePaneBackgroundBrush}" Margin="9,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Bottom"
                         Visibility="{x:Bind AlwaysKeptVisibility}"
                         ToolTipService.ToolTip="{x:Bind CloudText}" AutomationProperties.Name="{x:Bind CloudText}">
                     <TextBlock Text="&#xEC61;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" Foreground="{ThemeResource SystemFillColorSuccessBrush}"
@@ -106,13 +106,13 @@
                           Foreground="{x:Bind GlyphBrush, Mode=OneWay}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}" VerticalAlignment="Center" />
                 <Image Source="{x:Bind Icon, Mode=OneWay}" Width="16" Height="16" VerticalAlignment="Center" />
                 <!-- cloud files: a cloud (only in the cloud) or a check (always kept on this device) over the icon -->
-                <Border Width="11" Height="11" CornerRadius="6" Margin="7,0,-2,1" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                <Border Width="12" Height="12" CornerRadius="6" Background="{ThemeResource VibePaneBackgroundBrush}" Margin="7,0,-3,0" HorizontalAlignment="Left" VerticalAlignment="Bottom"
                         Visibility="{x:Bind OnlineOnlyVisibility}"
                         ToolTipService.ToolTip="{x:Bind CloudText}" AutomationProperties.Name="{x:Bind CloudText}">
-                    <TextBlock Text="&#xE753;" FontFamily="{StaticResource VibeIconFont}" FontSize="9" Foreground="{x:Bind TextBrush, Mode=OneWay}"
+                    <TextBlock Text="&#xE753;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" FontWeight="Bold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-                <Border Width="11" Height="11" CornerRadius="6" Margin="7,0,-2,1" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                <Border Width="12" Height="12" CornerRadius="6" Background="{ThemeResource VibePaneBackgroundBrush}" Margin="7,0,-3,0" HorizontalAlignment="Left" VerticalAlignment="Bottom"
                         Visibility="{x:Bind AlwaysKeptVisibility}"
                         ToolTipService.ToolTip="{x:Bind CloudText}" AutomationProperties.Name="{x:Bind CloudText}">
                     <TextBlock Text="&#xEC61;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" Foreground="{ThemeResource SystemFillColorSuccessBrush}"
