@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Globalization;
+using VibeSalamander.Core.Operations.Elevation;
 
 namespace VibeSalamander.Core.Operations;
 
@@ -47,14 +48,22 @@ public enum CasePart
 /// <summary>Change Attributes and Change Case, applied to a selection (optionally recursively).</summary>
 public static class NameAndAttributeOperations
 {
+    /// <param name="elevation">Offers "Continue as administrator" where access is denied (null: not offered).</param>
     public static Task<OperationResult> ChangeAttributesAsync(IReadOnlyList<string> paths, AttributeChange change,
-        IOperationCallbacks callbacks, CancellationToken ct = default) =>
+        IOperationCallbacks callbacks, CancellationToken ct = default, IElevation? elevation = null) =>
+        ChangeAttributesAsync(paths, change, callbacks, new Elevator(elevation), ct);
+
+    /// <summary>The same, with the way to administrator rights given (tests); the helper ends with the operation.</summary>
+    internal static Task<OperationResult> ChangeAttributesAsync(IReadOnlyList<string> paths, AttributeChange change,
+        IOperationCallbacks callbacks, Elevator elevator, CancellationToken ct) =>
         Task.Run(async () =>
         {
+            using Elevator ending = elevator;
             var result = new OperationResult();
             foreach (string path in Expand(paths, change.IncludeSubdirectories))
             {
                 ct.ThrowIfCancellationRequested();
+                IFileOps ops = elevator.Local;
                 while (true)
                 {
                     FileAttributes? clearedReadOnly = null;
@@ -67,15 +76,12 @@ public static class NameAndAttributeOperations
                         {
                             if ((attr & FileAttributes.ReadOnly) != 0)
                             {
-                                File.SetAttributes(path, attr & ~FileAttributes.ReadOnly);
+                                ops.SetAttributes(path, attr & ~(FileAttributes.ReadOnly | FileAttributes.Directory));
                                 clearedReadOnly = attr;
                             }
-                            bool dir = (attr & FileAttributes.Directory) != 0;
-                            if (change.LastWriteTime is DateTime w) { if (dir) Directory.SetLastWriteTime(path, w); else File.SetLastWriteTime(path, w); }
-                            if (change.CreationTime is DateTime c) { if (dir) Directory.SetCreationTime(path, c); else File.SetCreationTime(path, c); }
-                            if (change.LastAccessTime is DateTime a) { if (dir) Directory.SetLastAccessTime(path, a); else File.SetLastAccessTime(path, a); }
+                            ops.SetTimes(path, (attr & FileAttributes.Directory) != 0, change.LastWriteTime, change.CreationTime, change.LastAccessTime);
                         }
-                        File.SetAttributes(path, updated);
+                        ops.SetAttributes(path, updated & ~FileAttributes.Directory);
                         clearedReadOnly = null;
                         result.Succeeded++;
                         break;
@@ -84,8 +90,13 @@ public static class NameAndAttributeOperations
                     {
                         // a time that couldn't be set: the item keeps the read-only attribute it had
                         if (clearedReadOnly is FileAttributes original)
-                            TrySetAttributes(path, original);
-                        ErrorChoice choice = await callbacks.ResolveErrorAsync(new OperationError(path, ex.Message));
+                            TrySetAttributes(ops, path, original & ~FileAttributes.Directory);
+                        ErrorChoice choice = await elevator.AskAsync(callbacks.ResolveErrorAsync, path, ex.Message, ex, ops != elevator.Local, ct);
+                        if (choice == ErrorChoice.Elevate)
+                        {
+                            ops = elevator.Ops; // again, as administrator
+                            continue;
+                        }
                         if (choice == ErrorChoice.Retry) continue;
                         if (choice == ErrorChoice.Cancel) { result.Cancelled = true; return result; }
                         result.Failed++;
@@ -96,11 +107,11 @@ public static class NameAndAttributeOperations
             return result;
         }, ct);
 
-    private static void TrySetAttributes(string path, FileAttributes attributes)
+    private static void TrySetAttributes(IFileOps ops, string path, FileAttributes attributes)
     {
         try
         {
-            File.SetAttributes(path, attributes);
+            ops.SetAttributes(path, attributes);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -108,10 +119,17 @@ public static class NameAndAttributeOperations
         }
     }
 
+    /// <param name="elevation">Offers "Continue as administrator" where access is denied (null: not offered).</param>
     public static Task<OperationResult> ChangeCaseAsync(IReadOnlyList<string> paths, CaseMode mode, CasePart part,
-        bool includeSubdirectories, IOperationCallbacks callbacks, CancellationToken ct = default) =>
+        bool includeSubdirectories, IOperationCallbacks callbacks, CancellationToken ct = default, IElevation? elevation = null) =>
+        ChangeCaseAsync(paths, mode, part, includeSubdirectories, callbacks, new Elevator(elevation), ct);
+
+    /// <summary>The same, with the way to administrator rights given (tests); the helper ends with the operation.</summary>
+    internal static Task<OperationResult> ChangeCaseAsync(IReadOnlyList<string> paths, CaseMode mode, CasePart part,
+        bool includeSubdirectories, IOperationCallbacks callbacks, Elevator elevator, CancellationToken ct) =>
         Task.Run(async () =>
         {
+            using Elevator ending = elevator;
             var result = new OperationResult();
             // deepest items first, so renaming a directory doesn't invalidate the paths of its content
             var items = Expand(paths, includeSubdirectories).OrderByDescending(p => p.Length).ToList();
@@ -124,17 +142,24 @@ public static class NameAndAttributeOperations
                 string newName = ApplyCase(name, mode, part, isDirectory);
                 if (newName == name)
                     continue;
+                IFileOps ops = elevator.Local;
                 while (true)
                 {
                     try
                     {
-                        RenameCaseOnly(path, Path.Combine(dir, newName), isDirectory);
+                        // only the case differs: Windows renames in place (no temporary name a failure could leave behind)
+                        ops.Move(path, Path.Combine(dir, newName), isDirectory);
                         result.Succeeded++;
                         break;
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                     {
-                        ErrorChoice choice = await callbacks.ResolveErrorAsync(new OperationError(path, ex.Message));
+                        ErrorChoice choice = await elevator.AskAsync(callbacks.ResolveErrorAsync, path, ex.Message, ex, ops != elevator.Local, ct);
+                        if (choice == ErrorChoice.Elevate)
+                        {
+                            ops = elevator.Ops;
+                            continue;
+                        }
                         if (choice == ErrorChoice.Retry) continue;
                         if (choice == ErrorChoice.Cancel) { result.Cancelled = true; return result; }
                         result.Failed++;
@@ -199,15 +224,6 @@ public static class NameAndAttributeOperations
                 return new string(chars);
             }
         }
-    }
-
-    /// <summary>Renames when only the case differs (Windows renames in place: no temporary name a failure could leave behind).</summary>
-    private static void RenameCaseOnly(string path, string newPath, bool isDirectory)
-    {
-        if (isDirectory)
-            Directory.Move(path, newPath);
-        else
-            File.Move(path, newPath);
     }
 
     /// <summary>The items themselves plus, when requested, everything inside selected directories.</summary>

@@ -1729,5 +1729,7 @@
   "The administrator helper has ended.": "De beheerdershelper is gestopt.",
   "The administrator helper answered something it shouldn't.": "De beheerdershelper gaf een onverwacht antwoord.",
   "The administrator helper didn't start.": "De beheerdershelper is niet gestart.",
-  "Another program connected instead of the administrator helper.": "Een ander programma maakte verbinding in plaats van de beheerdershelper."
+  "Another program connected instead of the administrator helper.": "Een ander programma maakte verbinding in plaats van de beheerdershelper.",
+  "Access denied": "Toegang geweigerd",
+  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Deze map vereist beheerdersrechten. Windows vraagt er één keer om, daarna gebeurt het als beheerder."
 }

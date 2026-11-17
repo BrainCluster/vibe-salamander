@@ -5,6 +5,7 @@ using Windows.ApplicationModel.DataTransfer;
 using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Interop;
 using VibeSalamander.Core.Operations;
+using VibeSalamander.Core.Operations.Elevation;
 using VibeSalamander.Core.Settings;
 using VibeSalamander.Services;
 
@@ -231,7 +232,10 @@ internal sealed class FileCommands
     /// With <paramref name="allowSubdirectories"/> (a new folder) a typed "a\b" creates the path. Returns the item's
     /// path afterwards (unchanged when cancelled), or null when the rename failed.
     /// </summary>
-    public async Task<string?> RenameItemAsync(PaneViewModel pane, FileItemViewModel item, bool allowSubdirectories, bool selectWholeName = false)
+    /// <param name="elevator">The administrator rights of the operation this rename belongs to (F7's new folder made
+    /// as administrator); null: its own, offered when the rename is denied access.</param>
+    public async Task<string?> RenameItemAsync(PaneViewModel pane, FileItemViewModel item, bool allowSubdirectories, bool selectWholeName = false,
+        Elevator? elevator = null)
     {
         string oldPath = item.Entry.FullPath;
         string? typed = await _host.EditNameInPlaceAsync(pane, item, selectWholeName);
@@ -245,32 +249,42 @@ internal sealed class FileCommands
         }
 
         string target = rename.Path;
+        Elevator own = elevator ?? NewElevator();
         try
         {
-            if (item.Entry.IsDirectory)
+            string? problem = await ChangeAsync(own, ops =>
             {
-                if (rename.Nested)
-                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                if (rename.CaseOnly)
+                if (item.Entry.IsDirectory)
                 {
-                    string temp = oldPath + ".~rename";
-                    Directory.Move(oldPath, temp);
-                    Directory.Move(temp, target);
+                    if (rename.Nested)
+                        ops.CreateDirectory(Path.GetDirectoryName(target)!);
+                    if (rename.CaseOnly)
+                    {
+                        string temp = oldPath + ".~rename";
+                        ops.Move(oldPath, temp, isDirectory: true);
+                        ops.Move(temp, target, isDirectory: true);
+                    }
+                    else
+                    {
+                        ops.Move(oldPath, target, isDirectory: true);
+                    }
                 }
                 else
                 {
-                    Directory.Move(oldPath, target);
+                    ops.Move(oldPath, target, isDirectory: false);
                 }
-            }
-            else
+            });
+            if (problem != null)
             {
-                File.Move(oldPath, target);
+                if (problem.Length > 0)
+                    _host.Notify(problem);
+                return null;
             }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        finally
         {
-            _host.Notify(ex.Message);
-            return null;
+            if (elevator == null)
+                own.Dispose();
         }
 
         await pane.NavigateAsync(pane.Path, rename.FocusName, addToHistory: false);
@@ -287,8 +301,59 @@ internal sealed class FileCommands
         if (!pane.IsLocalDisk)
             return;
         string path = NewItemNames.UniquePath(pane.Path, "New Folder", string.Empty);
-        Directory.CreateDirectory(path);
-        await CreatedItemRenameAsync(pane, path, allowSubdirectories: true);
+        // in a protected folder: made as administrator, and named in place with the same rights (one Windows prompt)
+        using Elevator elevator = NewElevator();
+        string? problem = await ChangeAsync(elevator, ops => ops.CreateDirectory(path));
+        if (problem != null)
+        {
+            if (problem.Length > 0)
+                _host.Notify(problem);
+            return;
+        }
+        await CreatedItemRenameAsync(pane, path, allowSubdirectories: true, elevator);
+    }
+
+    // ---- administrator rights for single changes (rename, new folder) -----------------------------------------
+
+    private Elevator NewElevator() => new(_main.Transfers.Elevation);
+
+    /// <summary>
+    /// Makes a change; when it is denied access (a protected folder), asks whether to do it as administrator (Windows
+    /// then asks once) and does it so. Null when it was done; otherwise what to tell the user (empty: nothing, the
+    /// user said no).
+    /// </summary>
+    private async Task<string?> ChangeAsync(Elevator elevator, Action<IFileOps> change)
+    {
+        Exception denied;
+        try
+        {
+            IFileOps ops = elevator.Ops;
+            await Task.Run(() => change(ops));
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            if (!elevator.CanOffer(ex))
+                return ex.Message;
+            denied = ex;
+        }
+        if (!await _host.ConfirmAsync(Loc.T("Access denied"),
+                denied.Message + "\n\n" + Loc.T("This folder needs administrator rights. Windows asks for them once, then it is done as administrator."),
+                Loc.T("Continue as administrator")))
+            return string.Empty;
+        string? problem = await elevator.StartAsync();
+        if (problem != null)
+            return problem.Length == 0 ? string.Empty : denied.Message + "\n" + problem;
+        try
+        {
+            IElevatedSession session = elevator.Session!;
+            await Task.Run(() => change(session));
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return ex.Message;
+        }
     }
 
     /// <summary>
@@ -362,7 +427,7 @@ internal sealed class FileCommands
     }
 
     /// <summary>Focuses a just created item and starts the in-place rename on it. Returns its final path.</summary>
-    public async Task<string?> CreatedItemRenameAsync(PaneViewModel pane, string path, bool allowSubdirectories)
+    public async Task<string?> CreatedItemRenameAsync(PaneViewModel pane, string path, bool allowSubdirectories, Elevator? elevator = null)
     {
         string name = Path.GetFileName(path);
         await pane.NavigateAsync(pane.Path, name, addToHistory: false);
@@ -375,7 +440,7 @@ internal sealed class FileCommands
             if (item == null || !string.Equals(item.Entry.Name, name, StringComparison.OrdinalIgnoreCase))
                 return path; // created, but not visible (e.g. filtered out)
             string? final = await RenameItemAsync(pane, item, allowSubdirectories,
-                selectWholeName: !item.Entry.IsDirectory && Settings.General.EditNewSelectsExtension);
+                selectWholeName: !item.Entry.IsDirectory && Settings.General.EditNewSelectsExtension, elevator);
             if (final != null)
                 return final;
             await pane.NavigateAsync(pane.Path, name, addToHistory: false);
@@ -413,7 +478,8 @@ internal sealed class FileCommands
         AttributeChange? change = await _host.Dialogs.AttributesAsync(items.Select(i => i.Entry).ToList());
         if (change == null)
             return;
-        var result = await NameAndAttributeOperations.ChangeAttributesAsync(items.Select(i => i.Entry.FullPath).ToList(), change, _callbacks);
+        var result = await NameAndAttributeOperations.ChangeAttributesAsync(items.Select(i => i.Entry.FullPath).ToList(), change, _callbacks,
+            elevation: _main.Transfers.Elevation);
         await active.RefreshAsync();
         ReportProblems(result);
     }
@@ -428,7 +494,7 @@ internal sealed class FileCommands
         if (options is not { } o)
             return;
         var result = await NameAndAttributeOperations.ChangeCaseAsync(items.Select(i => i.Entry.FullPath).ToList(),
-            o.Mode, o.Part, o.Recursive, _callbacks);
+            o.Mode, o.Part, o.Recursive, _callbacks, elevation: _main.Transfers.Elevation);
         await active.RefreshAsync();
         ReportProblems(result);
     }

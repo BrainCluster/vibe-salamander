@@ -1729,5 +1729,7 @@
   "The administrator helper has ended.": "L'assistant administrateur s'est arrêté.",
   "The administrator helper answered something it shouldn't.": "L'assistant administrateur a répondu quelque chose d'inattendu.",
   "The administrator helper didn't start.": "L'assistant administrateur n'a pas démarré.",
-  "Another program connected instead of the administrator helper.": "Un autre programme s'est connecté à la place de l'assistant administrateur."
+  "Another program connected instead of the administrator helper.": "Un autre programme s'est connecté à la place de l'assistant administrateur.",
+  "Access denied": "Accès refusé",
+  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Ce dossier nécessite des droits d'administrateur. Windows les demande une fois, puis l'opération est effectuée en tant qu'administrateur."
 }

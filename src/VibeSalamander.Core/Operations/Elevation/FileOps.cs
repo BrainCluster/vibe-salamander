@@ -30,7 +30,8 @@ public interface IFileOps
 
     void SetAttributes(string path, FileAttributes attributes);
 
-    void SetLastWriteTime(string path, DateTime time, bool isDirectory);
+    /// <summary>Sets the times given (null: left as it is).</summary>
+    void SetTimes(string path, bool isDirectory, DateTime? lastWrite, DateTime? creation = null, DateTime? lastAccess = null);
 }
 
 /// <summary>The work done as administrator, for one transfer: ends (and the helper with it) when disposed.</summary>
@@ -128,14 +129,17 @@ public sealed class LocalFileOps : IFileOps
             File.Move(source, target);
     }
 
-    public void SetAttributes(string path, FileAttributes attributes) => File.SetAttributes(path, attributes);
-
-    public void SetLastWriteTime(string path, DateTime time, bool isDirectory)
+    public void SetAttributes(string path, FileAttributes attributes)
     {
-        if (isDirectory)
-            Directory.SetLastWriteTime(path, time);
-        else
-            File.SetLastWriteTime(path, time);
+        attributes &= ~FileAttributes.Directory; // not an attribute a program sets
+        File.SetAttributes(path, attributes == 0 ? FileAttributes.Normal : attributes);
+    }
+
+    public void SetTimes(string path, bool isDirectory, DateTime? lastWrite, DateTime? creation = null, DateTime? lastAccess = null)
+    {
+        if (lastWrite is DateTime w) { if (isDirectory) Directory.SetLastWriteTime(path, w); else File.SetLastWriteTime(path, w); }
+        if (creation is DateTime c) { if (isDirectory) Directory.SetCreationTime(path, c); else File.SetCreationTime(path, c); }
+        if (lastAccess is DateTime a) { if (isDirectory) Directory.SetLastAccessTime(path, a); else File.SetLastAccessTime(path, a); }
     }
 
     /// <summary>Adds the \\?\ prefix for paths beyond MAX_PATH.</summary>

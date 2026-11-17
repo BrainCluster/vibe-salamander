@@ -1729,5 +1729,7 @@
   "The administrator helper has ended.": "Administratorski pomoćnik je završio.",
   "The administrator helper answered something it shouldn't.": "Administratorski pomoćnik odgovorio je nešto neočekivano.",
   "The administrator helper didn't start.": "Administratorski pomoćnik nije se pokrenuo.",
-  "Another program connected instead of the administrator helper.": "Umjesto administratorskog pomoćnika spojio se drugi program."
+  "Another program connected instead of the administrator helper.": "Umjesto administratorskog pomoćnika spojio se drugi program.",
+  "Access denied": "Pristup odbijen",
+  "This folder needs administrator rights. Windows asks for them once, then it is done as administrator.": "Ova mapa traži administratorska prava. Windows ih jednom zatraži, a zatim se radnja izvrši kao administrator."
 }

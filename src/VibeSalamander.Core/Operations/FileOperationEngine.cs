@@ -515,7 +515,7 @@ public sealed class FileOperationEngine : IPausable
             if (Directory.Exists(step.Target))
             {
                 var info = new DirectoryInfo(step.Source);
-                ops.SetLastWriteTime(step.Target, info.LastWriteTime, isDirectory: true);
+                ops.SetTimes(step.Target, isDirectory: true, info.LastWriteTime);
                 FileAttributes attr = info.Attributes & (FileAttributes.Hidden | FileAttributes.System | FileAttributes.Archive | FileAttributes.ReadOnly);
                 FileAttributes now = File.GetAttributes(step.Target);
                 if (attr != 0 && (now & attr) != attr)

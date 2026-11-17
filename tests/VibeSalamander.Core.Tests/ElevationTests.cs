@@ -172,6 +172,51 @@ public sealed class ElevationTests : IDisposable
         Assert.Equal(3, elevation.Started); // one prompt per transfer
     }
 
+    [Fact]
+    public async Task Attributes_and_times_in_a_protected_folder_after_one_yes()
+    {
+        string a = Make(@"protected\a.txt");
+        string b = Make(@"protected\b.txt");
+        File.SetAttributes(b, FileAttributes.ReadOnly); // times on a read-only file: cleared and set again, as administrator
+        var elevation = new StandIn();
+        var answers = new OperationAnswers { Error = e => e.CanElevate ? ErrorChoice.Elevate : ErrorChoice.Skip };
+        var created = new DateTime(2021, 3, 4, 5, 6, 7, DateTimeKind.Local);
+        var change = new AttributeChange { Set = FileAttributes.Hidden, CreationTime = created };
+
+        OperationResult result = await NameAndAttributeOperations.ChangeAttributesAsync(new[] { a, b }, change, answers, Elevator(elevation), default);
+
+        Assert.Equal(2, result.Succeeded);
+        Assert.True(Assert.Single(answers.Errors).CanElevate);
+        Assert.Equal(1, elevation.Started);
+        Assert.True(elevation.Session!.Disposed);
+        Assert.Equal(FileAttributes.Hidden | FileAttributes.ReadOnly, File.GetAttributes(b) & (FileAttributes.Hidden | FileAttributes.ReadOnly));
+        Assert.Equal(created, File.GetCreationTime(a));
+    }
+
+    [Fact]
+    public async Task Case_of_names_in_a_protected_folder_after_one_yes_and_none_without_the_helper()
+    {
+        string a = Make(@"protected\ONE.TXT");
+        string b = Make(@"protected\TWO.TXT");
+        var elevation = new StandIn();
+        var answers = new OperationAnswers { Error = e => e.CanElevate ? ErrorChoice.Elevate : ErrorChoice.Skip };
+
+        OperationResult result = await NameAndAttributeOperations.ChangeCaseAsync(new[] { a, b }, CaseMode.Lower, CasePart.WholeName, false,
+            answers, Elevator(elevation), default);
+        var without = new OperationAnswers();
+        OperationResult refused = await NameAndAttributeOperations.ChangeCaseAsync(new[] { P(@"protected\one.txt") }, CaseMode.Upper,
+            CasePart.WholeName, false, without, Elevator(null), default);
+
+        Assert.Equal(2, result.Succeeded);
+        Assert.Equal(1, elevation.Started);
+        Assert.Contains("two.txt", Directory.GetFiles(P("protected")).Select(Path.GetFileName));
+        Assert.Equal(1, refused.Failed);
+        Assert.False(Assert.Single(without.Errors).CanElevate);
+    }
+
+    private Elevator Elevator(StandIn? elevation) =>
+        new(elevation) { Local = new Denying(P("protected")), IsElevated = () => false };
+
     private FileOperationEngine Engine(OperationAnswers answers, StandIn? elevation) =>
         new(answers)
         {
@@ -230,10 +275,10 @@ public sealed class ElevationTests : IDisposable
             LocalFileOps.Instance.SetAttributes(path, attributes);
         }
 
-        public void SetLastWriteTime(string path, DateTime time, bool isDirectory)
+        public void SetTimes(string path, bool isDirectory, DateTime? lastWrite, DateTime? creation = null, DateTime? lastAccess = null)
         {
             Check(path);
-            LocalFileOps.Instance.SetLastWriteTime(path, time, isDirectory);
+            LocalFileOps.Instance.SetTimes(path, isDirectory, lastWrite, creation, lastAccess);
         }
     }
 
@@ -305,10 +350,10 @@ public sealed class ElevationTests : IDisposable
             Ops.SetAttributes(path, attributes);
         }
 
-        public void SetLastWriteTime(string path, DateTime time, bool isDirectory)
+        public void SetTimes(string path, bool isDirectory, DateTime? lastWrite, DateTime? creation = null, DateTime? lastAccess = null)
         {
             Check();
-            Ops.SetLastWriteTime(path, time, isDirectory);
+            Ops.SetTimes(path, isDirectory, lastWrite, creation, lastAccess);
         }
 
         public void Dispose() => Disposed = true;
@@ -336,13 +381,15 @@ public sealed class ElevationTests : IDisposable
             });
             helper.SetAttributes(P(@"dst\sub\big.bin"), FileAttributes.ReadOnly | FileAttributes.Compressed); // Compressed isn't set: ignored
             var time = new DateTime(2024, 5, 6, 7, 8, 9, DateTimeKind.Local);
-            helper.SetLastWriteTime(P(@"dst\sub\big.bin"), time, isDirectory: false);
+            var created = new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Local);
+            helper.SetTimes(P(@"dst\sub\big.bin"), isDirectory: false, time, created);
             helper.SetAttributes(P(@"dst\sub\big.bin"), FileAttributes.Normal);
             helper.Move(P(@"dst\sub\big.bin"), P(@"dst\moved.bin"), isDirectory: false);
             helper.DeleteDirectory(P(@"dst\sub"));
 
             Assert.Equal(data, File.ReadAllBytes(P(@"dst\moved.bin")));
             Assert.Equal(time, File.GetLastWriteTime(P(@"dst\moved.bin")));
+            Assert.Equal(created, File.GetCreationTime(P(@"dst\moved.bin")));
             Assert.False(Directory.Exists(P(@"dst\sub")));
             Assert.Equal(data.Length, progress[^1]);
 

@@ -56,7 +56,10 @@ internal sealed record ElevatedRequest
     public bool Overwrite { get; init; }
     public bool Directory { get; init; }
     public int Attributes { get; init; }
+    /// <summary>"time": the last write, creation and last access times as file times (0: left as it is).</summary>
     public long Time { get; init; }
+    public long Created { get; init; }
+    public long Accessed { get; init; }
 }
 
 /// <summary>"hello" (the helper is ready), "progress", "done" or "failed".</summary>
@@ -177,7 +180,8 @@ public static class ElevatedServer
                     ops.SetAttributes(CheckPath(r.Path), attributes == 0 ? FileAttributes.Normal : attributes);
                     break;
                 case "time":
-                    ops.SetLastWriteTime(CheckPath(r.Path), DateTime.FromFileTimeUtc(r.Time).ToLocalTime(), r.Directory);
+                    static DateTime? At(long fileTime) => fileTime == 0 ? null : DateTime.FromFileTimeUtc(fileTime).ToLocalTime();
+                    ops.SetTimes(CheckPath(r.Path), r.Directory, At(r.Time), At(r.Created), At(r.Accessed));
                     break;
                 default:
                     throw new ArgumentException("Not something the helper does: " + r.Op);
@@ -253,8 +257,12 @@ internal class ElevatedClient : IElevatedSession
     public void SetAttributes(string path, FileAttributes attributes) =>
         Call(new ElevatedRequest { Op = "attributes", Path = path, Attributes = (int)attributes });
 
-    public void SetLastWriteTime(string path, DateTime time, bool isDirectory) =>
-        Call(new ElevatedRequest { Op = "time", Path = path, Time = time.ToFileTimeUtc(), Directory = isDirectory });
+    public void SetTimes(string path, bool isDirectory, DateTime? lastWrite, DateTime? creation = null, DateTime? lastAccess = null) =>
+        Call(new ElevatedRequest
+        {
+            Op = "time", Path = path, Directory = isDirectory,
+            Time = lastWrite?.ToFileTimeUtc() ?? 0, Created = creation?.ToFileTimeUtc() ?? 0, Accessed = lastAccess?.ToFileTimeUtc() ?? 0,
+        });
 
     private void Call(ElevatedRequest request, Func<long, long, bool>? progress = null)
     {
