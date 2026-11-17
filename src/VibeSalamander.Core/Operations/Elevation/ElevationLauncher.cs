@@ -54,9 +54,17 @@ public sealed class ElevationLauncher : IElevation
         try
         {
             string arguments = $"{name} {Environment.ProcessId}";
-            process = AsAdministrator
-                ? await RunAsAdministratorAsync(_helper, arguments, _owner())
-                : HelperProcess.Start(_helper, arguments);
+            try
+            {
+                process = AsAdministrator
+                    ? await RunAsAdministratorAsync(_helper, arguments, _owner())
+                    : HelperProcess.Start(_helper, arguments);
+            }
+            catch (ElevationRefusedException)
+            {
+                BackToFront();
+                throw;
+            }
             if (process == null)
                 throw new IOException(L.T("The administrator helper didn't start."));
 
@@ -75,6 +83,7 @@ public sealed class ElevationLauncher : IElevation
 
             session = new Session(pipe, process);
             await Task.Run(session.WaitForHello, cancellationToken).WaitAsync(TimeSpan.FromSeconds(15), cancellationToken);
+            BackToFront();
             Session started = session;
             session = null;
             process = null;
@@ -97,6 +106,19 @@ public sealed class ElevationLauncher : IElevation
                 process?.Dispose();
             }
         }
+    }
+
+    /// <summary>
+    /// After Windows' prompt the foreground goes to the helper, which has no window, and Windows puts the program
+    /// behind the other windows. The helper gives the foreground back (<see cref="RunHelper"/>); this takes it.
+    /// </summary>
+    private void BackToFront()
+    {
+        if (!AsAdministrator)
+            return; // the tests: no prompt, nothing to bring back
+        IntPtr window = _owner();
+        if (window != IntPtr.Zero)
+            SetForegroundWindow(window);
     }
 
     /// <summary>A task that may fail after nobody waits for it any more: its failure is seen (not a background error).</summary>
@@ -187,6 +209,8 @@ public sealed class ElevationLauncher : IElevation
         if (args.Length != 2 || !args[0].StartsWith(PipePrefix, StringComparison.Ordinal) || args[0].Length != PipePrefix.Length + 32 ||
             !args[0][PipePrefix.Length..].All(char.IsAsciiHexDigitLower) || !uint.TryParse(args[1], out uint parent))
             return 2; // not started by Vibe Salamander
+        // Windows gave this helper the foreground after its prompt: the program may take it back
+        AllowSetForegroundWindow(parent);
         using var pipe = new NamedPipeClientStream(".", args[0], PipeDirection.InOut, PipeOptions.Asynchronous);
         try
         {
@@ -274,6 +298,14 @@ public sealed class ElevationLauncher : IElevation
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern int GetProcessId(SafeProcessHandle process);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr window);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AllowSetForegroundWindow(uint processId);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);
