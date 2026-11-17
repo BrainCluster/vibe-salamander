@@ -60,6 +60,12 @@ public sealed partial class Dialogs
         try
         {
             dialog.XamlRoot ??= _xamlRoot();
+            // a window that asks something as it opens (FTP's first connection) may not be loaded yet: a moment for it
+            for (int wait = 0; dialog.XamlRoot == null && wait < 100; wait++)
+            {
+                await Task.Delay(50);
+                dialog.XamlRoot = _xamlRoot();
+            }
             Services.Loc.Translate(dialog); // fixed texts and texts made from them ("Copy {0} to:")
             return await dialog.ShowAsync();
         }

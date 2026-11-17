@@ -100,7 +100,7 @@ public static class AppActivity
             {
                 // a timer is stopped on the thread that made it (the end may be reported from another one)
                 if (Queue is { HasThreadAccess: false } queue)
-                    queue.TryEnqueue(timer.Stop);
+                    queue.TryEnqueue(() => timer.Stop()); // a lambda: WinRT refuses a delegate made from the timer's own method
                 else
                     timer.Stop();
             }
