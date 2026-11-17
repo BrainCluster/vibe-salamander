@@ -74,6 +74,25 @@
     <Copy SourceFiles="@(MonacoFiles)" DestinationFiles="@(MonacoFiles->'$(MonacoFolder)\vs\%(RecursiveDir)%(Filename)%(Extension)')" />
     <Copy SourceFiles="$(MonacoDownload)\package-files\package\LICENSE" DestinationFolder="$(MonacoFolder)" />
   </Target>
+  <!--
+    The administrator helper (lib\VibeSalamander.Elevated.exe in a release) beside every build of the program too, so
+    "Continue as administrator" is offered when the program is run from its build folder. Built for the same runtime
+    as the program; a release publishes it on its own (build\publish.ps1).
+  -->
+  <Target Name="BuildElevatedHelper" AfterTargets="Build" Condition="'$(_IsPublishing)' != 'true'">
+    <MSBuild Projects="..\VibeSalamander.Elevated\VibeSalamander.Elevated.csproj" Targets="Build"
+             Properties="Configuration=$(Configuration);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=$(SelfContained)"
+             RemoveProperties="Platform;PublishReadyToRun">
+      <Output TaskParameter="TargetOutputs" ItemName="_ElevatedOutput" />
+    </MSBuild>
+    <PropertyGroup>
+      <_ElevatedDir>@(_ElevatedOutput->'%(RootDir)%(Directory)')</_ElevatedDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <_ElevatedFiles Include="$(_ElevatedDir)VibeSalamander.Elevated.exe;$(_ElevatedDir)VibeSalamander.Elevated.dll;$(_ElevatedDir)VibeSalamander.Elevated.deps.json;$(_ElevatedDir)VibeSalamander.Elevated.runtimeconfig.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_ElevatedFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
   <Target Name="IncludeMonaco" BeforeTargets="AssignTargetPaths" DependsOnTargets="DownloadMonaco">
     <ItemGroup>
       <Content Include="$(MonacoFolder)\**\*" CopyToOutputDirectory="PreserveNewest" />

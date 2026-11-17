@@ -98,8 +98,14 @@ jobs:
       - name: Build the starter
         run: dotnet build src/VibeSalamander.Launcher/VibeSalamander.Launcher.csproj -c Release
 
-      - name: Build the administrator helper
-        run: dotnet build src/VibeSalamander.Elevated/VibeSalamander.Elevated.csproj -c Release
+      - name: The administrator helper is beside the built program and starts
+        shell: pwsh
+        run: |
+          $helper = Get-ChildItem src/VibeSalamander.App/bin -Recurse -Filter VibeSalamander.Elevated.exe | Select-Object -First 1
+          if (-not $helper) { throw "VibeSalamander.Elevated.exe isn't beside the built program" }
+          $run = Start-Process $helper.FullName -Wait -PassThru
+          if ($run.ExitCode -ne 2) { throw "the helper didn't start as it should (exit code $($run.ExitCode), expected 2: no arguments)" }
+          "Found and started: $($helper.FullName)"
 
       - name: Build the example plugin
         run: dotnet build samples/HelloPlugin/HelloPlugin.csproj -c Release
