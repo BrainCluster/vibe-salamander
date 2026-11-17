@@ -79,6 +79,10 @@
     "Continue as administrator" is offered when the program is run from its build folder. Built for the same runtime
     as the program; a release publishes it on its own (build\publish.ps1).
   -->
+  <ItemGroup>
+    <!-- only so the helper is restored with the program (its code isn't used here): see BuildElevatedHelper -->
+    <ProjectReference Include="..\VibeSalamander.Elevated\VibeSalamander.Elevated.csproj" ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
   <Target Name="BuildElevatedHelper" AfterTargets="Build" Condition="'$(_IsPublishing)' != 'true'">
     <MSBuild Projects="..\VibeSalamander.Elevated\VibeSalamander.Elevated.csproj" Targets="Build"
              Properties="Configuration=$(Configuration);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=$(SelfContained)"
