@@ -78,6 +78,16 @@ internal sealed class OperationAnswers : IOperationCallbacks
         Errors.Add(error);
         return Task.FromResult(Error(error));
     }
+
+    /// <summary>The question before the work starts ("not enough space: copy anyway?"): yes unless set.</summary>
+    public Func<string, bool> Confirm { get; init; } = _ => true;
+    public List<string> Confirmations { get; } = new();
+
+    public Task<bool> ConfirmAsync(string title, string message)
+    {
+        Confirmations.Add(message);
+        return Task.FromResult(Confirm(message));
+    }
 }
 
 /// <summary>Reports progress synchronously (Progress&lt;T&gt; would post to a thread pool and arrive late).</summary>

@@ -12,7 +12,7 @@ namespace VibeSalamander.Core.Tests;
 /// Whatever the user answers and whatever goes wrong, two things hold: a move never deletes a source that didn't
 /// arrive complete, and nothing is overwritten or deleted that the user didn't choose to overwrite or delete.
 /// (FileOperationEdgeCaseTests has the single awkward cases; this file has the combinations.)
-/// Not covered here: a full target disk (it needs a small volume of its own).
+/// A full target disk is in FullDiskTests (it needs a small volume of its own).
 /// </summary>
 public sealed class FileOperationSafetyTests : IDisposable
 {
