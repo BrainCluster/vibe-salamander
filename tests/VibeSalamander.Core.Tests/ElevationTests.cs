@@ -388,11 +388,12 @@ public sealed class ElevationTests : IDisposable
         Task connecting = server.WaitForConnectionAsync();
         client.Connect(5000);
         connecting.Wait(5000);
-        served = Task.Run(() =>
+        Task helper = Task.Run(() =>
         {
             using (client)
                 ElevatedServer.Run(client); // the helper's side
         });
+        served = helper;
         var program = new ElevatedClient(server);
         program.WaitForHello();
         return program;
