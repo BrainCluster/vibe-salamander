@@ -353,9 +353,20 @@ public sealed class AppSession : IDisposable
     /// <summary>Puts the caret on an item by typing its start (quick search), then ends the quick search.</summary>
     public void GoTo(string name, bool left = true)
     {
+        bool There() => string.Equals(Caret(left), name, StringComparison.OrdinalIgnoreCase);
         Press(VirtualKeyShort.HOME);
         Type(name[..Math.Min(name.Length, 6)]);
-        WaitUntil(() => string.Equals(Caret(left), name, StringComparison.OrdinalIgnoreCase), "the caret on " + name, 5);
+        if (!Soon(There, 3))
+        {
+            // the keys went elsewhere: on a desktop with other windows (a local run), Windows may not have let the
+            // just-started program take the keyboard from the terminal; once more, with the panel in front
+            Press(VirtualKeyShort.ESCAPE);
+            Window.SetForeground();
+            List(left).Focus();
+            Press(VirtualKeyShort.HOME);
+            Type(name[..Math.Min(name.Length, 6)]);
+            WaitUntil(There, "the caret on " + name, 5);
+        }
         Press(VirtualKeyShort.ESCAPE);
     }
 
