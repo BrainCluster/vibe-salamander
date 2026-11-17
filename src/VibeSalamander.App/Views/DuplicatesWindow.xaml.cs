@@ -155,6 +155,7 @@ public sealed partial class DuplicatesWindow : Window
 
     private async Task RunAsync()
     {
+        using IDisposable busy = Services.AppActivity.Begin("duplicates"); // the UI tests wait for it
         IReadOnlyList<string> folders = SearchForm.Folders(LookInBox.Text);
         string? missing = folders.FirstOrDefault(f => !Directory.Exists(f));
         DuplicateKind kind = Kind;

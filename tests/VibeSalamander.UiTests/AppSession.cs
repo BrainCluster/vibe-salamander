@@ -77,11 +77,11 @@ public sealed class AppSession : IDisposable
             Window = App.GetMainWindow(Automation, TimeSpan.FromSeconds(60)) ?? throw new InvalidOperationException("No main window.");
             Window.SetForeground();
             // the app says when it's ready, and the panels have their first listing
-            WaitUntil(() => State() == "ready" && Window.FindFirstDescendant(cf => cf.ByControlType(ControlType.ListItem)) != null,
+            WaitUntil(() => IsReady(State()) && Window.FindFirstDescendant(cf => cf.ByControlType(ControlType.ListItem)) != null,
                 "the app to be ready after its start (it says: \"" + State() + "\")", 60);
             ReadyAfter = SinceLaunch.Elapsed;
             Timing.Add("Starting the app (until it is ready)", ReadyAfter);
-            Timing.Pause(500); // icons, the window settling at its size
+            Timing.Pause(200); // the window settling at its size (icons and thumbnails are part of "ready")
         }
         catch (Exception)
         {
@@ -108,8 +108,10 @@ public sealed class AppSession : IDisposable
     private AutomationElement? _state;
 
     /// <summary>
-    /// What the app says it's doing: "ready", or "busy: panel" / "busy: editor" / "busy: viewer" (listing, calculating,
-    /// the editor starting, the viewer loading). "" when it can't be asked just now.
+    /// What the app says it's doing: "ready" or "busy: panel, thumbnails, ..." (listing, calculating sizes, the editor
+    /// starting, the viewer loading, a search or comparison running, thumbnails and icons loading, a plugin showing
+    /// progress), then "; dialog" while a dialog is open and "; transfers" while transfers run. "" when it can't be
+    /// asked just now.
     /// </summary>
     public string State()
     {
@@ -129,9 +131,95 @@ public sealed class AppSession : IDisposable
         return string.Empty;
     }
 
+    private static bool IsReady(string state) => state.StartsWith("ready", StringComparison.Ordinal);
+
     /// <summary>Waits until the app says it's ready (however slow the machine is); fails when it stays busy.</summary>
     public void WaitReady(double seconds = 30) =>
-        WaitUntil(() => State() == "ready", "the app to be ready", seconds);
+        WaitUntil(() => IsReady(State()), "the app to be ready (it says: \"" + State() + "\")", seconds);
+
+    /// <summary>
+    /// Ready, and a moment for what was drawn to reach the screen (before a screenshot: thumbnails, a window's
+    /// content, a theme).
+    /// </summary>
+    public void Calm(int milliseconds = 250)
+    {
+        WaitReady(60);
+        Timing.Pause(milliseconds);
+    }
+
+    /// <summary>Waits until a dialog is open (it has finished opening), or until none is when <paramref name="open"/> is false.</summary>
+    public void WaitDialog(bool open = true, double seconds = 15)
+    {
+        WaitUntil(() => State().Contains("; dialog", StringComparison.Ordinal) == open, open ? "a dialog" : "the dialog closed", seconds);
+        if (open)
+            Timing.Pause(150); // its content drawn
+    }
+
+    /// <summary>Waits until no transfer runs any more.</summary>
+    public void WaitTransfers(double seconds = 60) =>
+        WaitUntil(() => State() is { Length: > 0 } state && !state.Contains("; transfers", StringComparison.Ordinal), "the transfers finished", seconds);
+
+    /// <summary>Waits until a transfer runs (it appears in the transfer panel).</summary>
+    public void WaitTransferStarted(double seconds = 15) =>
+        WaitUntil(() => State().Contains("; transfers", StringComparison.Ordinal), "a transfer running", seconds);
+
+    /// <summary>Another window of the app (Find, Configuration, a plugin's), once it's there and the app is ready.</summary>
+    public Window OpenedWindow(string titleStart)
+    {
+        Window window = OtherWindow(titleStart);
+        Calm(250);
+        return window;
+    }
+
+    /// <summary>
+    /// Waits for something that only matters for a screenshot (a popup menu, a text being drawn): true when it came,
+    /// false after the time without failing the test.
+    /// </summary>
+    public static bool Soon(Func<bool> condition, double seconds = 5)
+    {
+        var clock = Stopwatch.StartNew();
+        while (clock.Elapsed.TotalSeconds < seconds)
+        {
+            try
+            {
+                if (condition())
+                {
+                    Timing.Add("Waiting for a state", clock.Elapsed);
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
+                // the UI is changing under the question: ask again
+            }
+            Thread.Sleep(100);
+        }
+        Timing.Add("Waiting for a state", clock.Elapsed);
+        return false;
+    }
+
+    /// <summary>A dialog or another window of the app has opened (whichever the command shows), and the app is ready.</summary>
+    public void WaitDialogOrWindow()
+    {
+        WaitUntil(() => State().Contains("; dialog", StringComparison.Ordinal) ||
+                        Window.FindAllChildren(cf => cf.ByControlType(ControlType.Window)).Length > 0, "a dialog or a window");
+        Calm(250);
+    }
+
+    /// <summary>A popup menu (a context menu, a menu of the menu bar) is open, and drawn.</summary>
+    public void WaitMenu()
+    {
+        Soon(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByControlType(ControlType.Menu)) != null);
+        Timing.Pause(150);
+    }
+
+    /// <summary>The name of an item is being edited in place (F2, a new folder): the focus is in a text box.</summary>
+    public void WaitNameEditor()
+    {
+        Soon(() => Automation.FocusedElement() is { } focused &&
+                   focused.ControlType == ControlType.Edit && focused.AutomationId != "CommandLine");
+        Timing.Pause(150);
+    }
 
     /// <summary>
     /// After a key or a click: the pause a user's eye would need, and then for as long as the app says it's busy
@@ -274,12 +362,12 @@ public sealed class AppSession : IDisposable
             AutomationElement entry = Retry(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(item).And(cf.ByControlType(ControlType.MenuItem))),
                 "the menu item " + item);
             entry.Click();
-            Settle(500);
+            Settle(300);
             // a click that lands while the menu is still opening is lost: the menu stays open, so click once more
             if (i == items.Length - 1 && StillThere(entry))
             {
                 entry.Click();
-                Settle(500);
+                Settle(300);
             }
         }
     }
@@ -301,21 +389,21 @@ public sealed class AppSession : IDisposable
         Window.FindFirstDescendant(cf => cf.ByName(name).And(cf.ByControlType(ControlType.Button))), "the button " + name, seconds);
 
     /// <summary>Waits for the button and clicks it.</summary>
-    public void Click(string button, int settleMs = 400)
+    public void Click(string button, int settleMs = 250)
     {
         Button(button).Click();
         Settle(settleMs);
     }
 
     /// <summary>Clicks something with this name anywhere on the desktop (a tab of a plugin window, a page of Configuration).</summary>
-    public void ClickNamed(string name, int settleMs = 700)
+    public void ClickNamed(string name, int settleMs = 300)
     {
         AutomationElement element = Retry(() => Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName(name)), "something named " + name);
         try
         {
             // in a list that scrolls (the configuration's pages), out of sight until scrolled to
             element.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView();
-            Timing.Pause(300);
+            Timing.Pause(150);
         }
         catch (Exception)
         {
@@ -348,9 +436,9 @@ public sealed class AppSession : IDisposable
                 // closed already
             }
         }
-        Timing.Pause(500);
+        Soon(() => Window.FindAllChildren(cf => cf.ByControlType(ControlType.Window)).Length == 0, 5);
         Window.SetForeground(); // the keys go to the main window again
-        Timing.Pause(300);
+        Timing.Pause(150);
     }
 
     // ---- the mouse ---------------------------------------------------------------------------------------
@@ -408,7 +496,7 @@ public sealed class AppSession : IDisposable
         Mouse.MoveTo(at);
         Timing.Pause(150);
         Mouse.DoubleClick();
-        Timing.Pause(800);
+        Timing.Pause(300);
     }
 
     public static void RightClick(System.Drawing.Point at)
@@ -416,7 +504,7 @@ public sealed class AppSession : IDisposable
         Mouse.MoveTo(at);
         Timing.Pause(150);
         Mouse.RightClick();
-        Timing.Pause(1000);
+        Timing.Pause(600); // the menu opens (a static helper: callers that need it wait with WaitMenu)
     }
 
     // ---- what to look at -----------------------------------------------------------------------------------

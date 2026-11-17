@@ -112,8 +112,21 @@ internal sealed partial class ViewerWindow
             }
             if (_closed || path != _path)
                 return;
-            _core.Navigate(_allowedUri);
-            _status.Text = string.Empty;
+            // the page is loaded when WebView2 says so (the viewer counts as busy until then: AppActivity)
+            var shown = new TaskCompletionSource();
+            void Completed(Microsoft.Web.WebView2.Core.CoreWebView2 sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs args) =>
+                shown.TrySetResult();
+            _core.NavigationCompleted += Completed;
+            try
+            {
+                _core.Navigate(_allowedUri);
+                _status.Text = string.Empty;
+                await Task.WhenAny(shown.Task, Task.Delay(TimeSpan.FromSeconds(15)));
+            }
+            finally
+            {
+                _core.NavigationCompleted -= Completed;
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or COMException or InvalidOperationException)
         {

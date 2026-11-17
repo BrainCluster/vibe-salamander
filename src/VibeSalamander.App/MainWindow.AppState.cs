@@ -7,7 +7,8 @@ using VibeSalamander.ViewModels;
 
 namespace VibeSalamander;
 
-// MainWindow: whether the program is ready or busy, for the UI tests (the element "AppState", not displayed).
+// MainWindow: whether the program is ready or busy, with open dialogs and running transfers, for the UI tests
+// (the element "AppState", with nothing to see).
 public sealed partial class MainWindow
 {
     private void WatchAppState()
@@ -15,6 +16,7 @@ public sealed partial class MainWindow
         AppActivity.Changed += UpdateAppState;
         _vm.Left.PropertyChanged += AppState_PaneChanged;
         _vm.Right.PropertyChanged += AppState_PaneChanged;
+        _vm.Transfers.StateChanged += (_, _) => UpdateAppState();
         Closed += (_, _) => AppActivity.Changed -= UpdateAppState;
         UpdateAppState();
     }
@@ -33,6 +35,10 @@ public sealed partial class MainWindow
             return;
         }
         string state = _vm.Left.IsBusy || _vm.Right.IsBusy ? "busy: panel" : AppActivity.State;
+        if (AppActivity.OpenDialogs > 0)
+            state += "; dialog";
+        if (_vm.Transfers.ActiveCount > 0)
+            state += "; transfers";
         if (AppState.Text != state)
             AppState.Text = state;
     }

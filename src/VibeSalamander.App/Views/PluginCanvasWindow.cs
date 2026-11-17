@@ -76,7 +76,10 @@ public sealed class PluginCanvasWindow : Window, IPluginCanvasWindow
                 return;
             int index = _views.Items.IndexOf(_views.SelectedItem);
             if (index >= 0)
+            {
+                _drawing.Set(true); // until the plugin sends the picture of the other view
                 Safe(() => ViewChangedHandlers?.Invoke(this, index));
+            }
         };
         var top = new Grid { ColumnSpacing = 16, Padding = new Thickness(16, 10, 12, 4) };
         top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -205,6 +208,8 @@ public sealed class PluginCanvasWindow : Window, IPluginCanvasWindow
         Closed += (_, _) =>
         {
             IsClosed = true;
+            _drawing.Set(false);
+            _progressBusy.Set(false);
             _resizeTimer.Stop();
             _bitmap = null;
             Safe(() => ClosedHandlers?.Invoke(this, EventArgs.Empty));
@@ -300,8 +305,22 @@ public sealed class PluginCanvasWindow : Window, IPluginCanvasWindow
             Close();
     });
 
+    /// <summary>From the window's opening (and a change of view) until a picture arrives (the UI tests wait for it).</summary>
+    private readonly Services.BusyFlag _drawing = CreateDrawing();
+
+    /// <summary>The plugin shows progress.</summary>
+    private readonly Services.BusyFlag _progressBusy = new("plugin");
+
+    private static Services.BusyFlag CreateDrawing()
+    {
+        var flag = new Services.BusyFlag("plugin");
+        flag.Set(true);
+        return flag;
+    }
+
     public void SetPicture(int width, int height, byte[] pixels, IReadOnlyList<PluginLabel> labels)
     {
+        _drawing.Set(false);
         if (width <= 0 || height <= 0 || pixels.Length < width * height * 4)
             return;
         byte[] copy = (byte[])pixels.Clone();
@@ -456,6 +475,7 @@ public sealed class PluginCanvasWindow : Window, IPluginCanvasWindow
 
     public void SetProgress(double? value) => OnUi(() =>
     {
+        _progressBusy.Set(value != null && !IsClosed);
         _progress.Visibility = value == null ? Visibility.Collapsed : Visibility.Visible;
         _progress.IsIndeterminate = value is < 0;
         if (value is double v && v >= 0)

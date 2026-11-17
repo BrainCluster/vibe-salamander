@@ -172,6 +172,7 @@ public sealed class PluginListWindow : Window, IPluginListWindow
         Closed += (_, _) =>
         {
             IsClosed = true;
+            _busy.Set(false);
             _flushTimer.Stop();
             ClosedHandlers?.Invoke(this, EventArgs.Empty);
             MemoryCleanup.Schedule();
@@ -361,7 +362,11 @@ public sealed class PluginListWindow : Window, IPluginListWindow
     {
         lock (_sync)
             _pendingProgress = (true, value);
+        _busy.Set(value != null && !IsClosed);
     }
+
+    /// <summary>The plugin shows progress (the UI tests wait for it).</summary>
+    private readonly Services.BusyFlag _busy = new("plugin");
 
     private void OnUi(Action action)
     {

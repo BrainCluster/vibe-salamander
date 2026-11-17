@@ -27,7 +27,7 @@ public sealed class DocumentationScreenshots : IDisposable
             configure?.Invoke(s);
         }, prepareHome);
         AppSession.WaitUntil(() => app.Items().Count > 3, "the panels");
-        Timing.Pause(1500); // icons and thumbnails
+        app.Calm(300); // icons and thumbnails
         return app;
     }
 
@@ -50,12 +50,13 @@ public sealed class DocumentationScreenshots : IDisposable
     public void Views()
     {
         using AppSession app = Start();
-        app.Press(VirtualKeyShort.TAB, settleMs: 500); // the photos panel
+        app.Press(VirtualKeyShort.TAB); // the photos panel
         var keys = new[] { VirtualKeyShort.KEY_1, VirtualKeyShort.KEY_2, VirtualKeyShort.KEY_3, VirtualKeyShort.KEY_4, VirtualKeyShort.KEY_5 };
         string[] names = { "brief", "detailed", "icons", "thumbnails", "tiles" };
         for (int i = 0; i < keys.Length; i++)
         {
-            app.Press(VirtualKeyShort.ALT, keys[i], settleMs: 2000);
+            app.Press(VirtualKeyShort.ALT, keys[i]);
+            app.Calm(300); // thumbnails
             Doc("view " + names[i]);
         }
     }
@@ -67,8 +68,9 @@ public sealed class DocumentationScreenshots : IDisposable
         foreach (string menu in new[] { "Files", "Commands", "Options", "Plugins" })
         {
             app.Menu(menu);
+            app.WaitMenu();
             Doc("menu " + menu.ToLowerInvariant());
-            app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
+            app.Press(VirtualKeyShort.ESCAPE);
         }
     }
 
@@ -85,8 +87,12 @@ public sealed class DocumentationScreenshots : IDisposable
         Doc("quick search");
         app.Press(VirtualKeyShort.ESCAPE);
         app.GoTo("data.bin");
-        app.Press(VirtualKeyShort.F5, settleMs: 800);
-        app.Press(VirtualKeyShort.ENTER, settleMs: 2500);
+        app.Press(VirtualKeyShort.F5);
+        app.WaitDialog();
+        app.Press(VirtualKeyShort.ENTER);
+        AppSession.WaitUntil(() => File.Exists(Path.Combine(_files.Target, "data.bin")), "data.bin copied");
+        app.WaitTransfers();
+        app.Calm(300);
         Doc("transfer panel");
     }
 
@@ -94,10 +100,11 @@ public sealed class DocumentationScreenshots : IDisposable
     public void Find_with_results()
     {
         using AppSession app = Start();
-        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F7, settleMs: 1500);
-        app.OtherWindow("Find Files");
+        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F7);
+        app.OpenedWindow("Find Files");
         app.Type("*.txt");
-        app.Press(VirtualKeyShort.ENTER, settleMs: 2500);
+        app.Press(VirtualKeyShort.ENTER);
+        app.Calm(300); // found
         Doc("find results");
         app.CloseOtherWindows();
     }
@@ -107,8 +114,7 @@ public sealed class DocumentationScreenshots : IDisposable
     {
         using AppSession app = Start();
         app.Menu("Options", "Configuration...");
-        app.OtherWindow("Configuration");
-        Timing.Pause(1000);
+        app.OpenedWindow("Configuration");
         Doc("configuration general");
         foreach (string page in new[] { "Panels", "Views", "Appearance", "Colors", "Keyboard", "Toolbar", "About" })
         {
@@ -127,7 +133,7 @@ public sealed class DocumentationScreenshots : IDisposable
             s.Right.Path = _files.Root;
             s.Appearance.IconPack = VibeSalamander.Core.Settings.IconPack.Fluent;
         });
-        Timing.Pause(1500);
+        app.Calm(300);
         Doc("icons vibe salamander in color");
     }
 
@@ -135,11 +141,11 @@ public sealed class DocumentationScreenshots : IDisposable
     public void User_menu_and_about()
     {
         using AppSession app = Start();
-        app.Press(VirtualKeyShort.F9, settleMs: 1200);
+        app.Press(VirtualKeyShort.F9, settleMs: 500); // the user menu opens
         Doc("user menu");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
+        app.Press(VirtualKeyShort.ESCAPE);
         app.Menu("Help", "About Vibe Salamander");
-        Timing.Pause(1000);
+        app.WaitDialog();
         Doc("about");
         app.Press(VirtualKeyShort.ESCAPE);
     }
@@ -149,23 +155,24 @@ public sealed class DocumentationScreenshots : IDisposable
     {
         using AppSession app = Start(s => s.Left.Path = _files.Root);
         app.Menu("Plugins", "Plugins Manager...");
-        Timing.Pause(1500);
+        app.OpenedWindow("Configuration");
         Doc("plugins manager");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 800);
+        app.Press(VirtualKeyShort.ESCAPE);
         app.CloseOtherWindows();
 
         app.Menu("Plugins", "FTP / SFTP", "Connect to FTP / SFTP Server...");
-        Timing.Pause(1500);
+        app.WaitDialogOrWindow();
         Doc("ftp connect");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 800);
+        app.Press(VirtualKeyShort.ESCAPE);
         app.CloseOtherWindows();
 
         app.Menu("Plugins", "Disk Map", "Show disk map");
-        Timing.Pause(4000);
+        app.Calm(400); // read and drawn
         Doc("disk map blocks");
         foreach (string view in new[] { "Sunburst", "Columns", "Classic" })
         {
-            app.ClickNamed(view, settleMs: 2000);
+            app.ClickNamed(view);
+            app.Calm(300); // drawn
             Doc("disk map " + view.ToLowerInvariant());
         }
         app.CloseOtherWindows();
@@ -177,22 +184,24 @@ public sealed class DocumentationScreenshots : IDisposable
         using AppSession app = Start(s => s.Right.Path = _files.Target);
         // the Pack dialog first: after a plugin window has closed, the keys don't always reach the panel again
         app.GoTo("report.txt");
-        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F5, settleMs: 1500);
+        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F5);
+        app.WaitDialog();
         Doc("pack");
         try
         {
-            app.ClickNamed("Advanced", settleMs: 1200);
+            app.ClickNamed("Advanced", settleMs: 500); // it unfolds
             Doc("pack advanced");
         }
         catch (TimeoutException)
         {
             // no Advanced part for this format
         }
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 800);
+        app.Press(VirtualKeyShort.ESCAPE);
+        app.WaitDialog(open: false);
 
         app.GoTo("archive.zip");
         app.Menu("Plugins", "Archives", "Test archive");
-        Timing.Pause(2500);
+        app.OpenedWindow("Test Archive");
         Doc("test archive");
         app.CloseOtherWindows();
     }
@@ -210,14 +219,13 @@ public sealed class DocumentationScreenshots : IDisposable
             File.Copy(dll, Path.Combine(folder, "HelloPlugin.dll"));
         });
         app.Menu("Plugins", "Hello");
-        Timing.Pause(800);
+        app.WaitMenu();
         Doc("hello menu");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 400);
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
+        app.Press(VirtualKeyShort.ESCAPE);
+        app.Press(VirtualKeyShort.ESCAPE);
 
         app.Menu("Plugins", "Hello", "Largest files here...");
-        app.OtherWindow("Largest files");
-        Timing.Pause(2000);
+        app.OpenedWindow("Largest files");
         Doc("hello largest files");
         app.CloseOtherWindows();
     }
@@ -225,7 +233,7 @@ public sealed class DocumentationScreenshots : IDisposable
     // ---- the viewer and the editor --------------------------------------------------------------------------
 
     /// <summary>F3 / F4 on a file of the left panel: its window, maximized for the picture.</summary>
-    private static FlaUI.Core.AutomationElements.Window OpenWindow(AppSession app, string name, VirtualKeyShort key, int settleMs)
+    private static FlaUI.Core.AutomationElements.Window OpenWindow(AppSession app, string name, VirtualKeyShort key)
     {
         app.Window.Focus();
         app.GoTo(name);
@@ -233,7 +241,7 @@ public sealed class DocumentationScreenshots : IDisposable
         var window = app.OtherWindow(name + " - ");
         window.Focus();
         window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Maximized);
-        Timing.Pause(settleMs);
+        app.Calm(400); // shown (the viewer and the editor say when), at its new size
         return window;
     }
 
@@ -247,7 +255,7 @@ public sealed class DocumentationScreenshots : IDisposable
         {
             // closed already
         }
-        Timing.Pause(600);
+        Timing.Pause(250);
     }
 
     [UiFact]
@@ -255,29 +263,34 @@ public sealed class DocumentationScreenshots : IDisposable
     {
         using AppSession app = Start(s => s.Left.Path = _files.Samples);
 
-        var markdown = OpenWindow(app, "README.md", VirtualKeyShort.F3, 4000);
+        var markdown = OpenWindow(app, "README.md", VirtualKeyShort.F3);
         Doc("viewer markdown");
         Close(markdown);
 
-        var json = OpenWindow(app, "config.json", VirtualKeyShort.F3, 1500);
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1, settleMs: 1200);
+        var json = OpenWindow(app, "config.json", VirtualKeyShort.F3);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1);
+        app.Calm(300);
         Doc("viewer tree");
         Close(json);
 
-        var log = OpenWindow(app, "server.log", VirtualKeyShort.F3, 2000);
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_F, settleMs: 600);
+        var log = OpenWindow(app, "server.log", VirtualKeyShort.F3);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_F);
         app.Type("request 150000 ", settleMs: 300);
-        app.Press(VirtualKeyShort.ENTER, settleMs: 2500);
+        app.Press(VirtualKeyShort.ENTER);
+        app.Calm(300); // found
         Doc("viewer big file");
         Close(log);
 
-        var editor = OpenWindow(app, "README.md", VirtualKeyShort.F4, 7000);
+        var editor = OpenWindow(app, "README.md", VirtualKeyShort.F4);
         Doc("editor markdown");
         Close(editor);
 
-        var code = OpenWindow(app, "config.json", VirtualKeyShort.F4, 7000);
+        var code = OpenWindow(app, "config.json", VirtualKeyShort.F4);
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.END, settleMs: 200);
-        app.Type(" oops", settleMs: 2500);
+        app.Type(" oops");
+        AppSession.Soon(() => code.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text))
+            .Any(t => (t.Name ?? string.Empty).StartsWith("Line ", StringComparison.Ordinal)), 20); // Monaco validates after a pause in typing
+        Timing.Pause(200);
         Doc("editor json problem");
         Close(code);
         try
@@ -288,7 +301,7 @@ public sealed class DocumentationScreenshots : IDisposable
         {
             // the question didn't come
         }
-        Timing.Pause(600);
+        Timing.Pause(250);
     }
 
     [UiFact]
@@ -299,7 +312,7 @@ public sealed class DocumentationScreenshots : IDisposable
             s.Left.Path = _files.Photos;
             s.Viewer.ShowImageDetails = true;
         });
-        var picture = OpenWindow(app, "holiday 01.png", VirtualKeyShort.F3, 3000);
+        var picture = OpenWindow(app, "holiday 01.png", VirtualKeyShort.F3);
         Doc("viewer picture");
         Close(picture);
     }

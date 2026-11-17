@@ -67,6 +67,7 @@ public sealed class IconCache
             return;
         }
         _pending[key] = new List<Action<ImageSource?>> { onLoaded };
+        _busy.Set(true);
 
         _work.Add(() =>
         {
@@ -110,7 +111,11 @@ public sealed class IconCache
         if (_pending.Remove(key, out var callbacks))
             foreach (var callback in callbacks)
                 callback(source);
+        _busy.Set(_pending.Count > 0);
     }
+
+    /// <summary>Icons are being loaded (the UI tests wait for them).</summary>
+    private readonly BusyFlag _busy = new("icons");
 
     private static (string key, string shellPath, bool useAttributes, uint attributes) GetKey(FileEntry entry, bool generic)
     {

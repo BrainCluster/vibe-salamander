@@ -102,10 +102,11 @@ public sealed class ReleaseScenarios : IDisposable
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.ALT, VirtualKeyShort.KEY_H);
         AppSession.WaitUntil(() => app.Items(left: true).Contains("holiday 01.png"), "Ctrl+Alt+H going to the hot path", 10);
         // and in the hot path menu, with its shortcut
-        app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F9, settleMs: 1200);
+        app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F9);
         WaitForText(app, t => t.Contains("Holiday photos", StringComparison.Ordinal), "the more hot path in the menu");
+        Timing.Pause(200); // the menu drawn
         AppSession.Screenshot("r02c more hot paths in the menu");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
+        app.Press(VirtualKeyShort.ESCAPE);
         NoErrors(app);
     }
 
@@ -117,17 +118,19 @@ public sealed class ReleaseScenarios : IDisposable
             s.HotPaths[3] = _files.Photos;
             s.ShowCommandLine = true;
         });
-        app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F9, settleMs: 1200);
+        app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F9);
         WaitForText(app, t => t.Contains(_files.Photos, StringComparison.OrdinalIgnoreCase), "the hot path in the list");
+        Timing.Pause(200);
         AppSession.Screenshot("r02 hot path list");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
+        app.Press(VirtualKeyShort.ESCAPE);
         // the drive menu: free space and a fullness bar at the right
-        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F1, settleMs: 1200);
+        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F1);
         WaitForText(app, t => t.Contains("C:", StringComparison.OrdinalIgnoreCase) && t.Contains("free", StringComparison.OrdinalIgnoreCase) || t == "Change drive", "the drive menu");
+        Timing.Pause(200);
         AppSession.Screenshot("r02b drive menu");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 600);
+        app.Press(VirtualKeyShort.ESCAPE);
         app.GoTo("notes.md");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.RETURN, settleMs: 800);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.RETURN);
         AutomationElement line = app.Window.FindFirstDescendant(cf => cf.ByAutomationId("CommandLine"));
         AppSession.WaitUntil(() => (line.Patterns.Value.PatternOrDefault?.Value.ValueOrDefault ?? string.Empty).Contains("notes.md", StringComparison.Ordinal),
             "the name in the command line", 5);
@@ -139,12 +142,12 @@ public sealed class ReleaseScenarios : IDisposable
     {
         using AppSession app = Start();
         app.Menu("Help", "First Steps...");
-        Timing.Pause(1200);
+        app.WaitDialog();
         AppSession.Screenshot("r03 first steps");
         FlaUI.Core.AutomationElements.ComboBox keys = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByControlType(ControlType.ComboBox))?.AsComboBox(), "the shortcuts choice");
         keys.Select(1);
-        Timing.Pause(600);
-        app.Click("OK", settleMs: 1500);
+        Timing.Pause(200);
+        app.Click("OK");
         // the F-key bar follows: F2 refreshes in Total Commander
         WaitForText(app, t => t == "Refresh", "Total Commander's F2 in the F-key bar");
         NoErrors(app);
@@ -166,18 +169,18 @@ public sealed class ReleaseScenarios : IDisposable
         app.Press(VirtualKeyShort.F3, settleMs: 300);
         Window viewer = app.OtherWindow("holiday 01.png - ");
         viewer.Focus();
-        app.WaitReady(60); // the picture is loaded
-        Timing.Pause(1000);
-        app.Press(VirtualKeyShort.KEY_W, settleMs: 600);
-        app.Press(VirtualKeyShort.KEY_M, settleMs: 600);
-        app.Press(VirtualKeyShort.F11, settleMs: 1500);
+        app.Calm(300); // the picture is loaded
+        app.Press(VirtualKeyShort.KEY_W, settleMs: 300);
+        app.Press(VirtualKeyShort.KEY_M, settleMs: 300);
+        app.Press(VirtualKeyShort.F11);
+        app.Calm(500); // the window at full screen
         AppSession.Screenshot("r04 picture full screen mirrored");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 1000); // full screen ends, the viewer stays
+        app.Press(VirtualKeyShort.ESCAPE, settleMs: 500); // full screen ends, the viewer stays
         Assert.False(viewer.Properties.IsOffscreen.ValueOrDefault);
-        app.Press(VirtualKeyShort.RIGHT, settleMs: 1200); // decoded ahead
-        Assert.StartsWith("holiday 02", viewer.Name ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        app.Press(VirtualKeyShort.RIGHT); // decoded ahead
+        AppSession.WaitUntil(() => (viewer.Name ?? string.Empty).StartsWith("holiday 02", StringComparison.OrdinalIgnoreCase), "the next picture", 5);
         viewer.Close();
-        Timing.Pause(500);
+        Timing.Pause(250);
         NoErrors(app);
     }
 
@@ -190,26 +193,26 @@ public sealed class ReleaseScenarios : IDisposable
         app.GoTo("unsorted.json");
         app.Press(VirtualKeyShort.F4, settleMs: 300);
         Window editor = app.OtherWindow("unsorted.json - ");
-        app.WaitReady(60); // WebView2 and Monaco started and the text is in the editor, however long that takes here
-        Timing.Pause(1000);
+        app.Calm(300); // WebView2 and Monaco started and the text is in the editor, however long that takes here
         editor.Focus();
         // the overflow of the toolbar, then Sort keys
         AutomationElement more = AppSession.Retry(() => editor.FindFirstDescendant(cf => cf.ByAutomationId("MoreButton")), "the toolbar's More button");
         more.Click();
-        Timing.Pause(800);
+        Timing.Pause(300); // the overflow opens (Sort keys is waited for by name)
         AutomationElement sort = AppSession.Retry(() => app.Automation.GetDesktop().FindFirstDescendant(cf => cf.ByName("Sort keys")), "Sort keys");
         sort.Click();
-        Timing.Pause(1200);
+        AppSession.WaitUntil(() => (editor.Name ?? string.Empty).StartsWith('●'), "the keys sorted (the title marks the change)", 10);
+        Timing.Pause(200);
         AppSession.Screenshot("r05 editor keys sorted");
         editor.Focus();
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_S, settleMs: 1500);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_S);
         AppSession.WaitUntil(() =>
         {
             string text = File.ReadAllText(path);
             return text.IndexOf("apple", StringComparison.Ordinal) is >= 0 and var a && a < text.IndexOf("zebra", StringComparison.Ordinal);
         }, "the keys sorted and saved", 8);
         editor.Close();
-        Timing.Pause(500);
+        Timing.Pause(250);
         NoErrors(app);
     }
 

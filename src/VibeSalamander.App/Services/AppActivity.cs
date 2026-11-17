@@ -7,9 +7,10 @@ namespace VibeSalamander.Services;
 
 /// <summary>
 /// What the program is busy with besides listing the panels: the editor starting (WebView2 and Monaco), the viewer
-/// loading a file. The main window shows it, together with the panels' own state, in an element that isn't
-/// displayed (automation id "AppState": "ready" or "busy: ..."), so the UI tests wait for the program to be ready
-/// instead of guessing how long a slow machine takes.
+/// loading a file or a page, a search or comparison, thumbnails and icons, a plugin showing progress. The main window
+/// shows it, together with the panels' own state, open dialogs and running transfers, in an element with nothing to
+/// see (automation id "AppState": "ready" or "busy: ...", then "; dialog" and "; transfers" when there are), so the UI
+/// tests wait for the program instead of guessing how long a slow machine takes.
 /// </summary>
 public static class AppActivity
 {
@@ -17,6 +18,24 @@ public static class AppActivity
     private static readonly TimeSpan Longest = TimeSpan.FromSeconds(90);
 
     private static readonly List<Work> Running = new();
+    private static int _dialogs;
+
+    /// <summary>How many dialogs are open (counted from when one has finished opening).</summary>
+    public static int OpenDialogs => Volatile.Read(ref _dialogs);
+
+    /// <summary>A dialog has opened (on screen, its opening animation done).</summary>
+    public static void DialogOpened()
+    {
+        Interlocked.Increment(ref _dialogs);
+        Changed?.Invoke();
+    }
+
+    /// <summary>A dialog has closed.</summary>
+    public static void DialogClosed()
+    {
+        Interlocked.Decrement(ref _dialogs);
+        Changed?.Invoke();
+    }
 
     /// <summary>Something started or ended (raised on the thread that did it).</summary>
     public static event Action? Changed;
@@ -44,6 +63,7 @@ public static class AppActivity
             timer.IsRepeating = false;
             timer.Tick += (_, _) => work.Dispose();
             work.Timer = timer;
+            work.Queue = queue;
             timer.Start();
         }
         Changed?.Invoke();
@@ -54,6 +74,7 @@ public static class AppActivity
     {
         public string What { get; } = what;
         public DispatcherQueueTimer? Timer { get; set; }
+        public DispatcherQueue? Queue { get; set; }
 
         public void Dispose()
         {
@@ -62,8 +83,35 @@ public static class AppActivity
                 removed = Running.Remove(this);
             if (!removed)
                 return;
-            Timer?.Stop();
+            if (Timer is { } timer)
+            {
+                // a timer is stopped on the thread that made it (the end may be reported from another one)
+                if (Queue is { HasThreadAccess: false } queue)
+                    queue.TryEnqueue(timer.Stop);
+                else
+                    timer.Stop();
+            }
             Changed?.Invoke();
         }
+    }
+}
+
+/// <summary>Busy while something says so (a queue with work, a progress bar shown), from any thread.</summary>
+public sealed class BusyFlag(string what)
+{
+    private readonly object _lock = new();
+    private IDisposable? _work;
+
+    public void Set(bool busy)
+    {
+        IDisposable? end = null;
+        lock (_lock)
+        {
+            if (busy && _work == null)
+                _work = AppActivity.Begin(what);
+            else if (!busy && _work != null)
+                (end, _work) = (_work, null);
+        }
+        end?.Dispose();
     }
 }

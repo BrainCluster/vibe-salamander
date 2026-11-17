@@ -153,16 +153,17 @@ public sealed class SearchScenarios : IDisposable
             Texts = { new SavedText { Text = "report" }, new SavedText { Text = "zzz-not-there", Negate = true } },
             SkipFolders = "node_modules",
         });
-        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F7, settleMs: 1500);
-        Window find = app.OtherWindow("Find Files");
-        app.Press(VirtualKeyShort.ENTER, settleMs: 3000);
+        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F7);
+        Window find = app.OpenedWindow("Find Files");
+        app.Press(VirtualKeyShort.ENTER);
+        app.Calm(); // the search has finished
         AppSession.Screenshot("s01 find with text rows");
         AutomationElement show = Named(app, find, "Show in Panel", ControlType.Button);
         AppSession.WaitUntil(() => show.IsEnabled, "results to show", 15);
         show.Click();
-        Timing.Pause(1500);
-        AppSession.Screenshot("s02 results in the panel");
         AppSession.WaitUntil(() => app.Items().Any(n => n.Contains("report", StringComparison.OrdinalIgnoreCase)), "the found file in the panel");
+        app.Calm();
+        AppSession.Screenshot("s02 results in the panel");
         find.Close();
         NoErrors(app);
     }
@@ -176,16 +177,16 @@ public sealed class SearchScenarios : IDisposable
         File.WriteAllText(Path.Combine(_files.Target, "other.txt"), content + "!");
         using AppSession app = Start(s => s.Left.Path = _files.Target, waitFor: "photo.txt");
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.F7);
-        Timing.Pause(1500);
-        Window duplicates = app.OtherWindow("Find Duplicate");
+        Timing.Pause(300);
+        Window duplicates = app.OpenedWindow("Find Duplicate");
         Named(app, duplicates, "Find", ControlType.Button).Click();
         WaitUntilOr(() => HasText(app, duplicates, "photo (copy).txt"), "the duplicates", 20, () => Texts(app, duplicates));
         Named(app, duplicates, "Select duplicates", ControlType.Button).Click();
-        Timing.Pause(800);
+        Timing.Pause(300); // the menu opens (its item is waited for by name)
         Named(app, app.Automation.GetDesktop(), "All but the newest", ControlType.MenuItem).Click();
-        Timing.Pause(800);
-        AppSession.Screenshot("s03 duplicates");
         AppSession.WaitUntil(() => HasText(app, duplicates, "Delete 1 selected"), "one copy selected", 5);
+        Timing.Pause(200);
+        AppSession.Screenshot("s03 duplicates");
         duplicates.Close();
         NoErrors(app);
     }
@@ -195,16 +196,18 @@ public sealed class SearchScenarios : IDisposable
     {
         File.WriteAllText(Path.Combine(_files.Target, "only on the right.txt"), "x");
         using AppSession app = Start(s => s.Compare = new Core.Tools.CompareOptions { ByDate = true, BySize = true, Subdirectories = true, ShowList = true });
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F10, settleMs: 1200);
-        app.Press(VirtualKeyShort.ENTER, settleMs: 2500); // the dialog's Compare
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F10);
+        app.WaitDialog();
+        app.Press(VirtualKeyShort.ENTER); // the dialog's Compare
         Window compare = app.OtherWindow("Compare Directories");
         WaitUntilOr(() => HasText(app, compare, "report.txt"), "the differences", 20, () => Texts(app, compare));
         AppSession.Screenshot("s04 compare list");
         Named(app, compare, "Synchronize (", ControlType.Button).Click();
-        Timing.Pause(1000);
+        app.WaitDialog();
         app.Press(VirtualKeyShort.ENTER); // the dialog's Synchronize
         AppSession.WaitUntil(() => File.Exists(Path.Combine(_files.Target, "report.txt")), "report.txt copied to the right", 30);
-        Timing.Pause(2500);
+        app.WaitTransfers();
+        app.Calm(); // compared again
         AppSession.Screenshot("s05 after synchronizing");
         // one way without mirroring: what is only on the right stays
         Assert.True(File.Exists(Path.Combine(_files.Target, "only on the right.txt")));
@@ -239,7 +242,9 @@ public sealed class SearchScenarios : IDisposable
         }, waitFor: "big.bin");
         app.GoTo("big.bin");
         var clock = System.Diagnostics.Stopwatch.StartNew();
-        app.Press(VirtualKeyShort.F5, settleMs: 3500);
+        app.Press(VirtualKeyShort.F5);
+        app.WaitTransferStarted();
+        Timing.Pause(2500); // the graph needs a few seconds of speed to show
         AppSession.Screenshot("s06 transfer graph and limit");
         string copy = Path.Combine(_files.Target, "big.bin");
         AppSession.WaitUntil(() => Finished(copy, 24 * 1024 * 1024), "the copy to finish", 40);
@@ -257,10 +262,9 @@ public sealed class SearchScenarios : IDisposable
         using AppSession app = Start(waitFor: "Program.cs");
         app.GoTo("Program.cs");
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_C);
-        Timing.Pause(1500);
+        Timing.Pause(300);
         Window compare = app.OtherWindow("Program.cs ↔");
-        app.WaitReady(60); // WebView2 and Monaco started and the text is in the editor, however long that takes here
-        Timing.Pause(1000);
+        app.Calm(500); // WebView2 and Monaco started and the files are in the editor, however long that takes here
         AppSession.Screenshot("s07 compare files");
         // the status line ("Difference 1 of 1"), or the compared text itself (the diff editor's page is in the
         // accessibility tree too: UI Automation sometimes keeps reading the status line as it was before)
@@ -278,9 +282,9 @@ public sealed class SearchScenarios : IDisposable
         using AppSession app = Start(s => s.Left.Path = _files.Target, waitFor: "plan.txt");
         app.GoTo("plan.txt");
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.ALT, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_D);
-        Timing.Pause(1500);
+        app.WaitNameEditor();
         AppSession.Screenshot("g01 duplicate named in place");
-        app.Press(VirtualKeyShort.ENTER, settleMs: 1000); // keeps the suggested name
+        app.Press(VirtualKeyShort.ENTER); // keeps the suggested name
         string copy = Path.Combine(_files.Target, "plan (2).txt");
         AppSession.WaitUntil(() => File.Exists(copy), "the copy", 10);
         Assert.Equal("the plan", File.ReadAllText(copy));
@@ -296,11 +300,11 @@ public sealed class SearchScenarios : IDisposable
         app.GoTo("a1.txt");
         app.Press(VirtualKeyShort.INSERT);
         app.Press(VirtualKeyShort.INSERT);
-        app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F2, settleMs: 1500);
-        Window rename = app.OtherWindow("Multi-Rename");
-        app.Type("trip [C]", settleMs: 1200);
-        AppSession.Screenshot("g02 multi-rename");
+        app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F2);
+        Window rename = app.OpenedWindow("Multi-Rename");
+        app.Type("trip [C]");
         WaitUntilOr(() => HasText(app, rename, "trip 2.txt"), "the new names", 10, () => Texts(app, rename));
+        AppSession.Screenshot("g02 multi-rename");
         Named(app, rename, "Rename", ControlType.Button).Click();
         AppSession.WaitUntil(() => File.Exists(Path.Combine(_files.Target, "trip 1.txt")) && File.Exists(Path.Combine(_files.Target, "trip 2.txt")),
             "the files renamed", 10);
@@ -312,16 +316,16 @@ public sealed class SearchScenarios : IDisposable
     public void Flat_view_and_quick_view()
     {
         using AppSession app = Start();
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_B, settleMs: 2000);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_B);
         AppSession.WaitUntil(() => app.Items().Contains(@"Projects\Old\readme.txt"), "the files of the subfolders", 10);
         AppSession.Screenshot("g03 flat view");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_B, settleMs: 1500); // back
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_B); // back
         AppSession.WaitUntil(() => app.Items().Contains("notes.md"), "the folder again", 10);
         app.GoTo("notes.md");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_Q, settleMs: 1500);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_Q);
         WaitUntilOr(() => HasText(app, app.Window, "- one"), "the quick view of notes.md", 10, () => Texts(app, app.Window));
         AppSession.Screenshot("g04 quick view");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_Q, settleMs: 800);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_Q);
         NoErrors(app);
     }
 }

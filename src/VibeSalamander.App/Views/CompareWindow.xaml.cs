@@ -161,6 +161,7 @@ public sealed partial class CompareWindow : Window
 
     private async Task CompareAsync()
     {
+        using IDisposable busy = Services.AppActivity.Begin("compare"); // the UI tests wait for it
         _cts?.Cancel();
         var cts = new CancellationTokenSource();
         _cts = cts;

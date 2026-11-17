@@ -68,6 +68,7 @@ internal sealed class CalculateSession
         _window.RowMenu = RowMenu;
         _window.Closed += (_, _) => _cancel.Cancel();
         _window.SetStatus(T("Reading directory tree, please wait..."));
+        _window.SetProgress(-1);
         _running = true;
         _ = Task.Run(Run);
     }
@@ -132,6 +133,7 @@ internal sealed class CalculateSession
             if (rows.Count == 0 && !token.IsCancellationRequested)
             {
                 window.SetStatus(T("No files"));
+                window.SetProgress(null);
                 return;
             }
 

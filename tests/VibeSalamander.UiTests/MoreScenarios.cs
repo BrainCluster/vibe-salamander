@@ -42,7 +42,8 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         app.GoTo("notes.md");
-        app.Press(VirtualKeyShort.F6, settleMs: 1000);
+        app.Press(VirtualKeyShort.F6);
+        app.WaitDialog();
         AppSession.Screenshot("60 move dialog");
         app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => File.Exists(Target("notes.md")) && !File.Exists(Doc("notes.md")), "notes.md moved");
@@ -56,7 +57,8 @@ public sealed class MoreScenarios : IDisposable
         File.WriteAllText(Target("report.txt"), "old version");
         using AppSession app = Start();
         app.GoTo("report.txt");
-        app.Press(VirtualKeyShort.F5, settleMs: 800);
+        app.Press(VirtualKeyShort.F5);
+        app.WaitDialog();
         app.Press(VirtualKeyShort.ENTER);
         app.Button("Overwrite", seconds: 15);
         AppSession.Screenshot("61 overwrite question");
@@ -69,13 +71,15 @@ public sealed class MoreScenarios : IDisposable
     public void Mark_by_mask_and_copy_the_marked_files()
     {
         using AppSession app = Start();
-        app.Press(VirtualKeyShort.ADD, settleMs: 1000); // Num +
+        app.Press(VirtualKeyShort.ADD); // Num +
+        app.WaitDialog();
         AppSession.Screenshot("62 select by mask");
         app.Type("*.txt");
-        app.Press(VirtualKeyShort.ENTER, settleMs: 800);
+        app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => app.InfoLine().StartsWith("Selected:", StringComparison.Ordinal), "the .txt files marked");
         AppSession.Screenshot("63 marked by mask");
-        app.Press(VirtualKeyShort.F5, settleMs: 800);
+        app.Press(VirtualKeyShort.F5);
+        app.WaitDialog();
         app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => File.Exists(Target("report.txt")) && File.Exists(Target("Žuta kuća – čšćđž.txt")) && File.Exists(Target("日本語のファイル.txt")),
             "the marked .txt files copied");
@@ -90,13 +94,13 @@ public sealed class MoreScenarios : IDisposable
     public void Sort_by_size_and_back_by_name()
     {
         using AppSession app = Start();
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F6, settleMs: 1000);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F6, settleMs: 400);
         AppSession.Screenshot("64 sorted by size");
         List<string> bySize = app.Items();
         Assert.True(bySize.IndexOf("data.bin") < bySize.IndexOf("report.txt") && bySize.IndexOf("report.txt") < bySize.IndexOf("notes.md"),
             "largest first: " + string.Join(", ", bySize));
         Assert.True(bySize.IndexOf("Projects") < bySize.IndexOf("notes.md"), "folders stay on top: " + string.Join(", ", bySize));
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F3, settleMs: 1000);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F3, settleMs: 400);
         List<string> byName = app.Items();
         Assert.True(byName.IndexOf("budget 2026.csv") < byName.IndexOf("report.txt"), "by name: " + string.Join(", ", byName));
         NoErrors(app);
@@ -107,10 +111,10 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         Assert.Contains("hidden.txt", app.Items());
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_H, settleMs: 1000);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_H);
         AppSession.WaitUntil(() => !app.Items().Contains("hidden.txt"), "hidden.txt hidden");
         AppSession.Screenshot("65 hidden files off");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_H, settleMs: 1000);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_H);
         AppSession.WaitUntil(() => app.Items().Contains("hidden.txt"), "hidden.txt shown again");
         NoErrors(app);
     }
@@ -119,9 +123,10 @@ public sealed class MoreScenarios : IDisposable
     public void Filter_shows_only_matching_files()
     {
         using AppSession app = Start();
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F12, settleMs: 1000);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F12);
+        app.WaitDialog();
         app.Type("*.md");
-        app.Press(VirtualKeyShort.ENTER, settleMs: 1000);
+        app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => app.Items().Contains("notes.md") && !app.Items().Contains("report.txt"), "only .md files (and folders)");
         Assert.Contains("Projects", app.Items());
         AppSession.Screenshot("66 filter");
@@ -132,7 +137,7 @@ public sealed class MoreScenarios : IDisposable
     public void Swap_panels()
     {
         using AppSession app = Start(s => s.Right.Path = _files.Photos);
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_U, settleMs: 1200);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_U);
         AppSession.WaitUntil(() => app.Items().Contains("holiday 01.png") && app.Items(left: false).Contains("report.txt"), "the panels swapped");
         NoErrors(app);
     }
@@ -142,9 +147,8 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.F10);
-        Timing.Pause(1000);
-        app.WaitReady(60); // the sizes are calculated
-        Timing.Pause(500);
+        Timing.Pause(300);
+        app.Calm(); // the sizes are calculated
         AppSession.Screenshot("67 directory sizes");
         NoErrors(app);
     }
@@ -154,11 +158,11 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         FlaUI.Core.Input.Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.SHIFT, VirtualKeyShort.KEY_1); // remember Documents
-        Timing.Pause(800);
+        Timing.Pause(300);
         app.GoTo("Projects");
-        app.Press(VirtualKeyShort.ENTER, settleMs: 1000);
+        app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => app.Items().Contains("Vibe"), "inside Projects");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1, settleMs: 1000);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1);
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "back in Documents through hot path 1");
         NoErrors(app);
     }
@@ -168,9 +172,10 @@ public sealed class MoreScenarios : IDisposable
     {
         File.Copy(Doc("report.txt"), Target("report.txt"));
         using AppSession app = Start();
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F10, settleMs: 1200);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F10);
+        app.WaitDialog();
         AppSession.Screenshot("68 compare directories");
-        app.Press(VirtualKeyShort.ENTER, settleMs: 2000);
+        app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => app.InfoLine().StartsWith("Selected:", StringComparison.Ordinal), "the files only on the left marked");
         AppSession.Screenshot("69 compared");
         NoErrors(app);
@@ -183,14 +188,15 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         app.GoTo("archive.zip");
-        app.Press(VirtualKeyShort.ENTER, settleMs: 1500);
+        app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => app.Items().Contains("inside"), "the archive's content");
         app.GoTo("inside");
-        app.Press(VirtualKeyShort.ENTER, settleMs: 1200);
+        app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => app.Items().Contains("two.txt"), "the folder inside the archive");
         AppSession.Screenshot("70 inside a zip");
         app.GoTo("two.txt");
-        app.Press(VirtualKeyShort.F5, settleMs: 1000);
+        app.Press(VirtualKeyShort.F5);
+        app.WaitDialog();
         app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => File.Exists(Target("two.txt")), "two.txt unpacked into the target");
         Assert.Equal("two", File.ReadAllText(Target("two.txt")));
@@ -205,21 +211,23 @@ public sealed class MoreScenarios : IDisposable
         app.Press(VirtualKeyShort.SPACE);
         app.GoTo("budget 2026.csv");
         app.Press(VirtualKeyShort.SPACE);
-        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F5, settleMs: 1200);
+        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F5);
+        app.WaitDialog();
         AppSession.Screenshot("71 pack dialog");
         app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => Directory.EnumerateFiles(_files.Target, "*.zip").Any(), "an archive in the target", seconds: 20);
         string zip = Path.GetFileName(Directory.EnumerateFiles(_files.Target, "*.zip").First());
 
-        app.Press(VirtualKeyShort.TAB, settleMs: 800);
+        app.Press(VirtualKeyShort.TAB);
         AppSession.WaitUntil(() => app.Items(left: false).Contains(zip), "the archive in the right panel");
         app.GoTo(zip, left: false);
-        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F6, settleMs: 1200);
+        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F6);
+        app.WaitDialog();
         AppSession.Screenshot("72 unpack dialog");
         string output = Path.Combine(_files.Target, "out");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A); // the whole path in the dialog, replaced by typing
         app.Type(output);
-        app.Press(VirtualKeyShort.ENTER, settleMs: 1000);
+        app.Press(VirtualKeyShort.ENTER);
         app.Click("Create"); // "The target directory doesn't exist. Do you want to create it?" (Confirmations)
         AppSession.WaitUntil(() => Directory.Exists(output) &&
             Directory.EnumerateFiles(output, "notes.md", SearchOption.AllDirectories).Any() &&
@@ -262,10 +270,13 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         app.GoTo("report.txt");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F2, settleMs: 1200);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F2);
+        app.WaitDialog();
         AppSession.Screenshot("75 change attributes");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 800);
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F7, settleMs: 1200);
+        app.Press(VirtualKeyShort.ESCAPE);
+        app.WaitDialog(open: false);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.F7);
+        app.WaitDialog();
         AppSession.Screenshot("76 change case");
         app.Press(VirtualKeyShort.ESCAPE);
         NoErrors(app);
@@ -276,7 +287,7 @@ public sealed class MoreScenarios : IDisposable
     {
         using AppSession app = Start();
         app.Menu("Plugins", "Disk Map", "Show disk map");
-        Timing.Pause(4000);
+        app.Calm(400); // read and drawn
         AppSession.Screenshot("77 disk map");
         app.CloseOtherWindows();
         NoErrors(app);
@@ -288,7 +299,7 @@ public sealed class MoreScenarios : IDisposable
         using AppSession app = Start();
         app.GoTo("report.txt");
         app.Menu("Plugins", "Checksum", "Calculate Checksums...");
-        Timing.Pause(2000);
+        app.Calm(); // calculated
         AppSession.Screenshot("78 checksums");
         app.Press(VirtualKeyShort.ESCAPE);
         app.CloseOtherWindows();
@@ -317,7 +328,7 @@ public sealed class MoreScenarios : IDisposable
                 s.Colors.Scheme = scheme;
                 s.Right.Path = _files.Photos;
             });
-            Timing.Pause(1000);
+            app.Calm();
             AppSession.Screenshot(name);
             NoErrors(app);
         }
@@ -331,7 +342,7 @@ public sealed class MoreScenarios : IDisposable
             s.WindowHeight = 600;
         }))
         {
-            Timing.Pause(1000);
+            app.Calm();
             AppSession.Screenshot("83 comfortable small window");
             // in a narrow panel the names still show (other columns step aside)
             var name = app.Row("report.txt").FindFirstDescendant(cf => cf.ByName("report").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text)));

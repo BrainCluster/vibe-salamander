@@ -151,9 +151,25 @@ public sealed class ThumbnailCache
             return;
         (job.LookedUp ? _generateQueue : _lookupQueue).Remove(job);
         _jobs.Remove(job.Key);
+        _busy.Set(_running > 0 || _lookupQueue.Count > 0 || _generateQueue.Count > 0);
     }
 
+    /// <summary>Thumbnails are being loaded (the UI tests wait for them).</summary>
+    private readonly BusyFlag _busy = new("thumbnails");
+
     private void Pump()
+    {
+        try
+        {
+            PumpCore();
+        }
+        finally
+        {
+            _busy.Set(_running > 0 || _lookupQueue.Count > 0 || _generateQueue.Count > 0);
+        }
+    }
+
+    private void PumpCore()
     {
         while (_running < Parallel)
         {
@@ -201,6 +217,7 @@ public sealed class ThumbnailCache
         {
             job.Running = false;
             _running--;
+            _busy.Set(_running > 0 || _lookupQueue.Count > 0 || _generateQueue.Count > 0);
         }
 
         if (image == null && lookupOnly && !job.OnlineOnly)

@@ -38,7 +38,7 @@ public sealed class MeasurementScenarios : IDisposable
     /// <summary>The memory only this program uses (private bytes), a moment after it settled.</summary>
     private static long Memory(AppSession app)
     {
-        Timing.Pause(2000);
+        Timing.Pause(1000); // the memory settles after the start
         using Process process = Process.GetProcessById(app.App.ProcessId);
         process.Refresh();
         return process.PrivateMemorySize64;

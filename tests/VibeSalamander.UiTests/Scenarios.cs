@@ -57,7 +57,8 @@ public sealed class Scenarios : IDisposable
         };
         foreach (var (key, name) in views)
         {
-            app.Press(VirtualKeyShort.ALT, key, settleMs: 2500); // thumbnails take a moment
+            app.Press(VirtualKeyShort.ALT, key);
+            app.Calm(); // thumbnails and icons
             AppSession.Screenshot(name);
         }
         NoErrors(app);
@@ -69,7 +70,8 @@ public sealed class Scenarios : IDisposable
         using AppSession app = Start(s => s.Right.Path = _files.Target);
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the documents");
         app.GoTo("report.txt");
-        app.Press(VirtualKeyShort.F5, settleMs: 1000);
+        app.Press(VirtualKeyShort.F5);
+        app.WaitDialog();
         AppSession.Screenshot("10 copy dialog");
         app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => File.Exists(Path.Combine(_files.Target, "report.txt")), "report.txt copied to the target");
@@ -85,14 +87,16 @@ public sealed class Scenarios : IDisposable
         using AppSession app = Start();
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the documents");
 
-        app.Press(VirtualKeyShort.F7, settleMs: 1000);
+        app.Press(VirtualKeyShort.F7);
+        app.WaitDialog();
         AppSession.Screenshot("12 create directory");
         app.Type("New things");
         app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => Directory.Exists(Path.Combine(_files.Documents, "New things")), "the new directory");
 
         app.GoTo("notes.md");
-        app.Press(VirtualKeyShort.F2, settleMs: 800);
+        app.Press(VirtualKeyShort.F2);
+        app.WaitNameEditor();
         AppSession.Screenshot("13 rename in place");
         app.Type("renamed"); // the name without its extension is selected
         app.Press(VirtualKeyShort.ENTER);
@@ -100,7 +104,7 @@ public sealed class Scenarios : IDisposable
         Assert.False(File.Exists(Path.Combine(_files.Documents, "notes.md")));
 
         app.GoTo("renamed.md");
-        app.Press(VirtualKeyShort.F8, settleMs: 1000); // to the Recycle Bin, no question (the default)
+        app.Press(VirtualKeyShort.F8); // to the Recycle Bin, no question (the default)
         AppSession.WaitUntil(() => !File.Exists(Path.Combine(_files.Documents, "renamed.md")), "renamed.md deleted");
         AppSession.Screenshot("14 after delete");
         NoErrors(app);
@@ -116,9 +120,10 @@ public sealed class Scenarios : IDisposable
         app.Press(VirtualKeyShort.INSERT);
         AppSession.Screenshot("20 marked items");
         AppSession.WaitUntil(() => app.InfoLine().StartsWith("Selected:", StringComparison.Ordinal), "the information line about the 2 marked files");
-        app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F10, settleMs: 1200);
+        app.Press(VirtualKeyShort.SHIFT, VirtualKeyShort.F10);
+        app.WaitMenu();
         AppSession.Screenshot("21 context menu");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 800);
+        app.Press(VirtualKeyShort.ESCAPE);
         // the keyboard's context menu works on the marked items: they stay marked
         AppSession.WaitUntil(() => app.InfoLine().StartsWith("Selected:", StringComparison.Ordinal), "the 2 files still marked after Shift+F10", seconds: 3);
         NoErrors(app);
@@ -130,11 +135,11 @@ public sealed class Scenarios : IDisposable
         using AppSession app = Start();
         AppSession.WaitUntil(() => app.Items().Contains("Projects"), "the documents");
         app.GoTo("Projects");
-        app.Press(VirtualKeyShort.ENTER, settleMs: 1000);
+        app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => app.Items().Contains("Vibe") && app.Items().Contains("Old"), "the Projects folder");
         AppSession.Screenshot("22 inside a folder");
         app.Press(VirtualKeyShort.HOME);
-        app.Press(VirtualKeyShort.ENTER, settleMs: 1000); // ".."
+        app.Press(VirtualKeyShort.ENTER); // ".."
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "back in Documents");
         Assert.Equal("Projects", app.Caret()); // the caret comes back to the folder we left
         NoErrors(app);
@@ -145,8 +150,8 @@ public sealed class Scenarios : IDisposable
     {
         using AppSession app = Start();
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the documents");
-        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F7, settleMs: 1500);
-        var find = app.OtherWindow("Find Files");
+        app.Press(VirtualKeyShort.ALT, VirtualKeyShort.F7);
+        var find = app.OpenedWindow("Find Files");
         AppSession.Screenshot("30 find window");
         find.Close();
         NoErrors(app);
@@ -157,8 +162,7 @@ public sealed class Scenarios : IDisposable
     {
         using AppSession app = Start();
         app.Menu("Options", "Configuration...");
-        var configuration = app.OtherWindow("Configuration");
-        Timing.Pause(1000);
+        var configuration = app.OpenedWindow("Configuration");
         AppSession.Screenshot("31 configuration");
         configuration.Close();
         NoErrors(app);
@@ -173,7 +177,7 @@ public sealed class Scenarios : IDisposable
             s.Right.Path = "thispc:";
         });
         AppSession.WaitUntil(() => app.Items(left: false).Count > 0, "the drives");
-        Timing.Pause(1000);
+        app.Calm();
         AppSession.Screenshot("40 this pc dark");
         NoErrors(app);
     }
@@ -186,7 +190,7 @@ public sealed class Scenarios : IDisposable
             s.ViewStyle = ViewStyle.Modern;
             s.Left.Path = "thispc:";
         });
-        Timing.Pause(2500);
+        app.Calm(); // thumbnails
         AppSession.Screenshot("41 modern views");
         NoErrors(app);
     }
@@ -197,10 +201,10 @@ public sealed class Scenarios : IDisposable
         using AppSession app = Start(s => s.General.Language = "hr");
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the documents");
         app.GoTo("report.txt");
-        app.Press(VirtualKeyShort.F5, settleMs: 500);
+        app.Press(VirtualKeyShort.F5);
+        app.WaitDialog();
         AppSession.WaitUntil(() => app.Window.FindFirstDescendant(cf => cf.ByName("Kopiraj").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))) != null,
             "the copy dialog in Croatian (its Kopiraj button)");
-        Timing.Pause(500);
         AppSession.Screenshot("42 croatian copy dialog");
         app.Press(VirtualKeyShort.ESCAPE);
         NoErrors(app);
@@ -213,7 +217,7 @@ public sealed class Scenarios : IDisposable
         using AppSession app = Start(s => s.Left.Path = _files.Many);
         AppSession.WaitUntil(() => app.Items().Contains("file 0000.txt"), "the 5000 files", seconds: 30);
         double seconds = clock.Elapsed.TotalSeconds;
-        app.Press(VirtualKeyShort.END, settleMs: 800);
+        app.Press(VirtualKeyShort.END);
         AppSession.WaitUntil(() => app.Caret() == "file 4999.txt", "the caret on the last file");
         AppSession.Screenshot("50 5000 files");
         Assert.True(seconds < 20, $"starting on 5000 files took {seconds:0.0} s");

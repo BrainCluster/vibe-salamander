@@ -90,6 +90,7 @@ internal sealed class VerifySession
             new PluginButton("close", T("Stop"), StopOrClose, IsDefault: true),
         });
         _window.Closed += (_, _) => _cancel.Cancel();
+        _window.SetProgress(-1); // until the files are checked
 
         var rows = new List<IPluginRow>();
         foreach (ChecksumLine line in lines)

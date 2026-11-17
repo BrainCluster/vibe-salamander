@@ -50,6 +50,13 @@ public sealed partial class Dialogs
     {
         await Gate.WaitAsync();
         DialogOpenChanged?.Invoke(this, true);
+        bool opened = false;
+        void Opened(ContentDialog sender, ContentDialogOpenedEventArgs args)
+        {
+            opened = true;
+            Services.AppActivity.DialogOpened(); // the UI tests wait for it
+        }
+        dialog.Opened += Opened;
         try
         {
             dialog.XamlRoot ??= _xamlRoot();
@@ -58,6 +65,9 @@ public sealed partial class Dialogs
         }
         finally
         {
+            dialog.Opened -= Opened;
+            if (opened)
+                Services.AppActivity.DialogClosed();
             DialogOpenChanged?.Invoke(this, false);
             Gate.Release();
         }

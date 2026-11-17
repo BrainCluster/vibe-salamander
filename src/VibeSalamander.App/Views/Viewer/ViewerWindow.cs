@@ -694,6 +694,7 @@ internal sealed partial class ViewerWindow : Window
 
     private async Task FindAsync(bool backwards)
     {
+        using IDisposable busy = Services.AppActivity.Begin("viewer"); // the UI tests wait for it
         if (_findBar.Visibility != Visibility.Visible || _findBox.Text.Length == 0)
         {
             ShowFindBar();

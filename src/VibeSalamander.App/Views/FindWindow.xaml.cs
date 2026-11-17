@@ -472,6 +472,7 @@ public sealed partial class FindWindow : Window
 
     private async Task RunSearchAsync()
     {
+        using IDisposable busy = Services.AppActivity.Begin("find"); // the UI tests wait for it
         SavedSearch form = ReadForm();
         if (SearchForm.Folders(form.LookIn).Count == 0)
             form.LookIn = LookInBox.Text = _startDirectory;

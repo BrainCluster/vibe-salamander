@@ -303,10 +303,16 @@ the translation (`{ "Copy": "Kopiraj" }`); a missing entry stays English.
   and saves a screenshot per step. `DocumentationScreenshots` produces the pictures in `docs/wiki/images`.
   Environment: `VIBE_APP_EXE`, `VIBE_SCREENSHOTS`, `VIBE_HELLO_PLUGIN`.
 * Elements the UI tests need are found by name or automation id; give new controls one.
-* **The UI tests don't guess how long things take.** The main window's `AppState` element (not displayed) says
-  "ready" or "busy: ..."; `AppSession` waits for "ready" after the start and after every key and click, and
-  `WaitReady()` waits for something long. Anything new that takes time and isn't a panel listing announces
-  itself with `AppActivity.Begin("what")` and disposes the result when done.
+* **The UI tests don't guess how long things take.** The main window's `AppState` element (nothing to see) says
+  "ready" or "busy: ..." (panels listing or calculating, the viewer loading a file or page, the editor starting,
+  Find / Duplicates / Compare running, thumbnails and icons loading, a plugin window showing progress or not yet
+  drawn), then "; dialog" while a dialog is open and "; transfers" while transfers run. `AppSession` waits for
+  "ready" after the start and after every key and click; a step waits for what it needs: `WaitDialog()`,
+  `OpenedWindow(title)`, `WaitTransfers()`, `WaitMenu()`, `WaitNameEditor()`, `Calm()` (ready, then a moment
+  before a screenshot). A fixed `Timing.Pause` is only for what really takes time (a speed graph filling, a
+  typing pause the editor waits for) and says why. Anything new that takes time announces itself with
+  `AppActivity.Begin("what")` (or a `BusyFlag` for a queue) and disposes it when done; dialogs are counted by the
+  dialog gate, plugin windows by their progress.
 * **The UI run accounts for its time**: `Timing` adds up starting and closing the app, the dummy files, fixed
   pauses (`Timing.Pause`, never `Thread.Sleep`) and waits; the run's page (`ui-screenshots`) shows the totals and
   every test's seconds. Look there before making the tests faster, and prefer a wait for a state to a longer pause.

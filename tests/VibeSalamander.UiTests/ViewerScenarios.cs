@@ -37,15 +37,15 @@ public sealed class ViewerScenarios : IDisposable
         Assert.True(log.Length == 0, "The error log has entries:\n" + log);
     }
 
-    /// <summary>F3 on a file: its viewer window.</summary>
-    private static Window View(AppSession app, string name, int settleMs = 2500)
+    /// <summary>F3 on a file: its viewer window, once the file is shown (a page, a picture, a PDF: the viewer says when).</summary>
+    private static Window View(AppSession app, string name)
     {
         app.Window.Focus();
         app.GoTo(name);
         app.Press(VirtualKeyShort.F3, settleMs: 300);
         Window viewer = app.OtherWindow(name + " - ");
         viewer.Focus();
-        Timing.Pause(settleMs);
+        app.Calm(300);
         return viewer;
     }
 
@@ -59,7 +59,7 @@ public sealed class ViewerScenarios : IDisposable
         {
             // closed already
         }
-        Timing.Pause(500);
+        Timing.Pause(250);
     }
 
     // ---- the viewer ---------------------------------------------------------------------------------------------
@@ -70,14 +70,16 @@ public sealed class ViewerScenarios : IDisposable
         using AppSession app = Start();
         Window viewer = View(app, "server.log");
         AppSession.Screenshot("v01 viewer text");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_F, settleMs: 600);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_F);
         app.Type("request 150000 ", settleMs: 300);
-        app.Press(VirtualKeyShort.ENTER, settleMs: 2500);
+        app.Press(VirtualKeyShort.ENTER);
+        app.Calm(); // found
         AppSession.Screenshot("v02 viewer find");
         app.Press(VirtualKeyShort.ESCAPE, settleMs: 300);
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_2, settleMs: 1500);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_2);
+        app.Calm();
         AppSession.Screenshot("v03 viewer hex");
-        app.Press(VirtualKeyShort.ESCAPE, settleMs: 800);
+        app.Press(VirtualKeyShort.ESCAPE);
         AppSession.WaitUntil(() => !Exists(viewer) || viewer.IsOffscreen, "the viewer closed by Esc", 5);
         NoErrors(app);
     }
@@ -87,17 +89,21 @@ public sealed class ViewerScenarios : IDisposable
     {
         using AppSession app = Start();
         Window json = View(app, "config.json");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1, settleMs: 1500);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1);
+        app.Calm();
         AppSession.Screenshot("v04 viewer json tree");
         Close(json);
         Window xml = View(app, "layout.xml");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1, settleMs: 1500);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1);
+        app.Calm();
         AppSession.Screenshot("v05 viewer xml tree");
         Close(xml);
         Window yaml = View(app, "pipeline.yaml");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1, settleMs: 1500);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_1);
+        app.Calm();
         AppSession.Screenshot("v06 viewer yaml tree");
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_2, settleMs: 1200);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_2);
+        app.Calm();
         AppSession.Screenshot("v07 viewer yaml text");
         Close(yaml);
         NoErrors(app);
@@ -107,13 +113,13 @@ public sealed class ViewerScenarios : IDisposable
     public void Markdown_notebook_and_web_page_rendered()
     {
         using AppSession app = Start();
-        Window markdown = View(app, "README.md", settleMs: 4000);
+        Window markdown = View(app, "README.md");
         AppSession.Screenshot("v08 viewer markdown");
         Close(markdown);
-        Window notebook = View(app, "analysis.ipynb", settleMs: 4000);
+        Window notebook = View(app, "analysis.ipynb");
         AppSession.Screenshot("v09 viewer notebook");
         Close(notebook);
-        Window page = View(app, "page.html", settleMs: 4000);
+        Window page = View(app, "page.html");
         AppSession.Screenshot("v10 viewer web page");
         Close(page);
         NoErrors(app);
@@ -125,8 +131,9 @@ public sealed class ViewerScenarios : IDisposable
         using AppSession app = Start(s => s.Left.Path = _files.Photos, "holiday 01.png");
         Window picture = View(app, "holiday 01.png");
         AppSession.Screenshot("v11 viewer picture");
-        app.Press(VirtualKeyShort.RIGHT, settleMs: 1500);
-        app.Press(VirtualKeyShort.KEY_R, settleMs: 1200);
+        app.Press(VirtualKeyShort.RIGHT);
+        app.Calm(); // the next picture
+        app.Press(VirtualKeyShort.KEY_R, settleMs: 400);
         AppSession.Screenshot("v12 viewer next picture rotated");
         Assert.StartsWith("holiday 02", picture.Name ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         Close(picture);
@@ -137,10 +144,10 @@ public sealed class ViewerScenarios : IDisposable
     public void Pdf_and_sound()
     {
         using AppSession app = Start();
-        Window pdf = View(app, "document.pdf", settleMs: 3000);
+        Window pdf = View(app, "document.pdf");
         AppSession.Screenshot("v13 viewer pdf");
         Close(pdf);
-        Window sound = View(app, "tone.wav", settleMs: 3000);
+        Window sound = View(app, "tone.wav");
         AppSession.Screenshot("v14 viewer sound");
         Close(sound);
         NoErrors(app);
@@ -155,10 +162,9 @@ public sealed class ViewerScenarios : IDisposable
         app.GoTo(name);
         app.Press(VirtualKeyShort.F4, settleMs: 300);
         Window editor = app.OtherWindow(name + " - ");
-        app.WaitReady(60); // WebView2 and Monaco started and the text is in the editor, however long that takes here
-        Timing.Pause(1000);
+        app.Calm(300); // WebView2 and Monaco started and the text is in the editor, however long that takes here
         editor.Focus();
-        Timing.Pause(500);
+        Timing.Pause(150);
         return editor;
     }
 
@@ -170,9 +176,9 @@ public sealed class ViewerScenarios : IDisposable
         AppSession.Screenshot("v15 editor code");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.HOME, settleMs: 200);
         app.Type("// edited by the UI test", settleMs: 200);
-        app.Press(VirtualKeyShort.ENTER, settleMs: 800);
+        app.Press(VirtualKeyShort.ENTER);
         AppSession.WaitUntil(() => (editor.Name ?? string.Empty).StartsWith('●'), "the title marking the change", 5);
-        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_S, settleMs: 1500);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_S);
         AppSession.WaitUntil(() => File.ReadAllText(Sample("Program.cs")).StartsWith("// edited by the UI test", StringComparison.Ordinal), "Program.cs saved");
         AppSession.WaitUntil(() => !(editor.Name ?? string.Empty).StartsWith('●'), "the title without the change mark", 5);
         Close(editor);
@@ -185,14 +191,15 @@ public sealed class ViewerScenarios : IDisposable
         using AppSession app = Start();
         Window editor = Edit(app, "config.json");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.END, settleMs: 200);
-        app.Type(" unclosed", settleMs: 2000);
-        AppSession.Screenshot("v16 editor json problem");
+        app.Type(" unclosed");
         AppSession.WaitUntil(() => editor.FindAllDescendants(cf => cf.ByControlType(ControlType.Text))
             .Any(t => (t.Name ?? string.Empty).StartsWith("Line ", StringComparison.Ordinal)), "the problem in the status line", 20); // Monaco validates after a pause; the test machine is slow at times
+        Timing.Pause(200); // the squiggle drawn
+        AppSession.Screenshot("v16 editor json problem");
         Close(editor);
         // closing with changes asks
         Button(editor, app, "Don't save").Click();
-        Timing.Pause(800);
+        Timing.Pause(300);
         Assert.DoesNotContain("unclosed", File.ReadAllText(Sample("config.json")), StringComparison.Ordinal);
         NoErrors(app);
     }
@@ -207,11 +214,11 @@ public sealed class ViewerScenarios : IDisposable
         app.Press(VirtualKeyShort.ENTER, settleMs: 100);
         app.Type("## Typed just now", settleMs: 100);
         app.Press(VirtualKeyShort.ENTER, settleMs: 100);
-        app.Type("The preview follows the text.", settleMs: 2500);
+        app.Type("The preview follows the text.", settleMs: 1000); // the preview follows after a short pause in typing
         AppSession.Screenshot("v17 editor markdown preview");
         Close(editor);
         Button(editor, app, "Don't save").Click();
-        Timing.Pause(800);
+        Timing.Pause(300);
         NoErrors(app);
     }
 
