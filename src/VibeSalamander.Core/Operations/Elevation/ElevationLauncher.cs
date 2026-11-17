@@ -49,14 +49,14 @@ public sealed class ElevationLauncher : IElevation
         string name = PipePrefix + Guid.NewGuid().ToString("N");
         var pipe = new NamedPipeServerStream(name, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
             PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-        Process? process = null;
+        HelperProcess? process = null;
         Session? session = null;
         try
         {
             string arguments = $"{name} {Environment.ProcessId}";
             process = AsAdministrator
                 ? await RunAsAdministratorAsync(_helper, arguments, _owner())
-                : Process.Start(new ProcessStartInfo(_helper, arguments) { UseShellExecute = false, CreateNoWindow = true });
+                : HelperProcess.Start(_helper, arguments);
             if (process == null)
                 throw new IOException(L.T("The administrator helper didn't start."));
 
@@ -65,6 +65,8 @@ public sealed class ElevationLauncher : IElevation
             Task connected = pipe.WaitForConnectionAsync(timeout.Token);
             Task exited = process.WaitForExitAsync(timeout.Token);
             await Task.WhenAny(connected, exited);
+            Observe(connected);
+            Observe(exited);
             cancellationToken.ThrowIfCancellationRequested();
             if (!connected.IsCompletedSuccessfully)
                 throw new IOException(L.T("The administrator helper didn't start."));
@@ -91,39 +93,86 @@ public sealed class ElevationLauncher : IElevation
             else if (process != null || !pipe.IsConnected)
             {
                 pipe.Dispose();
-                if (process != null)
-                {
-                    try
-                    {
-                        if (!process.HasExited)
-                            process.Kill();
-                    }
-                    catch (Exception kill) when (kill is InvalidOperationException or Win32Exception)
-                    {
-                        // ended meanwhile, or not ours to end
-                    }
-                    process.Dispose();
-                }
+                process?.Kill();
+                process?.Dispose();
             }
         }
     }
 
+    /// <summary>A task that may fail after nobody waits for it any more: its failure is seen (not a background error).</summary>
+    private static void Observe(Task task) =>
+        task.ContinueWith(t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+
     /// <summary>The helper's connection; disposing it ends the helper.</summary>
-    private sealed class Session(NamedPipeServerStream pipe, Process process) : ElevatedClient(pipe)
+    private sealed class Session(NamedPipeServerStream pipe, HelperProcess process) : ElevatedClient(pipe)
     {
         public override void Dispose()
         {
             base.Dispose();
-            try
-            {
-                if (!process.WaitForExit(3000))
-                    process.Kill();
-            }
-            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
-            {
-                // ended already
-            }
+            if (!process.WaitForExit(3000))
+                process.Kill();
             process.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The started helper, through the handle its start gave: a program that isn't administrator may not open an
+    /// administrator's process afterwards (looking it up by id, waiting for it and ending it fail with "access
+    /// denied"), but the handle from the start has every right.
+    /// </summary>
+    private sealed class HelperProcess : IDisposable
+    {
+        private readonly SafeProcessHandle _handle;
+        private readonly IDisposable? _owner;
+
+        private HelperProcess(SafeProcessHandle handle, IDisposable? owner)
+        {
+            _handle = handle;
+            _owner = owner;
+            Id = GetProcessId(handle);
+        }
+
+        public int Id { get; }
+
+        /// <summary>Takes over a handle from ShellExecuteEx.</summary>
+        public static HelperProcess FromHandle(IntPtr handle) => new(new SafeProcessHandle(handle, ownsHandle: true), null);
+
+        /// <summary>Starts it with this process's rights (the tests).</summary>
+        public static HelperProcess? Start(string file, string arguments)
+        {
+            Process? process = Process.Start(new ProcessStartInfo(file, arguments) { UseShellExecute = false, CreateNoWindow = true });
+            return process == null ? null : new HelperProcess(process.SafeHandle, process);
+        }
+
+        public bool WaitForExit(int milliseconds) => WaitForSingleObject(_handle, (uint)milliseconds) == 0;
+
+        public Task WaitForExitAsync(CancellationToken cancellationToken)
+        {
+            var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var wait = new ManualResetEvent(false) { SafeWaitHandle = new SafeWaitHandle(_handle.DangerousGetHandle(), ownsHandle: false) };
+            RegisteredWaitHandle registered = ThreadPool.RegisterWaitForSingleObject(wait, (_, _) => exited.TrySetResult(), null, -1, executeOnlyOnce: true);
+            CancellationTokenRegistration cancel = cancellationToken.Register(() => exited.TrySetCanceled(cancellationToken));
+            exited.Task.ContinueWith(_ =>
+            {
+                registered.Unregister(null);
+                cancel.Dispose();
+                wait.Dispose();
+            }, TaskScheduler.Default);
+            return exited.Task;
+        }
+
+        public void Kill()
+        {
+            if (!WaitForExit(0))
+                TerminateProcess(_handle, 1);
+        }
+
+        public void Dispose()
+        {
+            if (_owner != null)
+                _owner.Dispose(); // the Process owns the handle
+            else
+                _handle.Dispose();
         }
     }
 
@@ -156,9 +205,9 @@ public sealed class ElevationLauncher : IElevation
     // ---- Windows ---------------------------------------------------------------------------------------
 
     /// <summary>ShellExecuteEx with "runas" on an STA thread of its own, so Windows' prompt belongs to the window.</summary>
-    private static Task<Process?> RunAsAdministratorAsync(string file, string arguments, IntPtr owner)
+    private static Task<HelperProcess?> RunAsAdministratorAsync(string file, string arguments, IntPtr owner)
     {
-        var done = new TaskCompletionSource<Process?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var done = new TaskCompletionSource<HelperProcess?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
         {
             try
@@ -180,23 +229,7 @@ public sealed class ElevationLauncher : IElevation
                     done.SetException(error == ERROR_CANCELLED ? new ElevationRefusedException() : new Win32Exception(error));
                     return;
                 }
-                if (info.hProcess == IntPtr.Zero)
-                {
-                    done.SetResult(null);
-                    return;
-                }
-                int id = GetProcessId(info.hProcess);
-                Process? process = null;
-                try
-                {
-                    process = Process.GetProcessById(id);
-                }
-                catch (ArgumentException)
-                {
-                    // ended already
-                }
-                CloseHandle(info.hProcess);
-                done.SetResult(process);
+                done.SetResult(info.hProcess == IntPtr.Zero ? null : HelperProcess.FromHandle(info.hProcess));
             }
             catch (Exception ex)
             {
@@ -240,11 +273,14 @@ public sealed class ElevationLauncher : IElevation
     private static extern bool ShellExecuteEx(ref SHELLEXECUTEINFO info);
 
     [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern int GetProcessId(IntPtr process);
+    private static extern int GetProcessId(SafeProcessHandle process);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern uint WaitForSingleObject(SafeProcessHandle handle, uint milliseconds);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CloseHandle(IntPtr handle);
+    private static extern bool TerminateProcess(SafeProcessHandle process, uint exitCode);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
