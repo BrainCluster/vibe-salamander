@@ -175,8 +175,11 @@ window (`Services/WindowOwner`).
   accepts only the process it started (`GetNamedPipeClientProcessId`) and the helper only the program that
   started it (`GetNamedPipeServerProcessId`); the helper does only the seven changes, only on full drive or share
   paths (no device paths), with settable attributes only; JSON lines with a version in the hello, 256 KB per line.
-  The main program never runs elevated. Not yet through the helper: in-place rename (F2), F7's new folder and
-  the attributes dialog, which don't run in the engine.
+  The main program never runs elevated. Outside the engine, `Elevator` does the same for one operation: Change
+  Attributes and Change Case ask through `IOperationCallbacks`; F2 and F7 (which report problems as notifications)
+  ask with a confirmation and keep the helper for F7's naming. The program's window takes the foreground back
+  after Windows' prompt (the helper allows it with `AllowSetForegroundWindow`). Every build has the helper beside
+  the program (`BuildElevatedHelper` in the app project); a release publishes it on its own.
 * **Icons and thumbnails.** Glyphs render immediately; `IconCache` loads shell icons on two STA threads of
   its own (SHGetFileInfo is unreliable on thread-pool threads), cached per extension, or per path for
   `.exe/.lnk/.ico` and drives. Icon packs (Windows, Vibe color, Vibe one color) are chosen through Core's
@@ -305,7 +308,9 @@ the translation (`{ "Copy": "Kopiraj" }`); a missing entry stays English.
   - *Before a release:* everything, on the branch: both workflows with `-f tests=all`, both green.
   - A push to `main` only builds; the release itself runs all Core tests again before publishing.
 * **To release:** the full run above, then raise `<Version>` in `Directory.Build.props`, add
-  `docs/releases/<version>.md`, push to `main`.
+  `docs/releases/<version>.md`, push to `main`. The release job adds a "Speed" table to the notes (this release's
+  `PerformanceTests` times next to the previous release's `speed.md`, by `build/speed-notes.py`) and attaches
+  `speed.md` for the next one.
 * The binaries are not code-signed (SmartScreen warns); see the roadmap.
 
 ## Tests

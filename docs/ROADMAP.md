@@ -50,8 +50,9 @@ them; quick view and thumbnails of an online-only file show its icon, never its 
 and inside ZIP files, Find Duplicates by content and Compare Directories by content (marks and the list) skip such
 files, count them in their status, and have a box to include them; quick view says the file is only in the cloud;
 thumbnails come only from Windows' thumbnail cache; .exe / .lnk / .ico icons are the type's; Checksums reads a
-file the user marked but not the cloud-only files inside a marked folder. The Attr column shows O / P / U. Still
-open: a cloud icon in the panel rows (the Attr letters are the only mark so far).
+file the user marked but not the cloud-only files inside a marked folder. The Attr column shows O / P / U, and the
+Detailed and Brief views put a small cloud (only in the cloud) or a green check (always kept on this device) over the
+icon (UI test `A_file_only_in_the_cloud_has_a_cloud_over_its_icon`). Not yet tried on a real OneDrive folder.
 
 **T2. A data-safety test matrix for the copy engine.**
 `FileOperationEngine` is the code that can lose files. It has edge-case tests; it needs a systematic matrix
@@ -65,8 +66,9 @@ links (their content copied, a move never deletes a link's target), alternate da
 a full target disk, the source disappearing during the copy, pause and resume inside a large file,
 verification failing.
 *Done when:* each case is a test; every failure found is fixed or, if it is a decision, written down here.
-*Status (stage 1):* `FileOperationSafetyTests` covers the matrix except a full disk (needs a small volume of its
-own). Found and fixed: a target that is the source itself through a junction, hard link or subst drive was offered
+*Status (stage 1, full disk added for 0.9.0):* `FileOperationSafetyTests` covers the matrix; `FullDiskTests` makes a
+16 MB virtual disk (administrator only: the build machines) and checks the question before the copy, that a file too
+large leaves no partial copy while the others arrive, and that a move keeps what didn't fit (no fix was needed). Found and fixed: a target that is the source itself through a junction, hard link or subst drive was offered
 as an ordinary overwrite (now recognized by file identity and refused); a folder copied into a link that leads
 inside it was copied into itself; a copy that failed verification stayed in the target and Retry could never
 succeed. **Decided (BrainCluster, 2026-11-16):** an overwrite keeps writing over the old file in place, as Explorer and
@@ -83,8 +85,10 @@ one Windows prompt per transfer; the main program never runs elevated; declining
 *Status (stage 5):* copy, move and permanent delete (with their new folders, times and attributes) go through
 `Core/Operations/Elevation` and `lib\VibeSalamander.Elevated.exe` (see ARCHITECTURE, "Administrator rights for
 one transfer"); `ElevationTests` cover the engine flow, the helper's protocol and the real helper program.
-Left: in-place rename (F2), F7's new folder and the attributes dialog, which don't run in the engine; and a test
-of the Windows prompt itself, which the build machines (already administrator) can't show.
+In-place rename (F2), F7's new folder (made and named with one prompt), Change Attributes and Change Case go through
+`Elevator` (the same helper, one prompt per operation). Tried by hand on a normal account (BrainCluster, 2026-11-17):
+two fixes followed (the program couldn't follow the helper it started; its window went behind the others).
+Still untested automatically: the Windows prompt itself (the build machines are already administrator).
 
 **T4. Measured speed.**
 *Where:* a benchmark set in the Core tests (list 100,000 files, sort them, quick search, plan a copy of a
@@ -96,7 +100,8 @@ after showing a 50,000-file folder, printed in the `ui-screenshots` README.
 names and text, duplicates, copying a tree, opening and indexing a 64 MB text file, each with a generous limit; the
 times are in the summary of every *Build and release* run. `MeasurementScenarios` (UI): start time, the End key in
 a folder of 20,000 files and memory, on the `ui-screenshots` page. Smaller than first planned (100,000 files, 2 GB)
-to keep the runs short. Open: the line in the release notes.
+to keep the runs short. Every release keeps its times as `speed.md` with the release, and its notes get a "Speed"
+table next to the previous release's (`build/speed-notes.py`; 0.9.0 is the first, so it has no comparison yet).
 
 **T5. Translations checked by a test.**
 The eleven language files have between 1,707 and 1,714 entries: some are missing texts. Verified absent:
@@ -130,9 +135,10 @@ The history shows waits being lengthened for slow test machines. Replace fixed s
 *Status (0.8.9):* the main window has an element that isn't displayed, `AppState`: "ready", or "busy: panel"
 (listing, calculating sizes), "busy: editor" / "busy: compare files" (until Monaco has the text), "busy: viewer"
 (`Services/AppActivity`). The tests wait for "ready" at the start, after every key and click (on top of the short
-pause that was there), and instead of the 6-second guesses for the editor. Open: the remaining fixed pauses are
-before screenshots and around the mouse; plugin windows (Disk Map, Checksums) and dialogs don't report their
-state yet.
+pause that was there), and instead of the 6-second guesses for the editor. Since then (2026-11-17) dialogs,
+transfers, Find, Duplicates, Compare, thumbnails, icons, the viewer's page and plugin windows report their state too,
+and the per-step guesses became waits for them. Left: short fixed pauses around the mouse (drags) and a few before
+screenshots.
 
 ### 1.0 — Stable
 

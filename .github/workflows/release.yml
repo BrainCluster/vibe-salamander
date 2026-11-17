@@ -160,6 +160,14 @@ jobs:
           $file = Join-Path $env:RUNNER_TEMP "benchmarks.md"
           if (Test-Path $file) { @("## Speed", "") + (Get-Content $file) | Add-Content $env:GITHUB_STEP_SUMMARY }
 
+      # the times go with the release (speed.md), so the next release's notes compare with them
+      - uses: actions/upload-artifact@v4
+        if: matrix.platform == 'x64'
+        continue-on-error: true
+        with:
+          name: speed
+          path: ${{ runner.temp }}\benchmarks.md
+
       - name: Publish
         shell: pwsh
         run: ./build/publish.ps1 -Runtime ${{ matrix.rid }} -Output publish/VibeSalamander
@@ -216,9 +224,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          notes="docs/releases/${VERSION}.md"
-          [ -f "$notes" ] || notes=/dev/null
-          gh release create "v${VERSION}" dist/*-setup.exe dist/*.zip \
+          notes=/tmp/notes.md
+          if [ -f "docs/releases/${VERSION}.md" ]; then cp "docs/releases/${VERSION}.md" "$notes"; else : > "$notes"; fi
+          # the speed of this release next to the previous one's (its speed.md); never stops the release
+          extra=()
+          if [ -f dist/benchmarks.md ]; then
+            cp dist/benchmarks.md dist/speed.md
+            extra=(dist/speed.md)
+            previous=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1 --exclude-drafts --json tagName --jq '.[0].tagName // empty' || true)
+            mkdir -p /tmp/previous
+            if [ -n "$previous" ]; then
+              gh release download "$previous" --repo "$GITHUB_REPOSITORY" --pattern speed.md --dir /tmp/previous || true
+            fi
+            {
+              echo
+              if [ -f /tmp/previous/speed.md ]; then
+                python3 build/speed-notes.py "$VERSION" dist/benchmarks.md "${previous#v}" /tmp/previous/speed.md
+              else
+                python3 build/speed-notes.py "$VERSION" dist/benchmarks.md
+              fi
+            } >> "$notes" || true
+          fi
+          gh release create "v${VERSION}" dist/*-setup.exe dist/*.zip "${extra[@]}" \
             --target "$GITHUB_SHA" \
             --title "Vibe Salamander ${VERSION}" \
             --notes-file "$notes"
