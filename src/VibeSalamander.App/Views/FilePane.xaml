@@ -294,7 +294,7 @@
              accent-filled when this panel is active -->
         <StackPanel Grid.Row="1">
             <!-- the panel's tabs (FilePane.Tabs.cs): shown from two tabs on, or always (Configuration → Panels) -->
-            <Grid x:Name="TabRow" Margin="4,4,4,0" ColumnSpacing="2" Background="Transparent" AllowDrop="True"
+            <Grid x:Name="TabRow" Margin="4,4,4,0" ColumnSpacing="0" Background="Transparent" AllowDrop="True"
                   Visibility="Collapsed" DoubleTapped="TabRow_DoubleTapped" DragOver="TabRow_DragOver" Drop="TabRow_Drop"
                   DragLeave="TabRow_DragLeave">
                 <Grid.ColumnDefinitions>
@@ -303,7 +303,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <!-- when the tabs don't fit: arrows on both sides scroll the row (shown only then) -->
-                <RepeatButton x:Name="TabsLeftButton" Style="{StaticResource VibeTabScrollButtonStyle}" Visibility="Collapsed"
+                <RepeatButton x:Name="TabsLeftButton" Style="{StaticResource VibeTabScrollButtonStyle}" Visibility="Collapsed" Margin="0,0,2,0"
                               Click="TabsLeftButton_Click" AutomationProperties.AutomationId="TabsLeftButton">
                     <FontIcon Glyph="&#xE76B;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
                 </RepeatButton>
@@ -326,7 +326,7 @@
                         </Canvas>
                     </Grid>
                 </ScrollViewer>
-                <RepeatButton x:Name="TabsRightButton" Grid.Column="2" Style="{StaticResource VibeTabScrollButtonStyle}" Visibility="Collapsed"
+                <RepeatButton x:Name="TabsRightButton" Grid.Column="2" Style="{StaticResource VibeTabScrollButtonStyle}" Visibility="Collapsed" Margin="2,0,0,0"
                               Click="TabsRightButton_Click" AutomationProperties.AutomationId="TabsRightButton">
                     <FontIcon Glyph="&#xE76C;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
                 </RepeatButton>

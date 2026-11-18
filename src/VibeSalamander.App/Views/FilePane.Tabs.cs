@@ -237,6 +237,7 @@ public sealed partial class FilePane
             Style = (Style)Application.Current.Resources["VibeToolButtonStyle"],
             Padding = new Thickness(12, 5, 12, 5),
             MinHeight = 30,
+            BorderThickness = new Thickness(0), // the fill reaches the edges: no seam with the directory line
             CornerRadius = new CornerRadius(6, 6, 0, 0),
             VerticalAlignment = VerticalAlignment.Stretch,
             Tag = item,
