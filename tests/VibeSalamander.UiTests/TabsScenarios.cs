@@ -323,58 +323,74 @@ public sealed class TabsScenarios : IDisposable
         NoErrors(app);
     }
 
-    /// <summary>Runs a diskpart script (needs administrator rights).</summary>
-    private static void DiskPart(params string[] commands)
+    /// <summary>A small ISO image of a folder, labeled VibeImage, made with Windows' own IMAPI2; false: not available.</summary>
+    private static bool MakeIso(string iso, string folder)
     {
-        string script = Path.GetTempFileName();
-        File.WriteAllLines(script, commands);
+        Type? type = Type.GetTypeFromProgID("IMAPI2FS.MsftFileSystemImage");
+        if (type == null)
+            return false;
+        dynamic image = Activator.CreateInstance(type)!;
+        image.FileSystemsToCreate = 3; // ISO 9660 + Joliet
+        image.VolumeName = "VibeImage";
+        image.Root.AddTree(folder, false);
+        dynamic result = image.CreateResultImage();
+        var stream = (System.Runtime.InteropServices.ComTypes.IStream)result.ImageStream;
+        byte[] buffer = new byte[1 << 16];
+        IntPtr count = System.Runtime.InteropServices.Marshal.AllocHGlobal(sizeof(int));
         try
         {
-            using var run = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("diskpart.exe", $"/s \"{script}\"")
+            using FileStream file = File.Create(iso);
+            while (true)
             {
-                UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true,
-            });
-            run!.StandardOutput.ReadToEnd();
-            run.WaitForExit(120000);
+                stream.Read(buffer, buffer.Length, count);
+                int read = System.Runtime.InteropServices.Marshal.ReadInt32(count);
+                if (read <= 0)
+                    break;
+                file.Write(buffer, 0, read);
+            }
         }
         finally
         {
-            File.Delete(script);
+            System.Runtime.InteropServices.Marshal.FreeHGlobal(count);
         }
+        return true;
+    }
+
+    private static void Unmount(string iso)
+    {
+        using var run = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("powershell.exe",
+            $"-NoProfile -Command \"Dismount-DiskImage -ImagePath '{iso}' | Out-Null\"")
+        {
+            UseShellExecute = false, CreateNoWindow = true,
+        });
+        run?.WaitForExit(30000);
     }
 
     [UiFact]
     public void An_opened_disk_image_opens_in_a_new_tab_of_the_other_panel()
     {
-        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-        if (!new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
-            return; // making the image needs diskpart, as administrator (GitHub's runners are)
-        // a small disk image with a label, detached again: what Enter mounts
-        string image = Path.Combine(_files.Documents, "image.vhdx");
-        DiskPart(
-            $"create vdisk file=\"{image}\" maximum=16 type=expandable",
-            $"select vdisk file=\"{image}\"",
-            "attach vdisk",
-            "create partition primary",
-            "format fs=ntfs quick label=VibeImage",
-            "assign",
-            "detach vdisk");
-        Assert.True(File.Exists(image), "diskpart made no image");
+        string content = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "vibe-iso-" + Guid.NewGuid().ToString("N")[..8])).FullName;
+        File.WriteAllText(Path.Combine(content, "inside.txt"), "on the image");
+        string iso = Path.Combine(_files.Documents, "image.iso");
+        if (!MakeIso(iso, content))
+            return; // no IMAPI2 on this Windows
         try
         {
             using AppSession app = Start();
-            AppSession.WaitUntil(() => app.Items().Contains("image.vhdx"), "the image");
-            app.GoTo("image.vhdx");
+            AppSession.WaitUntil(() => app.Items().Contains("image.iso"), "the image");
+            app.GoTo("image.iso");
             app.Press(VirtualKeyShort.ENTER);
             AppSession.WaitUntil(() => Tabs(app, left: false) is [ "Target", string drive ] && drive.StartsWith("VibeImage (", StringComparison.Ordinal),
                 "a new tab of the mounted drive, with its label, after Target in the right panel", seconds: 60);
+            AppSession.WaitUntil(() => app.Items(left: false).Contains("inside.txt"), "the image's files in the new tab");
             Assert.Empty(Tabs(app)); // the left panel: still its one tab (no row)
             AppSession.Screenshot("69 mounted image in a new tab");
             NoErrors(app);
         }
         finally
         {
-            DiskPart($"select vdisk file=\"{image}\"", "detach vdisk");
+            Unmount(iso);
+            Directory.Delete(content, recursive: true);
         }
     }
 }
