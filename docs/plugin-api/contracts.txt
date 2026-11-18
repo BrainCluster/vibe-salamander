@@ -1,2 +1,478 @@
 # The plugin contracts as of Vibe Salamander 1.0 (PluginContractTests checks them). Lines may be added, never
 # removed or changed: a plugin built against any of them must keep loading.
+class VibeSalamander.Core.FileSystem.FileEntry
+  VibeSalamander.Core.FileSystem.FileEntry.Attributes : System.IO.FileAttributes { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.BaseName : System.String { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.CreateUpDir(System.String parentPath) : VibeSalamander.Core.FileSystem.FileEntry static
+  VibeSalamander.Core.FileSystem.FileEntry.Extension : System.String { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.FullPath : System.String { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.IsDirectory : System.Boolean { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.IsHidden : System.Boolean { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.IsSystem : System.Boolean { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.IsUpDir : System.Boolean { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.LastWrite : System.DateTime { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.Name : System.String { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.Size : System.Int64 { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.Tag : System.Object { get; }
+  VibeSalamander.Core.FileSystem.FileEntry.ToString() : System.String
+  VibeSalamander.Core.FileSystem.FileEntry.new(System.String name, System.String fullPath, System.Boolean isDirectory, System.Int64 size, System.DateTime lastWrite, System.IO.FileAttributes attributes, System.Boolean isUpDir = False, System.Object tag = null)
+enum VibeSalamander.Core.Operations.ConflictChoice
+  VibeSalamander.Core.Operations.ConflictChoice.Cancel = 7
+  VibeSalamander.Core.Operations.ConflictChoice.Overwrite = 0
+  VibeSalamander.Core.Operations.ConflictChoice.OverwriteAll = 1
+  VibeSalamander.Core.Operations.ConflictChoice.OverwriteAllOlder = 2
+  VibeSalamander.Core.Operations.ConflictChoice.Rename = 5
+  VibeSalamander.Core.Operations.ConflictChoice.RenameAll = 6
+  VibeSalamander.Core.Operations.ConflictChoice.Resume = 8
+  VibeSalamander.Core.Operations.ConflictChoice.ResumeAll = 9
+  VibeSalamander.Core.Operations.ConflictChoice.Skip = 3
+  VibeSalamander.Core.Operations.ConflictChoice.SkipAll = 4
+class VibeSalamander.Core.Operations.ConflictInfo
+  VibeSalamander.Core.Operations.ConflictInfo.CanResume : System.Boolean { get; init; }
+  VibeSalamander.Core.Operations.ConflictInfo.Deconstruct(out System.String SourcePath, out System.Int64 SourceSize, out System.DateTime SourceTime, out System.String TargetPath, out System.Int64 TargetSize, out System.DateTime TargetTime, out System.Boolean IsDirectory, out System.IO.FileAttributes TargetAttributes, out System.Boolean IsMerge) : System.Void
+  VibeSalamander.Core.Operations.ConflictInfo.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Core.Operations.ConflictInfo.Equals(VibeSalamander.Core.Operations.ConflictInfo other) : System.Boolean
+  VibeSalamander.Core.Operations.ConflictInfo.GetHashCode() : System.Int32
+  VibeSalamander.Core.Operations.ConflictInfo.IsDirectory : System.Boolean { get; init; }
+  VibeSalamander.Core.Operations.ConflictInfo.IsMerge : System.Boolean { get; init; }
+  VibeSalamander.Core.Operations.ConflictInfo.SourcePath : System.String { get; init; }
+  VibeSalamander.Core.Operations.ConflictInfo.SourceSize : System.Int64 { get; init; }
+  VibeSalamander.Core.Operations.ConflictInfo.SourceTime : System.DateTime { get; init; }
+  VibeSalamander.Core.Operations.ConflictInfo.TargetAttributes : System.IO.FileAttributes { get; init; }
+  VibeSalamander.Core.Operations.ConflictInfo.TargetPath : System.String { get; init; }
+  VibeSalamander.Core.Operations.ConflictInfo.TargetSize : System.Int64 { get; init; }
+  VibeSalamander.Core.Operations.ConflictInfo.TargetTime : System.DateTime { get; init; }
+  VibeSalamander.Core.Operations.ConflictInfo.ToString() : System.String
+  VibeSalamander.Core.Operations.ConflictInfo.new(System.String SourcePath, System.Int64 SourceSize, System.DateTime SourceTime, System.String TargetPath, System.Int64 TargetSize, System.DateTime TargetTime, System.Boolean IsDirectory, System.IO.FileAttributes TargetAttributes = None, System.Boolean IsMerge = False)
+enum VibeSalamander.Core.Operations.ErrorChoice
+  VibeSalamander.Core.Operations.ErrorChoice.Cancel = 3
+  VibeSalamander.Core.Operations.ErrorChoice.Elevate = 4
+  VibeSalamander.Core.Operations.ErrorChoice.Retry = 0
+  VibeSalamander.Core.Operations.ErrorChoice.Skip = 1
+  VibeSalamander.Core.Operations.ErrorChoice.SkipAll = 2
+class VibeSalamander.Core.Operations.OperationError
+  VibeSalamander.Core.Operations.OperationError.CanElevate : System.Boolean { get; init; }
+  VibeSalamander.Core.Operations.OperationError.Deconstruct(out System.String Path, out System.String Message, out System.Boolean CanElevate) : System.Void
+  VibeSalamander.Core.Operations.OperationError.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Core.Operations.OperationError.Equals(VibeSalamander.Core.Operations.OperationError other) : System.Boolean
+  VibeSalamander.Core.Operations.OperationError.GetHashCode() : System.Int32
+  VibeSalamander.Core.Operations.OperationError.Message : System.String { get; init; }
+  VibeSalamander.Core.Operations.OperationError.Path : System.String { get; init; }
+  VibeSalamander.Core.Operations.OperationError.ToString() : System.String
+  VibeSalamander.Core.Operations.OperationError.new(System.String Path, System.String Message, System.Boolean CanElevate = False)
+enum VibeSalamander.Core.Operations.OperationKind
+  VibeSalamander.Core.Operations.OperationKind.Copy = 0
+  VibeSalamander.Core.Operations.OperationKind.Delete = 2
+  VibeSalamander.Core.Operations.OperationKind.Move = 1
+  VibeSalamander.Core.Operations.OperationKind.Pack = 3
+  VibeSalamander.Core.Operations.OperationKind.Unpack = 4
+class VibeSalamander.Core.Operations.OperationProgress
+  VibeSalamander.Core.Operations.OperationProgress.Analyzing : System.Boolean { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.BytesPerSecond : System.Double { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.CurrentBytesDone : System.Int64 { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.CurrentBytesTotal : System.Int64 { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.CurrentFraction : System.Double { get; }
+  VibeSalamander.Core.Operations.OperationProgress.CurrentSource : System.String { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.CurrentTarget : System.String { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.ItemsDone : System.Int32 { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.ItemsTotal : System.Int32 { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.Kind : VibeSalamander.Core.Operations.OperationKind { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.Remaining : System.Nullable<System.TimeSpan> { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.TotalBytes : System.Int64 { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.TotalBytesDone : System.Int64 { get; init; }
+  VibeSalamander.Core.Operations.OperationProgress.TotalFraction : System.Double { get; }
+  VibeSalamander.Core.Operations.OperationProgress.new()
+class VibeSalamander.Core.Operations.OperationResult
+  VibeSalamander.Core.Operations.OperationResult.Cancelled : System.Boolean { get; set; }
+  VibeSalamander.Core.Operations.OperationResult.CreatedTopLevelNames : System.Collections.Generic.List<System.String> { get; }
+  VibeSalamander.Core.Operations.OperationResult.Failed : System.Int32 { get; set; }
+  VibeSalamander.Core.Operations.OperationResult.Skipped : System.Int32 { get; set; }
+  VibeSalamander.Core.Operations.OperationResult.Succeeded : System.Int32 { get; set; }
+  VibeSalamander.Core.Operations.OperationResult.new()
+class VibeSalamander.Plugins.ArchiveAddRequest
+  VibeSalamander.Plugins.ArchiveAddRequest.ArchivePath : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveAddRequest.Compression : VibeSalamander.Plugins.ArchiveCompression { get; init; }
+  VibeSalamander.Plugins.ArchiveAddRequest.Password : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveAddRequest.PathMode : VibeSalamander.Plugins.PackPathMode { get; init; }
+  VibeSalamander.Plugins.ArchiveAddRequest.Sources : System.Collections.Generic.IReadOnlyList<System.String> { get; init; }
+  VibeSalamander.Plugins.ArchiveAddRequest.TargetPath : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveAddRequest.UpdateMode : VibeSalamander.Plugins.PackUpdateMode { get; init; }
+  VibeSalamander.Plugins.ArchiveAddRequest.new()
+enum VibeSalamander.Plugins.ArchiveCompression
+  VibeSalamander.Plugins.ArchiveCompression.Fastest = 1
+  VibeSalamander.Plugins.ArchiveCompression.Maximum = 3
+  VibeSalamander.Plugins.ArchiveCompression.Normal = 2
+  VibeSalamander.Plugins.ArchiveCompression.Store = 0
+class VibeSalamander.Plugins.ArchiveCreateDirectoryRequest
+  VibeSalamander.Plugins.ArchiveCreateDirectoryRequest.ArchivePath : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveCreateDirectoryRequest.Path : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveCreateDirectoryRequest.new()
+class VibeSalamander.Plugins.ArchiveDeleteRequest
+  VibeSalamander.Plugins.ArchiveDeleteRequest.ArchivePath : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveDeleteRequest.BasePath : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveDeleteRequest.Items : System.Collections.Generic.IReadOnlyList<System.String> { get; init; }
+  VibeSalamander.Plugins.ArchiveDeleteRequest.new()
+class VibeSalamander.Plugins.ArchiveFormat
+  VibeSalamander.Plugins.ArchiveFormat.Deconstruct(out System.String Id, out System.String DisplayName, out System.String Extension, out System.Boolean HasCompressionLevels, out System.Boolean SupportsPassword, out System.Boolean IsZip, out System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PackOption> Options) : System.Void
+  VibeSalamander.Plugins.ArchiveFormat.DisplayName : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveFormat.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.ArchiveFormat.Equals(VibeSalamander.Plugins.ArchiveFormat other) : System.Boolean
+  VibeSalamander.Plugins.ArchiveFormat.Extension : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveFormat.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.ArchiveFormat.HasCompressionLevels : System.Boolean { get; init; }
+  VibeSalamander.Plugins.ArchiveFormat.Id : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveFormat.IsZip : System.Boolean { get; init; }
+  VibeSalamander.Plugins.ArchiveFormat.Options : System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PackOption> { get; init; }
+  VibeSalamander.Plugins.ArchiveFormat.SupportsPassword : System.Boolean { get; init; }
+  VibeSalamander.Plugins.ArchiveFormat.ToString() : System.String
+  VibeSalamander.Plugins.ArchiveFormat.new(System.String Id, System.String DisplayName, System.String Extension, System.Boolean HasCompressionLevels, System.Boolean SupportsPassword = False, System.Boolean IsZip = False, System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PackOption> Options = null)
+class VibeSalamander.Plugins.ArchiveItem
+  VibeSalamander.Plugins.ArchiveItem.Deconstruct(out System.String Path, out System.Boolean IsDirectory, out System.Int64 Size, out System.DateTime LastWrite) : System.Void
+  VibeSalamander.Plugins.ArchiveItem.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.ArchiveItem.Equals(VibeSalamander.Plugins.ArchiveItem other) : System.Boolean
+  VibeSalamander.Plugins.ArchiveItem.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.ArchiveItem.IsDirectory : System.Boolean { get; init; }
+  VibeSalamander.Plugins.ArchiveItem.LastWrite : System.DateTime { get; init; }
+  VibeSalamander.Plugins.ArchiveItem.Path : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveItem.Size : System.Int64 { get; init; }
+  VibeSalamander.Plugins.ArchiveItem.ToString() : System.String
+  VibeSalamander.Plugins.ArchiveItem.new(System.String Path, System.Boolean IsDirectory, System.Int64 Size, System.DateTime LastWrite)
+class VibeSalamander.Plugins.ArchiveRenameRequest
+  VibeSalamander.Plugins.ArchiveRenameRequest.ArchivePath : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveRenameRequest.NewPath : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveRenameRequest.Path : System.String { get; init; }
+  VibeSalamander.Plugins.ArchiveRenameRequest.new()
+interface VibeSalamander.Plugins.IArchiveJob
+  VibeSalamander.Plugins.IArchiveJob.AskPasswordAsync(System.String archivePath, System.Boolean wrongPassword) : System.Threading.Tasks.Task<System.String>
+  VibeSalamander.Plugins.IArchiveJob.Cancellation : System.Threading.CancellationToken { get; }
+  VibeSalamander.Plugins.IArchiveJob.Report(VibeSalamander.Core.Operations.OperationProgress progress) : System.Void
+  VibeSalamander.Plugins.IArchiveJob.ResolveConflictAsync(VibeSalamander.Core.Operations.ConflictInfo conflict) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.ConflictChoice>
+  VibeSalamander.Plugins.IArchiveJob.ResolveErrorAsync(VibeSalamander.Core.Operations.OperationError error) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.ErrorChoice>
+  VibeSalamander.Plugins.IArchiveJob.WaitWhilePaused() : System.Void
+interface VibeSalamander.Plugins.IArchiver
+  VibeSalamander.Plugins.IArchiver.AddAsync(VibeSalamander.Plugins.ArchiveAddRequest request, VibeSalamander.Plugins.IArchiveJob job) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>
+  VibeSalamander.Plugins.IArchiver.CanBrowse(System.String archivePath) : System.Boolean
+  VibeSalamander.Plugins.IArchiver.CanEdit(System.String archivePath) : System.Boolean
+  VibeSalamander.Plugins.IArchiver.CanRename(System.String archivePath) : System.Boolean
+  VibeSalamander.Plugins.IArchiver.CanUnpack(System.String archivePath) : System.Boolean
+  VibeSalamander.Plugins.IArchiver.CreateDirectoryAsync(VibeSalamander.Plugins.ArchiveCreateDirectoryRequest request, VibeSalamander.Plugins.IArchiveJob job) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>
+  VibeSalamander.Plugins.IArchiver.DeleteAsync(VibeSalamander.Plugins.ArchiveDeleteRequest request, VibeSalamander.Plugins.IArchiveJob job) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>
+  VibeSalamander.Plugins.IArchiver.DisplayName : System.String { get; }
+  VibeSalamander.Plugins.IArchiver.ListAsync(System.String archivePath, System.Threading.CancellationToken cancellationToken) : System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.ArchiveItem>>
+  VibeSalamander.Plugins.IArchiver.PackAsync(VibeSalamander.Plugins.PackRequest request, VibeSalamander.Plugins.IArchiveJob job) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>
+  VibeSalamander.Plugins.IArchiver.PackFormats : System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.ArchiveFormat> { get; }
+  VibeSalamander.Plugins.IArchiver.RenameAsync(VibeSalamander.Plugins.ArchiveRenameRequest request, VibeSalamander.Plugins.IArchiveJob job) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>
+  VibeSalamander.Plugins.IArchiver.UnpackAsync(VibeSalamander.Plugins.UnpackRequest request, VibeSalamander.Plugins.IArchiveJob job) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>
+  VibeSalamander.Plugins.IArchiver.UnpackExtensions : System.Collections.Generic.IReadOnlyList<System.String> { get; }
+interface VibeSalamander.Plugins.ICommandContributor
+  VibeSalamander.Plugins.ICommandContributor.Commands : System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginCommand> { get; }
+interface VibeSalamander.Plugins.IPanelContext
+  VibeSalamander.Plugins.IPanelContext.FocusedItem : VibeSalamander.Core.FileSystem.FileEntry { get; }
+  VibeSalamander.Plugins.IPanelContext.MarkedItems : System.Collections.Generic.IReadOnlyList<VibeSalamander.Core.FileSystem.FileEntry> { get; }
+  VibeSalamander.Plugins.IPanelContext.NavigateAsync(System.String path, System.String focusName = null) : System.Threading.Tasks.Task
+  VibeSalamander.Plugins.IPanelContext.Path : System.String { get; }
+  VibeSalamander.Plugins.IPanelContext.RefreshAsync() : System.Threading.Tasks.Task
+interface VibeSalamander.Plugins.IPluginCanvasWindow
+  VibeSalamander.Plugins.IPluginCanvasWindow.Clicked : System.Action<VibeSalamander.Plugins.PluginPoint> { get; set; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.Close() : System.Void
+  VibeSalamander.Plugins.IPluginCanvasWindow.Closed : event System.EventHandler
+  VibeSalamander.Plugins.IPluginCanvasWindow.ContextMenu : System.Func<VibeSalamander.Plugins.PluginPoint, System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginMenuItem>> { get; set; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.DoubleClicked : System.Action<VibeSalamander.Plugins.PluginPoint> { get; set; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.IsClosed : System.Boolean { get; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.IsDark : System.Boolean { get; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.KeyPressed : System.Func<System.String, System.Boolean> { get; set; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.PixelHeight : System.Int32 { get; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.PixelWidth : System.Int32 { get; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.PointerExited : System.Action { get; set; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.PointerMoved : System.Action<VibeSalamander.Plugins.PluginPoint> { get; set; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.Resized : event System.EventHandler
+  VibeSalamander.Plugins.IPluginCanvasWindow.Scale : System.Double { get; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.SetButtons(System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginButton> buttons) : System.Void
+  VibeSalamander.Plugins.IPluginCanvasWindow.SetHeading(System.String text) : System.Void
+  VibeSalamander.Plugins.IPluginCanvasWindow.SetHighlight(System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginPoint> hover, System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginPoint> selected) : System.Void
+  VibeSalamander.Plugins.IPluginCanvasWindow.SetLegend(System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginLegendItem> items) : System.Void
+  VibeSalamander.Plugins.IPluginCanvasWindow.SetPicture(System.Int32 width, System.Int32 height, System.Byte[] pixels, System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginLabel> labels) : System.Void
+  VibeSalamander.Plugins.IPluginCanvasWindow.SetProgress(System.Nullable<System.Double> value) : System.Void
+  VibeSalamander.Plugins.IPluginCanvasWindow.SetStatus(System.String text) : System.Void
+  VibeSalamander.Plugins.IPluginCanvasWindow.SetViews(System.Collections.Generic.IReadOnlyList<System.String> names, System.Int32 selected) : System.Void
+  VibeSalamander.Plugins.IPluginCanvasWindow.ToolTip : System.Func<VibeSalamander.Plugins.PluginPoint, System.String> { get; set; }
+  VibeSalamander.Plugins.IPluginCanvasWindow.UpdateButton(System.String id, System.String text = null, System.Nullable<System.Boolean> enabled = null) : System.Void
+  VibeSalamander.Plugins.IPluginCanvasWindow.ViewChanged : event System.EventHandler<System.Int32>
+interface VibeSalamander.Plugins.IPluginFileSystem
+  VibeSalamander.Plugins.IPluginFileSystem.CanHandle(System.String path) : System.Boolean
+  VibeSalamander.Plugins.IPluginFileSystem.CanSetPermissions(System.String directory) : System.Boolean
+  VibeSalamander.Plugins.IPluginFileSystem.Combine(System.String directory, System.String name) : System.String
+  VibeSalamander.Plugins.IPluginFileSystem.CreateDirectoryAsync(System.String path, System.Threading.CancellationToken cancellationToken) : System.Threading.Tasks.Task
+  VibeSalamander.Plugins.IPluginFileSystem.DeleteAsync(System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.RemoteItem> items, VibeSalamander.Plugins.IArchiveJob job) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>
+  VibeSalamander.Plugins.IPluginFileSystem.Disconnect(System.String path) : System.Void
+  VibeSalamander.Plugins.IPluginFileSystem.DisplayName : System.String { get; }
+  VibeSalamander.Plugins.IPluginFileSystem.DownloadAsync(System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.RemoteItem> items, System.String targetDirectory, VibeSalamander.Plugins.IArchiveJob job) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>
+  VibeSalamander.Plugins.IPluginFileSystem.GetDisplayPath(System.String path) : System.String
+  VibeSalamander.Plugins.IPluginFileSystem.GetFreeSpaceAsync(System.String path, System.Threading.CancellationToken cancellationToken) : System.Threading.Tasks.Task<System.Nullable<System.Int64>>
+  VibeSalamander.Plugins.IPluginFileSystem.GetParent(System.String path) : System.String
+  VibeSalamander.Plugins.IPluginFileSystem.IsConnected(System.String path) : System.Boolean
+  VibeSalamander.Plugins.IPluginFileSystem.ListAsync(System.String path, System.Threading.CancellationToken cancellationToken) : System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.RemoteItem>>
+  VibeSalamander.Plugins.IPluginFileSystem.RenameAsync(System.String path, System.String newPath, System.Threading.CancellationToken cancellationToken) : System.Threading.Tasks.Task
+  VibeSalamander.Plugins.IPluginFileSystem.SetPermissionsAsync(System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.RemoteItem> items, System.String permissions, System.Threading.CancellationToken cancellationToken) : System.Threading.Tasks.Task
+  VibeSalamander.Plugins.IPluginFileSystem.UploadAsync(System.Collections.Generic.IReadOnlyList<System.String> sources, System.String targetDirectory, VibeSalamander.Plugins.IArchiveJob job) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>
+interface VibeSalamander.Plugins.IPluginHost
+  VibeSalamander.Plugins.IPluginHost.ActivePanel : VibeSalamander.Plugins.IPanelContext { get; }
+  VibeSalamander.Plugins.IPluginHost.GetDataDirectory(VibeSalamander.Plugins.IVibePlugin plugin) : System.String
+  VibeSalamander.Plugins.IPluginHost.HostVersion : System.Version { get; }
+  VibeSalamander.Plugins.IPluginHost.InactivePanel : VibeSalamander.Plugins.IPanelContext { get; }
+  VibeSalamander.Plugins.IPluginHost.Notify(System.String message, System.Boolean isError = False) : System.Void
+  VibeSalamander.Plugins.IPluginHost.RegisterArchiver(VibeSalamander.Plugins.IArchiver archiver) : System.Void
+  VibeSalamander.Plugins.IPluginHost.RegisterCommands(VibeSalamander.Plugins.ICommandContributor contributor) : System.Void
+  VibeSalamander.Plugins.IPluginHost.RegisterFileSystem(VibeSalamander.Plugins.IPluginFileSystem fileSystem) : System.Void
+  VibeSalamander.Plugins.IPluginHost.RegisterViewer(VibeSalamander.Plugins.IPluginViewer viewer) : System.Void
+  VibeSalamander.Plugins.IPluginHost.Ui : VibeSalamander.Plugins.IPluginUi { get; }
+interface VibeSalamander.Plugins.IPluginListWindow
+  VibeSalamander.Plugins.IPluginListWindow.AddRow(System.Collections.Generic.IReadOnlyList<System.String> cells) : VibeSalamander.Plugins.IPluginRow
+  VibeSalamander.Plugins.IPluginListWindow.AppendLog(System.String line) : System.Void
+  VibeSalamander.Plugins.IPluginListWindow.ClearLog() : System.Void
+  VibeSalamander.Plugins.IPluginListWindow.Close() : System.Void
+  VibeSalamander.Plugins.IPluginListWindow.Closed : event System.EventHandler
+  VibeSalamander.Plugins.IPluginListWindow.IsClosed : System.Boolean { get; }
+  VibeSalamander.Plugins.IPluginListWindow.RowMenu : System.Func<VibeSalamander.Plugins.IPluginRow, System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginMenuItem>> { get; set; }
+  VibeSalamander.Plugins.IPluginListWindow.Rows : System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.IPluginRow> { get; }
+  VibeSalamander.Plugins.IPluginListWindow.SelectedRow : VibeSalamander.Plugins.IPluginRow { get; }
+  VibeSalamander.Plugins.IPluginListWindow.SetButtons(System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginButton> buttons) : System.Void
+  VibeSalamander.Plugins.IPluginListWindow.SetProgress(System.Nullable<System.Double> value) : System.Void
+  VibeSalamander.Plugins.IPluginListWindow.SetStatus(System.String text) : System.Void
+  VibeSalamander.Plugins.IPluginListWindow.UpdateButton(System.String id, System.String text = null, System.Nullable<System.Boolean> enabled = null) : System.Void
+interface VibeSalamander.Plugins.IPluginRow
+  VibeSalamander.Plugins.IPluginRow.Item[System.Int32] : System.String { get; set; }
+  VibeSalamander.Plugins.IPluginRow.Remove() : System.Void
+  VibeSalamander.Plugins.IPluginRow.Tag : System.Object { get; set; }
+interface VibeSalamander.Plugins.IPluginUi
+  VibeSalamander.Plugins.IPluginUi.AskSaveFileAsync(System.String title, System.String suggestedPath, System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginFileType> types, System.Int32 selectedType, VibeSalamander.Plugins.IPluginListWindow owner = null) : System.Threading.Tasks.Task<VibeSalamander.Plugins.PluginSaveChoice>
+  VibeSalamander.Plugins.IPluginUi.ConfirmAsync(System.String title, System.String message, VibeSalamander.Plugins.IPluginListWindow owner = null) : System.Threading.Tasks.Task<System.Boolean>
+  VibeSalamander.Plugins.IPluginUi.CopyToClipboard(System.String text) : System.Void
+  VibeSalamander.Plugins.IPluginUi.EditFieldsAsync(System.String title, System.String description, System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginField> fields, System.Func<System.String> validate = null, VibeSalamander.Plugins.IPluginListWindow owner = null) : System.Threading.Tasks.Task<System.Boolean>
+  VibeSalamander.Plugins.IPluginUi.EditOptionsAsync(System.String title, System.String description, System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginOption> options, VibeSalamander.Plugins.IPluginListWindow owner = null) : System.Threading.Tasks.Task<System.Boolean>
+  VibeSalamander.Plugins.IPluginUi.OpenCanvasWindow(System.String title) : VibeSalamander.Plugins.IPluginCanvasWindow
+  VibeSalamander.Plugins.IPluginUi.OpenListWindow(System.String title, System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginColumn> columns) : VibeSalamander.Plugins.IPluginListWindow
+  VibeSalamander.Plugins.IPluginUi.ShowMessageAsync(System.String title, System.String message, VibeSalamander.Plugins.IPluginListWindow owner = null) : System.Threading.Tasks.Task
+  VibeSalamander.Plugins.IPluginUi.T(System.String english) : System.String
+interface VibeSalamander.Plugins.IPluginViewer
+  VibeSalamander.Plugins.IPluginViewer.CanView(System.String path) : System.Boolean
+  VibeSalamander.Plugins.IPluginViewer.DisplayName : System.String { get; }
+  VibeSalamander.Plugins.IPluginViewer.Id : System.String { get; }
+  VibeSalamander.Plugins.IPluginViewer.Masks : System.String { get; }
+  VibeSalamander.Plugins.IPluginViewer.ViewAsync(VibeSalamander.Plugins.IPluginHost host, System.String path) : System.Threading.Tasks.Task<VibeSalamander.Plugins.PluginView>
+interface VibeSalamander.Plugins.IVibePlugin
+  VibeSalamander.Plugins.IVibePlugin.ApplySettings(System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginField> fields) : System.Void
+  VibeSalamander.Plugins.IVibePlugin.Author : System.String { get; }
+  VibeSalamander.Plugins.IVibePlugin.Description : System.String { get; }
+  VibeSalamander.Plugins.IVibePlugin.DisplayName : System.String { get; }
+  VibeSalamander.Plugins.IVibePlugin.GetSettings() : System.Collections.Generic.IReadOnlyList<VibeSalamander.Plugins.PluginField>
+  VibeSalamander.Plugins.IVibePlugin.IconGlyph : System.String { get; }
+  VibeSalamander.Plugins.IVibePlugin.Id : System.String { get; }
+  VibeSalamander.Plugins.IVibePlugin.Initialize(VibeSalamander.Plugins.IPluginHost host) : System.Void
+  VibeSalamander.Plugins.IVibePlugin.MinimumHostVersion : System.Version { get; }
+  VibeSalamander.Plugins.IVibePlugin.Shutdown() : System.Void
+  VibeSalamander.Plugins.IVibePlugin.Version : System.Version { get; }
+class VibeSalamander.Plugins.PackOption
+  VibeSalamander.Plugins.PackOption.Choices : System.Collections.Generic.IReadOnlyList<System.String> { get; init; }
+  VibeSalamander.Plugins.PackOption.Deconstruct(out System.String Id, out System.String Label, out VibeSalamander.Plugins.PluginFieldKind Kind, out System.Collections.Generic.IReadOnlyList<System.String> Choices, out System.String Default, out System.Boolean NeedsPassword) : System.Void
+  VibeSalamander.Plugins.PackOption.Default : System.String { get; init; }
+  VibeSalamander.Plugins.PackOption.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.PackOption.Equals(VibeSalamander.Plugins.PackOption other) : System.Boolean
+  VibeSalamander.Plugins.PackOption.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.PackOption.Id : System.String { get; init; }
+  VibeSalamander.Plugins.PackOption.Kind : VibeSalamander.Plugins.PluginFieldKind { get; init; }
+  VibeSalamander.Plugins.PackOption.Label : System.String { get; init; }
+  VibeSalamander.Plugins.PackOption.NeedsPassword : System.Boolean { get; init; }
+  VibeSalamander.Plugins.PackOption.ToString() : System.String
+  VibeSalamander.Plugins.PackOption.new(System.String Id, System.String Label, VibeSalamander.Plugins.PluginFieldKind Kind, System.Collections.Generic.IReadOnlyList<System.String> Choices, System.String Default, System.Boolean NeedsPassword = False)
+enum VibeSalamander.Plugins.PackPathMode
+  VibeSalamander.Plugins.PackPathMode.Full = 1
+  VibeSalamander.Plugins.PackPathMode.None = 2
+  VibeSalamander.Plugins.PackPathMode.Relative = 0
+class VibeSalamander.Plugins.PackRequest
+  VibeSalamander.Plugins.PackRequest.ArchivePath : System.String { get; init; }
+  VibeSalamander.Plugins.PackRequest.BaseDirectory : System.String { get; init; }
+  VibeSalamander.Plugins.PackRequest.Compression : VibeSalamander.Plugins.ArchiveCompression { get; init; }
+  VibeSalamander.Plugins.PackRequest.Encryption : VibeSalamander.Plugins.ZipEncryption { get; init; }
+  VibeSalamander.Plugins.PackRequest.FormatId : System.String { get; init; }
+  VibeSalamander.Plugins.PackRequest.Options : System.Collections.Generic.IReadOnlyDictionary<System.String, System.String> { get; init; }
+  VibeSalamander.Plugins.PackRequest.Password : System.String { get; init; }
+  VibeSalamander.Plugins.PackRequest.PathMode : VibeSalamander.Plugins.PackPathMode { get; init; }
+  VibeSalamander.Plugins.PackRequest.SelfExtracting : System.Boolean { get; init; }
+  VibeSalamander.Plugins.PackRequest.Sources : System.Collections.Generic.IReadOnlyList<System.String> { get; init; }
+  VibeSalamander.Plugins.PackRequest.StoreNtfsTimes : System.Boolean { get; init; }
+  VibeSalamander.Plugins.PackRequest.UpdateMode : VibeSalamander.Plugins.PackUpdateMode { get; init; }
+  VibeSalamander.Plugins.PackRequest.VolumeSize : System.Int64 { get; init; }
+  VibeSalamander.Plugins.PackRequest.new()
+enum VibeSalamander.Plugins.PackUpdateMode
+  VibeSalamander.Plugins.PackUpdateMode.AddAndReplace = 1
+  VibeSalamander.Plugins.PackUpdateMode.Freshen = 3
+  VibeSalamander.Plugins.PackUpdateMode.Replace = 0
+  VibeSalamander.Plugins.PackUpdateMode.Synchronize = 4
+  VibeSalamander.Plugins.PackUpdateMode.UpdateAndAdd = 2
+class VibeSalamander.Plugins.PluginButton
+  VibeSalamander.Plugins.PluginButton.Click : System.Action { get; init; }
+  VibeSalamander.Plugins.PluginButton.Deconstruct(out System.String Id, out System.String Text, out System.Action Click, out System.Boolean IsDefault) : System.Void
+  VibeSalamander.Plugins.PluginButton.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.PluginButton.Equals(VibeSalamander.Plugins.PluginButton other) : System.Boolean
+  VibeSalamander.Plugins.PluginButton.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.PluginButton.Id : System.String { get; init; }
+  VibeSalamander.Plugins.PluginButton.IsDefault : System.Boolean { get; init; }
+  VibeSalamander.Plugins.PluginButton.Text : System.String { get; init; }
+  VibeSalamander.Plugins.PluginButton.ToString() : System.String
+  VibeSalamander.Plugins.PluginButton.new(System.String Id, System.String Text, System.Action Click, System.Boolean IsDefault = False)
+class VibeSalamander.Plugins.PluginColumn
+  VibeSalamander.Plugins.PluginColumn.AlignRight : System.Boolean { get; init; }
+  VibeSalamander.Plugins.PluginColumn.Deconstruct(out System.String Header, out System.Double Width, out System.Boolean AlignRight, out System.Boolean Monospace) : System.Void
+  VibeSalamander.Plugins.PluginColumn.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.PluginColumn.Equals(VibeSalamander.Plugins.PluginColumn other) : System.Boolean
+  VibeSalamander.Plugins.PluginColumn.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.PluginColumn.Header : System.String { get; init; }
+  VibeSalamander.Plugins.PluginColumn.Monospace : System.Boolean { get; init; }
+  VibeSalamander.Plugins.PluginColumn.ToString() : System.String
+  VibeSalamander.Plugins.PluginColumn.Width : System.Double { get; init; }
+  VibeSalamander.Plugins.PluginColumn.new(System.String Header, System.Double Width, System.Boolean AlignRight = False, System.Boolean Monospace = False)
+class VibeSalamander.Plugins.PluginCommand
+  VibeSalamander.Plugins.PluginCommand.AppliesTo : System.Func<System.String, System.Boolean> { get; init; }
+  VibeSalamander.Plugins.PluginCommand.Deconstruct(out System.String Id, out System.String MenuText, out System.String ShortcutText, out System.Func<VibeSalamander.Plugins.IPluginHost, System.Threading.Tasks.Task> Execute, out System.String HostCommand, out System.Func<System.String, System.Boolean> AppliesTo, out System.Boolean SeparatorBefore) : System.Void
+  VibeSalamander.Plugins.PluginCommand.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.PluginCommand.Equals(VibeSalamander.Plugins.PluginCommand other) : System.Boolean
+  VibeSalamander.Plugins.PluginCommand.Execute : System.Func<VibeSalamander.Plugins.IPluginHost, System.Threading.Tasks.Task> { get; init; }
+  VibeSalamander.Plugins.PluginCommand.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.PluginCommand.HostCommand : System.String { get; init; }
+  VibeSalamander.Plugins.PluginCommand.Id : System.String { get; init; }
+  VibeSalamander.Plugins.PluginCommand.MenuText : System.String { get; init; }
+  VibeSalamander.Plugins.PluginCommand.SeparatorBefore : System.Boolean { get; init; }
+  VibeSalamander.Plugins.PluginCommand.ShortcutText : System.String { get; init; }
+  VibeSalamander.Plugins.PluginCommand.ToString() : System.String
+  VibeSalamander.Plugins.PluginCommand.new(System.String Id, System.String MenuText, System.String ShortcutText, System.Func<VibeSalamander.Plugins.IPluginHost, System.Threading.Tasks.Task> Execute, System.String HostCommand = null, System.Func<System.String, System.Boolean> AppliesTo = null, System.Boolean SeparatorBefore = False)
+class VibeSalamander.Plugins.PluginField
+  VibeSalamander.Plugins.PluginField.Changed : System.Action<System.String> { get; init; }
+  VibeSalamander.Plugins.PluginField.Choices : System.Collections.Generic.IReadOnlyList<System.String> { get; init; }
+  VibeSalamander.Plugins.PluginField.Kind : VibeSalamander.Plugins.PluginFieldKind { get; init; }
+  VibeSalamander.Plugins.PluginField.Label : System.String { get; init; }
+  VibeSalamander.Plugins.PluginField.Placeholder : System.String { get; init; }
+  VibeSalamander.Plugins.PluginField.Value : System.String { get; set; }
+  VibeSalamander.Plugins.PluginField.new()
+enum VibeSalamander.Plugins.PluginFieldKind
+  VibeSalamander.Plugins.PluginFieldKind.Check = 3
+  VibeSalamander.Plugins.PluginFieldKind.Choice = 2
+  VibeSalamander.Plugins.PluginFieldKind.File = 4
+  VibeSalamander.Plugins.PluginFieldKind.MultilineText = 5
+  VibeSalamander.Plugins.PluginFieldKind.Password = 1
+  VibeSalamander.Plugins.PluginFieldKind.Text = 0
+class VibeSalamander.Plugins.PluginFileType
+  VibeSalamander.Plugins.PluginFileType.Deconstruct(out System.String Name, out System.String Extension) : System.Void
+  VibeSalamander.Plugins.PluginFileType.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.PluginFileType.Equals(VibeSalamander.Plugins.PluginFileType other) : System.Boolean
+  VibeSalamander.Plugins.PluginFileType.Extension : System.String { get; init; }
+  VibeSalamander.Plugins.PluginFileType.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.PluginFileType.Name : System.String { get; init; }
+  VibeSalamander.Plugins.PluginFileType.ToString() : System.String
+  VibeSalamander.Plugins.PluginFileType.new(System.String Name, System.String Extension)
+class VibeSalamander.Plugins.PluginLabel
+  VibeSalamander.Plugins.PluginLabel.Background : System.UInt32 { get; init; }
+  VibeSalamander.Plugins.PluginLabel.Bold : System.Boolean { get; init; }
+  VibeSalamander.Plugins.PluginLabel.Centered : System.Boolean { get; init; }
+  VibeSalamander.Plugins.PluginLabel.Color : System.UInt32 { get; init; }
+  VibeSalamander.Plugins.PluginLabel.Deconstruct(out System.Double X, out System.Double Y, out System.Double Width, out System.Double Height, out System.String Text, out System.UInt32 Color, out System.UInt32 Background, out System.Double FontSize, out System.Boolean Bold, out System.Boolean Centered) : System.Void
+  VibeSalamander.Plugins.PluginLabel.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.PluginLabel.Equals(VibeSalamander.Plugins.PluginLabel other) : System.Boolean
+  VibeSalamander.Plugins.PluginLabel.FontSize : System.Double { get; init; }
+  VibeSalamander.Plugins.PluginLabel.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.PluginLabel.Height : System.Double { get; init; }
+  VibeSalamander.Plugins.PluginLabel.Text : System.String { get; init; }
+  VibeSalamander.Plugins.PluginLabel.ToString() : System.String
+  VibeSalamander.Plugins.PluginLabel.Width : System.Double { get; init; }
+  VibeSalamander.Plugins.PluginLabel.X : System.Double { get; init; }
+  VibeSalamander.Plugins.PluginLabel.Y : System.Double { get; init; }
+  VibeSalamander.Plugins.PluginLabel.new(System.Double X, System.Double Y, System.Double Width, System.Double Height, System.String Text, System.UInt32 Color, System.UInt32 Background = 0, System.Double FontSize = 12, System.Boolean Bold = False, System.Boolean Centered = False)
+class VibeSalamander.Plugins.PluginLegendItem
+  VibeSalamander.Plugins.PluginLegendItem.Color : System.UInt32 { get; init; }
+  VibeSalamander.Plugins.PluginLegendItem.Deconstruct(out System.UInt32 Color, out System.String Text) : System.Void
+  VibeSalamander.Plugins.PluginLegendItem.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.PluginLegendItem.Equals(VibeSalamander.Plugins.PluginLegendItem other) : System.Boolean
+  VibeSalamander.Plugins.PluginLegendItem.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.PluginLegendItem.Text : System.String { get; init; }
+  VibeSalamander.Plugins.PluginLegendItem.ToString() : System.String
+  VibeSalamander.Plugins.PluginLegendItem.new(System.UInt32 Color, System.String Text)
+class VibeSalamander.Plugins.PluginMenuItem
+  VibeSalamander.Plugins.PluginMenuItem.Deconstruct(out System.String Text, out System.String ShortcutText, out System.Action Execute, out System.Boolean IsEnabled) : System.Void
+  VibeSalamander.Plugins.PluginMenuItem.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.PluginMenuItem.Equals(VibeSalamander.Plugins.PluginMenuItem other) : System.Boolean
+  VibeSalamander.Plugins.PluginMenuItem.Execute : System.Action { get; init; }
+  VibeSalamander.Plugins.PluginMenuItem.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.PluginMenuItem.IsEnabled : System.Boolean { get; init; }
+  VibeSalamander.Plugins.PluginMenuItem.ShortcutText : System.String { get; init; }
+  VibeSalamander.Plugins.PluginMenuItem.Text : System.String { get; init; }
+  VibeSalamander.Plugins.PluginMenuItem.ToString() : System.String
+  VibeSalamander.Plugins.PluginMenuItem.new(System.String Text, System.String ShortcutText, System.Action Execute, System.Boolean IsEnabled = True)
+class VibeSalamander.Plugins.PluginOption
+  VibeSalamander.Plugins.PluginOption.Label : System.String { get; init; }
+  VibeSalamander.Plugins.PluginOption.Value : System.Boolean { get; set; }
+  VibeSalamander.Plugins.PluginOption.new()
+struct VibeSalamander.Plugins.PluginPoint
+  VibeSalamander.Plugins.PluginPoint.Deconstruct(out System.Double X, out System.Double Y) : System.Void
+  VibeSalamander.Plugins.PluginPoint.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.PluginPoint.Equals(VibeSalamander.Plugins.PluginPoint other) : System.Boolean
+  VibeSalamander.Plugins.PluginPoint.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.PluginPoint.ToString() : System.String
+  VibeSalamander.Plugins.PluginPoint.X : System.Double { get; init; }
+  VibeSalamander.Plugins.PluginPoint.Y : System.Double { get; init; }
+  VibeSalamander.Plugins.PluginPoint.new(System.Double X, System.Double Y)
+class VibeSalamander.Plugins.PluginSaveChoice
+  VibeSalamander.Plugins.PluginSaveChoice.Deconstruct(out System.String Path, out System.Int32 TypeIndex) : System.Void
+  VibeSalamander.Plugins.PluginSaveChoice.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.PluginSaveChoice.Equals(VibeSalamander.Plugins.PluginSaveChoice other) : System.Boolean
+  VibeSalamander.Plugins.PluginSaveChoice.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.PluginSaveChoice.Path : System.String { get; init; }
+  VibeSalamander.Plugins.PluginSaveChoice.ToString() : System.String
+  VibeSalamander.Plugins.PluginSaveChoice.TypeIndex : System.Int32 { get; init; }
+  VibeSalamander.Plugins.PluginSaveChoice.new(System.String Path, System.Int32 TypeIndex)
+class VibeSalamander.Plugins.PluginView
+  VibeSalamander.Plugins.PluginView.Handled : System.Boolean { get; }
+  VibeSalamander.Plugins.PluginView.NotHandled : VibeSalamander.Plugins.PluginView { get; }
+  VibeSalamander.Plugins.PluginView.Shown : VibeSalamander.Plugins.PluginView { get; }
+  VibeSalamander.Plugins.PluginView.Text(System.String text, System.String title = null) : VibeSalamander.Plugins.PluginView static
+  VibeSalamander.Plugins.PluginView.TextContent : System.String { get; }
+  VibeSalamander.Plugins.PluginView.Title : System.String { get; }
+class VibeSalamander.Plugins.ProgressTracker
+  VibeSalamander.Plugins.ProgressTracker.AddBytes(System.Int64 bytes) : System.Void
+  VibeSalamander.Plugins.ProgressTracker.BytesDone : System.Int64 { get; }
+  VibeSalamander.Plugins.ProgressTracker.Current : System.String { get; }
+  VibeSalamander.Plugins.ProgressTracker.ItemDone() : System.Void
+  VibeSalamander.Plugins.ProgressTracker.ItemsDone : System.Int32 { get; }
+  VibeSalamander.Plugins.ProgressTracker.ItemsTotal : System.Int32 { get; set; }
+  VibeSalamander.Plugins.ProgressTracker.ReportTo(VibeSalamander.Plugins.IArchiveJob job, System.Boolean force = False) : System.Void
+  VibeSalamander.Plugins.ProgressTracker.SetBytes(System.Int64 bytes) : System.Void
+  VibeSalamander.Plugins.ProgressTracker.Start(System.String current) : System.Void
+  VibeSalamander.Plugins.ProgressTracker.TotalBytes : System.Int64 { get; set; }
+  VibeSalamander.Plugins.ProgressTracker.new(VibeSalamander.Core.Operations.OperationKind kind, System.Int64 totalBytes, System.Int32 totalItems)
+class VibeSalamander.Plugins.RemoteItem
+  VibeSalamander.Plugins.RemoteItem.AttributesText : System.String { get; init; }
+  VibeSalamander.Plugins.RemoteItem.Deconstruct(out System.String Name, out System.String Path, out System.Boolean IsDirectory, out System.Int64 Size, out System.DateTime LastWrite, out System.Boolean IsHidden, out System.Boolean IsLink) : System.Void
+  VibeSalamander.Plugins.RemoteItem.Description : System.String { get; init; }
+  VibeSalamander.Plugins.RemoteItem.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.RemoteItem.Equals(VibeSalamander.Plugins.RemoteItem other) : System.Boolean
+  VibeSalamander.Plugins.RemoteItem.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.RemoteItem.IsDirectory : System.Boolean { get; init; }
+  VibeSalamander.Plugins.RemoteItem.IsHidden : System.Boolean { get; init; }
+  VibeSalamander.Plugins.RemoteItem.IsLink : System.Boolean { get; init; }
+  VibeSalamander.Plugins.RemoteItem.LastWrite : System.DateTime { get; init; }
+  VibeSalamander.Plugins.RemoteItem.LinkTarget : System.String { get; init; }
+  VibeSalamander.Plugins.RemoteItem.Name : System.String { get; init; }
+  VibeSalamander.Plugins.RemoteItem.Path : System.String { get; init; }
+  VibeSalamander.Plugins.RemoteItem.Permissions : System.String { get; init; }
+  VibeSalamander.Plugins.RemoteItem.Size : System.Int64 { get; init; }
+  VibeSalamander.Plugins.RemoteItem.ToString() : System.String
+  VibeSalamander.Plugins.RemoteItem.new(System.String Name, System.String Path, System.Boolean IsDirectory, System.Int64 Size, System.DateTime LastWrite, System.Boolean IsHidden = False, System.Boolean IsLink = False)
+class VibeSalamander.Plugins.UnpackRequest
+  VibeSalamander.Plugins.UnpackRequest.ArchivePath : System.String { get; init; }
+  VibeSalamander.Plugins.UnpackRequest.BasePath : System.String { get; init; }
+  VibeSalamander.Plugins.UnpackRequest.Items : System.Collections.Generic.IReadOnlyList<System.String> { get; init; }
+  VibeSalamander.Plugins.UnpackRequest.Mask : System.String { get; init; }
+  VibeSalamander.Plugins.UnpackRequest.TargetDirectory : System.String { get; init; }
+  VibeSalamander.Plugins.UnpackRequest.new()
+enum VibeSalamander.Plugins.ZipEncryption
+  VibeSalamander.Plugins.ZipEncryption.Aes256 = 0
+  VibeSalamander.Plugins.ZipEncryption.ZipCrypto = 1
