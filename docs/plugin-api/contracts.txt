@@ -1,0 +1,2 @@
+# The plugin contracts as of Vibe Salamander 1.0 (PluginContractTests checks them). Lines may be added, never
+# removed or changed: a plugin built against any of them must keep loading.
