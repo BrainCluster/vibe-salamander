@@ -272,10 +272,14 @@ public sealed class TabsScenarios : IDisposable
         // over the shown one: in its upper right corner
         AutomationElement shown = TabNamed(app, "Projects");
         Mouse.MoveTo(Center(shown));
+        app.Calm(300);
+        Mouse.MoveTo(new System.Drawing.Point(Center(shown).X + 3, Center(shown).Y)); // a move inside it too
+        app.Calm(300);
+        AppSession.Screenshot("67 hovering the shown tab");
         AutomationElement close = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByAutomationId("PaneTabClose")), "the close button");
         Assert.True(close.BoundingRectangle.Right > shown.BoundingRectangle.Right - 20 && close.BoundingRectangle.Top < shown.BoundingRectangle.Top + 8,
             $"The close button {close.BoundingRectangle} sits in the upper right corner of {shown.BoundingRectangle}");
-        AppSession.Screenshot("67 tab close button");
+        AppSession.Screenshot("67 tab close button (2)");
         close.Click();
         AppSession.WaitUntil(() => Tabs(app).Count == 0, "the tab closed (one left: no row)");
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "Documents shown");
@@ -288,6 +292,9 @@ public sealed class TabsScenarios : IDisposable
         using AppSession app = Start();
         app.GoTo("Projects");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP);
+        WaitTabs(app, "two tabs", true, "Documents", "Projects");
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.TAB); // back to Documents
+        AppSession.WaitUntil(() => app.Items().Contains("Empty folder"), "Documents again");
         app.GoTo("Empty folder");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP);
         WaitTabs(app, "three tabs", true, "Documents", "Projects", "Empty folder");

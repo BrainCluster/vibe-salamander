@@ -249,6 +249,14 @@ public sealed partial class FilePane
         bool hovered = false;
         void ShowClose() => close.Visibility = hovered && item.IsShown && (_tabs?.Items.Count ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed;
         host.AddHandler(PointerEnteredEvent, new PointerEventHandler((_, _) => { hovered = true; ShowClose(); }), handledEventsToo: true);
+        host.AddHandler(PointerMovedEvent, new PointerEventHandler((_, _) =>
+        {
+            if (!hovered)
+            {
+                hovered = true; // entered without an Entered (the pointer was there when the tab appeared)
+                ShowClose();
+            }
+        }), handledEventsToo: true);
         host.AddHandler(PointerExitedEvent, new PointerEventHandler((_, _) => { hovered = false; ShowClose(); }), handledEventsToo: true);
         // dragging: started by hand once the pointer moved a little (the button keeps the press to itself)
         Windows.Foundation.Point? pressedAt = null;
