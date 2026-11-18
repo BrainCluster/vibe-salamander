@@ -45,7 +45,19 @@ public sealed partial class Dialogs
         dialog.PrimaryButtonText = "Convert";
         dialog.CloseButtonText = "Cancel";
         dialog.DefaultButton = ContentDialogButton.Primary;
-        if (await ShowAsync(dialog) != ContentDialogResult.Primary)
+        // Enter converts (the drop-downs open with Alt+Down or F4, or a click), as in the other dialogs
+        bool enter = false;
+        foreach (ComboBox box in new[] { endings, encoding, readAs })
+            box.PreviewKeyDown += (s, e) =>
+            {
+                if (e.Key == Windows.System.VirtualKey.Enter && !((ComboBox)s).IsDropDownOpen)
+                {
+                    e.Handled = true;
+                    enter = true;
+                    dialog.Hide();
+                }
+            };
+        if (await ShowAsync(dialog) != ContentDialogResult.Primary && !enter)
             return null;
         LineEnding? ending = endings.SelectedIndex switch
         {
