@@ -256,7 +256,9 @@ public sealed class TabsScenarios : IDisposable
     private static System.Drawing.Point Center(AutomationElement e) =>
         new((int)(e.BoundingRectangle.Left + e.BoundingRectangle.Width / 2), (int)(e.BoundingRectangle.Top + e.BoundingRectangle.Height / 2));
 
-    [UiFact]
+    // On the test machine simulated pointer moves don't reach the window (no hover, no drag; clicks do): these two
+    // run on a real desktop (dotnet test locally), and are on the manual checklist
+    [UiFact(Skip = "Simulated pointer moves don't reach WinUI on the test machine: run locally")]
     public void The_shown_tab_has_a_close_button_under_the_pointer()
     {
         using AppSession app = Start();
@@ -276,8 +278,6 @@ public sealed class TabsScenarios : IDisposable
         Mouse.MoveTo(new System.Drawing.Point(Center(shown).X + 3, Center(shown).Y)); // a move inside it too
         app.Calm(300);
         AppSession.Screenshot("67 hovering the shown tab");
-        string probe = TabNamed(app, "Projects").Properties.HelpText.ValueOrDefault ?? "(none)";
-        Assert.True(app.Window.FindFirstDescendant(cf => cf.ByAutomationId("PaneTabClose")) != null, "PROBE: " + probe);
         AutomationElement close = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByAutomationId("PaneTabClose")), "the close button");
         Assert.True(close.BoundingRectangle.Right > shown.BoundingRectangle.Right - 20 && close.BoundingRectangle.Top < shown.BoundingRectangle.Top + 8,
             $"The close button {close.BoundingRectangle} sits in the upper right corner of {shown.BoundingRectangle}");
@@ -288,7 +288,7 @@ public sealed class TabsScenarios : IDisposable
         NoErrors(app);
     }
 
-    [UiFact]
+    [UiFact(Skip = "Simulated pointer moves don't reach WinUI on the test machine: run locally")]
     public void Tabs_are_dragged_into_a_new_order_and_to_the_other_panel()
     {
         using AppSession app = Start();

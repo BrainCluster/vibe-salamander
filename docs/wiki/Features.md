@@ -23,7 +23,8 @@
   the cursor, Ctrl+Shift+Up the folder under the cursor in a tab of the **other** panel; a middle click on a folder
   opens it in a background tab. Ctrl+Tab and Ctrl+Shift+Tab switch; Ctrl+Shift+W, a middle click or the tab's menu
   closes one, and the menu reopens it. Each tab keeps its own folder, history, sort, view, filter, cursor and marks.
-  Drag tabs to reorder them, onto the other panel's row to move them (with Ctrl: copy), or drop a folder on the row.
+  Drag tabs to reorder them (a line shows where they land), onto the other panel to move them (with Ctrl: copy),
+  or drop a folder on the row. The shown tab has a close button in its corner under the pointer.
   A **locked** tab keeps its folder: going elsewhere from it — a folder, Back, a drive, a hot path, or a command that
   changes the other panel such as Ctrl+Left / Ctrl+Right — opens the new place in a new tab next to it. A folder
   sent to the running program opens in a new tab; Ctrl+U swaps the panels with their tabs; the tabs are remembered.
