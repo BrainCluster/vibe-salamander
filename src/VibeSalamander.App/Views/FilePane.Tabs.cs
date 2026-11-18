@@ -376,6 +376,8 @@ public sealed partial class FilePane
             if (hovered == on)
                 return;
             hovered = on;
+            look.Hovered = on;
+            look.Apply(button); // the whole tab, the close button on it too: tinted while the pointer is anywhere on it
             ShowClose();
             look.UpdateBar();
             Scroll(on);
@@ -526,8 +528,22 @@ public sealed partial class FilePane
         public Color Overlay { get; private set; }
         public Action UpdateBar { get; set; } = () => { };
 
+        /// <summary>The pointer is on the tab (its button or the close button on it).</summary>
+        public bool Hovered { get; set; }
+
+        /// <summary>The tab's own fill, not hovered.</summary>
+        public Brush? Fill { get; private set; }
+
+        /// <summary>The fill for now: tinted while hovered (set on the button itself, so the close button doesn't take it away).</summary>
+        public void Apply(Button button)
+        {
+            if (Fill != null)
+                button.Background = Hovered ? Hover : Fill;
+        }
+
         public void Paint(FilePane pane, Brush fill, Brush text, Brush? outline)
         {
+            Fill = fill;
             Color baseColor = fill is SolidColorBrush solid ? solid.Color : Microsoft.UI.Colors.Transparent;
             Color page = pane.ActualTheme == ElementTheme.Dark ? Color.FromArgb(255, 32, 32, 32) : Microsoft.UI.Colors.White;
             bool bright = TabColors.IsBright(TabColors.Over(page, baseColor));
@@ -537,8 +553,10 @@ public sealed partial class FilePane
             Fore.Color = text is SolidColorBrush t ? t.Color : bright ? Microsoft.UI.Colors.Black : Microsoft.UI.Colors.White;
             Outline.Color = outline is SolidColorBrush o ? o.Color : Microsoft.UI.Colors.Transparent;
             CloseGlyph.Color = bright ? Color.FromArgb(0xE4, 0, 0, 0) : Microsoft.UI.Colors.White;
-            CloseHover.Color = bright ? Color.FromArgb(0x24, 0, 0, 0) : Color.FromArgb(0x38, 255, 255, 255);
-            ClosePressed.Color = bright ? Color.FromArgb(0x3C, 0, 0, 0) : Color.FromArgb(0x58, 255, 255, 255);
+            // the close button under the pointer: the tab's own, untinted color on the tinted tab; pressed, a step further
+            Color plain = TabColors.Over(page, baseColor);
+            CloseHover.Color = plain;
+            ClosePressed.Color = TabColors.Over(plain, TabColors.Stronger(Overlay, 2.4));
             UpdateBar();
         }
     }
@@ -552,6 +570,7 @@ public sealed partial class FilePane
         {
             button.Background = (Brush)Application.Current.Resources[active ? "AccentFillColorDefaultBrush" : "VibeInactivePathBrush"];
             look?.Paint(this, button.Background, PathForeground(active), null);
+            look?.Apply(button);
             button.Padding = new Thickness(12, 5, 32, 5); // room for the close button
             button.Margin = new Thickness(0);
             button.MinHeight = 30;
@@ -564,6 +583,7 @@ public sealed partial class FilePane
             button.Background = (Brush)Application.Current.Resources["VibeBackTabBrush"];
             button.BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
             look?.Paint(this, button.Background, (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"], button.BorderBrush);
+            look?.Apply(button);
             button.BorderThickness = new Thickness(1, 1, 1, 0);
             button.Margin = new Thickness(0, 3, 0, 0);
             button.MinHeight = 27;
