@@ -1805,5 +1805,7 @@
   "In \"{0}\" files can be copied in and out (F5, F6), renamed (F2), deleted (F8), and folders made (F7).": "In „{0}” kunnen bestanden erin en eruit worden gekopieerd (F5, F6), hernoemd (F2) en verwijderd (F8), en mappen worden gemaakt (F7).",
   "Names can't be changed in this archive.": "Namen kunnen in dit archief niet worden gewijzigd.",
   "Directories can't be made in this archive.": "In dit archief kunnen geen mappen worden gemaakt.",
-  "Name of the new directory in the archive:": "Naam van de nieuwe map in het archief:"
+  "Name of the new directory in the archive:": "Naam van de nieuwe map in het archief:",
+  "Icon overlays": "Pictogram-overlays",
+  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "De markeringen die Git, OneDrive en andere programma's over pictogrammen tekenen (alleen lokale schijven)."
 }

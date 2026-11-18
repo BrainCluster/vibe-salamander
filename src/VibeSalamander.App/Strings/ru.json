@@ -1805,5 +1805,7 @@
   "In \"{0}\" files can be copied in and out (F5, F6), renamed (F2), deleted (F8), and folders made (F7).": "В «{0}» файлы можно копировать внутрь и наружу (F5, F6), переименовывать (F2), удалять (F8) и создавать папки (F7).",
   "Names can't be changed in this archive.": "В этом архиве нельзя менять имена.",
   "Directories can't be made in this archive.": "В этом архиве нельзя создавать папки.",
-  "Name of the new directory in the archive:": "Имя новой папки в архиве:"
+  "Name of the new directory in the archive:": "Имя новой папки в архиве:",
+  "Icon overlays": "Наложения значков",
+  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "Значки, которые Git, OneDrive и другие программы рисуют поверх значков (только локальные диски)."
 }

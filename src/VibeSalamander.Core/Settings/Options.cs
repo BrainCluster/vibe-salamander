@@ -161,6 +161,9 @@ public sealed class PanelOptions
     /// <summary>The row of tabs shows with one tab too (otherwise only from two tabs on).</summary>
     public bool AlwaysShowTabs { get; set; }
 
+    /// <summary>Windows' icon overlays (Git, OneDrive, shortcuts) on local disks.</summary>
+    public bool ShowIconOverlays { get; set; } = true;
+
     public NameCasing NameCasing { get; set; } = NameCasing.AsStored;
     public SizeFormat SizeFormat { get; set; } = SizeFormat.Bytes;
 

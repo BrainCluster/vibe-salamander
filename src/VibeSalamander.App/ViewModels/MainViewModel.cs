@@ -60,6 +60,7 @@ public sealed partial class MainViewModel : BindableBase
         Settings.Panels ??= new PanelOptions();
         LeftTabs = CreateTabs(Left, Settings.Left);
         RightTabs = CreateTabs(Right, Settings.Right);
+        Icons.ShowOverlays = Settings.Panels.ShowIconOverlays;
         Settings.UserMenu ??= UserMenu.CreateDefaults();
         Settings.Compare ??= new CompareOptions();
         Settings.OpenedFiles ??= new List<string>();

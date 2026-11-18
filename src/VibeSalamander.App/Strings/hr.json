@@ -1805,5 +1805,7 @@
   "In \"{0}\" files can be copied in and out (F5, F6), renamed (F2), deleted (F8), and folders made (F7).": "U „{0}” se datoteke mogu kopirati unutra i van (F5, F6), preimenovati (F2), brisati (F8), a mape stvarati (F7).",
   "Names can't be changed in this archive.": "U ovoj arhivi nazivi se ne mogu mijenjati.",
   "Directories can't be made in this archive.": "U ovoj arhivi ne mogu se stvarati mape.",
-  "Name of the new directory in the archive:": "Naziv nove mape u arhivi:"
+  "Name of the new directory in the archive:": "Naziv nove mape u arhivi:",
+  "Icon overlays": "Preklapanja ikona",
+  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "Oznake koje Git, OneDrive i drugi programi crtaju preko ikona (samo lokalni diskovi)."
 }

@@ -172,6 +172,12 @@ public sealed partial class SettingsWindow
         }));
         page.Children.Add(Toggle("Include directories in select / unselect operations", "Num +, Num -, Num * (invert) and Select All.",
             p.SelectIncludesDirectories, v => p.SelectIncludesDirectories = v, display: true));
+        page.Children.Add(Toggle("Icon overlays", "The marks Git, OneDrive and other programs draw over icons (local disks only).",
+            p.ShowIconOverlays, v =>
+            {
+                p.ShowIconOverlays = v;
+                _vm.Icons.ShowOverlays = v;
+            }));
         page.Children.Add(Toggle("Always show the row of tabs", "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).",
             p.AlwaysShowTabs, v =>
             {

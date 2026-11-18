@@ -46,13 +46,92 @@ public sealed class IconCache
         }
     }
 
+    /// <summary>
+    /// Windows' icon overlays (Configuration → Panels): the marks Git clients, OneDrive, Dropbox and shortcuts draw
+    /// over icons. Asked for files on local disks only (a network drive would answer slowly for every row).
+    /// </summary>
+    public bool ShowOverlays { get; set; } = true;
+
+    private readonly Dictionary<string, bool> _localRoots = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>On a local disk (fixed or removable): overlays are asked for there.</summary>
+    private bool OnLocalDisk(string path)
+    {
+        string? root = Path.GetPathRoot(path);
+        if (string.IsNullOrEmpty(root) || root.StartsWith(@"\", StringComparison.Ordinal))
+            return false;
+        if (!_localRoots.TryGetValue(root, out bool local))
+        {
+            try
+            {
+                local = new DriveInfo(root).DriveType is DriveType.Fixed or DriveType.Removable;
+            }
+            catch (Exception ex) when (ex is ArgumentException or IOException)
+            {
+                local = false;
+            }
+            _localRoots[root] = local;
+        }
+        return local;
+    }
+
     /// <summary>Calls <paramref name="onLoaded"/> (on the UI thread) with the icon for the entry.</summary>
     /// <param name="generic">the file type's icon only (simple icons, archives, servers): nothing is read from the file</param>
     public void Request(FileEntry entry, bool generic, Action<ImageSource?> onLoaded)
     {
         if (entry.IsUpDir)
             return; // the up-dir uses its own glyph
+        if (ShowOverlays && !generic && entry.Tag is not DriveEntryInfo && OnLocalDisk(entry.FullPath) &&
+            !(PerFileExtensions.Contains(entry.Extension) && CloudFiles.IsOnlineOnly(entry)))
+        {
+            RequestWithOverlay(entry, onLoaded);
+            return;
+        }
+        RequestPlain(entry, generic, onLoaded);
+    }
 
+    /// <summary>
+    /// First asks Windows whether the item has an overlay (one call, which also gives the icon with the overlay drawn
+    /// on it); without one, the cached icon of its type is used as before. Icons with an overlay are cached by the
+    /// icon and the overlay, so a folder of Git files makes a handful of them.
+    /// </summary>
+    private void RequestWithOverlay(FileEntry entry, Action<ImageSource?> onLoaded)
+    {
+        string baseKey = GetKey(entry, generic: false).key;
+        _busy.Set(true);
+        _overlayQueries++;
+        _work.Add(() =>
+        {
+            (int overlay, IconPixels? pixels) = (0, null);
+            try
+            {
+                (overlay, pixels) = LoadWithOverlay(entry.FullPath, entry.IsDirectory);
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+            }
+            _dispatcher.TryEnqueue(() =>
+            {
+                _overlayQueries--;
+                if (overlay == 0 || pixels == null)
+                {
+                    RequestPlain(entry, generic: false, onLoaded); // no overlay: the usual (cached) icon
+                    _busy.Set(_pending.Count > 0 || _overlayQueries > 0);
+                    return;
+                }
+                string key = $"ov{overlay}:{baseKey}";
+                if (!_cache.TryGetValue(key, out ImageSource? source))
+                    _cache[key] = source = ToBitmap(pixels);
+                onLoaded(source);
+                _busy.Set(_pending.Count > 0 || _overlayQueries > 0);
+            });
+        });
+    }
+
+    private int _overlayQueries;
+
+    private void RequestPlain(FileEntry entry, bool generic, Action<ImageSource?> onLoaded)
+    {
         (string key, string shellPath, bool useAttributes, uint attributes) = GetKey(entry, generic);
         // an .exe or .lnk whose own icon can't be read gets its type's icon (not a different kind of icon)
         var fallback = key.StartsWith("file:", StringComparison.Ordinal) ? GetKey(entry, generic: true) : default;
@@ -91,15 +170,7 @@ public sealed class IconCache
 
     private void Complete(string key, IconPixels? pixels)
     {
-        ImageSource? source = null;
-        if (pixels != null)
-        {
-            var bitmap = new WriteableBitmap(pixels.Width, pixels.Height);
-            using (Stream stream = bitmap.PixelBuffer.AsStream())
-                stream.Write(pixels.Bgra, 0, pixels.Bgra.Length);
-            bitmap.Invalidate();
-            source = bitmap;
-        }
+        ImageSource? source = pixels != null ? ToBitmap(pixels) : null;
         // icons of individual files (.exe, .lnk, ...) are cached per path: a folder with thousands of them
         // must not keep every icon for the rest of the session
         if (_cache.Count > 2000)
@@ -111,7 +182,16 @@ public sealed class IconCache
         if (_pending.Remove(key, out var callbacks))
             foreach (var callback in callbacks)
                 callback(source);
-        _busy.Set(_pending.Count > 0);
+        _busy.Set(_pending.Count > 0 || _overlayQueries > 0);
+    }
+
+    private static WriteableBitmap ToBitmap(IconPixels pixels)
+    {
+        var bitmap = new WriteableBitmap(pixels.Width, pixels.Height);
+        using (Stream stream = bitmap.PixelBuffer.AsStream())
+            stream.Write(pixels.Bgra, 0, pixels.Bgra.Length);
+        bitmap.Invalidate();
+        return bitmap;
     }
 
     /// <summary>Icons are being loaded (the UI tests wait for them).</summary>
@@ -136,6 +216,25 @@ public sealed class IconCache
     // ---- HICON → BGRA pixels --------------------------------------------------------------
 
     private sealed record IconPixels(int Width, int Height, byte[] Bgra);
+
+    /// <summary>The item's overlay (0: none) and, with one, its icon with the overlay drawn on it.</summary>
+    private static (int Overlay, IconPixels? Pixels) LoadWithOverlay(string path, bool isDirectory)
+    {
+        var info = new SHFILEINFO();
+        uint flags = SHGFI_ICON | SHGFI_SMALLICON | SHGFI_ADDOVERLAYS | SHGFI_OVERLAYINDEX;
+        IntPtr result = SHGetFileInfo(path, 0, ref info, (uint)Marshal.SizeOf<SHFILEINFO>(), flags);
+        if (result == IntPtr.Zero || info.hIcon == IntPtr.Zero)
+            return (0, null);
+        try
+        {
+            int overlay = (info.iIcon >> 24) & 0xFF;
+            return overlay == 0 ? (0, null) : (overlay, IconToPixels(info.hIcon));
+        }
+        finally
+        {
+            DestroyIcon(info.hIcon);
+        }
+    }
 
     private static IconPixels? LoadPixels(string path, bool useAttributes, uint attributes)
     {
@@ -230,6 +329,8 @@ public sealed class IconCache
     private const uint SHGFI_ICON = 0x100;
     private const uint SHGFI_SMALLICON = 0x1;
     private const uint SHGFI_USEFILEATTRIBUTES = 0x10;
+    private const uint SHGFI_ADDOVERLAYS = 0x20;
+    private const uint SHGFI_OVERLAYINDEX = 0x40;
     private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
     private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
 
