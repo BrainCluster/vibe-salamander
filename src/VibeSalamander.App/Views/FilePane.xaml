@@ -289,14 +289,26 @@
             <Grid x:Name="TabRow" Margin="4,2,4,0" ColumnSpacing="2" Background="Transparent" AllowDrop="True"
                   Visibility="Collapsed" DoubleTapped="TabRow_DoubleTapped" DragOver="TabRow_DragOver" Drop="TabRow_Drop">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <ScrollViewer x:Name="TabScroller" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
-                              HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
-                    <StackPanel x:Name="TabStrip" Orientation="Horizontal" Spacing="2" />
+                <!-- when the tabs don't fit: arrows on both sides scroll the row (shown only then) -->
+                <RepeatButton x:Name="TabsLeftButton" Style="{StaticResource VibeTabScrollButtonStyle}" Visibility="Collapsed"
+                              Click="TabsLeftButton_Click" AutomationProperties.AutomationId="TabsLeftButton">
+                    <FontIcon Glyph="&#xE76B;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
+                </RepeatButton>
+                <ScrollViewer x:Name="TabScroller" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                              HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled" ViewChanged="TabScroller_ViewChanged"
+                              SizeChanged="TabScroller_SizeChanged">
+                    <StackPanel x:Name="TabStrip" Orientation="Horizontal" Spacing="2" SizeChanged="TabScroller_SizeChanged" />
                 </ScrollViewer>
-                <Button x:Name="NewTabButton" Grid.Column="1" Style="{StaticResource VibeToolButtonStyle}" Padding="6,3"
+                <RepeatButton x:Name="TabsRightButton" Grid.Column="2" Style="{StaticResource VibeTabScrollButtonStyle}" Visibility="Collapsed"
+                              Click="TabsRightButton_Click" AutomationProperties.AutomationId="TabsRightButton">
+                    <FontIcon Glyph="&#xE76C;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
+                </RepeatButton>
+                <Button x:Name="NewTabButton" Grid.Column="3" Style="{StaticResource VibeToolButtonStyle}" Padding="6,3"
                         Click="NewTabButton_Click" AutomationProperties.Name="New tab">
                     <FontIcon Glyph="&#xE710;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
                 </Button>

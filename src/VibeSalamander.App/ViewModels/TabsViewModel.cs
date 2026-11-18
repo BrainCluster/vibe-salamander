@@ -102,10 +102,17 @@ public sealed class TabsViewModel : BindableBase
     }
 
     /// <summary>The tab row: as the arrow left it, else from two tabs on (or always: Configuration → Panels).</summary>
-    public Visibility RowVisibility => (_rowShown ?? (List.Count > 1 || _alwaysShow())) ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility RowVisibility => (_alwaysShow() || (_rowShown ?? List.Count > 1)) ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>The arrow at the end of the drive bar: not there when the row always shows (Configuration → Panels).</summary>
+    public Visibility ArrowVisibility => _alwaysShow() ? Visibility.Collapsed : Visibility.Visible;
 
     /// <summary>The arrow at the end of the drive bar: opens the row, or closes it (the tabs stay: Ctrl+Tab still switches).</summary>
-    public void ToggleRow() => RowShown = RowVisibility != Visibility.Visible;
+    public void ToggleRow()
+    {
+        if (!_alwaysShow())
+            RowShown = RowVisibility != Visibility.Visible;
+    }
 
     /// <summary>A new tab opens the row again if the arrow closed it (a tab nobody can see would confuse).</summary>
     private void ShowRowForNewTab()
@@ -115,7 +122,11 @@ public sealed class TabsViewModel : BindableBase
     }
 
     /// <summary>Configuration changed (Always show tabs).</summary>
-    public void ApplyOptions() => OnPropertyChanged(nameof(RowVisibility));
+    public void ApplyOptions()
+    {
+        OnPropertyChanged(nameof(RowVisibility));
+        OnPropertyChanged(nameof(ArrowVisibility));
+    }
 
     /// <summary>The items follow the list (same tab objects, in its order).</summary>
     private void Sync()

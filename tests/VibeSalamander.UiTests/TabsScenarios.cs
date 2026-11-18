@@ -131,6 +131,54 @@ public sealed class TabsScenarios : IDisposable
         NoErrors(app);
     }
 
+    private static AutomationElement? Find(AppSession app, string id, bool left = true)
+    {
+        double middle = app.Window.BoundingRectangle.Left + app.Window.BoundingRectangle.Width / 2.0;
+        return app.Window.FindAllDescendants(cf => cf.ByAutomationId(id))
+            .FirstOrDefault(b => !b.IsOffscreen && (b.BoundingRectangle.Left < middle) == left);
+    }
+
+    [UiFact]
+    public void Always_showing_the_row_has_no_arrow_on_the_drive_bar()
+    {
+        using var app = new AppSession(s =>
+        {
+            s.Left.Path = _files.Documents;
+            s.Right.Path = _files.Target;
+            s.Panels.AlwaysShowTabs = true;
+        });
+        AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the documents");
+
+        WaitTabs(app, "the row with one tab", true, "Documents");
+        WaitTabs(app, "the other panel's row too", false, "Target");
+        Assert.Null(Find(app, "TabRowButton"));
+        Assert.Null(Find(app, "TabRowButton", left: false));
+        NoErrors(app);
+    }
+
+    [UiFact]
+    public void A_full_row_of_tabs_scrolls_with_arrows_at_both_ends()
+    {
+        using AppSession app = Start();
+        Assert.Null(Find(app, "TabsLeftButton"));
+        for (int i = 0; i < 14; i++)
+            CtrlShift(app, VirtualKeyShort.KEY_T); // fifteen "Documents" tabs: more than the half window holds
+
+        AutomationElement left = AppSession.Retry(() => Find(app, "TabsLeftButton"), "the left arrow");
+        Assert.NotNull(Find(app, "TabsRightButton"));
+        AppSession.Screenshot("67 full row of tabs");
+
+        // the last tab is shown (scrolled into view): the left arrow goes back to the first
+        double firstLeft() => app.Window.FindAllDescendants(cf => cf.ByAutomationId("PaneTab"))
+            .Where(t => t.BoundingRectangle.Left < app.Window.BoundingRectangle.Left + app.Window.BoundingRectangle.Width / 2.0 - 40)
+            .Select(t => (double)t.BoundingRectangle.Left).DefaultIfEmpty(double.MinValue).Min();
+        for (int i = 0; i < 30 && left.IsEnabled; i++)
+            left.Click();
+        AppSession.WaitUntil(() => !left.IsEnabled, "the left arrow at the start");
+        AppSession.WaitUntil(() => firstLeft() >= left.BoundingRectangle.Right - 2, "the first tab whole, right of the arrow");
+        NoErrors(app);
+    }
+
     [UiFact]
     public void Ctrl_U_swaps_the_panels_with_their_tabs()
     {

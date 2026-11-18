@@ -31,7 +31,7 @@ public sealed partial class FilePane
         tabs.Items.CollectionChanged += (_, _) => RebuildTabs();
         tabs.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(TabsViewModel.RowVisibility))
+            if (e.PropertyName is nameof(TabsViewModel.RowVisibility) or nameof(TabsViewModel.ArrowVisibility))
             {
                 TabRow.Visibility = tabs.RowVisibility;
                 UpdateTabRowButton();
@@ -45,6 +45,10 @@ public sealed partial class FilePane
             };
         TabRow.Visibility = tabs.RowVisibility;
         UpdateTabRowButton();
+        AutomationProperties.SetName(TabsLeftButton, Loc.T("Earlier tabs"));
+        AutomationProperties.SetName(TabsRightButton, Loc.T("Later tabs"));
+        ToolTipService.SetToolTip(TabsLeftButton, Loc.T("Earlier tabs"));
+        ToolTipService.SetToolTip(TabsRightButton, Loc.T("Later tabs"));
         RebuildTabs();
     }
 
@@ -53,11 +57,58 @@ public sealed partial class FilePane
     {
         if (_tabs == null)
             return;
+        TabRowButton.Visibility = _tabs.ArrowVisibility;
         bool open = _tabs.RowVisibility == Visibility.Visible;
         TabRowGlyph.Glyph = open ? "\uE70E" : "\uE70D";
         string tip = Loc.T(open ? "Hide tabs" : "Show tabs");
         ToolTipService.SetToolTip(TabRowButton, tip);
         AutomationProperties.SetName(TabRowButton, tip);
+    }
+
+    // ---- scrolling a full row -----------------------------------------------------------------------------
+
+    /// <summary>The arrows at both ends of the row: there only when the tabs don't fit; greyed at either end.</summary>
+    private void UpdateTabScrollButtons()
+    {
+        bool overflow = TabScroller.ScrollableWidth > 0.5;
+        TabsLeftButton.Visibility = TabsRightButton.Visibility = overflow ? Visibility.Visible : Visibility.Collapsed;
+        TabsLeftButton.IsEnabled = TabScroller.HorizontalOffset > 0.5;
+        TabsRightButton.IsEnabled = TabScroller.HorizontalOffset < TabScroller.ScrollableWidth - 0.5;
+    }
+
+    private void TabScroller_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e) => UpdateTabScrollButtons();
+
+    private void TabScroller_SizeChanged(object sender, SizeChangedEventArgs e) =>
+        DispatcherQueue.TryEnqueue(UpdateTabScrollButtons); // after the scroller has measured the new size
+
+    private void TabsLeftButton_Click(object sender, RoutedEventArgs e) => ScrollTabs(-1);
+
+    private void TabsRightButton_Click(object sender, RoutedEventArgs e) => ScrollTabs(+1);
+
+    /// <summary>
+    /// Scrolls to the next tab that is cut off on that side (so every click shows one more tab whole); holding the
+    /// arrow repeats.
+    /// </summary>
+    private void ScrollTabs(int direction)
+    {
+        double offset = TabScroller.HorizontalOffset;
+        double width = TabScroller.ViewportWidth;
+        double target = direction > 0 ? Math.Min(offset + 120, TabScroller.ScrollableWidth) : Math.Max(offset - 120, 0);
+        foreach (UIElement child in TabStrip.Children)
+        {
+            if (child is not FrameworkElement tab)
+                continue;
+            double left = tab.TransformToVisual(TabStrip).TransformPoint(default).X;
+            double right = left + tab.ActualWidth;
+            if (direction > 0 && right > offset + width + 0.5)
+            {
+                target = Math.Min(right - width, TabScroller.ScrollableWidth); // the first tab cut off on the right, whole
+                break;
+            }
+            if (direction < 0 && left < offset - 0.5)
+                target = left; // the last tab cut off on the left, whole
+        }
+        TabScroller.ChangeView(target, null, null, disableAnimation: true);
     }
 
     private void TabRowButton_Click(object sender, RoutedEventArgs e)
