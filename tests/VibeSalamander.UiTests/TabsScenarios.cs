@@ -258,7 +258,7 @@ public sealed class TabsScenarios : IDisposable
 
     // On the test machine simulated pointer moves don't reach the window (no hover, no drag; clicks do): these two
     // run on a real desktop (dotnet test locally), and are on the manual checklist
-    [UiFact(Skip = "Simulated pointer moves don't reach WinUI on the test machine: run locally")]
+    [PointerUiFact]
     public void The_shown_tab_has_a_close_button_under_the_pointer()
     {
         using AppSession app = Start();
@@ -288,7 +288,7 @@ public sealed class TabsScenarios : IDisposable
         NoErrors(app);
     }
 
-    [UiFact(Skip = "Simulated pointer moves don't reach WinUI on the test machine: run locally")]
+    [PointerUiFact]
     public void Tabs_are_dragged_into_a_new_order_and_to_the_other_panel()
     {
         using AppSession app = Start();

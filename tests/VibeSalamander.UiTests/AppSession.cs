@@ -609,3 +609,18 @@ public sealed class UiFactAttribute : FactAttribute
             Skip = "The app isn't built (set VIBE_APP_EXE or build Release x64).";
     }
 }
+
+/// <summary>
+/// A UI test that needs real pointer moves (hover, drag and drop): on GitHub's runners simulated moves don't reach
+/// WinUI, so it runs only on a real desktop (dotnet test locally).
+/// </summary>
+public sealed class PointerUiFactAttribute : FactAttribute
+{
+    public PointerUiFactAttribute()
+    {
+        if (AppSession.AppExe == null)
+            Skip = "The app isn't built (set VIBE_APP_EXE or build Release x64).";
+        else if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+            Skip = "Simulated pointer moves don't reach WinUI on GitHub's runners: run it locally.";
+    }
+}
