@@ -83,6 +83,7 @@ public sealed class KeyMap
         m.Bind(VK.Tab, C | S, CommandId.PreviousTab);
         m.Bind(VK.Up, C, CommandId.OpenInNewTab);
         m.Bind(VK.Up, C | S, CommandId.OpenInNewTabOtherPanel);
+        m.Bind(VK.Down, C, CommandId.ToggleTabRow); // the row of tabs, as the arrow at the end of the drive bar
         m.Bind(VK.F11, C, CommandId.MaximizePanel);
         m.Bind(VK.F3, C, CommandId.SortByName);
         m.Bind(VK.F4, C, CommandId.SortByExtension);
@@ -283,6 +284,7 @@ public sealed class KeyMap
         m.Bind(VK.Tab, C | S, CommandId.PreviousTab);
         m.Bind(VK.Up, C, CommandId.OpenInNewTab);
         m.Bind(VK.Up, C | S, CommandId.OpenInNewTabOtherPanel);
+        m.Bind(VK.Down, C, CommandId.ToggleTabRow); // the row of tabs, as the arrow at the end of the drive bar
         m.Bind(VK.Period, C, CommandId.PathFromOtherPanel);
         m.Bind(VK.H, C, CommandId.ToggleHiddenFiles);
         m.Bind(VK.D1, A, CommandId.ViewBrief);

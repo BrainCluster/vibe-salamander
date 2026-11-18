@@ -132,6 +132,12 @@ public sealed class TabsScenarios : IDisposable
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP); // a new tab opens the row again
         WaitTabs(app, "the row back with the new tab", true, "Documents", "Projects", "Projects");
         AppSession.WaitUntil(() => TabRowArrow(app).Name == "Hide tabs", "no badge with the row open");
+
+        // Ctrl+Down does what the arrow does
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.DOWN);
+        AppSession.WaitUntil(() => Tabs(app).Count == 0 && TabRowArrow(app).Name == "Show tabs (3 open)", "Ctrl+Down closed the row");
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.DOWN);
+        WaitTabs(app, "Ctrl+Down opened it again", true, "Documents", "Projects", "Projects");
         NoErrors(app);
     }
 

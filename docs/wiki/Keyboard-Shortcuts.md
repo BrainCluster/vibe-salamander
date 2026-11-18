@@ -37,11 +37,12 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | Ctrl+Shift+T (Total Commander keys: Ctrl+T) | New tab of the same folder |
 | Ctrl+Up | The folder under the cursor in a new tab |
 | Ctrl+Shift+Up | The folder under the cursor in a new tab of the other panel |
+| Ctrl+Down | Show or hide the row of tabs (the arrow at the end of the drive bar) |
 | Ctrl+Tab / Ctrl+Shift+Tab | Next / previous tab |
 | Ctrl+Shift+W (Total Commander keys: Ctrl+W) | Close the tab |
 | middle click on a folder / on a tab | Open it in a background tab / close the tab |
 
-The arrow at the end of a drive bar (or Left / Right → Tabs → Show / Hide Tabs) opens or closes the row.
+The arrow at the end of a drive bar, Ctrl+Down, or Left / Right → Tabs → Show / Hide Tabs opens or closes the row.
 More in the Left / Right menu → **Tabs** and a tab's right-click menu: lock, copy to the other panel, close the
 others, reopen a closed tab.
 

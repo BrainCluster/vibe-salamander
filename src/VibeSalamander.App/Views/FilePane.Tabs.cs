@@ -82,7 +82,8 @@ public sealed partial class FilePane
             TabCountText.ClearValue(TextBlock.ForegroundProperty);
             TabRowGlyph.ClearValue(IconElement.ForegroundProperty);
         }
-        ToolTipService.SetToolTip(TabRowButton, tip);
+        string? keys = _main?.KeyMap.GetShortcutText(CommandId.ToggleTabRow);
+        ToolTipService.SetToolTip(TabRowButton, string.IsNullOrEmpty(keys) ? tip : $"{tip} ({keys})");
         AutomationProperties.SetName(TabRowButton, tip);
     }
 
