@@ -37,7 +37,10 @@ public sealed partial class MainViewModel
         }
         var list = new TabList(saved, active, shown);
         return new TabsViewModel(pane, list, () => Settings.Panels.AlwaysShowTabs,
-            path => RemoteProvider.CanHandle(path) ? RemoteProvider.GetDisplayPath(path) : path);
+            path => RemoteProvider.CanHandle(path) ? RemoteProvider.GetDisplayPath(path) : path)
+        {
+            RowShown = settings.TabRow,
+        };
     }
 
     /// <summary>The tabs into the settings (none when a side has one: nothing changes for those who don't use tabs).</summary>
@@ -46,6 +49,7 @@ public sealed partial class MainViewModel
         tabs.SaveShown();
         settings.Tabs = tabs.Count > 1 ? tabs.List.Tabs.ToList() : null;
         settings.ActiveTab = tabs.List.ActiveIndex;
+        settings.TabRow = tabs.RowShown;
     }
 
     /// <summary>A server is still used by another tab (of either panel) or the other panel: no "disconnect?" question.</summary>
@@ -135,6 +139,9 @@ public sealed partial class MainViewModel
         await TabsOf(pane).ReopenAsync();
         _host.FocusPane(pane);
     }
+
+    /// <summary>Show / hide tabs: the arrow at the end of the drive bar.</summary>
+    private void ToggleTabRow(PaneViewModel pane) => TabsOf(pane).ToggleRow();
 
     private void ToggleLockTab(PaneViewModel pane)
     {

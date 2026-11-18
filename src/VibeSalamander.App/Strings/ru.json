@@ -1762,5 +1762,9 @@
   "Copy tab here": "Копировать вкладку сюда",
   "Move tab here": "Переместить вкладку сюда",
   "Always show the row of tabs": "Всегда показывать строку вкладок",
-  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Иначе она появляется, когда вкладок две и больше (Ctrl+Shift+T или Ctrl+T открывает вкладку)."
+  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Иначе она появляется, когда вкладок две и больше (Ctrl+Shift+T или Ctrl+T открывает вкладку).",
+  "Show tabs": "Показать вкладки",
+  "Hide tabs": "Скрыть вкладки",
+  "Show / hide tabs": "Показать / скрыть вкладки",
+  "Show / Hide Tabs": "Показать / скрыть вкладки"
 }

@@ -1762,5 +1762,9 @@
   "Copy tab here": "Kopírovat kartu sem",
   "Move tab here": "Přesunout kartu sem",
   "Always show the row of tabs": "Vždy zobrazovat řádek karet",
-  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Jinak se zobrazí od dvou karet (Ctrl+Shift+T nebo Ctrl+T otevře kartu)."
+  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Jinak se zobrazí od dvou karet (Ctrl+Shift+T nebo Ctrl+T otevře kartu).",
+  "Show tabs": "Zobrazit karty",
+  "Hide tabs": "Skrýt karty",
+  "Show / hide tabs": "Zobrazit / skrýt karty",
+  "Show / Hide Tabs": "Zobrazit / skrýt karty"
 }

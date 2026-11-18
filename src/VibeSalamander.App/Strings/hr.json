@@ -1762,5 +1762,9 @@
   "Copy tab here": "Kopiraj karticu ovdje",
   "Move tab here": "Premjesti karticu ovdje",
   "Always show the row of tabs": "Uvijek prikaži redak kartica",
-  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Inače se prikazuje od dvije kartice (Ctrl+Shift+T ili Ctrl+T otvara karticu)."
+  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Inače se prikazuje od dvije kartice (Ctrl+Shift+T ili Ctrl+T otvara karticu).",
+  "Show tabs": "Prikaži kartice",
+  "Hide tabs": "Sakrij kartice",
+  "Show / hide tabs": "Prikaži / sakrij kartice",
+  "Show / Hide Tabs": "Prikaži / sakrij kartice"
 }

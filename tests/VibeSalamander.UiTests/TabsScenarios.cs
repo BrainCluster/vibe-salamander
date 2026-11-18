@@ -95,6 +95,41 @@ public sealed class TabsScenarios : IDisposable
         NoErrors(app);
     }
 
+    /// <summary>The arrow at the end of a panel's drive bar.</summary>
+    private static AutomationElement TabRowArrow(AppSession app, bool left = true)
+    {
+        double middle = app.Window.BoundingRectangle.Left + app.Window.BoundingRectangle.Width / 2.0;
+        return AppSession.Retry(() => app.Window.FindAllDescendants(cf => cf.ByAutomationId("TabRowButton"))
+            .FirstOrDefault(b => (b.BoundingRectangle.Left < middle) == left), "the tab row arrow");
+    }
+
+    [UiFact]
+    public void The_arrow_at_the_end_of_the_drive_bar_opens_and_closes_the_row_of_tabs()
+    {
+        using AppSession app = Start();
+        Assert.Equal("Show tabs", TabRowArrow(app).Name);
+
+        TabRowArrow(app).Click(); // opens it with the one tab
+        WaitTabs(app, "the row opened", true, "Documents");
+        AppSession.WaitUntil(() => TabRowArrow(app).Name == "Hide tabs", "the arrow now closes it");
+        AppSession.Screenshot("66 tab row opened");
+
+        CtrlShift(app, VirtualKeyShort.KEY_T);
+        WaitTabs(app, "two tabs", true, "Documents", "Documents");
+        TabRowArrow(app).Click(); // closes it: the tabs stay, Ctrl+Tab still switches
+        AppSession.WaitUntil(() => Tabs(app).Count == 0, "the row closed");
+        app.GoTo("Projects");
+        app.Press(VirtualKeyShort.ENTER);
+        AppSession.WaitUntil(() => app.Items().Contains("Vibe"), "Projects in the second tab");
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.TAB);
+        AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the first tab, with the row closed");
+        Assert.Empty(Tabs(app));
+
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP); // a new tab opens the row again
+        WaitTabs(app, "the row back with the new tab", true, "Documents", "Projects", "Projects");
+        NoErrors(app);
+    }
+
     [UiFact]
     public void Ctrl_U_swaps_the_panels_with_their_tabs()
     {

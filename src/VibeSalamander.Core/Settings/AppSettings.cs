@@ -40,6 +40,10 @@ public sealed class PanelSettings
 
     /// <summary>The shown tab.</summary>
     public int ActiveTab { get; set; }
+
+    /// <summary>The row of tabs opened (true) or closed (false) with the arrow at the end of the drive bar; null: it
+    /// shows from two tabs on (or always: Configuration → Panels).</summary>
+    public bool? TabRow { get; set; }
 }
 
 /// <summary>User configuration, stored as JSON in %AppData%\VibeSalamander\settings.json.</summary>

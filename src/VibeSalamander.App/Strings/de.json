@@ -1762,5 +1762,9 @@
   "Copy tab here": "Tab hierher kopieren",
   "Move tab here": "Tab hierher verschieben",
   "Always show the row of tabs": "Tableiste immer anzeigen",
-  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Sonst erscheint sie ab zwei Tabs (Strg+Umschalt+T oder Strg+T öffnet einen Tab)."
+  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Sonst erscheint sie ab zwei Tabs (Strg+Umschalt+T oder Strg+T öffnet einen Tab).",
+  "Show tabs": "Tabs anzeigen",
+  "Hide tabs": "Tabs ausblenden",
+  "Show / hide tabs": "Tabs anzeigen / ausblenden",
+  "Show / Hide Tabs": "Tabs anzeigen / ausblenden"
 }

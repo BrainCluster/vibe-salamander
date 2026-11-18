@@ -114,6 +114,7 @@ public static class CommandCatalog
         [CommandId.CloseOtherTabs] = "Close other tabs",
         [CommandId.ReopenClosedTab] = "Reopen closed tab",
         [CommandId.CopyTabToOtherPanel] = "Copy tab to other panel",
+        [CommandId.ToggleTabRow] = "Show / hide tabs",
     };
 
     /// <summary>A readable name ("Compare directories..."); others are derived from the id ("Sort by name").</summary>
@@ -184,7 +185,7 @@ public static class CommandCatalog
         CommandId.FlatView or CommandId.QuickView or CommandId.HotPathList => "Panels",
         CommandId.NameToCommandLine or CommandId.FullNameToCommandLine or CommandId.PathToCommandLine or CommandId.CommandHistory => "Commands",
         CommandId.PluginsManager => "Options",
-        >= CommandId.NewTab and <= CommandId.CopyTabToOtherPanel => "Panels",
+        >= CommandId.NewTab and <= CommandId.ToggleTabRow => "Panels",
         <= CommandId.Filter => "Panels",
         <= CommandId.CommandShell => "Files",
         <= CommandId.GoToNextSelected => "Selection",

@@ -1762,5 +1762,9 @@
   "Copy tab here": "Copier l'onglet ici",
   "Move tab here": "Déplacer l'onglet ici",
   "Always show the row of tabs": "Toujours afficher la rangée d'onglets",
-  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Sinon, elle apparaît à partir de deux onglets (Ctrl+Maj+T ou Ctrl+T ouvre un onglet)."
+  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Sinon, elle apparaît à partir de deux onglets (Ctrl+Maj+T ou Ctrl+T ouvre un onglet).",
+  "Show tabs": "Afficher les onglets",
+  "Hide tabs": "Masquer les onglets",
+  "Show / hide tabs": "Afficher / masquer les onglets",
+  "Show / Hide Tabs": "Afficher / masquer les onglets"
 }

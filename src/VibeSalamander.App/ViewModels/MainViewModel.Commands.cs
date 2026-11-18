@@ -106,6 +106,7 @@ public sealed partial class MainViewModel
         t.Add(CommandId.OpenInNewTabOtherPanel, OpenInNewTabOtherPanelAsync);
         t.Add(CommandId.ReopenClosedTab, ReopenClosedTabAsync);
         t.AddSync(CommandId.LockTab, ToggleLockTab);
+        t.AddSync(CommandId.ToggleTabRow, ToggleTabRow);
         t.Add(CommandId.CopyTabToOtherPanel, p => CopyTabToOtherPanelAsync(p));
         t.AddSync(CommandId.MaximizePanel, p =>
         {

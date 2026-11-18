@@ -32,7 +32,10 @@ public sealed partial class FilePane
         tabs.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(TabsViewModel.RowVisibility))
+            {
                 TabRow.Visibility = tabs.RowVisibility;
+                UpdateTabRowButton();
+            }
         };
         if (ViewModel != null)
             ViewModel.PropertyChanged += (_, e) =>
@@ -41,7 +44,29 @@ public sealed partial class FilePane
                     RestyleTabs();
             };
         TabRow.Visibility = tabs.RowVisibility;
+        UpdateTabRowButton();
         RebuildTabs();
+    }
+
+    /// <summary>The arrow at the end of the drive bar: down opens the row of tabs, up closes it.</summary>
+    private void UpdateTabRowButton()
+    {
+        if (_tabs == null)
+            return;
+        bool open = _tabs.RowVisibility == Visibility.Visible;
+        TabRowGlyph.Glyph = open ? "\uE70E" : "\uE70D";
+        string tip = Loc.T(open ? "Hide tabs" : "Show tabs");
+        ToolTipService.SetToolTip(TabRowButton, tip);
+        AutomationProperties.SetName(TabRowButton, tip);
+    }
+
+    private void TabRowButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_main == null || ViewModel == null)
+            return;
+        _main.Activate(ViewModel);
+        _tabs?.ToggleRow();
+        FocusList();
     }
 
     /// <summary>The tab buttons, one per tab, in the list's order.</summary>
@@ -53,6 +78,7 @@ public sealed partial class FilePane
         for (int i = 0; i < _tabs.Items.Count; i++)
             TabStrip.Children.Add(MakeTab(_tabs.Items[i]));
         TabRow.Visibility = _tabs.RowVisibility;
+        UpdateTabRowButton();
         BringShownTabIntoView();
     }
 

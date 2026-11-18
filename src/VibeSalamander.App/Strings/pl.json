@@ -1762,5 +1762,9 @@
   "Copy tab here": "Kopiuj kartę tutaj",
   "Move tab here": "Przenieś kartę tutaj",
   "Always show the row of tabs": "Zawsze pokazuj wiersz kart",
-  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "W przeciwnym razie pojawia się od dwóch kart (Ctrl+Shift+T lub Ctrl+T otwiera kartę)."
+  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "W przeciwnym razie pojawia się od dwóch kart (Ctrl+Shift+T lub Ctrl+T otwiera kartę).",
+  "Show tabs": "Pokaż karty",
+  "Hide tabs": "Ukryj karty",
+  "Show / hide tabs": "Pokaż / ukryj karty",
+  "Show / Hide Tabs": "Pokaż / ukryj karty"
 }

@@ -60,6 +60,8 @@
                     <MenuFlyoutItem Text="Attributes" Tag="SortByAttributes" Click="LeftMenu_Click" />
                 </MenuFlyoutSubItem>
                 <MenuFlyoutSubItem Text="Tabs">
+                    <MenuFlyoutItem Text="Show / Hide Tabs" Tag="ToggleTabRow" Click="LeftMenu_Click" />
+                    <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="New Tab" Tag="NewTab" Click="LeftMenu_Click" />
                     <MenuFlyoutItem Text="Open in New Tab" Tag="OpenInNewTab" Click="LeftMenu_Click" />
                     <MenuFlyoutItem Text="Open in New Tab in Other Panel" Tag="OpenInNewTabOtherPanel" Click="LeftMenu_Click" />
@@ -273,6 +275,8 @@
                     <MenuFlyoutItem Text="Attributes" Tag="SortByAttributes" Click="RightMenu_Click" />
                 </MenuFlyoutSubItem>
                 <MenuFlyoutSubItem Text="Tabs">
+                    <MenuFlyoutItem Text="Show / Hide Tabs" Tag="ToggleTabRow" Click="RightMenu_Click" />
+                    <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="New Tab" Tag="NewTab" Click="RightMenu_Click" />
                     <MenuFlyoutItem Text="Open in New Tab" Tag="OpenInNewTab" Click="RightMenu_Click" />
                     <MenuFlyoutItem Text="Open in New Tab in Other Panel" Tag="OpenInNewTabOtherPanel" Click="RightMenu_Click" />

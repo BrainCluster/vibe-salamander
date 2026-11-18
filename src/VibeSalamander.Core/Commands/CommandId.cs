@@ -195,4 +195,6 @@ public enum CommandId
     ReopenClosedTab,
     // the shown tab, copied into the other panel's tabs
     CopyTabToOtherPanel,
+    // the row of tabs opened or closed (the arrow at the end of the drive bar)
+    ToggleTabRow,
 }

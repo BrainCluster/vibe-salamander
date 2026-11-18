@@ -1762,5 +1762,9 @@
   "Copy tab here": "Copia la scheda qui",
   "Move tab here": "Sposta la scheda qui",
   "Always show the row of tabs": "Mostra sempre la riga delle schede",
-  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Altrimenti compare da due schede in su (Ctrl+Maiusc+T o Ctrl+T apre una scheda)."
+  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Altrimenti compare da due schede in su (Ctrl+Maiusc+T o Ctrl+T apre una scheda).",
+  "Show tabs": "Mostra schede",
+  "Hide tabs": "Nascondi schede",
+  "Show / hide tabs": "Mostra / nascondi schede",
+  "Show / Hide Tabs": "Mostra / nascondi schede"
 }

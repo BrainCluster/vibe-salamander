@@ -1762,5 +1762,9 @@
   "Copy tab here": "Tabblad hierheen kopiëren",
   "Move tab here": "Tabblad hierheen verplaatsen",
   "Always show the row of tabs": "Rij met tabbladen altijd tonen",
-  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Anders verschijnt hij vanaf twee tabbladen (Ctrl+Shift+T of Ctrl+T opent een tabblad)."
+  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Anders verschijnt hij vanaf twee tabbladen (Ctrl+Shift+T of Ctrl+T opent een tabblad).",
+  "Show tabs": "Tabbladen tonen",
+  "Hide tabs": "Tabbladen verbergen",
+  "Show / hide tabs": "Tabbladen tonen / verbergen",
+  "Show / Hide Tabs": "Tabbladen tonen / verbergen"
 }

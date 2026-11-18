@@ -86,8 +86,33 @@ public sealed class TabsViewModel : BindableBase
 
     public int Count => List.Count;
 
-    /// <summary>The tab row: from two tabs on (or always: Configuration → Panels).</summary>
-    public Visibility RowVisibility => List.Count > 1 || _alwaysShow() ? Visibility.Visible : Visibility.Collapsed;
+    private bool? _rowShown;
+
+    /// <summary>
+    /// The row opened or closed with the arrow at the end of the drive bar (Show / hide tabs); null: automatic.
+    /// </summary>
+    public bool? RowShown
+    {
+        get => _rowShown;
+        set
+        {
+            if (SetProperty(ref _rowShown, value))
+                OnPropertyChanged(nameof(RowVisibility));
+        }
+    }
+
+    /// <summary>The tab row: as the arrow left it, else from two tabs on (or always: Configuration → Panels).</summary>
+    public Visibility RowVisibility => (_rowShown ?? (List.Count > 1 || _alwaysShow())) ? Visibility.Visible : Visibility.Collapsed;
+
+    /// <summary>The arrow at the end of the drive bar: opens the row, or closes it (the tabs stay: Ctrl+Tab still switches).</summary>
+    public void ToggleRow() => RowShown = RowVisibility != Visibility.Visible;
+
+    /// <summary>A new tab opens the row again if the arrow closed it (a tab nobody can see would confuse).</summary>
+    private void ShowRowForNewTab()
+    {
+        if (_rowShown == false)
+            RowShown = null;
+    }
 
     /// <summary>Configuration changed (Always show tabs).</summary>
     public void ApplyOptions() => OnPropertyChanged(nameof(RowVisibility));
@@ -214,6 +239,7 @@ public sealed class TabsViewModel : BindableBase
             tab.FocusName = focusName;
         }
         List.Insert(tab, activate: activate);
+        ShowRowForNewTab();
         if (activate)
             await Pane.ShowTabAsync(tab);
     });
@@ -223,6 +249,7 @@ public sealed class TabsViewModel : BindableBase
     {
         Pane.SaveInto(List.Active);
         List.Insert(tab, activate: activate);
+        ShowRowForNewTab();
         if (activate)
             await Pane.ShowTabAsync(tab);
     });

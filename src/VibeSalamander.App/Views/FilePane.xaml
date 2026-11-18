@@ -237,39 +237,49 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- drive bar -->
-        <ScrollViewer x:Name="DriveBar" Grid.Row="0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
-                      HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled" Padding="4,3,4,1">
-            <StackPanel Orientation="Horizontal" Spacing="1">
-                <Button Style="{StaticResource VibeDriveButtonStyle}" Click="ThisPcButton_Click" ToolTipService.ToolTip="This PC">
-                    <FontIcon Glyph="&#xE7F4;" FontFamily="{StaticResource VibeIconFont}" FontSize="14" />
-                </Button>
-                <ItemsControl ItemsSource="{x:Bind ViewModel.VisibleDrives, Mode=OneWay}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Spacing="1" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:DriveButtonViewModel">
-                            <StackPanel Orientation="Horizontal" Spacing="1">
-                                <Button Style="{StaticResource VibeDriveButtonStyle}" Click="DriveButton_Click"
-                                        ToolTipService.ToolTip="{x:Bind ToolTip}">
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="13" Width="16" />
-                                        <TextBlock Text="{x:Bind Letter}" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <!-- between the groups (disks, removable, network), and after a drive chosen in
-                                     Configuration → Change Drive Menu and Drive Bar -->
-                                <Border Width="1" Margin="3,4" Background="{ThemeResource VibePaneBorderBrush}"
-                                        Visibility="{x:Bind SeparatorVisibility, Mode=OneWay}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-        </ScrollViewer>
+        <!-- drive bar, and at its end the arrow that shows or hides the panel's row of tabs -->
+        <Grid x:Name="DriveBar" Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                          HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled" Padding="4,3,4,1">
+                <StackPanel Orientation="Horizontal" Spacing="1">
+                    <Button Style="{StaticResource VibeDriveButtonStyle}" Click="ThisPcButton_Click" ToolTipService.ToolTip="This PC">
+                        <FontIcon Glyph="&#xE7F4;" FontFamily="{StaticResource VibeIconFont}" FontSize="14" />
+                    </Button>
+                    <ItemsControl ItemsSource="{x:Bind ViewModel.VisibleDrives, Mode=OneWay}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="1" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:DriveButtonViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="1">
+                                    <Button Style="{StaticResource VibeDriveButtonStyle}" Click="DriveButton_Click"
+                                            ToolTipService.ToolTip="{x:Bind ToolTip}">
+                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                            <FontIcon Glyph="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="13" Width="16" />
+                                            <TextBlock Text="{x:Bind Letter}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <!-- between the groups (disks, removable, network), and after a drive chosen in
+                                         Configuration → Change Drive Menu and Drive Bar -->
+                                    <Border Width="1" Margin="3,4" Background="{ThemeResource VibePaneBorderBrush}"
+                                            Visibility="{x:Bind SeparatorVisibility, Mode=OneWay}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+            <Button x:Name="TabRowButton" Grid.Column="1" Style="{StaticResource VibeDriveButtonStyle}" Margin="0,3,4,1"
+                    Click="TabRowButton_Click" AutomationProperties.AutomationId="TabRowButton">
+                <FontIcon x:Name="TabRowGlyph" Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
+            </Button>
+        </Grid>
 
         <!-- directory line: Windows 11 style address bar (This PC > drive > folders; click a folder to go there,
              a chevron for its subfolders, the empty area to type a path), quick search, filter, free space;

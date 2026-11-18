@@ -1762,5 +1762,9 @@
   "Copy tab here": "Copiar a guia aqui",
   "Move tab here": "Mover a guia para cá",
   "Always show the row of tabs": "Sempre mostrar a linha de guias",
-  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Caso contrário, aparece a partir de duas guias (Ctrl+Shift+T ou Ctrl+T abre uma guia)."
+  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Caso contrário, aparece a partir de duas guias (Ctrl+Shift+T ou Ctrl+T abre uma guia).",
+  "Show tabs": "Mostrar guias",
+  "Hide tabs": "Ocultar guias",
+  "Show / hide tabs": "Mostrar / ocultar guias",
+  "Show / Hide Tabs": "Mostrar / ocultar guias"
 }

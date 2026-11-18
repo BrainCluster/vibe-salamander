@@ -1762,5 +1762,9 @@
   "Copy tab here": "Copiar la pestaña aquí",
   "Move tab here": "Mover la pestaña aquí",
   "Always show the row of tabs": "Mostrar siempre la fila de pestañas",
-  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Si no, aparece a partir de dos pestañas (Ctrl+Mayús+T o Ctrl+T abre una pestaña)."
+  "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).": "Si no, aparece a partir de dos pestañas (Ctrl+Mayús+T o Ctrl+T abre una pestaña).",
+  "Show tabs": "Mostrar pestañas",
+  "Hide tabs": "Ocultar pestañas",
+  "Show / hide tabs": "Mostrar / ocultar pestañas",
+  "Show / Hide Tabs": "Mostrar / ocultar pestañas"
 }
