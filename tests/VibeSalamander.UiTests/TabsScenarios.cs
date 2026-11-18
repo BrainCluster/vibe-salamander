@@ -322,4 +322,59 @@ public sealed class TabsScenarios : IDisposable
         WaitTabs(app, "two left", true, "Projects", "Documents");
         NoErrors(app);
     }
+
+    /// <summary>Runs a diskpart script (needs administrator rights).</summary>
+    private static void DiskPart(params string[] commands)
+    {
+        string script = Path.GetTempFileName();
+        File.WriteAllLines(script, commands);
+        try
+        {
+            using var run = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("diskpart.exe", $"/s \"{script}\"")
+            {
+                UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true,
+            });
+            run!.StandardOutput.ReadToEnd();
+            run.WaitForExit(120000);
+        }
+        finally
+        {
+            File.Delete(script);
+        }
+    }
+
+    [UiFact]
+    public void An_opened_disk_image_opens_in_a_new_tab_of_the_other_panel()
+    {
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        if (!new System.Security.Principal.WindowsPrincipal(identity).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
+            return; // making the image needs diskpart, as administrator (GitHub's runners are)
+        // a small disk image with a label, detached again: what Enter mounts
+        string image = Path.Combine(_files.Documents, "image.vhdx");
+        DiskPart(
+            $"create vdisk file=\"{image}\" maximum=16 type=expandable",
+            $"select vdisk file=\"{image}\"",
+            "attach vdisk",
+            "create partition primary",
+            "format fs=ntfs quick label=VibeImage",
+            "assign",
+            "detach vdisk");
+        Assert.True(File.Exists(image), "diskpart made no image");
+        try
+        {
+            using AppSession app = Start();
+            AppSession.WaitUntil(() => app.Items().Contains("image.vhdx"), "the image");
+            app.GoTo("image.vhdx");
+            app.Press(VirtualKeyShort.ENTER);
+            AppSession.WaitUntil(() => Tabs(app, left: false) is [ "Target", string drive ] && drive.StartsWith("VibeImage (", StringComparison.Ordinal),
+                "a new tab of the mounted drive, with its label, after Target in the right panel", seconds: 60);
+            Assert.Empty(Tabs(app)); // the left panel: still its one tab (no row)
+            AppSession.Screenshot("69 mounted image in a new tab");
+            NoErrors(app);
+        }
+        finally
+        {
+            DiskPart($"select vdisk file=\"{image}\"", "detach vdisk");
+        }
+    }
 }

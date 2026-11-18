@@ -40,7 +40,7 @@ public sealed partial class MainViewModel
         }
     }
 
-    /// <summary>Mounts the image as a drive and opens the drive in the other panel.</summary>
+    /// <summary>Mounts the image as a drive and opens the drive in a new tab of the other panel.</summary>
     private async Task MountImageAsync(PaneViewModel pane, string path)
     {
         string name = Path.GetFileName(path);
@@ -59,7 +59,7 @@ public sealed partial class MainViewModel
             await Task.Delay(250);
         PaneViewModel other = pane == Left ? Right : Left;
         await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
-        await other.NavigateAsync(root);
+        await OpenInNewTabAsync(other, root); // a new tab there: what the other panel showed stays a tab away
         _host.BringToFront(); // the shell's fallback may have opened an Explorer window
         Activate(other);
         _host.FocusPane(other);

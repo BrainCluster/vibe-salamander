@@ -180,7 +180,7 @@
   page at the bottom of the configuration, and once a day by
   itself) updates either: the new installer runs silently, or the portable files are replaced with `Data` kept; then
   Vibe Salamander starts again. See [Installation](Installation).
-- **Mount disk images**: .iso, .img, .vhd and .vhdx open as drives in the other panel.
+- **Mount disk images**: .iso, .img, .vhd and .vhdx open as drives in a new tab of the other panel.
 
 ![The user menu](images/user-menu.png)
 
