@@ -219,6 +219,14 @@ public sealed partial class MainViewModel
         t.AddSync(CommandId.CopyFullNameAsText, p => CopyText(string.Join(Environment.NewLine, p.GetOperationItems().Select(i => i.Entry.FullPath))));
         t.AddSync(CommandId.CopyNameAsText, p => CopyText(string.Join(Environment.NewLine, p.GetOperationItems().Select(i => i.Entry.Name))));
         t.AddSync(CommandId.CopyPathAsText, p => CopyText(p.IsLocalDisk ? p.Path : p.DisplayPath));
+        // Salamander's "Copy UNC path": the marked or focused names as other computers reach them
+        t.AddSync(CommandId.CopyUncPathAsText, p =>
+        {
+            var items = p.GetOperationItems();
+            IEnumerable<string> paths = items.Count > 0 ? items.Select(i => i.Entry.FullPath) : new[] { p.Path }; // on "..": the folder
+            CopyText(string.Join(Environment.NewLine, paths.Select(path => p.IsLocalDisk ? Core.FileSystem.NetworkPaths.ToUnc(path) : path)));
+        });
+        t.Add(CommandId.LastPluginCommand, _ => RunLastPluginCommandAsync());
 
         t.Add(CommandId.Pack, _ => Archives.PackAsync());
         t.Add(CommandId.Unpack, _ => Archives.UnpackAsync());

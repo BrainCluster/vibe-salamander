@@ -1769,5 +1769,15 @@
   "Show / Hide Tabs": "Zobrazit / skrýt karty",
   "Earlier tabs": "Předchozí karty",
   "Later tabs": "Další karty",
-  "Show tabs ({0} open)": "Zobrazit karty (otevřeno: {0})"
+  "Show tabs ({0} open)": "Zobrazit karty (otevřeno: {0})",
+  "Copy network path as text": "Kopírovat síťovou cestu jako text",
+  "Copy Network Path as Text": "Kopírovat síťovou cestu jako text",
+  "Last plugin command": "Poslední příkaz modulu",
+  "Last Command": "Poslední příkaz",
+  "No plugin command has been run yet: Last command repeats the one chosen last in the Plugins menu.": "Zatím nebyl spuštěn žádný příkaz modulu: Poslední příkaz opakuje ten, který byl naposledy zvolen v nabídce Moduly.",
+  "Edit with...": "Upravit pomocí...",
+  "Convert...": "Převést...",
+  "Directory Line": "Řádek adresáře",
+  "Directory line": "Řádek adresáře",
+  "The path above each panel's list.": "Cesta nad seznamem každého panelu."
 }

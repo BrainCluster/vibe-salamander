@@ -115,6 +115,10 @@ public static class CommandCatalog
         [CommandId.ReopenClosedTab] = "Reopen closed tab",
         [CommandId.CopyTabToOtherPanel] = "Copy tab to other panel",
         [CommandId.ToggleTabRow] = "Show / hide tabs",
+        [CommandId.CopyUncPathAsText] = "Copy network path as text",
+        [CommandId.LastPluginCommand] = "Last plugin command",
+        [CommandId.EditWith] = "Edit with...",
+        [CommandId.ConvertFiles] = "Convert...",
     };
 
     /// <summary>A readable name ("Compare directories..."); others are derived from the id ("Sort by name").</summary>
@@ -186,6 +190,9 @@ public static class CommandCatalog
         CommandId.NameToCommandLine or CommandId.FullNameToCommandLine or CommandId.PathToCommandLine or CommandId.CommandHistory => "Commands",
         CommandId.PluginsManager => "Options",
         >= CommandId.NewTab and <= CommandId.ToggleTabRow => "Panels",
+        CommandId.CopyUncPathAsText => "Clipboard",
+        CommandId.LastPluginCommand => "Options",
+        CommandId.EditWith or CommandId.ConvertFiles => "Files",
         <= CommandId.Filter => "Panels",
         <= CommandId.CommandShell => "Files",
         <= CommandId.GoToNextSelected => "Selection",
@@ -300,6 +307,10 @@ public static class CommandCatalog
         CommandId.CopyFullNameAsText => "\uE8C8",
         CommandId.CopyNameAsText => "\uE8C8",
         CommandId.CopyPathAsText => "\uE8C8",
+        CommandId.CopyUncPathAsText => "\uE8C8",
+        CommandId.EditWith => "\uE70F",
+        CommandId.ConvertFiles => "\uE8AB",
+        CommandId.LastPluginCommand => "\uE768",
         CommandId.EditUserMenu => "\uE70F",
         CommandId.SaveSelection => "\uE74E",
         CommandId.LoadSelection => "\uE8E5",

@@ -1769,5 +1769,15 @@
   "Show / Hide Tabs": "Mostrar / ocultar pestañas",
   "Earlier tabs": "Pestañas anteriores",
   "Later tabs": "Pestañas siguientes",
-  "Show tabs ({0} open)": "Mostrar pestañas ({0} abiertas)"
+  "Show tabs ({0} open)": "Mostrar pestañas ({0} abiertas)",
+  "Copy network path as text": "Copiar ruta de red como texto",
+  "Copy Network Path as Text": "Copiar ruta de red como texto",
+  "Last plugin command": "Último comando de complemento",
+  "Last Command": "Último comando",
+  "No plugin command has been run yet: Last command repeats the one chosen last in the Plugins menu.": "Aún no se ha ejecutado ningún comando de complemento: Último comando repite el último elegido en el menú Complementos.",
+  "Edit with...": "Editar con...",
+  "Convert...": "Convertir...",
+  "Directory Line": "Línea de directorio",
+  "Directory line": "Línea de directorio",
+  "The path above each panel's list.": "La ruta sobre la lista de cada panel."
 }

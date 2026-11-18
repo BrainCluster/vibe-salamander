@@ -1769,5 +1769,15 @@
   "Show / Hide Tabs": "Pokaż / ukryj karty",
   "Earlier tabs": "Wcześniejsze karty",
   "Later tabs": "Dalsze karty",
-  "Show tabs ({0} open)": "Pokaż karty (otwarte: {0})"
+  "Show tabs ({0} open)": "Pokaż karty (otwarte: {0})",
+  "Copy network path as text": "Kopiuj ścieżkę sieciową jako tekst",
+  "Copy Network Path as Text": "Kopiuj ścieżkę sieciową jako tekst",
+  "Last plugin command": "Ostatnie polecenie wtyczki",
+  "Last Command": "Ostatnie polecenie",
+  "No plugin command has been run yet: Last command repeats the one chosen last in the Plugins menu.": "Nie uruchomiono jeszcze żadnego polecenia wtyczki: Ostatnie polecenie powtarza to wybrane ostatnio w menu Wtyczki.",
+  "Edit with...": "Edytuj za pomocą...",
+  "Convert...": "Konwertuj...",
+  "Directory Line": "Wiersz katalogu",
+  "Directory line": "Wiersz katalogu",
+  "The path above each panel's list.": "Ścieżka nad listą każdego panelu."
 }

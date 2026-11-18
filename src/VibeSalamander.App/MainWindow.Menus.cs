@@ -49,6 +49,7 @@ public sealed partial class MainWindow
     {
         PluginsMenu.Items.Clear();
         PluginsMenu.Items.Add(MenuItem("Plugins Manager...", nameof(CommandId.PluginsManager), "\uEA86"));
+        PluginsMenu.Items.Add(MenuItem("Last Command", nameof(CommandId.LastPluginCommand), "\uE768"));
         var loaded = _vm.Plugins.Plugins.Where(p => p.Enabled && p.Error == null).ToList();
         if (loaded.Count > 0)
             PluginsMenu.Items.Add(new MenuFlyoutSeparator());
@@ -73,7 +74,7 @@ public sealed partial class MainWindow
                 if (!string.IsNullOrEmpty(keys))
                     item.KeyboardAcceleratorTextOverride = keys;
                 Plugins.PluginCommand c = command;
-                item.Click += async (_, _) =>
+                async Task Run()
                 {
                     try
                     {
@@ -83,6 +84,11 @@ public sealed partial class MainWindow
                     {
                         Notify($"{plugin.Name}: {ex.Message}");
                     }
+                }
+                item.Click += async (_, _) =>
+                {
+                    _vm.RememberPluginCommand($"{plugin.Name}: {c.MenuText}", Run); // Last command (Ctrl+I) runs it again
+                    await Run();
                 };
                 sub.Items.Add(item);
             }

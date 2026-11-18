@@ -37,6 +37,7 @@ public sealed partial class MainWindow
         ShowUserMenuBarItem.IsChecked = _vm.Settings.ShowUserMenuBar;
         ShowDriveBarsItem.IsChecked = _vm.Settings.ShowDriveBars;
         ShowInfoLineItem.IsChecked = _vm.Settings.ShowInformationLine;
+        ShowDirectoryLineItem.IsChecked = _vm.Settings.ShowDirectoryLine;
         ShowCommandLineItem.IsChecked = _vm.Settings.ShowCommandLine;
         ShowFKeyBarItem.IsChecked = _vm.Settings.ShowFunctionKeyBar;
         ShowTransfersItem.IsChecked = _vm.Settings.ShowTransfers;
@@ -114,6 +115,7 @@ public sealed partial class MainWindow
         s.ShowTopToolbar = ShowToolbarItem.IsChecked;
         s.ShowDriveBars = ShowDriveBarsItem.IsChecked;
         s.ShowInformationLine = ShowInfoLineItem.IsChecked;
+        s.ShowDirectoryLine = ShowDirectoryLineItem.IsChecked;
         s.ShowCommandLine = ShowCommandLineItem.IsChecked;
         s.ShowFunctionKeyBar = ShowFKeyBarItem.IsChecked;
         s.ShowTransfers = ShowTransfersItem.IsChecked;
@@ -132,8 +134,8 @@ public sealed partial class MainWindow
                                 UserMenuBar.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
         CommandLineBar.Visibility = s.ShowCommandLine ? Visibility.Visible : Visibility.Collapsed;
         FKeyBar.Visibility = s.ShowFunctionKeyBar ? Visibility.Visible : Visibility.Collapsed;
-        LeftPane.SetBarsVisibility(s.ShowDriveBars, s.ShowInformationLine);
-        RightPane.SetBarsVisibility(s.ShowDriveBars, s.ShowInformationLine);
+        LeftPane.SetBarsVisibility(s.ShowDriveBars, s.ShowInformationLine, s.ShowDirectoryLine);
+        RightPane.SetBarsVisibility(s.ShowDriveBars, s.ShowInformationLine, s.ShowDirectoryLine);
         UpdateTransfersLayout();
         UpdateMenuChecks();
     }

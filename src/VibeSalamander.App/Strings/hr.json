@@ -1769,5 +1769,15 @@
   "Show / Hide Tabs": "Prikaži / sakrij kartice",
   "Earlier tabs": "Prethodne kartice",
   "Later tabs": "Sljedeće kartice",
-  "Show tabs ({0} open)": "Prikaži kartice (otvoreno: {0})"
+  "Show tabs ({0} open)": "Prikaži kartice (otvoreno: {0})",
+  "Copy network path as text": "Kopiraj mrežnu putanju kao tekst",
+  "Copy Network Path as Text": "Kopiraj mrežnu putanju kao tekst",
+  "Last plugin command": "Posljednja naredba dodatka",
+  "Last Command": "Posljednja naredba",
+  "No plugin command has been run yet: Last command repeats the one chosen last in the Plugins menu.": "Još nije pokrenuta nijedna naredba dodatka: Posljednja naredba ponavlja onu zadnju odabranu u izborniku Dodaci.",
+  "Edit with...": "Uredi pomoću...",
+  "Convert...": "Pretvori...",
+  "Directory Line": "Redak mape",
+  "Directory line": "Redak mape",
+  "The path above each panel's list.": "Putanja iznad popisa svakog panela."
 }

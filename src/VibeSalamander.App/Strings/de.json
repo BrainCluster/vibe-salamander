@@ -1769,5 +1769,15 @@
   "Show / Hide Tabs": "Tabs anzeigen / ausblenden",
   "Earlier tabs": "Vorherige Tabs",
   "Later tabs": "Weitere Tabs",
-  "Show tabs ({0} open)": "Tabs anzeigen ({0} offen)"
+  "Show tabs ({0} open)": "Tabs anzeigen ({0} offen)",
+  "Copy network path as text": "Netzwerkpfad als Text kopieren",
+  "Copy Network Path as Text": "Netzwerkpfad als Text kopieren",
+  "Last plugin command": "Letzter Plugin-Befehl",
+  "Last Command": "Letzter Befehl",
+  "No plugin command has been run yet: Last command repeats the one chosen last in the Plugins menu.": "Noch kein Plugin-Befehl ausgeführt: Letzter Befehl wiederholt den zuletzt im Menü Plugins gewählten.",
+  "Edit with...": "Bearbeiten mit...",
+  "Convert...": "Konvertieren...",
+  "Directory Line": "Verzeichniszeile",
+  "Directory line": "Verzeichniszeile",
+  "The path above each panel's list.": "Der Pfad über der Liste jedes Fensters."
 }

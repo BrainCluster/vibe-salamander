@@ -1769,5 +1769,15 @@
   "Show / Hide Tabs": "Mostrar / ocultar guias",
   "Earlier tabs": "Guias anteriores",
   "Later tabs": "Próximas guias",
-  "Show tabs ({0} open)": "Mostrar guias ({0} abertas)"
+  "Show tabs ({0} open)": "Mostrar guias ({0} abertas)",
+  "Copy network path as text": "Copiar caminho de rede como texto",
+  "Copy Network Path as Text": "Copiar caminho de rede como texto",
+  "Last plugin command": "Último comando de plug-in",
+  "Last Command": "Último comando",
+  "No plugin command has been run yet: Last command repeats the one chosen last in the Plugins menu.": "Nenhum comando de plug-in foi executado ainda: Último comando repete o último escolhido no menu Plug-ins.",
+  "Edit with...": "Editar com...",
+  "Convert...": "Converter...",
+  "Directory Line": "Linha de diretório",
+  "Directory line": "Linha de diretório",
+  "The path above each panel's list.": "O caminho acima da lista de cada painel."
 }

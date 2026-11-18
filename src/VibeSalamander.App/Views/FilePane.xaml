@@ -321,7 +321,7 @@
                     <FontIcon Glyph="&#xE710;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
                 </Button>
             </Grid>
-            <Grid Margin="4,2,4,2" MinHeight="26" CornerRadius="4" PointerPressed="DirectoryLine_PointerPressed">
+            <Grid x:Name="DirectoryLine" Margin="4,2,4,2" MinHeight="26" CornerRadius="4" PointerPressed="DirectoryLine_PointerPressed">
                 <Border Background="{ThemeResource VibeInactivePathBrush}" CornerRadius="4" />
                 <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4"
                         Visibility="{x:Bind VisibleIf(ViewModel.IsActive), Mode=OneWay}" />

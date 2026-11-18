@@ -132,6 +132,7 @@
                 <MenuFlyoutItem Text="Copy Path + Name as Text" Tag="CopyFullNameAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Ins" />
                 <MenuFlyoutItem Text="Copy Name as Text" Tag="CopyNameAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Shift+Ins" />
                 <MenuFlyoutItem Text="Copy Path as Text" Tag="CopyPathAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Alt+Ins" />
+                <MenuFlyoutItem Text="Copy Network Path as Text" Tag="CopyUncPathAsText" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+Ins" />
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Select All" Tag="SelectAll" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+A" />
                 <MenuFlyoutItem Text="Unselect All" Tag="UnselectAll" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+D" />
@@ -234,6 +235,7 @@
                     <ToggleMenuFlyoutItem x:Name="ShowHotPathBarItem" Text="Hot Path Bar" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowUserMenuBarItem" Text="User Menu Bar" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowDriveBarsItem" Text="Drive Bars" Click="ShowBars_Click" />
+                    <ToggleMenuFlyoutItem x:Name="ShowDirectoryLineItem" Text="Directory Line" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowInfoLineItem" Text="Information Line" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowCommandLineItem" Text="Command Line" Click="ShowBars_Click" />
                     <ToggleMenuFlyoutItem x:Name="ShowFKeyBarItem" Text="Bottom Toolbar" Click="ShowBars_Click" />

@@ -118,9 +118,10 @@ public sealed partial class FilePane : UserControl
         UpdateBreadcrumbForeground();
     }
 
-    public void SetBarsVisibility(bool driveBar, bool infoLine)
+    public void SetBarsVisibility(bool driveBar, bool infoLine, bool directoryLine = true)
     {
         DriveBar.Visibility = driveBar ? Visibility.Visible : Visibility.Collapsed;
+        DirectoryLine.Visibility = directoryLine ? Visibility.Visible : Visibility.Collapsed;
         InfoLine.Visibility = infoLine ? Visibility.Visible : Visibility.Collapsed;
     }
 

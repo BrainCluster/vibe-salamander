@@ -1769,5 +1769,15 @@
   "Show / Hide Tabs": "Показати / приховати вкладки",
   "Earlier tabs": "Попередні вкладки",
   "Later tabs": "Наступні вкладки",
-  "Show tabs ({0} open)": "Показати вкладки (відкрито: {0})"
+  "Show tabs ({0} open)": "Показати вкладки (відкрито: {0})",
+  "Copy network path as text": "Копіювати мережевий шлях як текст",
+  "Copy Network Path as Text": "Копіювати мережевий шлях як текст",
+  "Last plugin command": "Остання команда модуля",
+  "Last Command": "Остання команда",
+  "No plugin command has been run yet: Last command repeats the one chosen last in the Plugins menu.": "Ще не виконувалася жодна команда модуля: «Остання команда» повторює вибрану останньою в меню «Модулі».",
+  "Edit with...": "Редагувати за допомогою...",
+  "Convert...": "Перетворити...",
+  "Directory Line": "Рядок каталогу",
+  "Directory line": "Рядок каталогу",
+  "The path above each panel's list.": "Шлях над списком кожної панелі."
 }

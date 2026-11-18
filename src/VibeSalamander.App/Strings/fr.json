@@ -1769,5 +1769,15 @@
   "Show / Hide Tabs": "Afficher / masquer les onglets",
   "Earlier tabs": "Onglets précédents",
   "Later tabs": "Onglets suivants",
-  "Show tabs ({0} open)": "Afficher les onglets ({0} ouverts)"
+  "Show tabs ({0} open)": "Afficher les onglets ({0} ouverts)",
+  "Copy network path as text": "Copier le chemin réseau en texte",
+  "Copy Network Path as Text": "Copier le chemin réseau en texte",
+  "Last plugin command": "Dernière commande de module",
+  "Last Command": "Dernière commande",
+  "No plugin command has been run yet: Last command repeats the one chosen last in the Plugins menu.": "Aucune commande de module n'a encore été lancée : Dernière commande répète la dernière choisie dans le menu Modules.",
+  "Edit with...": "Modifier avec...",
+  "Convert...": "Convertir...",
+  "Directory Line": "Ligne de répertoire",
+  "Directory line": "Ligne de répertoire",
+  "The path above each panel's list.": "Le chemin au-dessus de la liste de chaque panneau."
 }

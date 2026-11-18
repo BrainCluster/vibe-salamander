@@ -219,6 +219,9 @@ public sealed class AppSettings
     public bool ShowHeaderLine { get; set; } = true;
     public bool ShowInformationLine { get; set; } = true;
 
+    /// <summary>The path line above each panel's list (Salamander's "directory line").</summary>
+    public bool ShowDirectoryLine { get; set; } = true;
+
     /// <summary>
     /// F5/F6 ask for the target. When switched off ("Don't show this dialog again"), files go straight
     /// into the other panel's directory. Configuration → Confirmations turns it back on.

@@ -1769,5 +1769,15 @@
   "Show / Hide Tabs": "Tabbladen tonen / verbergen",
   "Earlier tabs": "Eerdere tabbladen",
   "Later tabs": "Latere tabbladen",
-  "Show tabs ({0} open)": "Tabbladen tonen ({0} open)"
+  "Show tabs ({0} open)": "Tabbladen tonen ({0} open)",
+  "Copy network path as text": "Netwerkpad als tekst kopiëren",
+  "Copy Network Path as Text": "Netwerkpad als tekst kopiëren",
+  "Last plugin command": "Laatste plug-inopdracht",
+  "Last Command": "Laatste opdracht",
+  "No plugin command has been run yet: Last command repeats the one chosen last in the Plugins menu.": "Er is nog geen plug-inopdracht uitgevoerd: Laatste opdracht herhaalt de laatst gekozen opdracht in het menu Plug-ins.",
+  "Edit with...": "Bewerken met...",
+  "Convert...": "Converteren...",
+  "Directory Line": "Mapregel",
+  "Directory line": "Mapregel",
+  "The path above each panel's list.": "Het pad boven de lijst van elk paneel."
 }

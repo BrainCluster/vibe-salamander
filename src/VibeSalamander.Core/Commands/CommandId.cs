@@ -197,4 +197,14 @@ public enum CommandId
     CopyTabToOtherPanel,
     // the row of tabs opened or closed (the arrow at the end of the drive bar)
     ToggleTabRow,
+
+    // 1.0 parity (S2)
+    // the marked / focused names as network paths (a mapped drive as \\server\share)
+    CopyUncPathAsText,
+    // Plugins → Last command: the plugin command chosen last, again
+    LastPluginCommand,
+    // the focused file in an editor chosen from a list
+    EditWith,
+    // line endings and text encoding of the marked files
+    ConvertFiles,
 }

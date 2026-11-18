@@ -20,7 +20,7 @@ public static class VK
 {
     public const int Back = 0x08, Tab = 0x09, Enter = 0x0D, Space = 0x20, PageUp = 0x21, PageDown = 0x22;
     public const int Left = 0x25, Up = 0x26, Right = 0x27, Down = 0x28, Insert = 0x2D, Delete = 0x2E;
-    public const int A = 0x41, B = 0x42, C = 0x43, D = 0x44, E = 0x45, F = 0x46, H = 0x48, L = 0x4C, M = 0x4D, N = 0x4E, P = 0x50, Q = 0x51, R = 0x52, S = 0x53, T = 0x54,
+    public const int A = 0x41, B = 0x42, C = 0x43, D = 0x44, E = 0x45, F = 0x46, H = 0x48, I = 0x49, K = 0x4B, L = 0x4C, M = 0x4D, N = 0x4E, P = 0x50, Q = 0x51, R = 0x52, S = 0x53, T = 0x54,
                      U = 0x55, V = 0x56, W = 0x57, X = 0x58;
     public const int Backslash = 0xDC;
     public const int Apps = 0x5D;
@@ -150,6 +150,10 @@ public sealed class KeyMap
         m.Bind(VK.Insert, A, CommandId.CopyFullNameAsText);
         m.Bind(VK.Insert, A | S, CommandId.CopyNameAsText);
         m.Bind(VK.Insert, C | A, CommandId.CopyPathAsText);
+        m.Bind(VK.Insert, C | S, CommandId.CopyUncPathAsText);
+        m.Bind(VK.I, C, CommandId.LastPluginCommand);
+        m.Bind(VK.F4, C | S, CommandId.EditWith);
+        m.Bind(VK.K, C, CommandId.ConvertFiles);
 
         m.Bind(VK.F1, N, CommandId.Help);
 
@@ -262,6 +266,10 @@ public sealed class KeyMap
         m.Bind(VK.Insert, A, CommandId.CopyFullNameAsText);
         m.Bind(VK.Insert, A | S, CommandId.CopyNameAsText);
         m.Bind(VK.Insert, C | A, CommandId.CopyPathAsText);
+        m.Bind(VK.Insert, C | S, CommandId.CopyUncPathAsText);
+        m.Bind(VK.I, C, CommandId.LastPluginCommand);
+        m.Bind(VK.F4, C | S, CommandId.EditWith);
+        m.Bind(VK.K, C, CommandId.ConvertFiles);
 
         // panels and folders
         m.Bind(VK.Tab, N, CommandId.SwitchPanel);

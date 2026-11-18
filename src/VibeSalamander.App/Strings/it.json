@@ -1769,5 +1769,15 @@
   "Show / Hide Tabs": "Mostra / nascondi schede",
   "Earlier tabs": "Schede precedenti",
   "Later tabs": "Schede successive",
-  "Show tabs ({0} open)": "Mostra schede ({0} aperte)"
+  "Show tabs ({0} open)": "Mostra schede ({0} aperte)",
+  "Copy network path as text": "Copia percorso di rete come testo",
+  "Copy Network Path as Text": "Copia percorso di rete come testo",
+  "Last plugin command": "Ultimo comando del plugin",
+  "Last Command": "Ultimo comando",
+  "No plugin command has been run yet: Last command repeats the one chosen last in the Plugins menu.": "Nessun comando di plugin è stato ancora eseguito: Ultimo comando ripete quello scelto per ultimo nel menu Plugin.",
+  "Edit with...": "Modifica con...",
+  "Convert...": "Converti...",
+  "Directory Line": "Riga della cartella",
+  "Directory line": "Riga della cartella",
+  "The path above each panel's list.": "Il percorso sopra l'elenco di ciascun pannello."
 }
