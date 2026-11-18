@@ -35,9 +35,18 @@ public sealed class PluginContractTests
         var frozen = File.ReadAllLines(Baseline).Where(l => l.Length > 0 && !l.StartsWith('#')).ToHashSet(StringComparer.Ordinal);
         var problems = new List<string>();
         foreach (Type type in ContractTypes().Where(t => t.IsInterface && frozen.Contains(TypeLine(t))))
-            foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-                if (method.IsAbstract && !frozen.Contains(MemberLine(type, method)))
-                    problems.Add(MemberLine(type, method));
+            foreach (MemberInfo member in Members(type))
+            {
+                bool isAbstract = member switch
+                {
+                    MethodInfo m => m.IsAbstract,
+                    PropertyInfo p => p.GetMethod?.IsAbstract == true || p.SetMethod?.IsAbstract == true,
+                    EventInfo e => e.AddMethod?.IsAbstract == true,
+                    _ => false,
+                };
+                if (isAbstract && !frozen.Contains(MemberLine(type, member)))
+                    problems.Add(MemberLine(type, member));
+            }
         Assert.True(problems.Count == 0,
             "New members of existing interfaces need a default implementation (plugins built before them don't have them):\n" +
             string.Join("\n", problems));
