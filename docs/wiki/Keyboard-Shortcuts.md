@@ -41,6 +41,7 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | Ctrl+Shift+W (Total Commander keys: Ctrl+W) | Close the tab |
 | middle click on a folder / on a tab | Open it in a background tab / close the tab |
 
+The arrow at the end of a drive bar (or Left / Right → Tabs → Show / Hide Tabs) opens or closes the row.
 More in the Left / Right menu → **Tabs** and a tab's right-click menu: lock, copy to the other panel, close the
 others, reopen a closed tab.
 
