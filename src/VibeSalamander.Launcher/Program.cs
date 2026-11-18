@@ -30,7 +30,7 @@ internal static class Program
         try
         {
             AllowSetForegroundWindow(-1); // ASFW_ANY: the program's window may come to the front
-            Process.Start(new ProcessStartInfo(app, JoinArguments(args))
+            Process.Start(new ProcessStartInfo(app, JoinArguments(Absolute(args)))
             {
                 UseShellExecute = false,
                 WorkingDirectory = Environment.CurrentDirectory,
@@ -41,6 +41,40 @@ internal static class Program
         {
             MessageBoxW(IntPtr.Zero, "Vibe Salamander could not be started: " + ex.Message, "Vibe Salamander", 0x10);
             return 1;
+        }
+    }
+
+    /// <summary>
+    /// Folders given relative to where the command was typed ("vibesalamander ." or "-L ..\docs") made absolute here:
+    /// a Vibe Salamander that runs already gets them, and it was started somewhere else.
+    /// </summary>
+    internal static string[] Absolute(string[] args)
+    {
+        var result = new string[args.Length];
+        for (int i = 0; i < args.Length; i++)
+        {
+            string arg = args[i];
+            bool afterPanelOption = i > 0 && IsPanelOption(args[i - 1]);
+            bool option = arg.StartsWith("-", StringComparison.Ordinal) || (arg.Length == 2 && arg[0] == '/');
+            result[i] = (afterPanelOption || !option) && arg.Length > 0 && !Path.IsPathRooted(arg) && arg.IndexOf("://", StringComparison.Ordinal) < 0
+                ? SafeFullPath(arg)
+                : arg;
+        }
+        return result;
+    }
+
+    private static bool IsPanelOption(string arg) =>
+        arg.Length == 2 && (arg[0] == '-' || arg[0] == '/') && "LRAlra".IndexOf(arg[1]) >= 0;
+
+    private static string SafeFullPath(string path)
+    {
+        try
+        {
+            return Path.GetFullPath(path);
+        }
+        catch (Exception)
+        {
+            return path;
         }
     }
 

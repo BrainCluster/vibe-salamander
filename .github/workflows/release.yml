@@ -121,6 +121,40 @@ jobs:
           & $env:ISCC /Q /DVersion=0.0.0 /DArch=x64 "/DSource=$PWD\stand-in" "/DOutput=$PWD\stand-in-out" build/installer/VibeSalamander.iss
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
+      # Windows integration (S3): the stand-in installed for this user with all three options, then uninstalled;
+      # each option is checked in the registry both ways
+      - name: Check the installer's Windows integration
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem stand-in-out -Filter *-setup.exe | Select-Object -First 1
+          $app = Join-Path $env:LOCALAPPDATA 'Programs\Vibe Salamander'
+          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', '/TASKS=explorermenu,addtopath,wine' -Wait -PassThru
+          if ($p.ExitCode) { throw "setup ended with $($p.ExitCode)" }
+          $menu = 'HKCU:\Software\Classes\Directory\shell\VibeSalamander\command'
+          $background = 'HKCU:\Software\Classes\Directory\Background\shell\VibeSalamander\command'
+          $drive = 'HKCU:\Software\Classes\Drive\shell\VibeSalamander\command'
+          $wine = 'HKCU:\Software\Classes\CLSID\{52205fd8-5dfb-447d-801a-d0b52f2e83e1}\shell\opennewwindow\command'
+          foreach ($key in $menu, $background, $drive, $wine) {
+            if (-not (Test-Path $key)) { throw "missing after install: $key" }
+          }
+          $command = (Get-ItemProperty $menu).'(default)'
+          if ($command -ne "`"$app\VibeSalamander.exe`" `"%V`"") { throw "Explorer's command is $command" }
+          if ((Get-ItemProperty $wine).DelegateExecute -ne '') { throw 'Win+E: DelegateExecute is not empty' }
+          $path = (Get-ItemProperty 'HKCU:\Environment').Path
+          if (-not ($path -split ';' | Where-Object { $_ -eq $app })) { throw "not on the PATH: $path" }
+          "installed: Explorer menu, PATH, Win+E"
+
+          $u = Start-Process (Join-Path $app 'unins000.exe') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
+          if ($u.ExitCode) { throw "uninstall ended with $($u.ExitCode)" }
+          Start-Sleep -Seconds 3 # the uninstaller finishes from a copy of itself
+          foreach ($key in 'HKCU:\Software\Classes\Directory\shell\VibeSalamander', 'HKCU:\Software\Classes\Directory\Background\shell\VibeSalamander',
+                           'HKCU:\Software\Classes\Drive\shell\VibeSalamander', 'HKCU:\Software\Classes\CLSID\{52205fd8-5dfb-447d-801a-d0b52f2e83e1}') {
+            if (Test-Path $key) { throw "left after uninstall: $key" }
+          }
+          $path = (Get-ItemProperty 'HKCU:\Environment').Path
+          if ($path -split ';' | Where-Object { $_ -eq $app }) { throw "still on the PATH: $path" }
+          "uninstalled: all three taken away"
+
   build:
     needs: version
     if: needs.version.outputs.release == 'true'
