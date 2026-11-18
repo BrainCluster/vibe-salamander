@@ -207,6 +207,30 @@ public sealed class TabsScenarios : IDisposable
     }
 
     [UiFact]
+    public void A_folder_sent_to_the_running_program_opens_in_a_new_tab()
+    {
+        // what Explorer's "Open in Vibe Salamander" and "vibesalamander <folder>" do while it runs
+        using var app = new AppSession(s =>
+        {
+            s.Left.Path = _files.Documents;
+            s.Right.Path = _files.Target;
+            s.General.SingleInstance = true;
+        });
+        AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the documents");
+        string projects = Path.Combine(_files.Documents, "Projects");
+
+        var second = new System.Diagnostics.ProcessStartInfo(AppSession.AppExe!) { UseShellExecute = false };
+        second.Environment[VibeSalamander.Core.Settings.AppPaths.HomeVariable] = app.Home;
+        second.ArgumentList.Add(projects);
+        using (System.Diagnostics.Process? started = System.Diagnostics.Process.Start(second))
+            Assert.True(started!.WaitForExit(30000), "the second start didn't hand over and end");
+
+        WaitTabs(app, "the folder in a new tab", true, "Documents", "Projects");
+        AppSession.WaitUntil(() => app.Items().Contains("Vibe"), "Projects shown");
+        NoErrors(app);
+    }
+
+    [UiFact]
     public void Ctrl_U_swaps_the_panels_with_their_tabs()
     {
         using AppSession app = Start();
