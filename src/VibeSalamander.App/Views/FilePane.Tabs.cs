@@ -63,10 +63,25 @@ public sealed partial class FilePane
         string tip = Loc.T(open ? "Hide tabs" : "Show tabs");
         // closed with several tabs: a badge with their number, so hidden tabs aren't forgotten
         bool badge = !open && _tabs.Count > 1;
-        TabCountBadge.Visibility = badge ? Visibility.Visible : Visibility.Collapsed;
-        TabCountBadge.Value = _tabs.Count;
+        TabCountText.Text = _tabs.Count.ToString(System.Globalization.CultureInfo.CurrentCulture);
+        TabCountText.Visibility = badge ? Visibility.Visible : Visibility.Collapsed;
         if (badge)
+        {
+            // the arrow becomes a badge: accent pill, the number before the arrow
+            TabRowPill.Background = (Brush)Application.Current.Resources["AccentFillColorDefaultBrush"];
+            TabRowPill.Padding = new Thickness(6, 1, 5, 1);
+            var onAccent = (Brush)Application.Current.Resources["TextOnAccentFillColorPrimaryBrush"];
+            TabCountText.Foreground = onAccent;
+            TabRowGlyph.Foreground = onAccent;
             tip = Loc.F("Show tabs ({0} open)", _tabs.Count);
+        }
+        else
+        {
+            TabRowPill.ClearValue(Border.BackgroundProperty);
+            TabRowPill.Padding = new Thickness(0);
+            TabCountText.ClearValue(TextBlock.ForegroundProperty);
+            TabRowGlyph.ClearValue(IconElement.ForegroundProperty);
+        }
         ToolTipService.SetToolTip(TabRowButton, tip);
         AutomationProperties.SetName(TabRowButton, tip);
     }
