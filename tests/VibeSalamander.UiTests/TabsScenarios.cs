@@ -265,17 +265,18 @@ public sealed class TabsScenarios : IDisposable
     // On the test machine simulated pointer moves don't reach the window (no hover, no drag; clicks do): these two
     // run on a real desktop (dotnet test locally), and are on the manual checklist
     [PointerUiFact]
-    public void The_shown_tab_has_a_close_button_under_the_pointer()
+    public void A_tab_has_a_close_button_under_the_pointer()
     {
         using AppSession app = Start();
         app.GoTo("Projects");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP);
         WaitTabs(app, "two tabs", true, "Documents", "Projects");
 
-        // over a tab that isn't shown: no close button
-        Mouse.MoveTo(Center(TabNamed(app, "Documents")));
-        app.Calm(300);
-        Assert.Null(app.Window.FindFirstDescendant(cf => cf.ByAutomationId("PaneTabClose")));
+        // over a tab that isn't shown: its own close button
+        AutomationElement back = TabNamed(app, "Documents");
+        Mouse.MoveTo(Center(back));
+        AutomationElement backClose = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByAutomationId("PaneTabClose")), "the back tab's close button");
+        Assert.True(backClose.BoundingRectangle.Right > back.BoundingRectangle.Right - 12, $"{backClose.BoundingRectangle} at the right end of {back.BoundingRectangle}");
 
         // over the shown one: in its upper right corner
         AutomationElement shown = TabNamed(app, "Projects");

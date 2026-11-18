@@ -367,7 +367,8 @@ public sealed partial class FilePane
         host.Children.Add(button);
         host.Children.Add(close);
         bool hovered = false;
-        void ShowClose() => close.Visibility = hovered && item.IsShown && (_tabs?.Items.Count ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed;
+        // every tab under the pointer has one (not the last tab: a panel keeps one)
+        void ShowClose() => close.Visibility = hovered && (_tabs?.Items.Count ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed;
         // the shown tab under the pointer: the address bar under it takes the same lighter or dimmer color
         look.BarHovered = () => _barHovered;
         look.UpdateBar = () =>
@@ -633,6 +634,8 @@ public sealed partial class FilePane
             look?.Paint(this, button.Background, PathForeground(active), null);
             look?.Apply(button);
             button.Padding = new Thickness(12, 5, 32, 5); // room for the close button
+            if (button.Parent is Grid { Children.Count: > 1 } shownHost && shownHost.Children[1] is Button shownClose)
+                shownClose.Margin = new Thickness(0, 0, 5, 0);
             button.Margin = new Thickness(0);
             button.MinHeight = 30;
             button.BorderThickness = new Thickness(0);
@@ -650,7 +653,9 @@ public sealed partial class FilePane
             button.BorderThickness = new Thickness(1, 1, 1, 0);
             button.Margin = new Thickness(0, 3, 0, 0);
             button.MinHeight = 27;
-            button.Padding = new Thickness(11, 3, 11, 4);
+            button.Padding = new Thickness(11, 3, 30, 4); // room for the close button
+            if (button.Parent is Grid { Children.Count: > 1 } backHost && backHost.Children[1] is Button backClose)
+                backClose.Margin = new Thickness(0, 3, 5, 0); // centered on the lower tab
             AutomationProperties.SetItemStatus(button, string.Empty);
         }
     }
