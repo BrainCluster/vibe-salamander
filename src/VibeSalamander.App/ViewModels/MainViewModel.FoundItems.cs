@@ -66,24 +66,29 @@ public sealed partial class MainViewModel
         {
             if (string.IsNullOrWhiteSpace(rule.Command) || !new WildcardMask(rule.Masks).IsMatch(item.Entry.Name))
                 continue;
-            UserMenuContext context = fileContext ?? UserMenuContextFor(_active);
-            string directory = UserMenu.Expand(string.IsNullOrWhiteSpace(rule.InitialDirectory) ? "$(Path)" : rule.InitialDirectory, context);
-            try
-            {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
-                    UserMenu.Expand(rule.Command, context).Trim(), UserMenu.Expand(rule.Arguments, context))
-                {
-                    UseShellExecute = true,
-                    WorkingDirectory = Directory.Exists(directory) ? directory : string.Empty,
-                });
-            }
-            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or FileNotFoundException)
-            {
-                _host.Notify($"{rule.Command}: {ex.Message}");
-            }
+            RunRule(rule, fileContext ?? UserMenuContextFor(_active));
             return true;
         }
         return false;
+    }
+
+    /// <summary>Starts a rule's program for a file (its masks aside: Edit with chose it).</summary>
+    internal void RunRule(ProgramRule rule, UserMenuContext context)
+    {
+        string directory = UserMenu.Expand(string.IsNullOrWhiteSpace(rule.InitialDirectory) ? "$(Path)" : rule.InitialDirectory, context);
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                UserMenu.Expand(rule.Command, context).Trim(), UserMenu.Expand(rule.Arguments, context))
+            {
+                UseShellExecute = true,
+                WorkingDirectory = Directory.Exists(directory) ? directory : string.Empty,
+            });
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or FileNotFoundException)
+        {
+            _host.Notify($"{rule.Command}: {ex.Message}");
+        }
     }
 
 }

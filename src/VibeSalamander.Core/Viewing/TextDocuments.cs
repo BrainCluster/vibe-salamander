@@ -168,9 +168,10 @@ public static class TextDocuments
     /// step (the file's attributes and permissions stay). A crash or a full disk leaves the original as it was.
     /// With <paramref name="backup"/> the previous version is kept as "name.ext.bak".
     /// </summary>
-    public static void Save(string path, string text, TextEncoding encoding, LineEnding ending, bool backup = false)
+    /// <param name="ending">The line endings to save with; null: the text's own, as they are (Convert keeping them).</param>
+    public static void Save(string path, string text, TextEncoding encoding, LineEnding? ending, bool backup = false)
     {
-        byte[] bytes = Encode(WithLineEndings(text, ending), encoding);
+        byte[] bytes = Encode(ending is LineEnding e ? WithLineEndings(text, e) : text, encoding);
         string directory = Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".";
         string temp = Path.Combine(directory, $".{Path.GetFileName(path)}.{Guid.NewGuid().ToString("N")[..8]}.saving");
         try

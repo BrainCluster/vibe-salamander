@@ -86,6 +86,7 @@
                 <MenuFlyoutItem Text="Open (Default App)" Tag="View" Click="Menu_Click" KeyboardAcceleratorTextOverride="F3" />
                 <MenuFlyoutItem Text="Open With..." Tag="OpenWith" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+F3" />
                 <MenuFlyoutItem Text="Edit" Tag="Edit" Click="Menu_Click" KeyboardAcceleratorTextOverride="F4" />
+                <MenuFlyoutItem Text="Edit With..." Tag="EditWith" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+Shift+F4" />
                 <MenuFlyoutItem Text="Edit New File" Tag="EditNewFile" Click="Menu_Click" KeyboardAcceleratorTextOverride="Shift+F4" />
                 <MenuFlyoutItem Text="New (Explorer)..." Tag="NewMenu" Click="Menu_Click" />
                 <MenuFlyoutSeparator />
@@ -117,6 +118,7 @@
                     <MenuFlyoutItem Text="Make Self-Extracting Archive..." Tag="MakeSelfExtractingArchive" Click="Menu_Click" />
                     <MenuFlyoutItem Text="Archive Comment..." Tag="ArchiveComment" Click="Menu_Click" />
                 </MenuFlyoutSubItem>
+                <MenuFlyoutItem Text="Convert..." Tag="ConvertFiles" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+K" />
                 <MenuFlyoutItem Text="Properties" Tag="Properties" Click="Menu_Click" KeyboardAcceleratorTextOverride="Alt+Enter" />
                 <MenuFlyoutItem Text="Email..." Tag="Email" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+E" />
                 <MenuFlyoutSeparator />

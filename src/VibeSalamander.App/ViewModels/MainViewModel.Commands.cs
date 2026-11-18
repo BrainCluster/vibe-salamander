@@ -191,6 +191,8 @@ public sealed partial class MainViewModel
         t.Add(CommandId.QuickRename, _ => Files.RenameAsync());
         t.AddSync(CommandId.View, _ => ViewFile());
         t.AddSync(CommandId.Edit, _ => EditFile());
+        t.AddSync(CommandId.EditWith, EditWith);
+        t.Add(CommandId.ConvertFiles, ConvertFilesAsync);
         t.Add(CommandId.EditNewFile, _ => Files.EditNewFileAsync());
         t.AddSync(CommandId.OpenWith, _ => Files.OpenWith());
         t.AddSync(CommandId.RunAsAdministrator, _ => Files.RunAsAdministrator());
@@ -429,6 +431,41 @@ public sealed partial class MainViewModel
                 EditWithoutRules(item.Entry.FullPath);
             RememberOpened(item.Entry.FullPath);
         }
+    }
+
+    /// <summary>
+    /// Edit with (Ctrl+Shift+F4): the editors there are, to choose one for the focused file — the built-in one, those
+    /// of Configuration → Editors (whatever their masks), Windows' editor, or another program (Windows' Open with).
+    /// </summary>
+    private void EditWith(PaneViewModel pane)
+    {
+        FileItemViewModel? item = pane.FocusedItem;
+        if (item == null || item.Entry.IsDirectory || item.Entry.IsUpDir || item.IsDrive || !pane.IsLocalDisk)
+            return;
+        string path = item.Entry.FullPath;
+        var entries = new List<MenuEntry>
+        {
+            MenuEntry.Header(Loc.F("Edit {0} with", item.Entry.Name)),
+            new(Loc.T("Built-in editor"), () => { _host.OpenEditor(path); RememberOpened(path); }, "\uE70F"),
+        };
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (ProgramRule rule in Settings.Editors.Where(r => !string.IsNullOrWhiteSpace(r.Command)))
+        {
+            string program = rule.Command.Trim().Trim('"');
+            if (!seen.Add(program))
+                continue;
+            string name = Path.GetFileNameWithoutExtension(program);
+            ProgramRule chosen = rule;
+            entries.Add(new MenuEntry(name.Length > 0 ? name : program, () =>
+            {
+                RunRule(chosen, UserMenuContextFor(pane));
+                RememberOpened(path);
+            }, "\uE7C3", Detail: rule.Masks));
+        }
+        entries.Add(new MenuEntry(Loc.T("Windows' editor"), () => { ShellOperations.Edit(path); RememberOpened(path); }, "\uE8A5"));
+        entries.Add(MenuEntry.Separator);
+        entries.Add(new MenuEntry(Loc.T("Other program..."), () => Files.OpenWith(), "\uE7AC"));
+        _host.ShowMenu(pane, entries, atCaret: true);
     }
 
     /// <summary>The built-in viewer, or (switched off in Configuration → Viewers) the file's Windows app.</summary>
