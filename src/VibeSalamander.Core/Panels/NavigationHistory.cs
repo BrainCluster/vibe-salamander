@@ -11,6 +11,22 @@ public sealed class NavigationHistory
     private readonly List<string> _forward = new();
 
     public bool CanGoBack => _back.Count > 0;
+
+    /// <summary>The places Back goes to, oldest first (a tab keeps them while another tab is shown).</summary>
+    public IReadOnlyList<string> BackEntries => _back;
+
+    /// <summary>The places Forward goes to, the next one last.</summary>
+    public IReadOnlyList<string> ForwardEntries => _forward;
+
+    /// <summary>Takes over a tab's history.</summary>
+    public void Load(IEnumerable<string> back, IEnumerable<string> forward)
+    {
+        _back.Clear();
+        _back.AddRange(back.TakeLast(MaxEntries));
+        _forward.Clear();
+        _forward.AddRange(forward.TakeLast(MaxEntries));
+    }
+
     public bool CanGoForward => _forward.Count > 0;
 
     /// <summary>Call when the panel leaves <paramref name="previousPath"/> by normal navigation.</summary>

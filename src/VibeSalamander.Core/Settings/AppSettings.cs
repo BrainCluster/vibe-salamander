@@ -34,6 +34,12 @@ public sealed class PanelSettings
     public bool SortDescending { get; set; }
     public ViewMode ViewMode { get; set; } = ViewMode.Detailed;
     public ColumnSettings Columns { get; set; } = new();
+
+    /// <summary>The side's tabs (null or one: no tab row); Path / sort / view above are the shown tab's.</summary>
+    public List<PanelTab>? Tabs { get; set; }
+
+    /// <summary>The shown tab.</summary>
+    public int ActiveTab { get; set; }
 }
 
 /// <summary>User configuration, stored as JSON in %AppData%\VibeSalamander\settings.json.</summary>

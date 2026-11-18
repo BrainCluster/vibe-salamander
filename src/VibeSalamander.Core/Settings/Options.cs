@@ -158,6 +158,9 @@ public sealed class PanelOptions
     /// <summary>Select / Unselect (Num + / Num -), Select All and Invert also mark directories.</summary>
     public bool SelectIncludesDirectories { get; set; }
 
+    /// <summary>The row of tabs shows with one tab too (otherwise only from two tabs on).</summary>
+    public bool AlwaysShowTabs { get; set; }
+
     public NameCasing NameCasing { get; set; } = NameCasing.AsStored;
     public SizeFormat SizeFormat { get; set; } = SizeFormat.Bytes;
 
