@@ -380,7 +380,7 @@ public sealed partial class FilePane
             return;
         string root = driveRoot ? path[..2] + "\\" : path;
         string name = Path.GetFileName(root.TrimEnd('\\'));
-        var entry = new Core.FileSystem.FileEntry(name.Length > 0 ? name : root, root, true, 0, DateTime.Now, FileAttributes.Directory,
+        var entry = new Core.FileSystem.FileEntry(name.Length > 0 ? name : root, root, true, 0, DateTime.Now, System.IO.FileAttributes.Directory,
             tag: driveRoot ? new Core.FileSystem.DriveEntryInfo { Root = root, Type = DriveType.Unknown } : null);
         _main.Icons.Request(entry, generic: root.StartsWith(@"\\", StringComparison.Ordinal), icon =>
         {
