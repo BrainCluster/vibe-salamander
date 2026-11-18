@@ -392,7 +392,9 @@ public sealed partial class FilePane
             double right = left + tab.ActualWidth;
             double offset = TabScroller.HorizontalOffset;
             double width = TabScroller.ViewportWidth;
-            if (left < offset)
+            if (shown == TabStrip.Children.Count - 1)
+                TabScroller.ChangeView(TabScroller.ScrollableWidth, null, null, disableAnimation: true); // the last: with the + after it
+            else if (left < offset)
                 TabScroller.ChangeView(left, null, null, disableAnimation: true);
             else if (right > offset + width)
                 TabScroller.ChangeView(Math.Min(right - width, TabScroller.ScrollableWidth), null, null, disableAnimation: true);
