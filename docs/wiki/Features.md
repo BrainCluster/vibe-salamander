@@ -18,7 +18,7 @@
   that keeps the cursor and the marks.
 - **Tabs in each panel.** A slim row above the path line, shown once a panel has two tabs (or always: Configuration →
   Panels). The arrow at the end of each drive bar opens or closes that panel's row by hand (the tabs stay; a new
-  tab opens the row again); with Always show, the row stays open and the arrow isn't there. When the tabs don't
+  tab opens the row again; while it is closed, a badge on the arrow shows how many tabs there are); with Always show, the row stays open and the arrow isn't there. When the tabs don't
   fit, arrows at both ends of the row scroll it (hold one to keep scrolling). Ctrl+Shift+T (Ctrl+T with Total Commander keys) opens a tab of the same folder, Ctrl+Up the folder under
   the cursor, Ctrl+Shift+Up the folder under the cursor in a tab of the **other** panel; a middle click on a folder
   opens it in a background tab. Ctrl+Tab and Ctrl+Shift+Tab switch; Ctrl+Shift+W, a middle click or the tab's menu
