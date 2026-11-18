@@ -378,8 +378,8 @@ public sealed partial class FilePane
         holder.Children.Add(glyph);
         if (pack != Core.Settings.IconPack.Windows || thisPc || remote || _main == null)
             return;
-        string root = driveRoot ? path[..2] + "\" : path;
-        string name = Path.GetFileName(root.TrimEnd('\'));
+        string root = driveRoot ? path[..2] + "\\" : path;
+        string name = Path.GetFileName(root.TrimEnd('\\'));
         var entry = new Core.FileSystem.FileEntry(name.Length > 0 ? name : root, root, true, 0, DateTime.Now, FileAttributes.Directory,
             tag: driveRoot ? new Core.FileSystem.DriveEntryInfo { Root = root, Type = DriveType.Unknown } : null);
         _main.Icons.Request(entry, generic: root.StartsWith(@"\\", StringComparison.Ordinal), icon =>
