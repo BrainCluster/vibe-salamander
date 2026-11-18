@@ -221,13 +221,27 @@ public sealed partial class FilePane
                 Restyle(button, item);
     }
 
+    /// <summary>The shown tab whole in view (after the row has laid out the tabs it just got).</summary>
     private void BringShownTabIntoView()
     {
-        if (_tabs == null)
-            return;
-        int shown = _tabs.List.ActiveIndex;
-        if (shown >= 0 && shown < TabStrip.Children.Count && TabStrip.Children[shown] is FrameworkElement tab)
-            DispatcherQueue.TryEnqueue(() => tab.StartBringIntoView(new BringIntoViewOptions { AnimationDesired = false }));
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (_tabs == null)
+                return;
+            int shown = _tabs.List.ActiveIndex;
+            if (shown < 0 || shown >= TabStrip.Children.Count || TabStrip.Children[shown] is not FrameworkElement tab)
+                return;
+            TabScroller.UpdateLayout();
+            double left = tab.TransformToVisual(TabStrip).TransformPoint(default).X;
+            double right = left + tab.ActualWidth;
+            double offset = TabScroller.HorizontalOffset;
+            double width = TabScroller.ViewportWidth;
+            if (left < offset)
+                TabScroller.ChangeView(left, null, null, disableAnimation: true);
+            else if (right > offset + width)
+                TabScroller.ChangeView(Math.Min(right - width, TabScroller.ScrollableWidth), null, null, disableAnimation: true);
+            UpdateTabScrollButtons();
+        });
     }
 
     private string SideName => _main != null && ViewModel == _main.Left ? "Left" : "Right";

@@ -165,17 +165,26 @@ public sealed class TabsScenarios : IDisposable
             CtrlShift(app, VirtualKeyShort.KEY_T); // fifteen "Documents" tabs: more than the half window holds
 
         AutomationElement left = AppSession.Retry(() => Find(app, "TabsLeftButton"), "the left arrow");
-        Assert.NotNull(Find(app, "TabsRightButton"));
+        AutomationElement right = AppSession.Retry(() => Find(app, "TabsRightButton"), "the right arrow");
+
+        // the newest tab (shown, the last) is scrolled into view, whole, between the arrows
+        bool Whole(AutomationElement tab) =>
+            tab.BoundingRectangle.Left >= left.BoundingRectangle.Right - 1 && tab.BoundingRectangle.Right <= right.BoundingRectangle.Left + 1;
+        List<AutomationElement> TabsHere() => app.Window.FindAllDescendants(cf => cf.ByAutomationId("PaneTab"))
+            .Where(t => t.BoundingRectangle.Top < left.BoundingRectangle.Bottom && t.BoundingRectangle.Bottom > left.BoundingRectangle.Top &&
+                        t.BoundingRectangle.Left < right.BoundingRectangle.Right)
+            .ToList();
+        AppSession.WaitUntil(() => TabsHere().FirstOrDefault(t => t.ItemStatus == "shown") is { } shown && Whole(shown),
+            "the shown (last) tab whole in view");
+        AppSession.WaitUntil(() => left.IsEnabled && !right.IsEnabled, "scrolled to the end: left arrow on, right arrow off");
         AppSession.Screenshot("67 full row of tabs");
 
-        // the last tab is shown (scrolled into view): the left arrow goes back to the first
-        double firstLeft() => app.Window.FindAllDescendants(cf => cf.ByAutomationId("PaneTab"))
-            .Where(t => t.BoundingRectangle.Left < app.Window.BoundingRectangle.Left + app.Window.BoundingRectangle.Width / 2.0 - 40)
-            .Select(t => (double)t.BoundingRectangle.Left).DefaultIfEmpty(double.MinValue).Min();
+        // the left arrow goes back to the first tab
         for (int i = 0; i < 30 && left.IsEnabled; i++)
             left.Click();
-        AppSession.WaitUntil(() => !left.IsEnabled, "the left arrow at the start");
-        AppSession.WaitUntil(() => firstLeft() >= left.BoundingRectangle.Right - 2, "the first tab whole, right of the arrow");
+        AppSession.WaitUntil(() => !left.IsEnabled && right.IsEnabled, "at the start: left arrow off, right arrow on");
+        AutomationElement first = TabsHere().OrderBy(t => t.BoundingRectangle.Left).First();
+        Assert.True(Whole(first), $"the first tab isn't whole in view: {first.BoundingRectangle} between {left.BoundingRectangle} and {right.BoundingRectangle}");
         NoErrors(app);
     }
 
