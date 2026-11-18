@@ -1816,5 +1816,7 @@
   "Permissions (octal, e.g. 755 or 644)": "Dozvole (oktalno, npr. 755 ili 644)",
   "Change Permissions": "Promijeni dozvole",
   "Of {0}": "Za {0}",
-  "Permissions are 3 or 4 octal digits, like 755 or 644.": "Dozvole su 3 ili 4 oktalne znamenke, npr. 755 ili 644."
+  "Permissions are 3 or 4 octal digits, like 755 or 644.": "Dozvole su 3 ili 4 oktalne znamenke, npr. 755 ili 644.",
+  "Move tab to this panel": "Premjesti karticu u ovu ploču",
+  "Copy tab to this panel": "Kopiraj karticu u ovu ploču"
 }

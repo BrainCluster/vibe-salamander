@@ -1816,5 +1816,7 @@
   "Permissions (octal, e.g. 755 or 644)": "Permissões (octal, ex.: 755 ou 644)",
   "Change Permissions": "Alterar permissões",
   "Of {0}": "De {0}",
-  "Permissions are 3 or 4 octal digits, like 755 or 644.": "As permissões são 3 ou 4 dígitos octais, como 755 ou 644."
+  "Permissions are 3 or 4 octal digits, like 755 or 644.": "As permissões são 3 ou 4 dígitos octais, como 755 ou 644.",
+  "Move tab to this panel": "Mover a aba para este painel",
+  "Copy tab to this panel": "Copiar a aba para este painel"
 }

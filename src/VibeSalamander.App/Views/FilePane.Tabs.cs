@@ -23,6 +23,29 @@ namespace VibeSalamander.Views;
 public sealed partial class FilePane
 {
     private const string TabFormat = "VibeSalamander.Tab";
+    private const string TabSideKey = "VibeSalamander.TabSide";
+
+    /// <summary>A tab dragged from the other panel onto this one's files (its row may be hidden): it moves here.</summary>
+    private bool AcceptsTabFromOtherSide(DragEventArgs e, out bool copy)
+    {
+        copy = (e.Modifiers & Windows.ApplicationModel.DataTransfer.DragDrop.DragDropModifiers.Control) != 0;
+        return e.DataView.Contains(TabFormat) && e.DataView.Properties.TryGetValue(TabSideKey, out object? side) &&
+               side is string name && name != SideName;
+    }
+
+    private async Task DropTabFromOtherSideAsync(DragEventArgs e, bool copy)
+    {
+        if (_tabs == null || _main == null || ViewModel == null)
+            return;
+        if (await e.DataView.GetDataAsync(TabFormat) is string what && what.Split(':') is [string side, string number] &&
+            int.TryParse(number, out int from))
+        {
+            PaneViewModel source = side == "Left" ? _main.Left : _main.Right;
+            await _main.MoveTabToOtherSideAsync(source, from, null, copy);
+        }
+        _main.Activate(ViewModel);
+        FocusList();
+    }
     private TabsViewModel? _tabs;
 
     private void InitializeTabs(TabsViewModel tabs)
@@ -155,7 +178,11 @@ public sealed partial class FilePane
         BringShownTabIntoView();
     }
 
-    private Button MakeTab(TabItemViewModel item)
+    /// <summary>
+    /// A tab: its button, and over its upper right corner a close button while the pointer is on the shown tab.
+    /// The host (a Grid, Tag = the tab) is what the row holds.
+    /// </summary>
+    private Grid MakeTab(TabItemViewModel item)
     {
         var title = new TextBlock
         {
@@ -182,9 +209,72 @@ public sealed partial class FilePane
             Padding = new Thickness(10, 3, 10, 3),
             MinHeight = 24,
             CornerRadius = new CornerRadius(4),
-            CanDrag = true,
             Tag = item,
         };
+        var close = new Button
+        {
+            Content = new FontIcon
+            {
+                Glyph = "\uE711",
+                FontFamily = (FontFamily)Application.Current.Resources["VibeIconFont"],
+                FontSize = 8,
+            },
+            Style = (Style)Application.Current.Resources["VibeToolButtonStyle"],
+            Width = 16,
+            Height = 16,
+            MinWidth = 0,
+            MinHeight = 0,
+            Padding = new Thickness(0),
+            CornerRadius = new CornerRadius(3),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 1, 1, 0),
+            Visibility = Visibility.Collapsed,
+            IsTabStop = false,
+        };
+        AutomationProperties.SetAutomationId(close, "PaneTabClose");
+        AutomationProperties.SetName(close, Loc.T("Close tab"));
+        ToolTipService.SetToolTip(close, Loc.T("Close tab"));
+        close.Click += async (_, _) =>
+        {
+            if (_tabs == null || _main == null)
+                return;
+            _main.Activate(ViewModel!);
+            await _tabs.CloseAsync(IndexOfTab(item));
+            FocusList();
+        };
+        var host = new Grid { Tag = item };
+        host.Children.Add(button);
+        host.Children.Add(close);
+        bool hovered = false;
+        void ShowClose() => close.Visibility = hovered && item.IsShown && (_tabs?.Items.Count ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed;
+        host.AddHandler(PointerEnteredEvent, new PointerEventHandler((_, _) => { hovered = true; ShowClose(); }), handledEventsToo: true);
+        host.AddHandler(PointerExitedEvent, new PointerEventHandler((_, _) => { hovered = false; ShowClose(); }), handledEventsToo: true);
+        // dragging: started by hand once the pointer moved a little (the button keeps the press to itself)
+        Windows.Foundation.Point? pressedAt = null;
+        button.AddHandler(PointerPressedEvent, new PointerEventHandler((s, e) =>
+        {
+            Microsoft.UI.Input.PointerPoint point = e.GetCurrentPoint(host);
+            pressedAt = point.Properties.IsLeftButtonPressed ? point.Position : null;
+        }), handledEventsToo: true);
+        button.AddHandler(PointerReleasedEvent, new PointerEventHandler((_, _) => pressedAt = null), handledEventsToo: true);
+        button.AddHandler(PointerMovedEvent, new PointerEventHandler(async (s, e) =>
+        {
+            Microsoft.UI.Input.PointerPoint point = e.GetCurrentPoint(host);
+            if (pressedAt is not { } start || !point.Properties.IsLeftButtonPressed)
+                return;
+            if (Math.Abs(point.Position.X - start.X) < 6 && Math.Abs(point.Position.Y - start.Y) < 6)
+                return;
+            pressedAt = null;
+            try
+            {
+                await button.StartDragAsync(e.GetCurrentPoint(button));
+            }
+            catch (Exception)
+            {
+                // another drag is running
+            }
+        }), handledEventsToo: true);
         AutomationProperties.SetAutomationId(button, "PaneTab");
         AutomationProperties.SetName(button, item.Title);
         ToolTipService.SetToolTip(button, item.ToolTip);
@@ -195,6 +285,7 @@ public sealed partial class FilePane
         button.DragStarting += (_, e) =>
         {
             e.Data.SetData(TabFormat, $"{SideName}:{IndexOfTab(item)}");
+            e.Data.Properties[TabSideKey] = SideName; // read while dragging (DragOver can't wait for the data)
             e.Data.RequestedOperation = DataPackageOperation.Move | DataPackageOperation.Copy;
         };
         item.PropertyChanged += (_, e) =>
@@ -211,11 +302,12 @@ public sealed partial class FilePane
             else if (e.PropertyName == nameof(TabItemViewModel.IsShown))
             {
                 Restyle(button, item);
+                ShowClose();
                 BringShownTabIntoView();
             }
         };
         Restyle(button, item);
-        return button;
+        return host;
     }
 
     /// <summary>The shown tab looks like the path line under it: accent-filled in the active panel.</summary>
@@ -226,12 +318,14 @@ public sealed partial class FilePane
         {
             button.Background = (Brush)Application.Current.Resources[active ? "AccentFillColorDefaultBrush" : "VibeInactivePathBrush"];
             button.Foreground = PathForeground(active);
+            button.Padding = new Thickness(10, 3, 20, 3); // room for the close button
             AutomationProperties.SetItemStatus(button, "shown");
         }
         else
         {
             button.ClearValue(Control.BackgroundProperty);
             button.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
+            button.Padding = new Thickness(10, 3, 10, 3);
             AutomationProperties.SetItemStatus(button, string.Empty);
         }
     }
@@ -239,7 +333,7 @@ public sealed partial class FilePane
     private void RestyleTabs()
     {
         foreach (UIElement child in TabStrip.Children)
-            if (child is Button { Tag: TabItemViewModel item } button)
+            if (child is Grid { Tag: TabItemViewModel item } host && host.Children[0] is Button button)
                 Restyle(button, item);
     }
 
@@ -358,6 +452,7 @@ public sealed partial class FilePane
             e.AcceptedOperation = copy ? DataPackageOperation.Copy : DataPackageOperation.Move;
             e.DragUIOverride.Caption = Loc.T(copy ? "Copy tab here" : "Move tab here");
             e.Handled = true;
+            ShowDropMarker(DropIndex(e));
         }
         else if (e.DataView.Contains(StandardDataFormats.StorageItems))
         {
@@ -367,8 +462,27 @@ public sealed partial class FilePane
         }
     }
 
+    private void TabRow_DragLeave(object sender, DragEventArgs e) => TabDropMarker.Visibility = Visibility.Collapsed;
+
+    /// <summary>The marker between the tabs where a dragged one lands.</summary>
+    private void ShowDropMarker(int index)
+    {
+        double x = 0;
+        if (TabStrip.Children.Count > 0)
+        {
+            bool atEnd = index >= TabStrip.Children.Count;
+            var tab = (FrameworkElement)TabStrip.Children[atEnd ? TabStrip.Children.Count - 1 : index];
+            double left = tab.TransformToVisual(TabStrip).TransformPoint(default).X;
+            x = atEnd ? left + tab.ActualWidth : left - 2;
+        }
+        Canvas.SetLeft(TabDropMarker, Math.Max(0, x));
+        TabDropMarker.Height = Math.Max(16, TabStrip.ActualHeight - 4);
+        TabDropMarker.Visibility = Visibility.Visible;
+    }
+
     private async void TabRow_Drop(object sender, DragEventArgs e)
     {
+        TabDropMarker.Visibility = Visibility.Collapsed;
         if (_tabs == null || _main == null || ViewModel == null)
             return;
         e.Handled = true;

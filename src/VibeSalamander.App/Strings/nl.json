@@ -1816,5 +1816,7 @@
   "Permissions (octal, e.g. 755 or 644)": "Rechten (octaal, bijv. 755 of 644)",
   "Change Permissions": "Rechten wijzigen",
   "Of {0}": "Van {0}",
-  "Permissions are 3 or 4 octal digits, like 755 or 644.": "Rechten zijn 3 of 4 octale cijfers, zoals 755 of 644."
+  "Permissions are 3 or 4 octal digits, like 755 or 644.": "Rechten zijn 3 of 4 octale cijfers, zoals 755 of 644.",
+  "Move tab to this panel": "Tabblad naar dit paneel verplaatsen",
+  "Copy tab to this panel": "Tabblad naar dit paneel kopiëren"
 }

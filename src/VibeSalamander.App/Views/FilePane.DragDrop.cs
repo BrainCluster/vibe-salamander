@@ -102,6 +102,19 @@ public sealed partial class FilePane
 
     private void Root_DragOver(object sender, DragEventArgs e)
     {
+        if (e.DataView.Contains(TabFormat))
+        {
+            // a tab: the other panel's moves (or with Ctrl copies) here; one's own does nothing here
+            bool fromOther = AcceptsTabFromOtherSide(e, out bool copyTab);
+            e.AcceptedOperation = !fromOther ? Windows.ApplicationModel.DataTransfer.DataPackageOperation.None
+                : copyTab ? Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy : Windows.ApplicationModel.DataTransfer.DataPackageOperation.Move;
+            if (fromOther)
+            {
+                e.DragUIOverride.Caption = Loc.T(copyTab ? "Copy tab to this panel" : "Move tab to this panel");
+                e.DragUIOverride.IsCaptionVisible = true;
+            }
+            return;
+        }
         string? target = DropTarget(e);
         if (target == null || !e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems) || TooShortDrag(e))
         {
@@ -118,6 +131,23 @@ public sealed partial class FilePane
     {
         if (ViewModel == null || _main == null)
             return;
+        if (e.DataView.Contains(TabFormat))
+        {
+            if (AcceptsTabFromOtherSide(e, out bool copyTab))
+            {
+                e.Handled = true;
+                var tabDeferral = e.GetDeferral();
+                try
+                {
+                    await DropTabFromOtherSideAsync(e, copyTab);
+                }
+                finally
+                {
+                    tabDeferral.Complete();
+                }
+            }
+            return;
+        }
         string? target = DropTarget(e);
         if (target == null || TooShortDrag(e))
             return;

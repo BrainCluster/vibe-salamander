@@ -244,4 +244,64 @@ public sealed class TabsScenarios : IDisposable
         AppSession.WaitUntil(() => app.Items(left: false).Contains("report.txt"), "Documents on the right");
         NoErrors(app);
     }
+
+    /// <summary>A tab of a panel by its name.</summary>
+    private static AutomationElement TabNamed(AppSession app, string name, bool left = true)
+    {
+        double middle = app.Window.BoundingRectangle.Left + app.Window.BoundingRectangle.Width / 2.0;
+        return AppSession.Retry(() => app.Window.FindAllDescendants(cf => cf.ByAutomationId("PaneTab"))
+            .FirstOrDefault(t => t.Name == name && (t.BoundingRectangle.Left < middle) == left), "the tab " + name);
+    }
+
+    private static System.Drawing.Point Center(AutomationElement e) =>
+        new((int)(e.BoundingRectangle.Left + e.BoundingRectangle.Width / 2), (int)(e.BoundingRectangle.Top + e.BoundingRectangle.Height / 2));
+
+    [UiFact]
+    public void The_shown_tab_has_a_close_button_under_the_pointer()
+    {
+        using AppSession app = Start();
+        app.GoTo("Projects");
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP);
+        WaitTabs(app, "two tabs", true, "Documents", "Projects");
+
+        // over a tab that isn't shown: no close button
+        Mouse.MoveTo(Center(TabNamed(app, "Documents")));
+        app.Calm(300);
+        Assert.Null(app.Window.FindFirstDescendant(cf => cf.ByAutomationId("PaneTabClose")));
+
+        // over the shown one: in its upper right corner
+        AutomationElement shown = TabNamed(app, "Projects");
+        Mouse.MoveTo(Center(shown));
+        AutomationElement close = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByAutomationId("PaneTabClose")), "the close button");
+        Assert.True(close.BoundingRectangle.Right > shown.BoundingRectangle.Right - 20 && close.BoundingRectangle.Top < shown.BoundingRectangle.Top + 8,
+            $"The close button {close.BoundingRectangle} sits in the upper right corner of {shown.BoundingRectangle}");
+        AppSession.Screenshot("67 tab close button");
+        close.Click();
+        AppSession.WaitUntil(() => Tabs(app).Count == 0, "the tab closed (one left: no row)");
+        AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "Documents shown");
+        NoErrors(app);
+    }
+
+    [UiFact]
+    public void Tabs_are_dragged_into_a_new_order_and_to_the_other_panel()
+    {
+        using AppSession app = Start();
+        app.GoTo("Projects");
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP);
+        app.GoTo("Empty folder");
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP);
+        WaitTabs(app, "three tabs", true, "Documents", "Projects", "Empty folder");
+
+        // Empty folder dropped before Documents
+        AutomationElement first = TabNamed(app, "Documents");
+        AppSession.Drag(Center(TabNamed(app, "Empty folder")),
+            new System.Drawing.Point((int)first.BoundingRectangle.Left + 4, Center(first).Y), () => AppSession.Screenshot("68 dragging a tab"));
+        WaitTabs(app, "the new order", true, "Empty folder", "Documents", "Projects");
+
+        // Projects dropped on the right panel's files (it has one tab: no row there)
+        AppSession.Drag(Center(TabNamed(app, "Projects")), app.EmptyArea(left: false));
+        WaitTabs(app, "Projects moved right", false, "Target", "Projects");
+        WaitTabs(app, "two left", true, "Empty folder", "Documents");
+        NoErrors(app);
+    }
 }
