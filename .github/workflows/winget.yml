@@ -71,11 +71,27 @@ jobs:
             }
           }
 
+          # wingetcreate makes its pull request from the token account's fork of winget-pkgs, and gives up with "The
+          # forked repository could not be synced with the upstream commits" when the fork's master is far behind or
+          # has gone its own way: bring it up to date first (merge-upstream; if that can't, set master to upstream's)
+          $me = gh api user --jq .login
+          function Sync-Fork {
+            gh api "repos/$me/winget-pkgs" --silent 2>$null
+            if ($LASTEXITCODE -ne 0) { "No fork of winget-pkgs in $me yet: wingetcreate makes it."; return }
+            gh api -X POST "repos/$me/winget-pkgs/merge-upstream" -f branch=master --silent 2>$null
+            if ($LASTEXITCODE -eq 0) { "The fork $me/winget-pkgs is up to date."; return }
+            $upstream = gh api repos/microsoft/winget-pkgs/git/ref/heads/master --jq .object.sha
+            gh api -X PATCH "repos/$me/winget-pkgs/git/refs/heads/master" -f sha=$upstream -F force=true --silent
+            if ($LASTEXITCODE -eq 0) { "The fork's master is set to winget-pkgs' ($upstream)." }
+            else { "::warning::The fork $me/winget-pkgs could not be brought up to date." }
+          }
+
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
           $env:WINGET_CREATE_GITHUB_TOKEN = $env:WINGET_TOKEN # read from the environment: never on the command line or in the log
           # GitHub refuses bursts of calls to winget-pkgs now and then (429): wait and try again
           foreach ($wait in 0, 120, 600, 1200) {
             if ($wait -gt 0) { "Waiting $wait s before trying again..."; Start-Sleep -Seconds $wait }
+            Sync-Fork
             .\wingetcreate.exe submit --prtitle "New version: $id version $version" (Resolve-Path $folder).Path
             if ($LASTEXITCODE -eq 0) { exit 0 }
           }

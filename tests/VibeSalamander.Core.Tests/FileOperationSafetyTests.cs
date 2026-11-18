@@ -194,8 +194,11 @@ public sealed class FileOperationSafetyTests : IDisposable
             : await engine.CopyAsync(new[] { P(@"src\dir") }, P("dst"));
 
         Dictionary<string, string> after = Contents();
-        bool overwritesA = answer is ConflictChoice.Overwrite or ConflictChoice.OverwriteAll or ConflictChoice.OverwriteAllOlder;
-        bool overwritesB = answer is ConflictChoice.Overwrite or ConflictChoice.OverwriteAll; // b's target is newer
+        // Resume (offered only by plugins for servers) overwrites here
+        bool overwritesA = answer is ConflictChoice.Overwrite or ConflictChoice.OverwriteAll or ConflictChoice.OverwriteAllOlder
+            or ConflictChoice.Resume or ConflictChoice.ResumeAll;
+        bool overwritesB = answer is ConflictChoice.Overwrite or ConflictChoice.OverwriteAll // b's target is newer
+            or ConflictChoice.Resume or ConflictChoice.ResumeAll;
         bool cancelled = answer == ConflictChoice.Cancel;
 
         // 1. no source content is lost

@@ -762,6 +762,13 @@ public sealed class FileOperationEngine : IPausable
         PauseClock();
         ConflictChoice choice = await _callbacks.ResolveConflictAsync(info).ConfigureAwait(false);
         ResumeClock();
+        // Resume is for servers (a plugin offers it); here the source simply goes over the target
+        choice = choice switch
+        {
+            ConflictChoice.Resume => ConflictChoice.Overwrite,
+            ConflictChoice.ResumeAll => ConflictChoice.OverwriteAll,
+            _ => choice,
+        };
         if (choice is ConflictChoice.OverwriteAll or ConflictChoice.SkipAll or ConflictChoice.RenameAll or ConflictChoice.OverwriteAllOlder)
         {
             _conflictForAll = choice;
