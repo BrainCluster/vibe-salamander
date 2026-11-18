@@ -1810,5 +1810,11 @@
   "The marks Git, OneDrive and other programs draw over icons (local disks only).": "As marcas que Git, OneDrive e outros programas desenham sobre os ícones (somente discos locais).",
   "It needs Vibe Salamander {0} or newer (this is {1}). Update Vibe Salamander (Help → Check for Updates).": "Precisa do Vibe Salamander {0} ou mais recente (este é {1}). Atualize o Vibe Salamander (Ajuda → Verificar atualizações).",
   "{0} settings": "Configurações de {0}",
-  "Settings...": "Configurações..."
+  "Settings...": "Configurações...",
+  "Resume All": "Retomar todos",
+  "The target is smaller: it looks like an interrupted transfer, which can be resumed.": "O destino é menor: parece uma transferência interrompida, que pode ser retomada.",
+  "Permissions (octal, e.g. 755 or 644)": "Permissões (octal, ex.: 755 ou 644)",
+  "Change Permissions": "Alterar permissões",
+  "Of {0}": "De {0}",
+  "Permissions are 3 or 4 octal digits, like 755 or 644.": "As permissões são 3 ou 4 dígitos octais, como 755 ou 644."
 }

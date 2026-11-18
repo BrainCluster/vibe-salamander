@@ -27,6 +27,12 @@ public enum ConflictChoice
     Rename,
     RenameAll,
     Cancel,
+
+    /// <summary>Continue where the smaller target stops (offered when <see cref="ConflictInfo.CanResume"/>).</summary>
+    Resume,
+
+    /// <summary>Resume this and every following target that can be resumed (the others are overwritten).</summary>
+    ResumeAll,
 }
 
 /// <summary>Answer to an I/O error on one item.</summary>
@@ -44,7 +50,11 @@ public enum ErrorChoice
 public sealed record ConflictInfo(
     string SourcePath, long SourceSize, DateTime SourceTime,
     string TargetPath, long TargetSize, DateTime TargetTime,
-    bool IsDirectory, FileAttributes TargetAttributes = 0, bool IsMerge = false);
+    bool IsDirectory, FileAttributes TargetAttributes = 0, bool IsMerge = false)
+{
+    /// <summary>The target is the start of the source (an interrupted transfer): it can be resumed.</summary>
+    public bool CanResume { get; init; }
+}
 
 /// <summary>Confirmations and options the engine follows (Configuration → Confirmations, General).</summary>
 public sealed class EngineOptions

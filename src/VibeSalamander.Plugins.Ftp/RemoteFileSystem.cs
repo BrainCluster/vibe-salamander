@@ -348,7 +348,39 @@ internal sealed class RemoteFileSystem : IPluginFileSystem, IDisposable
     }
 
     private static RemoteItem ToItem(RemotePath directory, RemoteEntry e) =>
-        new(e.Name, directory.Child(e.Name).ToString(), e.IsDirectory, e.Size, e.LastWrite, IsHidden: e.Name.StartsWith('.'), IsLink: e.IsLink);
+        new(e.Name, directory.Child(e.Name).ToString(), e.IsDirectory, e.Size, e.LastWrite, IsHidden: e.Name.StartsWith('.'), IsLink: e.IsLink)
+        {
+            AttributesText = e.Mode is int mode ? (e.IsLink ? "l" : e.IsDirectory ? "d" : "-") + UnixMode.Text(mode) : null,
+            Permissions = e.Mode is int octal ? UnixMode.Octal(octal) : null,
+            Description = e.Owner,
+            LinkTarget = e.LinkTarget,
+        };
+
+    public Task<long?> GetFreeSpaceAsync(string path, CancellationToken cancellationToken)
+    {
+        RemotePath directory = ParseOrThrow(path);
+        return WithSessionAsync(directory, client => client.GetFreeSpaceAsync(directory.Path, cancellationToken), cancellationToken);
+    }
+
+    /// <summary>FTP and SFTP servers both take chmod (FTP: SITE CHMOD; a server without it says so).</summary>
+    public bool CanSetPermissions(string directory) => RemotePath.Parse(directory) != null;
+
+    public Task SetPermissionsAsync(IReadOnlyList<RemoteItem> items, string permissions, CancellationToken cancellationToken)
+    {
+        int mode = UnixMode.Parse(permissions) ?? throw new ArgumentException(T("Permissions are 3 or 4 octal digits, like 755 or 644."));
+        if (items.Count == 0)
+            return Task.CompletedTask;
+        RemotePath server = ParseOrThrow(items[0].Path);
+        return WithSessionAsync(server, async client =>
+        {
+            foreach (RemoteItem item in items)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await client.SetModeAsync(ParseOrThrow(item.Path).Path, mode, cancellationToken);
+            }
+            return true;
+        }, cancellationToken);
+    }
 
     public Task CreateDirectoryAsync(string path, CancellationToken cancellationToken)
     {

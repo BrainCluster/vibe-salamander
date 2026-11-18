@@ -73,4 +73,38 @@ public sealed class FtpPluginTests
         Assert.False(connection.Matches(RemotePath.Parse("ftp://alice@example.com/x")!));
         Assert.Equal("sftp://alice@Example.com/", connection.Root.ToString());
     }
+
+    [Theory]
+    [InlineData(0x1ED, "rwxr-xr-x", "755")]
+    [InlineData(0x1A4, "rw-r--r--", "644")]
+    [InlineData(0x1C0, "rwx------", "700")]
+    [InlineData(0x9ED, "rwxr-xr-x", "4755")]
+    public void Unix_permissions_read_as_letters_and_digits(int mode, string text, string octal)
+    {
+        Assert.Equal(text, UnixMode.Text(mode));
+        Assert.Equal(octal, UnixMode.Octal(mode));
+        Assert.Equal(mode, UnixMode.Parse(octal));
+        Assert.Equal(mode & 0x1FF, UnixMode.FromText(text));
+        Assert.Equal(mode & 0x1FF, UnixMode.FromText("-" + text));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("78")]
+    [InlineData("789")]
+    [InlineData("12345")]
+    [InlineData("rwx")]
+    public void Only_octal_digits_are_permissions(string text) => Assert.Null(UnixMode.Parse(text));
+
+    [Fact]
+    public void A_listing_line_with_setuid_or_sticky_still_reads() =>
+        Assert.Equal(0x1FF, UnixMode.FromText("drwxrwxrwt"));
+
+    [Theory]
+    [InlineData(100, 1000, true)]
+    [InlineData(0, 1000, false)]     // an empty target: nothing to resume from
+    [InlineData(1000, 1000, false)]  // the same size: done, or another file
+    [InlineData(2000, 1000, false)]  // larger: another file
+    public void A_smaller_target_can_be_resumed(long target, long source, bool resume) =>
+        Assert.Equal(resume, Transfer.CanResume(target, source));
 }

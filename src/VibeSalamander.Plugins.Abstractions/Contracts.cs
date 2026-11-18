@@ -462,11 +462,40 @@ public interface IPluginFileSystem
     /// leaves it); false after <see cref="Disconnect"/>.
     /// </summary>
     bool IsConnected(string path) => true;
+
+    /// <summary>
+    /// The free space where the path is, in bytes, for the panel's "free" (Vibe Salamander after 0.9.0); null =
+    /// unknown (the panel shows none). Asked after each listing: answer quickly or return null.
+    /// </summary>
+    Task<long?> GetFreeSpaceAsync(string path, CancellationToken cancellationToken) => Task.FromResult<long?>(null);
+
+    /// <summary>Items in this directory have Unix permissions the user can change (Files → Change Attributes).</summary>
+    bool CanSetPermissions(string directory) => false;
+
+    /// <summary>
+    /// Sets the permissions of the items, as octal digits ("755", "0644"); <see cref="RemoteItem.Permissions"/> is
+    /// what the dialog starts with. Throws with a message for the user when the server refuses.
+    /// </summary>
+    Task SetPermissionsAsync(IReadOnlyList<RemoteItem> items, string permissions, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("This location has no permissions to change.");
 }
 
 /// <summary>One file or directory of a plugin file system.</summary>
 /// <param name="Path">Its full path (as the plugin's paths go).</param>
-public sealed record RemoteItem(string Name, string Path, bool IsDirectory, long Size, DateTime LastWrite, bool IsHidden = false, bool IsLink = false);
+public sealed record RemoteItem(string Name, string Path, bool IsDirectory, long Size, DateTime LastWrite, bool IsHidden = false, bool IsLink = false)
+{
+    /// <summary>The Attr column's text ("rwxr-xr-x"); null = the host's letters for hidden and link.</summary>
+    public string? AttributesText { get; init; }
+
+    /// <summary>The permissions as octal digits ("755"), for Change Attributes; null = unknown.</summary>
+    public string? Permissions { get; init; }
+
+    /// <summary>More for the information line, e.g. the owner and group ("www-data:www-data").</summary>
+    public string? Description { get; init; }
+
+    /// <summary>Where a link points (the information line shows "→ target").</summary>
+    public string? LinkTarget { get; init; }
+}
 
 // ---- archivers ---------------------------------------------------------------------------------
 

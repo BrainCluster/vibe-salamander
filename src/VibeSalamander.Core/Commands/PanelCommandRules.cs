@@ -48,6 +48,9 @@ public enum ServerPanelAction
 
     /// <summary>Something servers can't do: say what can be done there.</summary>
     Explain,
+
+    /// <summary>Change Attributes: the Unix permissions (when the server's plugin can set them).</summary>
+    Permissions,
 }
 
 /// <summary>
@@ -85,7 +88,8 @@ public static class PanelCommandRules
         CommandId.View => ServerPanelAction.View,
         CommandId.Edit => ServerPanelAction.Edit,
         CommandId.ClipboardPaste => ServerPanelAction.PasteUp,
-        CommandId.EditNewFile or CommandId.ChangeAttributes or CommandId.ChangeCase or CommandId.ClipboardCut or
+        CommandId.ChangeAttributes => ServerPanelAction.Permissions,
+        CommandId.EditNewFile or CommandId.ChangeCase or CommandId.ClipboardCut or
         CommandId.ClipboardCopy or CommandId.Pack or CommandId.NewMenu or CommandId.CommandShell or
         CommandId.OpenActiveFolder => ServerPanelAction.Explain,
         _ => ServerPanelAction.NotHere,

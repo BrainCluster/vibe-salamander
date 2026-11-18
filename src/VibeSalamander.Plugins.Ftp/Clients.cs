@@ -10,7 +10,10 @@ using Renci.SshNet.Sftp;
 namespace VibeSalamander.Plugins.Ftp;
 
 /// <summary>One item on a server (its path is the server's path, "/home/user/a.txt").</summary>
-internal sealed record RemoteEntry(string Name, string Path, bool IsDirectory, long Size, DateTime LastWrite, bool IsLink = false);
+/// <param name="Mode">The Unix permission bits (0755), when the server says.</param>
+/// <param name="Owner">"owner:group" (names on FTP, numbers on SFTP), when the server says.</param>
+internal sealed record RemoteEntry(string Name, string Path, bool IsDirectory, long Size, DateTime LastWrite, bool IsLink = false,
+    int? Mode = null, string? Owner = null, string? LinkTarget = null);
 
 /// <summary>The password (or the private key's passphrase) and the key file for one server.</summary>
 internal sealed record Credentials(string Password, string? PrivateKeyFile);
@@ -36,8 +39,17 @@ internal interface IRemoteClient : IDisposable
     /// <summary>The item, or null when nothing is there.</summary>
     Task<RemoteEntry?> StatAsync(string path, CancellationToken ct);
 
-    Task DownloadAsync(string path, Stream target, CancellationToken ct);
-    Task UploadAsync(Stream source, string path, CancellationToken ct);
+    /// <summary>Downloads the file from <paramref name="offset"/> on (more than 0: resuming).</summary>
+    Task DownloadAsync(string path, Stream target, long offset, CancellationToken ct);
+
+    /// <summary>Uploads the source from where it is; <paramref name="append"/> adds it to the end of the remote file (resuming).</summary>
+    Task UploadAsync(Stream source, string path, bool append, CancellationToken ct);
+
+    /// <summary>Free bytes where the path is, or null (the server doesn't say).</summary>
+    Task<long?> GetFreeSpaceAsync(string path, CancellationToken ct);
+
+    /// <summary>Sets the Unix permission bits (chmod).</summary>
+    Task SetModeAsync(string path, int mode, CancellationToken ct);
     Task DeleteFileAsync(string path, CancellationToken ct);
 
     /// <summary>Deletes an empty directory.</summary>
@@ -221,10 +233,34 @@ internal sealed class SftpRemoteClient : IRemoteClient
                     // a broken link: shown as a file
                 }
             }
-            result.Add(new RemoteEntry(file.Name, file.FullName, isDirectory, isDirectory ? 0 : size, time, file.IsSymbolicLink));
+            result.Add(new RemoteEntry(file.Name, file.FullName, isDirectory, isDirectory ? 0 : size, time, file.IsSymbolicLink,
+                ModeOf(file), $"{file.UserId}:{file.GroupId}"));
         }
         return result;
     }, ct);
+
+    private static int ModeOf(ISftpFile f) =>
+        (f.OwnerCanRead ? 0x100 : 0) | (f.OwnerCanWrite ? 0x80 : 0) | (f.OwnerCanExecute ? 0x40 : 0) |
+        (f.GroupCanRead ? 0x20 : 0) | (f.GroupCanWrite ? 0x10 : 0) | (f.GroupCanExecute ? 0x8 : 0) |
+        (f.OthersCanRead ? 0x4 : 0) | (f.OthersCanWrite ? 0x2 : 0) | (f.OthersCanExecute ? 0x1 : 0);
+
+    public Task<long?> GetFreeSpaceAsync(string path, CancellationToken ct) => Task.Run(() =>
+    {
+        try
+        {
+            // statvfs@openssh.com: OpenSSH has it, others may not
+            SftpFileSytemInformation info = _client.GetStatus(path);
+            ulong unit = info.BlockSize > 0 ? info.BlockSize : info.FileSystemBlockSize;
+            return unit == 0 ? null : (long?)(long)Math.Min(long.MaxValue, info.AvailableBlocks * unit);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+    }, ct);
+
+    public Task SetModeAsync(string path, int mode, CancellationToken ct) =>
+        Task.Run(() => { Log?.Invoke($"CHMOD {UnixMode.Octal(mode)} {path}"); _client.ChangePermissions(path, (short)mode); }, ct);
 
     public Task<RemoteEntry?> StatAsync(string path, CancellationToken ct) => Task.Run(() =>
     {
@@ -241,11 +277,32 @@ internal sealed class SftpRemoteClient : IRemoteClient
         }
     }, ct);
 
-    public Task DownloadAsync(string path, Stream target, CancellationToken ct) =>
-        Task.Run(() => { Log?.Invoke("GET " + path); _client.DownloadFile(path, target); }, ct);
+    public Task DownloadAsync(string path, Stream target, long offset, CancellationToken ct) => Task.Run(() =>
+    {
+        if (offset <= 0)
+        {
+            Log?.Invoke("GET " + path);
+            _client.DownloadFile(path, target);
+            return;
+        }
+        Log?.Invoke($"GET {path} from {offset}");
+        using SftpFileStream remote = _client.Open(path, FileMode.Open, FileAccess.Read);
+        remote.Seek(offset, SeekOrigin.Begin);
+        remote.CopyTo(target, 1 << 16);
+    }, ct);
 
-    public Task UploadAsync(Stream source, string path, CancellationToken ct) =>
-        Task.Run(() => { Log?.Invoke("PUT " + path); _client.UploadFile(source, path, canOverride: true); }, ct);
+    public Task UploadAsync(Stream source, string path, bool append, CancellationToken ct) => Task.Run(() =>
+    {
+        if (!append)
+        {
+            Log?.Invoke("PUT " + path);
+            _client.UploadFile(source, path, canOverride: true);
+            return;
+        }
+        Log?.Invoke("APPEND " + path);
+        using SftpFileStream remote = _client.Open(path, FileMode.Append, FileAccess.Write);
+        source.CopyTo(remote, 1 << 16);
+    }, ct);
 
     public Task DeleteFileAsync(string path, CancellationToken ct) => Task.Run(() => { Log?.Invoke("DELETE " + path); _client.DeleteFile(path); }, ct);
 
@@ -401,8 +458,11 @@ internal sealed class FtpRemoteClient : IRemoteClient
                     // a broken link: shown as a file
                 }
             }
+            int? mode = UnixMode.FromText(item.RawPermissions) ?? (item.Chmod > 0 ? UnixMode.Parse(item.Chmod.ToString("D3")) : null);
+            string? owner = string.IsNullOrEmpty(item.RawOwner) ? null : string.IsNullOrEmpty(item.RawGroup) ? item.RawOwner : item.RawOwner + ":" + item.RawGroup;
             result.Add(new RemoteEntry(item.Name, item.FullName, isDirectory, isDirectory ? 0 : Math.Max(0, size),
-                item.Modified == DateTime.MinValue ? DateTime.Now : item.Modified, item.Type == FtpObjectType.Link));
+                item.Modified == DateTime.MinValue ? DateTime.Now : item.Modified, item.Type == FtpObjectType.Link,
+                mode, owner, string.IsNullOrEmpty(item.LinkTarget) ? null : item.LinkTarget));
         }
         return result;
     }
@@ -420,18 +480,50 @@ internal sealed class FtpRemoteClient : IRemoteClient
         return new RemoteEntry(name, path, false, Math.Max(0, size), time);
     }
 
-    public async Task DownloadAsync(string path, Stream target, CancellationToken ct)
+    public async Task DownloadAsync(string path, Stream target, long offset, CancellationToken ct)
     {
-        if (!await _client.DownloadStream(target, path, token: ct))
+        // offset: REST before RETR (resuming)
+        if (!await _client.DownloadStream(target, path, restartPosition: Math.Max(0, offset), token: ct))
             throw new IOException($"\"{path}\" could not be downloaded.");
     }
 
-    public async Task UploadAsync(Stream source, string path, CancellationToken ct)
+    public async Task UploadAsync(Stream source, string path, bool append, CancellationToken ct)
     {
-        FtpStatus status = await _client.UploadStream(source, path, FtpRemoteExists.Overwrite, createRemoteDir: false, token: ct);
+        // append: APPE, the source already at the remote file's size (resuming)
+        FtpStatus status = await _client.UploadStream(source, path, append ? FtpRemoteExists.AddToEnd : FtpRemoteExists.Overwrite,
+            createRemoteDir: false, token: ct);
         if (status == FtpStatus.Failed)
             throw new IOException($"\"{path}\" could not be uploaded.");
     }
+
+    /// <summary>Null until AVBL was tried; false: the server doesn't know it (not asked again).</summary>
+    private bool? _hasAvbl;
+
+    public async Task<long?> GetFreeSpaceAsync(string path, CancellationToken ct)
+    {
+        if (_hasAvbl == false)
+            return null;
+        try
+        {
+            // AVBL (draft-peterson-streamlined-ftp-command-extensions): "213 123456"
+            FtpReply reply = await _client.Execute("AVBL " + path, ct);
+            string digits = new(reply.Message.Trim().TakeWhile(char.IsDigit).ToArray());
+            if (reply.Success && long.TryParse(digits, out long free))
+            {
+                _hasAvbl = true;
+                return free;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // not answered: as unknown
+        }
+        _hasAvbl = false;
+        return null;
+    }
+
+    public Task SetModeAsync(string path, int mode, CancellationToken ct) =>
+        _client.Chmod(path, int.Parse(UnixMode.Octal(mode), System.Globalization.CultureInfo.InvariantCulture), ct);
 
     public Task DeleteFileAsync(string path, CancellationToken ct) => _client.DeleteFile(path, ct);
 

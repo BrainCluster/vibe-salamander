@@ -124,7 +124,9 @@ public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
             : Formats.ShortSize(Entry.Size) + "  ·  ") + Formats.Date(Entry.LastWrite);
     public string DateText => Entry.IsUpDir ? string.Empty : Formats.Date(Entry.LastWrite);
     public string TimeText => Entry.IsUpDir ? string.Empty : Formats.Time(Entry.LastWrite);
-    public string AttrText => Entry.IsUpDir ? string.Empty : Formats.Attributes(Entry.Attributes);
+    public string AttrText => Entry.IsUpDir ? string.Empty
+        : Entry.Tag is Plugins.RemoteItem { AttributesText: { Length: > 0 } remote } ? remote // a server's "rwxr-xr-x"
+        : Formats.Attributes(Entry.Attributes);
 
     // ---- drive columns (This PC) -----------------------------------------------------------
 

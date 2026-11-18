@@ -74,6 +74,10 @@ internal sealed class ServerPanelCommands
                         Windows.ApplicationModel.DataTransfer.Clipboard.Clear();
                 }
                 return true;
+            case ServerPanelAction.Permissions when CanSetPermissions(fs, p.Path):
+                await SetPermissionsAsync(p, fs);
+                return true;
+            case ServerPanelAction.Permissions:
             case ServerPanelAction.Explain:
                 _host.Notify(Loc.F("On {0} files can be copied (F5, F6), deleted (F8), renamed (F2) and opened; new directories with F7.",
                     fs.DisplayName), isError: false);
@@ -339,6 +343,48 @@ internal sealed class ServerPanelCommands
             _host.Notify(ex.Message);
         }
         await p.NavigateAsync(p.Path, newName, addToHistory: false);
+    }
+
+    private static bool CanSetPermissions(IPluginFileSystem fs, string directory)
+    {
+        try
+        {
+            return fs.CanSetPermissions(directory);
+        }
+        catch (Exception)
+        {
+            return false; // a plugin built before permissions
+        }
+    }
+
+    /// <summary>Change Attributes on a server: the marked items' (or the focused one's) Unix permissions, as octal digits.</summary>
+    private async Task SetPermissionsAsync(PaneViewModel p, IPluginFileSystem fs)
+    {
+        var items = p.MarkedItems.Where(i => !i.Entry.IsUpDir).ToList();
+        if (items.Count == 0 && p.FocusedItem is { Entry.IsUpDir: false } focused)
+            items.Add(focused);
+        if (items.Count == 0)
+            return;
+        var remote = items.Select(i => RemoteFileSystemProvider.ItemOf(i.Entry)).ToList();
+        var field = new PluginField { Label = Loc.T("Permissions (octal, e.g. 755 or 644)"), Value = remote[0].Permissions ?? string.Empty };
+        string what = remote.Count == 1 ? remote[0].Name : Loc.F("{0} items", remote.Count);
+        string? shown = remote.Count == 1 ? remote[0].AttributesText : null;
+        bool ok = await _main.PluginUi.EditFieldsAsync(Loc.T("Change Permissions"),
+            Loc.F("Of {0}", what) + (string.IsNullOrEmpty(shown) ? string.Empty : "  (" + shown + ")"), new[] { field },
+            () => System.Text.RegularExpressions.Regex.IsMatch(field.Value.Trim(), "^[0-7]{3,4}$")
+                ? null : Loc.T("Permissions are 3 or 4 octal digits, like 755 or 644."));
+        if (!ok)
+            return;
+        try
+        {
+            await Task.Run(() => fs.SetPermissionsAsync(remote, field.Value.Trim(), CancellationToken.None));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _host.Notify(ex.Message);
+        }
+        string? focusName = p.FocusedItem?.Entry.Name;
+        await p.NavigateAsync(p.Path, focusName, addToHistory: false);
     }
 
     /// <summary>The built-in editor saved a file opened from a server: the server gets it back (in the transfer panel).</summary>

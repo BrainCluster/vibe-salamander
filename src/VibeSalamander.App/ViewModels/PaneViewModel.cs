@@ -492,7 +492,7 @@ public sealed partial class PaneViewModel : BindableBase, IDisposable
             ["Size"] = size,
             ["Date"] = Formats.Date(e.LastWrite),
             ["Time"] = Formats.Time(e.LastWrite),
-            ["Attributes"] = Formats.Attributes(e.Attributes),
+            ["Attributes"] = item.AttrText,
             ["Type"] = item.TileType,
             ["Path"] = System.IO.Path.GetDirectoryName(e.FullPath) ?? string.Empty,
             ["FullName"] = e.FullPath,
@@ -513,6 +513,14 @@ public sealed partial class PaneViewModel : BindableBase, IDisposable
             string key = format[(start + 2)..end];
             sb.Append(values.TryGetValue(key, out string? value) ? value : format[start..(end + 1)]);
             i = end + 1;
+        }
+        // what a server says about the item besides: where a link points, the owner
+        if (e.Tag is Plugins.RemoteItem remote)
+        {
+            if (!string.IsNullOrEmpty(remote.LinkTarget))
+                sb.Append(" → ").Append(remote.LinkTarget);
+            if (!string.IsNullOrEmpty(remote.Description))
+                sb.Append(",  ").Append(remote.Description);
         }
         return sb.ToString();
     }

@@ -63,11 +63,40 @@ internal sealed class Transfer
             }
             tracker.Start(item.Entry.Path);
             tracker.ReportTo(_job, force: true);
-            string? local = ResolveLocalConflict(item);
+            (string? local, bool resume) = ResolveLocalConflict(item);
             if (local == null)
             {
                 tracker.AddBytes(item.Entry.Size);
                 tracker.ItemDone();
+                continue;
+            }
+            if (resume)
+            {
+                await WithRetryAsync(item.Entry.Path, async () =>
+                {
+                    // on from where the local file stops (each try again from its current end)
+                    long before = tracker.BytesDone;
+                    try
+                    {
+                        await using (var file = new FileStream(local, FileMode.Append, FileAccess.Write, FileShare.None, 1 << 16))
+                        {
+                            tracker.AddBytes(file.Length);
+                            await using var counted = new JobStream(file, _job, tracker);
+                            await _client.DownloadAsync(item.Entry.Path, counted, file.Length, _ct);
+                        }
+                        if (item.Entry.LastWrite > DateTime.MinValue)
+                            File.SetLastWriteTime(local, item.Entry.LastWrite);
+                    }
+                    catch
+                    {
+                        tracker.SetBytes(before);
+                        throw;
+                    }
+                }, done: () =>
+                {
+                    tracker.ItemDone();
+                    _result.Succeeded++;
+                });
                 continue;
             }
             await WithRetryAsync(item.Entry.Path, async () =>
@@ -79,7 +108,7 @@ internal sealed class Transfer
                 {
                     await using (var file = new FileStream(partial, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16))
                     await using (var counted = new JobStream(file, _job, tracker))
-                        await _client.DownloadAsync(item.Entry.Path, counted, _ct);
+                        await _client.DownloadAsync(item.Entry.Path, counted, 0, _ct);
                     File.Move(partial, local, overwrite: true);
                     if (item.Entry.LastWrite > DateTime.MinValue)
                         File.SetLastWriteTime(local, item.Entry.LastWrite);
@@ -130,28 +159,32 @@ internal sealed class Transfer
         return result.Length == 0 ? "_" : result;
     }
 
-    /// <summary>Where the file goes, or null to skip it (the local file exists: asks).</summary>
-    private string? ResolveLocalConflict(DownloadItem item)
+    /// <summary>Where the file goes, or null to skip it, and whether to resume (the local file exists: asks).</summary>
+    private (string? Path, bool Resume) ResolveLocalConflict(DownloadItem item)
     {
         if (!File.Exists(item.LocalPath))
-            return item.LocalPath;
+            return (item.LocalPath, false);
         var existing = new FileInfo(item.LocalPath);
         ConflictChoice choice = Decide(new ConflictInfo(item.Entry.Path, item.Entry.Size, item.Entry.LastWrite,
-            item.LocalPath, existing.Length, existing.LastWriteTime, IsDirectory: false, TargetAttributes: existing.Attributes),
+            item.LocalPath, existing.Length, existing.LastWriteTime, IsDirectory: false, TargetAttributes: existing.Attributes)
+            { CanResume = CanResume(existing.Length, item.Entry.Size) },
             existing.LastWriteTime < item.Entry.LastWrite);
         switch (choice)
         {
             case ConflictChoice.Skip:
                 _result.Skipped++;
-                return null;
+                return (null, false);
             case ConflictChoice.Rename:
-                return FileOperationEngine.UniqueName(item.LocalPath);
+                return (FileOperationEngine.UniqueName(item.LocalPath), false);
             default:
                 if ((existing.Attributes & FileAttributes.ReadOnly) != 0)
                     File.SetAttributes(item.LocalPath, existing.Attributes & ~FileAttributes.ReadOnly);
-                return item.LocalPath;
+                return (item.LocalPath, choice == ConflictChoice.Resume);
         }
     }
+
+    /// <summary>A smaller target, not empty, looks like an interrupted copy of the source.</summary>
+    internal static bool CanResume(long targetSize, long sourceSize) => targetSize > 0 && targetSize < sourceSize;
 
     // ---- upload -------------------------------------------------------------------------------------
 
@@ -209,10 +242,13 @@ internal sealed class Transfer
             tracker.Start(item.LocalPath);
             tracker.ReportTo(_job, force: true);
             string remotePath = item.RemotePath;
+            bool resume = false;
             if (there.TryGetValue(name, out RemoteEntry? existing))
             {
                 ConflictChoice choice = Decide(new ConflictInfo(item.LocalPath, item.Size, item.LastWrite,
-                    remotePath, existing.Size, existing.LastWrite, IsDirectory: false), existing.LastWrite < item.LastWrite);
+                    remotePath, existing.Size, existing.LastWrite, IsDirectory: false) { CanResume = CanResume(existing.Size, item.Size) },
+                    existing.LastWrite < item.LastWrite);
+                resume = choice == ConflictChoice.Resume;
                 if (choice == ConflictChoice.Skip)
                 {
                     _result.Skipped++;
@@ -229,8 +265,14 @@ internal sealed class Transfer
                 try
                 {
                     await using var file = new FileStream(item.LocalPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 1 << 16);
+                    if (resume && await _client.StatAsync(remotePath, _ct) is { IsDirectory: false } remoteNow && CanResume(remoteNow.Size, file.Length))
+                    {
+                        // on from where the remote file stops (asked again on each try)
+                        file.Position = remoteNow.Size;
+                        tracker.AddBytes(remoteNow.Size);
+                    }
                     await using var counted = new JobStream(file, _job, tracker);
-                    await _client.UploadAsync(counted, remotePath, _ct);
+                    await _client.UploadAsync(counted, remotePath, file.Position > 0, _ct);
                 }
                 catch
                 {
@@ -350,6 +392,11 @@ internal sealed class Transfer
         ConflictChoice choice = _conflictForAll ?? Wait(_job.ResolveConflictAsync(conflict));
         switch (choice)
         {
+            case ConflictChoice.ResumeAll:
+                _conflictForAll = ConflictChoice.Resume;
+                return conflict.CanResume ? ConflictChoice.Resume : ConflictChoice.Overwrite;
+            case ConflictChoice.Resume:
+                return conflict.CanResume ? ConflictChoice.Resume : ConflictChoice.Overwrite;
             case ConflictChoice.OverwriteAll:
                 _conflictForAll = ConflictChoice.Overwrite;
                 return ConflictChoice.Overwrite;

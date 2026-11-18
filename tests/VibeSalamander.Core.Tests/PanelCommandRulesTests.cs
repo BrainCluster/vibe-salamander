@@ -42,7 +42,7 @@ public class PanelCommandRulesTests
     [InlineData(CommandId.View, ServerPanelAction.View)]
     [InlineData(CommandId.Edit, ServerPanelAction.Edit)]
     [InlineData(CommandId.ClipboardPaste, ServerPanelAction.PasteUp)]
-    [InlineData(CommandId.ChangeAttributes, ServerPanelAction.Explain)]
+    [InlineData(CommandId.ChangeAttributes, ServerPanelAction.Permissions)]
     [InlineData(CommandId.CommandShell, ServerPanelAction.Explain)]
     [InlineData(CommandId.Refresh, ServerPanelAction.NotHere)]
     [InlineData(CommandId.GoBack, ServerPanelAction.NotHere)]

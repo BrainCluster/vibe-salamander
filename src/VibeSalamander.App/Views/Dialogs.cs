@@ -178,15 +178,23 @@ public sealed partial class Dialogs
         body.Children.Add(Text(c.TargetPath, bold: true));
         if (!c.IsDirectory)
             body.Children.Add(ConflictCards(c));
-        return ChooseAsync("Confirm Overwrite", body, new[]
+        var choices = new List<(string, ConflictChoice, bool)>
         {
-            ("Overwrite", ConflictChoice.Overwrite, true),
+            ("Overwrite", ConflictChoice.Overwrite, !c.CanResume),
             ("Overwrite All", ConflictChoice.OverwriteAll, false),
             ("Overwrite All Older", ConflictChoice.OverwriteAllOlder, false),
             ("Skip", ConflictChoice.Skip, false),
             ("Skip All", ConflictChoice.SkipAll, false),
             ("Keep Both", ConflictChoice.Rename, false),
-        }, ConflictChoice.Cancel);
+        };
+        if (c.CanResume)
+        {
+            // an interrupted transfer: continuing it is the likely answer
+            body.Children.Add(Text("The target is smaller: it looks like an interrupted transfer, which can be resumed.", secondary: true));
+            choices.Insert(0, ("Resume", ConflictChoice.Resume, true));
+            choices.Insert(1, ("Resume All", ConflictChoice.ResumeAll, false));
+        }
+        return ChooseAsync("Confirm Overwrite", body, choices.ToArray(), ConflictChoice.Cancel);
     }
 
     /// <summary>The two files side by side, the newer and the larger one marked.</summary>

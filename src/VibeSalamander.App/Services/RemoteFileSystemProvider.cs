@@ -116,7 +116,24 @@ public sealed class RemoteFileSystemProvider : IFileSystemProvider
             entries.Add(new FileEntry(item.Name, item.Path, item.IsDirectory, item.IsDirectory ? 0 : item.Size, item.LastWrite,
                 attributes, tag: item));
         }
-        return new DirectoryListing(path, entries) { HiddenCount = hidden };
+        return new DirectoryListing(path, entries) { HiddenCount = hidden, FreeSpace = await FreeSpaceAsync(fs, path, cancellationToken) };
+    }
+
+    /// <summary>The server's free space for the panel, or null (unknown, or not said within 3 seconds).</summary>
+    private static async Task<long?> FreeSpaceAsync(IPluginFileSystem fs, string path, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(3));
+            Task<long?> asked = Task.Run(() => fs.GetFreeSpaceAsync(path, timeout.Token), timeout.Token);
+            Task done = await Task.WhenAny(asked, Task.Delay(Timeout.Infinite, timeout.Token)).ConfigureAwait(false);
+            return done == asked && asked.IsCompletedSuccessfully && asked.Result is >= 0 ? asked.Result : null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            return null; // a plugin built before the question, or a server that doesn't say
+        }
     }
 
     /// <summary>The plugin's item of a panel entry (its listing put it in the tag).</summary>
