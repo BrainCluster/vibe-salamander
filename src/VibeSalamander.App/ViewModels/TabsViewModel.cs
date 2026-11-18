@@ -122,9 +122,6 @@ public sealed class TabsViewModel : BindableBase
 
     private void Describe(TabItemViewModel item, bool shown)
     {
-        string path = shown ? (Pane.IsThisPc ? Core.FileSystem.ThisPcProvider.RootPath : Pane.Path) : item.Tab.Path;
-        if (shown && path.Length > 0)
-            item.Tab.Path = path;
         item.Title = PanelTab.Title(item.Tab.Path);
         string where = item.Tab.Path.StartsWith(Core.FileSystem.ThisPcProvider.RootPath, StringComparison.OrdinalIgnoreCase)
             ? Loc.T("This PC")
@@ -134,9 +131,12 @@ public sealed class TabsViewModel : BindableBase
         item.IsLocked = item.Tab.Locked;
     }
 
-    /// <summary>The panel went elsewhere: the shown tab's caption follows.</summary>
+    /// <summary>The panel went elsewhere: the shown tab's folder and caption follow.</summary>
     private void UpdateShown()
     {
+        string path = Pane.IsThisPc ? Core.FileSystem.ThisPcProvider.RootPath : Pane.Path;
+        if (path.Length > 0)
+            List.Active.Path = path;
         if (List.ActiveIndex < Items.Count)
             Describe(Items[List.ActiveIndex], shown: true);
     }

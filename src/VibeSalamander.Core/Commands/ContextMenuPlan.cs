@@ -236,9 +236,11 @@ public static class ContextMenuPlan
         if (image && !f.MountDiskImages)
             Add("Mount", "", CommandId.MountImage);
         if (directory || archive)
+        {
             Add("Open in other panel", "", CommandId.OpenInOtherPanel);
             Add("Open in new tab", "\uE8A0", CommandId.OpenInNewTab);
             Add("Open in new tab in other panel", "\uE8A0", CommandId.OpenInNewTabOtherPanel);
+        }
         if (!directory && !several && f.CanRunAsAdministrator)
             Add("Run as administrator", "\uE7EF", CommandId.RunAsAdministrator);
         if (!directory && !several)
