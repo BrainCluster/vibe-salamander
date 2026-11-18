@@ -249,7 +249,7 @@ internal sealed class SftpRemoteClient : IRemoteClient
         try
         {
             // statvfs@openssh.com: OpenSSH has it, others may not
-            SftpFileSytemInformation info = _client.GetStatus(path);
+            var info = _client.GetStatus(path);
             ulong unit = info.BlockSize > 0 ? info.BlockSize : info.FileSystemBlockSize;
             return unit == 0 ? null : (long?)(long)Math.Min(long.MaxValue, info.AvailableBlocks * unit);
         }
