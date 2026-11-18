@@ -125,6 +125,7 @@ public sealed class TabsScenarios : IDisposable
         AppSession.WaitUntil(() => app.Items().Contains("report.txt"), "the first tab, with the row closed");
         Assert.Empty(Tabs(app));
 
+        app.GoTo("Projects");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP); // a new tab opens the row again
         WaitTabs(app, "the row back with the new tab", true, "Documents", "Projects", "Projects");
         NoErrors(app);
