@@ -25,6 +25,8 @@
   closes one, and the menu reopens it. Each tab keeps its own folder, history, sort, view, filter, cursor and marks.
   Drag tabs to reorder them (a line shows where they land), onto the other panel to move them (with Ctrl: copy),
   or drop a folder on the row. The shown tab has a close button in its corner under the pointer.
+  Closing the last tab on an FTP / SFTP server asks whether to disconnect; a mounted disk image's tab has
+  Eject in its menu, which unmounts the image and closes its tabs.
   A **locked** tab keeps its folder: going elsewhere from it — a folder, Back, a drive, a hot path, or a command that
   changes the other panel such as Ctrl+Left / Ctrl+Right — opens the new place in a new tab next to it. A folder
   sent to the running program opens in a new tab; Ctrl+U swaps the panels with their tabs; the tabs are remembered.
