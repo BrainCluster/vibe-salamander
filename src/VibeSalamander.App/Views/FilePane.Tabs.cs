@@ -349,6 +349,9 @@ public sealed partial class FilePane
         close.AddHandler(PointerPressedEvent, new PointerEventHandler((_, _) => closeFace.Background = look.ClosePressed), handledEventsToo: true);
         close.AddHandler(PointerReleasedEvent, new PointerEventHandler((_, _) => closeFace.Background = look.CloseHover), handledEventsToo: true);
         _looks.AddOrUpdate(button, look);
+        // Button fades its color (about 80 ms); the address bar under the tab changes at once: the tab must too,
+        // or the two drift apart when the pointer passes quickly
+        button.Loaded += (_, _) => NoColorFade(button);
         AutomationProperties.SetAutomationId(close, "PaneTabClose");
         AutomationProperties.SetName(close, Loc.T("Close tab"));
         ToolTipService.SetToolTip(close, Loc.T("Close tab"));
@@ -489,6 +492,29 @@ public sealed partial class FilePane
             holder.Children.Clear();
             holder.Children.Add(new Image { Source = icon, Width = 16, Height = 16 });
         });
+    }
+
+    /// <summary>Takes the fade out of a button's template (its presenter's BackgroundTransition): colors change at once.</summary>
+    private static void NoColorFade(DependencyObject element)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(element, i);
+            switch (child)
+            {
+                case ContentPresenter presenter:
+                    presenter.BackgroundTransition = null;
+                    break;
+                case Border border:
+                    border.BackgroundTransition = null;
+                    break;
+                case Grid grid:
+                    grid.BackgroundTransition = null;
+                    break;
+            }
+            if (child is not ContentPresenter)
+                NoColorFade(child);
+        }
     }
 
     /// <summary>The pointer is on the address bar: it and the shown tab take the hover tint together.</summary>
