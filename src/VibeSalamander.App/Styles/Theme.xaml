@@ -5,6 +5,8 @@
 
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
+            <!-- the tabs behind the shown one: a duller shape -->
+            <SolidColorBrush x:Key="VibeBackTabBrush" Color="#05000000" />
             <SolidColorBrush x:Key="VibePaneBackgroundBrush" Color="#F7FFFFFF" />
             <SolidColorBrush x:Key="VibePaneBorderBrush" Color="#14000000" />
             <SolidColorBrush x:Key="VibeBarBackgroundBrush" Color="#08000000" />
@@ -14,6 +16,8 @@
             <SolidColorBrush x:Key="VibeUsedTrackBrush" Color="#1A000000" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
+            <!-- the tabs behind the shown one: a duller shape -->
+            <SolidColorBrush x:Key="VibeBackTabBrush" Color="#08FFFFFF" />
             <SolidColorBrush x:Key="VibePaneBackgroundBrush" Color="#4D1C1C1C" />
             <SolidColorBrush x:Key="VibePaneBorderBrush" Color="#19FFFFFF" />
             <SolidColorBrush x:Key="VibeBarBackgroundBrush" Color="#0AFFFFFF" />
@@ -23,6 +27,8 @@
             <SolidColorBrush x:Key="VibeUsedTrackBrush" Color="#26FFFFFF" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="Default">
+            <!-- the tabs behind the shown one: a duller shape -->
+            <SolidColorBrush x:Key="VibeBackTabBrush" Color="#08FFFFFF" />
             <SolidColorBrush x:Key="VibePaneBackgroundBrush" Color="#4D1C1C1C" />
             <SolidColorBrush x:Key="VibePaneBorderBrush" Color="#19FFFFFF" />
             <SolidColorBrush x:Key="VibeBarBackgroundBrush" Color="#0AFFFFFF" />
@@ -32,6 +38,8 @@
             <SolidColorBrush x:Key="VibeUsedTrackBrush" Color="#26FFFFFF" />
         </ResourceDictionary>
         <ResourceDictionary x:Key="HighContrast">
+            <!-- the tabs behind the shown one: a duller shape -->
+            <SolidColorBrush x:Key="VibeBackTabBrush" Color="{ThemeResource SystemColorWindowColor}" />
             <SolidColorBrush x:Key="VibePaneBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
             <SolidColorBrush x:Key="VibePaneBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
             <SolidColorBrush x:Key="VibeBarBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />

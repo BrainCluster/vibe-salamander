@@ -115,6 +115,7 @@ public sealed partial class FilePane : UserControl
     public void RefreshBindings()
     {
         Bindings.Update();
+        RebuildTabs(); // the icon pack may have changed
         UpdateBreadcrumbForeground();
     }
 

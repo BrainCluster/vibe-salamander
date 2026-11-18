@@ -228,7 +228,11 @@ public sealed partial class FilePane
             VerticalAlignment = VerticalAlignment.Center,
             Visibility = item.LockVisibility,
         };
-        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
+        // the folder's icon, as the panels show it (Configuration → Appearance → Icons)
+        var iconHolder = new Grid { Width = 16, Height = 16, VerticalAlignment = VerticalAlignment.Center };
+        SetTabIcon(iconHolder, item);
+        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        content.Children.Add(iconHolder);
         content.Children.Add(lockIcon);
         content.Children.Add(title);
         var button = new Button
@@ -332,6 +336,7 @@ public sealed partial class FilePane
             if (e.PropertyName == nameof(TabItemViewModel.Title))
             {
                 title.Text = item.Title;
+                SetTabIcon(iconHolder, item); // another folder
                 AutomationProperties.SetName(button, item.Title);
             }
             else if (e.PropertyName == nameof(TabItemViewModel.ToolTip))
@@ -350,6 +355,42 @@ public sealed partial class FilePane
         return host;
     }
 
+    /// <summary>
+    /// The tab's folder icon: with Windows' icons the shell's (a drive's own icon for a drive), otherwise the
+    /// Vibe Salamander glyph, in color or in the tab's text color, like the panels. This PC and servers get glyphs.
+    /// </summary>
+    private void SetTabIcon(Grid holder, TabItemViewModel item)
+    {
+        string path = item.Tab.Path;
+        bool thisPc = path.Length == 0 || path == Core.FileSystem.ThisPcProvider.RootPath;
+        bool remote = path.Contains("://", StringComparison.Ordinal);
+        bool driveRoot = !thisPc && !remote && path.Length is 2 or 3 && path[1] == ':';
+        var glyph = new FontIcon
+        {
+            Glyph = thisPc ? "\uE7F4" : remote ? "\uE774" : driveRoot ? "\uEDA2" : "\uE8B7",
+            FontFamily = (FontFamily)Application.Current.Resources["VibeIconFont"],
+            FontSize = 14,
+        };
+        Core.Settings.IconPack pack = UiState.IconPack;
+        if (pack != Core.Settings.IconPack.FluentMonochrome && !thisPc && !remote && !driveRoot)
+            glyph.Foreground = UiState.FolderBrush; // monochrome: the tab's own text color
+        holder.Children.Clear();
+        holder.Children.Add(glyph);
+        if (pack != Core.Settings.IconPack.Windows || thisPc || remote || _main == null)
+            return;
+        string root = driveRoot ? path[..2] + "\" : path;
+        string name = Path.GetFileName(root.TrimEnd('\'));
+        var entry = new Core.FileSystem.FileEntry(name.Length > 0 ? name : root, root, true, 0, DateTime.Now, FileAttributes.Directory,
+            tag: driveRoot ? new Core.FileSystem.DriveEntryInfo { Root = root, Type = DriveType.Unknown } : null);
+        _main.Icons.Request(entry, generic: root.StartsWith(@"\\", StringComparison.Ordinal), icon =>
+        {
+            if (icon == null || item.Tab.Path != path)
+                return; // none, or the tab went elsewhere meanwhile
+            holder.Children.Clear();
+            holder.Children.Add(new Image { Source = icon, Width = 16, Height = 16 });
+        });
+    }
+
     /// <summary>The shown tab looks like the path line under it: accent-filled in the active panel.</summary>
     private void Restyle(Button button, TabItemViewModel item)
     {
@@ -359,13 +400,21 @@ public sealed partial class FilePane
             button.Background = (Brush)Application.Current.Resources[active ? "AccentFillColorDefaultBrush" : "VibeInactivePathBrush"];
             button.Foreground = PathForeground(active);
             button.Padding = new Thickness(12, 5, 32, 5); // room for the close button
+            button.Margin = new Thickness(0);
+            button.MinHeight = 30;
+            button.BorderThickness = new Thickness(0);
             AutomationProperties.SetItemStatus(button, "shown");
         }
         else
         {
-            button.ClearValue(Control.BackgroundProperty);
+            // behind the shown tab, as in File Explorer: a lower, duller shape with a fine outline
+            button.Background = (Brush)Application.Current.Resources["VibeBackTabBrush"];
+            button.BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
+            button.BorderThickness = new Thickness(1, 1, 1, 0);
+            button.Margin = new Thickness(0, 3, 0, 0);
+            button.MinHeight = 27;
             button.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
-            button.Padding = new Thickness(12, 5, 12, 5);
+            button.Padding = new Thickness(11, 3, 11, 4);
             AutomationProperties.SetItemStatus(button, string.Empty);
         }
     }
