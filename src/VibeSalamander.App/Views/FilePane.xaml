@@ -274,91 +274,109 @@
         <!-- directory line: Windows 11 style address bar (This PC > drive > folders; click a folder to go there,
              a chevron for its subfolders, the empty area to type a path), quick search, filter, free space;
              accent-filled when this panel is active -->
-        <Grid Grid.Row="1" Margin="4,2,4,2" MinHeight="26" CornerRadius="4" PointerPressed="DirectoryLine_PointerPressed">
-            <Border Background="{ThemeResource VibeInactivePathBrush}" CornerRadius="4" />
-            <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4"
-                    Visibility="{x:Bind VisibleIf(ViewModel.IsActive), Mode=OneWay}" />
-            <Grid ColumnSpacing="6" Padding="2,0,8,0">
+        <StackPanel Grid.Row="1">
+            <!-- the panel's tabs (FilePane.Tabs.cs): shown from two tabs on, or always (Configuration → Panels) -->
+            <Grid x:Name="TabRow" Margin="4,2,4,0" ColumnSpacing="2" Background="Transparent" AllowDrop="True"
+                  Visibility="Collapsed" DoubleTapped="TabRow_DoubleTapped" DragOver="TabRow_DragOver" Drop="TabRow_Drop">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <!-- drive drop-down (Alt+F1 / Alt+F2): icon of the current drive, click for the drive menu -->
-                <Button x:Name="DriveMenuButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2,4,2"
-                        Click="DriveMenuButton_Click" ToolTipService.ToolTip="Change drive (Alt+F1 / Alt+F2)">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <FontIcon Glyph="{x:Bind ViewModel.DriveMenuGlyph, Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="13"
-                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" VerticalAlignment="Center" />
-                        <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="8" VerticalAlignment="Center"
-                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                    </StackPanel>
+                <ScrollViewer x:Name="TabScroller" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                              HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
+                    <StackPanel x:Name="TabStrip" Orientation="Horizontal" Spacing="2" />
+                </ScrollViewer>
+                <Button x:Name="NewTabButton" Grid.Column="1" Style="{StaticResource VibeToolButtonStyle}" Padding="6,3"
+                        Click="NewTabButton_Click" AutomationProperties.Name="New tab">
+                    <FontIcon Glyph="&#xE710;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
                 </Button>
-                <Grid x:Name="BreadcrumbHost" Grid.Column="1" SizeChanged="BreadcrumbHost_SizeChanged">
-                    <StackPanel x:Name="Breadcrumb" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" />
-                </Grid>
-                <TextBox x:Name="PathEditor" Grid.Column="1" Visibility="Collapsed" MinHeight="0" Padding="6,2"
-                         VerticalAlignment="Center" KeyDown="PathEditor_KeyDown" LostFocus="PathEditor_LostFocus" />
-                <Border Grid.Column="2" Visibility="{x:Bind VisibleIfText(ViewModel.QuickSearch), Mode=OneWay}"
-                        CornerRadius="3" Padding="6,0">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <FontIcon Glyph="&#xE721;" FontFamily="{StaticResource VibeIconFont}" FontSize="11" VerticalAlignment="Center" />
-                        <TextBlock Text="{x:Bind ViewModel.QuickSearch, Mode=OneWay}" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="3" Visibility="{x:Bind VisibleIfText(ViewModel.FilterText), Mode=OneWay}"
-                        CornerRadius="3" Padding="6,0"
-                        ToolTipService.ToolTip="Panel filter (Ctrl+F12)">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <FontIcon Glyph="&#xE71C;" FontFamily="{StaticResource VibeIconFont}" FontSize="11" VerticalAlignment="Center" />
-                        <TextBlock Text="{x:Bind ViewModel.Filter, Mode=OneWay}" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Border>
-                <ProgressRing Grid.Column="4" IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" Width="14" Height="14"
-                              Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                <TextBlock Grid.Column="5" Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"
-                           Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
-                           VerticalAlignment="Center" Opacity="0.85" />
-                <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="0" Margin="0,0,-6,0">
-                    <!-- maximize / restore this panel (Configuration → Appearance) -->
-                    <Button x:Name="MaximizeButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
-                            Click="MaximizeButton_Click" ToolTipService.ToolTip="Maximize / restore panel (Ctrl+F11)">
-                        <FontIcon Glyph="&#xE740;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
-                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                    </Button>
-                    <!-- the hot paths (Shift+F9; Ctrl+1…9 go to them, Ctrl+Shift+1…9 set them) -->
-                    <Button x:Name="HotPathsButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
-                            Click="HotPathsButton_Click" ToolTipService.ToolTip="Hot paths (Shift+F9)">
-                        <FontIcon Glyph="&#xE734;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
-                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                    </Button>
-                    <!-- the command line history (Alt+F8) -->
-                    <Button x:Name="CommandHistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
-                            Click="CommandHistoryButton_Click" ToolTipService.ToolTip="Command line history (Alt+F8)"
-                            AutomationProperties.Name="Command line history">
-                        <FontIcon Glyph="&#xE81C;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
-                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                    </Button>
-                    <!-- the recently opened files (Alt+F11) -->
-                    <Button x:Name="OpenedFilesButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
-                            Click="OpenedFilesButton_Click" ToolTipService.ToolTip="Opened files (Alt+F11)"
-                            AutomationProperties.Name="Opened files">
-                        <FontIcon Glyph="&#xE8A5;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
-                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                    </Button>
-                    <!-- recent locations, like the drop-down at the end of Explorer's address bar (Alt+F12) -->
-                    <Button x:Name="HistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
-                            Click="HistoryButton_Click" ToolTipService.ToolTip="Working directories (Alt+F12)">
-                        <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
-                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                    </Button>
-                </StackPanel>
             </Grid>
-        </Grid>
+            <Grid Margin="4,2,4,2" MinHeight="26" CornerRadius="4" PointerPressed="DirectoryLine_PointerPressed">
+                <Border Background="{ThemeResource VibeInactivePathBrush}" CornerRadius="4" />
+                <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4"
+                        Visibility="{x:Bind VisibleIf(ViewModel.IsActive), Mode=OneWay}" />
+                <Grid ColumnSpacing="6" Padding="2,0,8,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <!-- drive drop-down (Alt+F1 / Alt+F2): icon of the current drive, click for the drive menu -->
+                    <Button x:Name="DriveMenuButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2,4,2"
+                            Click="DriveMenuButton_Click" ToolTipService.ToolTip="Change drive (Alt+F1 / Alt+F2)">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <FontIcon Glyph="{x:Bind ViewModel.DriveMenuGlyph, Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="13"
+                                      Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" VerticalAlignment="Center" />
+                            <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="8" VerticalAlignment="Center"
+                                      Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                        </StackPanel>
+                    </Button>
+                    <Grid x:Name="BreadcrumbHost" Grid.Column="1" SizeChanged="BreadcrumbHost_SizeChanged">
+                        <StackPanel x:Name="Breadcrumb" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBox x:Name="PathEditor" Grid.Column="1" Visibility="Collapsed" MinHeight="0" Padding="6,2"
+                             VerticalAlignment="Center" KeyDown="PathEditor_KeyDown" LostFocus="PathEditor_LostFocus" />
+                    <Border Grid.Column="2" Visibility="{x:Bind VisibleIfText(ViewModel.QuickSearch), Mode=OneWay}"
+                            CornerRadius="3" Padding="6,0">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <FontIcon Glyph="&#xE721;" FontFamily="{StaticResource VibeIconFont}" FontSize="11" VerticalAlignment="Center" />
+                            <TextBlock Text="{x:Bind ViewModel.QuickSearch, Mode=OneWay}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="3" Visibility="{x:Bind VisibleIfText(ViewModel.FilterText), Mode=OneWay}"
+                            CornerRadius="3" Padding="6,0"
+                            ToolTipService.ToolTip="Panel filter (Ctrl+F12)">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <FontIcon Glyph="&#xE71C;" FontFamily="{StaticResource VibeIconFont}" FontSize="11" VerticalAlignment="Center" />
+                            <TextBlock Text="{x:Bind ViewModel.Filter, Mode=OneWay}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <ProgressRing Grid.Column="4" IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" Width="14" Height="14"
+                                  Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                    <TextBlock Grid.Column="5" Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"
+                               Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
+                               VerticalAlignment="Center" Opacity="0.85" />
+                    <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="0" Margin="0,0,-6,0">
+                        <!-- maximize / restore this panel (Configuration → Appearance) -->
+                        <Button x:Name="MaximizeButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                                Click="MaximizeButton_Click" ToolTipService.ToolTip="Maximize / restore panel (Ctrl+F11)">
+                            <FontIcon Glyph="&#xE740;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                      Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                        </Button>
+                        <!-- the hot paths (Shift+F9; Ctrl+1…9 go to them, Ctrl+Shift+1…9 set them) -->
+                        <Button x:Name="HotPathsButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                                Click="HotPathsButton_Click" ToolTipService.ToolTip="Hot paths (Shift+F9)">
+                            <FontIcon Glyph="&#xE734;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                      Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                        </Button>
+                        <!-- the command line history (Alt+F8) -->
+                        <Button x:Name="CommandHistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                                Click="CommandHistoryButton_Click" ToolTipService.ToolTip="Command line history (Alt+F8)"
+                                AutomationProperties.Name="Command line history">
+                            <FontIcon Glyph="&#xE81C;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                      Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                        </Button>
+                        <!-- the recently opened files (Alt+F11) -->
+                        <Button x:Name="OpenedFilesButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                                Click="OpenedFilesButton_Click" ToolTipService.ToolTip="Opened files (Alt+F11)"
+                                AutomationProperties.Name="Opened files">
+                            <FontIcon Glyph="&#xE8A5;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                      Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                        </Button>
+                        <!-- recent locations, like the drop-down at the end of Explorer's address bar (Alt+F12) -->
+                        <Button x:Name="HistoryButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
+                                Click="HistoryButton_Click" ToolTipService.ToolTip="Working directories (Alt+F12)">
+                            <FontIcon Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10"
+                                      Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </StackPanel>
 
         <!-- header line (files, Detailed view): click to sort, drag the grips to resize, right-click to choose columns -->
         <Grid x:Name="FileHeader" Grid.Row="2" Height="24" Padding="16,0,4,0" Background="Transparent"

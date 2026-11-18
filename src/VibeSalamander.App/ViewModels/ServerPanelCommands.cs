@@ -91,9 +91,8 @@ internal sealed class ServerPanelCommands
     /// </summary>
     public async Task<bool> ConfirmLeaveAsync(PaneViewModel pane, string serverPath)
     {
-        PaneViewModel other = pane == _main.Left ? _main.Right : _main.Left;
-        if (other.IsRemote && RemoteFileSystemProvider.SameServer(other.Path, serverPath))
-            return true; // still in use there
+        if (_main.ServerUsedElsewhere(pane, serverPath))
+            return true; // still in use: in the other panel, or in a tab
         IPluginFileSystem? fs = Servers.FileSystemOf(serverPath);
         if (fs == null || !SafeIsConnected(fs, serverPath))
             return true; // nothing to disconnect (already disconnected)

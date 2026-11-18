@@ -181,4 +181,18 @@ public enum CommandId
     CopyAsShortcut,
     // the focused program, installer, script or shortcut with administrator rights (Ctrl+Shift+Enter in Explorer)
     RunAsAdministrator,
+
+    // tabs: each panel's tabs (a row above the panel from two tabs on)
+    NewTab,
+    CloseTab,
+    NextTab,
+    PreviousTab,
+    // the folder under the caret in a new tab (Ctrl+Up), in the other panel (Ctrl+Shift+Up)
+    OpenInNewTab,
+    OpenInNewTabOtherPanel,
+    LockTab,
+    CloseOtherTabs,
+    ReopenClosedTab,
+    // the shown tab, copied into the other panel's tabs
+    CopyTabToOtherPanel,
 }

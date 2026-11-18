@@ -89,7 +89,7 @@ public partial class App : Application
                 parts.RemoveAt(0);
             StartupArguments arguments = StartupArguments.Parse(parts);
             if (!arguments.IsEmpty)
-                _ = _window.ApplyArgumentsAsync(arguments);
+                _ = _window.ApplyArgumentsAsync(arguments, running: true); // into new tabs
         }
     }
 

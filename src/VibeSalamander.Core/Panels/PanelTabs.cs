@@ -77,7 +77,9 @@ public sealed class PanelTab
         string trimmed = path.TrimEnd('\\');
         if (trimmed.Length == 2 && trimmed[1] == ':')
             return trimmed.ToUpperInvariant(); // a drive
-        string last = System.IO.Path.GetFileName(trimmed);
+        // the last part ("share" of \\server\share too, which Windows counts as a root without a name)
+        int separator = trimmed.LastIndexOf('\\');
+        string last = separator < 0 ? trimmed : trimmed[(separator + 1)..];
         return last.Length > 0 ? last : trimmed;
     }
 }

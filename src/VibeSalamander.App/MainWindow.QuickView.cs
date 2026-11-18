@@ -103,7 +103,9 @@ public sealed partial class MainWindow
     /// <summary>The command line's -L / -R / -A folders and -P panel (also from a second start).</summary>
     public Core.Settings.StartupArguments? StartupArguments { get; set; }
 
-    public async Task ApplyArgumentsAsync(Core.Settings.StartupArguments arguments)
+    /// <param name="running">Sent to the running program (a second start): the folders open in new tabs instead of
+    /// replacing what the panels show.</param>
+    public async Task ApplyArgumentsAsync(Core.Settings.StartupArguments arguments, bool running = false)
     {
         if (arguments.Panel == 1)
             _vm.Activate(_vm.Left);
@@ -114,9 +116,19 @@ public sealed partial class MainWindow
             if (string.IsNullOrWhiteSpace(path))
                 return;
             if (File.Exists(path))
-                await pane.NavigateAsync(Path.GetDirectoryName(path)!, Path.GetFileName(path));
+            {
+                if (running)
+                    await _vm.OpenInNewTabAsync(pane, Path.GetDirectoryName(path)!, Path.GetFileName(path));
+                else
+                    await pane.NavigateAsync(Path.GetDirectoryName(path)!, Path.GetFileName(path));
+            }
             else if (Directory.Exists(path))
-                await pane.NavigateAsync(path);
+            {
+                if (running)
+                    await _vm.OpenInNewTabAsync(pane, path);
+                else
+                    await pane.NavigateAsync(path);
+            }
             else
                 Notify(Loc.F("\"{0}\" doesn't exist.", path), isError: true, log: false);
         }

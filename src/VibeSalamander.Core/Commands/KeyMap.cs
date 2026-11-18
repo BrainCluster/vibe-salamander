@@ -76,6 +76,13 @@ public sealed class KeyMap
         m.Bind(VK.R, C, CommandId.Refresh);
         m.Bind(VK.Tab, N, CommandId.SwitchPanel);
         m.Bind(VK.U, C, CommandId.SwapPanels);
+        // tabs: Ctrl+T and Ctrl+W are Salamander's (a shortcut's target, restore the selection), so with Shift here
+        m.Bind(VK.T, C | S, CommandId.NewTab);
+        m.Bind(VK.W, C | S, CommandId.CloseTab);
+        m.Bind(VK.Tab, C, CommandId.NextTab);
+        m.Bind(VK.Tab, C | S, CommandId.PreviousTab);
+        m.Bind(VK.Up, C, CommandId.OpenInNewTab);
+        m.Bind(VK.Up, C | S, CommandId.OpenInNewTabOtherPanel);
         m.Bind(VK.F11, C, CommandId.MaximizePanel);
         m.Bind(VK.F3, C, CommandId.SortByName);
         m.Bind(VK.F4, C, CommandId.SortByExtension);
@@ -268,6 +275,14 @@ public sealed class KeyMap
         m.Bind(VK.Right, C, CommandId.OpenInOtherPanel);
         m.Bind(VK.U, C, CommandId.SwapPanels);
         m.Bind(VK.R, C, CommandId.Refresh);
+        // Total Commander's tab keys
+        m.Bind(VK.T, C, CommandId.NewTab);
+        m.Bind(VK.W, C, CommandId.CloseTab);
+        m.Bind(VK.W, C | S, CommandId.CloseOtherTabs);
+        m.Bind(VK.Tab, C, CommandId.NextTab);
+        m.Bind(VK.Tab, C | S, CommandId.PreviousTab);
+        m.Bind(VK.Up, C, CommandId.OpenInNewTab);
+        m.Bind(VK.Up, C | S, CommandId.OpenInNewTabOtherPanel);
         m.Bind(VK.Period, C, CommandId.PathFromOtherPanel);
         m.Bind(VK.H, C, CommandId.ToggleHiddenFiles);
         m.Bind(VK.D1, A, CommandId.ViewBrief);

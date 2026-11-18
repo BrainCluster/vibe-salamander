@@ -108,6 +108,7 @@ public sealed partial class FilePane : UserControl
         ApplyViewMode();
         Bindings.Update();
         RebuildBreadcrumb();
+        InitializeTabs(main.TabsOf(viewModel));
     }
 
     /// <summary>Re-evaluates the x:Bind bindings (after theme changes).</summary>

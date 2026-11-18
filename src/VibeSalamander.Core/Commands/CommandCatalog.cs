@@ -104,6 +104,16 @@ public static class CommandCatalog
         [CommandId.TestArchive] = "Test archive",
         [CommandId.MakeSelfExtractingArchive] = "Make self-extracting archive...",
         [CommandId.ArchiveComment] = "Archive comment...",
+        [CommandId.NewTab] = "New tab",
+        [CommandId.CloseTab] = "Close tab",
+        [CommandId.NextTab] = "Next tab",
+        [CommandId.PreviousTab] = "Previous tab",
+        [CommandId.OpenInNewTab] = "Open in new tab",
+        [CommandId.OpenInNewTabOtherPanel] = "Open in new tab in other panel",
+        [CommandId.LockTab] = "Lock / unlock tab",
+        [CommandId.CloseOtherTabs] = "Close other tabs",
+        [CommandId.ReopenClosedTab] = "Reopen closed tab",
+        [CommandId.CopyTabToOtherPanel] = "Copy tab to other panel",
     };
 
     /// <summary>A readable name ("Compare directories..."); others are derived from the id ("Sort by name").</summary>
@@ -174,6 +184,7 @@ public static class CommandCatalog
         CommandId.FlatView or CommandId.QuickView or CommandId.HotPathList => "Panels",
         CommandId.NameToCommandLine or CommandId.FullNameToCommandLine or CommandId.PathToCommandLine or CommandId.CommandHistory => "Commands",
         CommandId.PluginsManager => "Options",
+        >= CommandId.NewTab and <= CommandId.CopyTabToOtherPanel => "Panels",
         <= CommandId.Filter => "Panels",
         <= CommandId.CommandShell => "Files",
         <= CommandId.GoToNextSelected => "Selection",

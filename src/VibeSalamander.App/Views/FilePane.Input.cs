@@ -69,6 +69,14 @@ public sealed partial class FilePane
 
     private void List_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
+        // a middle click on a folder opens it in a new tab behind the shown one, as in browsers
+        if (ViewModel != null && _main != null && !IsRenaming && e.GetCurrentPoint(FileList).Properties.IsMiddleButtonPressed &&
+            (e.OriginalSource as FrameworkElement)?.DataContext is FileItemViewModel folder)
+        {
+            e.Handled = true;
+            _ = _main.OpenInBackgroundTabAsync(ViewModel, folder);
+            return;
+        }
         if (ViewModel == null || IsRenaming || !e.GetCurrentPoint(FileList).Properties.IsLeftButtonPressed)
             return;
         _marquee.Pressed(e);

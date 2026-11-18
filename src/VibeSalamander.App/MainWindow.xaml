@@ -59,6 +59,21 @@
                     <MenuFlyoutItem Text="Size" Tag="SortBySize" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F6" />
                     <MenuFlyoutItem Text="Attributes" Tag="SortByAttributes" Click="LeftMenu_Click" />
                 </MenuFlyoutSubItem>
+                <MenuFlyoutSubItem Text="Tabs">
+                    <MenuFlyoutItem Text="New Tab" Tag="NewTab" Click="LeftMenu_Click" />
+                    <MenuFlyoutItem Text="Open in New Tab" Tag="OpenInNewTab" Click="LeftMenu_Click" />
+                    <MenuFlyoutItem Text="Open in New Tab in Other Panel" Tag="OpenInNewTabOtherPanel" Click="LeftMenu_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Next Tab" Tag="NextTab" Click="LeftMenu_Click" />
+                    <MenuFlyoutItem Text="Previous Tab" Tag="PreviousTab" Click="LeftMenu_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Lock / Unlock Tab" Tag="LockTab" Click="LeftMenu_Click" />
+                    <MenuFlyoutItem Text="Copy Tab to Other Panel" Tag="CopyTabToOtherPanel" Click="LeftMenu_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Close Tab" Tag="CloseTab" Click="LeftMenu_Click" />
+                    <MenuFlyoutItem Text="Close Other Tabs" Tag="CloseOtherTabs" Click="LeftMenu_Click" />
+                    <MenuFlyoutItem Text="Reopen Closed Tab" Tag="ReopenClosedTab" Click="LeftMenu_Click" />
+                </MenuFlyoutSubItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Maximize/Restore" Tag="MaximizePanel" Click="LeftMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F11" />
                 <MenuFlyoutItem Text="Swap Panels" Tag="SwapPanels" Click="Menu_Click" KeyboardAcceleratorTextOverride="Ctrl+U" />
@@ -256,6 +271,21 @@
                     <MenuFlyoutItem Text="Date" Tag="SortByDate" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F5" />
                     <MenuFlyoutItem Text="Size" Tag="SortBySize" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F6" />
                     <MenuFlyoutItem Text="Attributes" Tag="SortByAttributes" Click="RightMenu_Click" />
+                </MenuFlyoutSubItem>
+                <MenuFlyoutSubItem Text="Tabs">
+                    <MenuFlyoutItem Text="New Tab" Tag="NewTab" Click="RightMenu_Click" />
+                    <MenuFlyoutItem Text="Open in New Tab" Tag="OpenInNewTab" Click="RightMenu_Click" />
+                    <MenuFlyoutItem Text="Open in New Tab in Other Panel" Tag="OpenInNewTabOtherPanel" Click="RightMenu_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Next Tab" Tag="NextTab" Click="RightMenu_Click" />
+                    <MenuFlyoutItem Text="Previous Tab" Tag="PreviousTab" Click="RightMenu_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Lock / Unlock Tab" Tag="LockTab" Click="RightMenu_Click" />
+                    <MenuFlyoutItem Text="Copy Tab to Other Panel" Tag="CopyTabToOtherPanel" Click="RightMenu_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="Close Tab" Tag="CloseTab" Click="RightMenu_Click" />
+                    <MenuFlyoutItem Text="Close Other Tabs" Tag="CloseOtherTabs" Click="RightMenu_Click" />
+                    <MenuFlyoutItem Text="Reopen Closed Tab" Tag="ReopenClosedTab" Click="RightMenu_Click" />
                 </MenuFlyoutSubItem>
                 <MenuFlyoutSeparator />
                 <MenuFlyoutItem Text="Maximize/Restore" Tag="MaximizePanel" Click="RightMenu_Click" KeyboardAcceleratorTextOverride="Ctrl+F11" />

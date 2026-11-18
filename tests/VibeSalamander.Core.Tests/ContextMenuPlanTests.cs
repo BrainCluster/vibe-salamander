@@ -142,10 +142,24 @@ public class ContextMenuPlanTests
     }
 
     [Fact]
+    public void A_folder_opens_in_a_new_tab_here_or_in_the_other_panel()
+    {
+        CommandId[] folder = Commands(Plan(AFile with { IsDirectory = true }));
+        CommandId[] file = Commands(Plan(AFile));
+
+        Assert.Equal(new[] { CommandId.Open, CommandId.OpenInOtherPanel, CommandId.OpenInNewTab, CommandId.OpenInNewTabOtherPanel }, folder.Take(4));
+        Assert.DoesNotContain(CommandId.OpenInNewTab, file);
+    }
+
+    [Fact]
     public void Drives_and_servers()
     {
         CommandId[] drive = Commands(Plan(new ContextMenuFacts { Target = ContextMenuTarget.Drive, IsMountedImageDrive = true }));
-        Assert.Equal(new[] { CommandId.Open, CommandId.OpenInOtherPanel, CommandId.UnmountImage, CommandId.DriveInformation, CommandId.Properties }, drive);
+        Assert.Equal(new[]
+        {
+            CommandId.Open, CommandId.OpenInOtherPanel, CommandId.OpenInNewTab, CommandId.OpenInNewTabOtherPanel,
+            CommandId.UnmountImage, CommandId.DriveInformation, CommandId.Properties,
+        }, drive);
 
         CommandId[] remoteFile = Commands(Plan(new ContextMenuFacts { Target = ContextMenuTarget.RemoteItem }));
         Assert.Contains(CommandId.View, remoteFile);

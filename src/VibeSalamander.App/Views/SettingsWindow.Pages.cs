@@ -172,6 +172,13 @@ public sealed partial class SettingsWindow
         }));
         page.Children.Add(Toggle("Include directories in select / unselect operations", "Num +, Num -, Num * (invert) and Select All.",
             p.SelectIncludesDirectories, v => p.SelectIncludesDirectories = v, display: true));
+        page.Children.Add(Toggle("Always show the row of tabs", "Otherwise it shows from two tabs on (Ctrl+Shift+T or Ctrl+T opens a tab).",
+            p.AlwaysShowTabs, v =>
+            {
+                p.AlwaysShowTabs = v;
+                _vm.LeftTabs.ApplyOptions();
+                _vm.RightTabs.ApplyOptions();
+            }));
         page.Children.Add(Choice("Show names", null, new[]
         {
             ("As they are stored on the disk", NameCasing.AsStored),

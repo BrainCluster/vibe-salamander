@@ -128,6 +128,8 @@ public static class ContextMenuPlan
             case ContextMenuTarget.Drive:
                 Add("Open", "", CommandId.Open, bold: true);
                 Add("Open in other panel", "", CommandId.OpenInOtherPanel);
+                Add("Open in new tab", "\uE8A0", CommandId.OpenInNewTab);
+                Add("Open in new tab in other panel", "\uE8A0", CommandId.OpenInNewTabOtherPanel);
                 if (f.IsMountedImageDrive)
                     Add("Unmount", "", CommandId.UnmountImage);
                 Separator();
@@ -235,6 +237,8 @@ public static class ContextMenuPlan
             Add("Mount", "", CommandId.MountImage);
         if (directory || archive)
             Add("Open in other panel", "", CommandId.OpenInOtherPanel);
+            Add("Open in new tab", "\uE8A0", CommandId.OpenInNewTab);
+            Add("Open in new tab in other panel", "\uE8A0", CommandId.OpenInNewTabOtherPanel);
         if (!directory && !several && f.CanRunAsAdministrator)
             Add("Run as administrator", "\uE7EF", CommandId.RunAsAdministrator);
         if (!directory && !several)

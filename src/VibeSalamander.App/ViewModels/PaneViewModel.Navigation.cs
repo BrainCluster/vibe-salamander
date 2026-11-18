@@ -29,8 +29,11 @@ public sealed partial class PaneViewModel
         }
         if (provider is LocalFileSystemProvider)
             path = PathUtil.NormalizeDirectory(path);
+        // a locked tab keeps its folder: going elsewhere goes on in a new tab next to it
+        if (addToHistory && !_showingTab && _path.Length > 0 && !string.Equals(path, _path, StringComparison.OrdinalIgnoreCase))
+            LeavingTab?.Invoke(this);
         // leaving a server (FTP, SFTP): asked whether to disconnect; no = the panel stays
-        if (_provider is RemoteFileSystemProvider && LeavingServer != null &&
+        if (_provider is RemoteFileSystemProvider && LeavingServer != null && !_showingTab &&
             !RemoteFileSystemProvider.SameServer(_path, path) && !await LeavingServer(this, _path))
             return;
 
@@ -125,6 +128,8 @@ public sealed partial class PaneViewModel
 
     public async Task GoBackAsync()
     {
+        if (_history.CanGoBack)
+            LeavingTab?.Invoke(this); // from a locked tab: Back goes on in a new tab
         string? target = _history.GoBack(_path);
         if (target != null)
             await NavigateAsync(target, addToHistory: false);
@@ -134,6 +139,8 @@ public sealed partial class PaneViewModel
 
     public async Task GoForwardAsync()
     {
+        if (_history.CanGoForward)
+            LeavingTab?.Invoke(this);
         string? target = _history.GoForward(_path);
         if (target != null)
             await NavigateAsync(target, addToHistory: false);
@@ -178,15 +185,21 @@ public sealed partial class PaneViewModel
         }
     }
 
-    private async Task<bool> LoadAsync(IFileSystemProvider provider, string path, string? focusName, bool keepCaret)
+    /// <summary>The last load was cancelled by a newer one (not a failure to show).</summary>
+    private bool _loadCancelled;
+
+    /// <param name="marks">Names to mark in the new listing (a tab shown again); a refresh keeps the marks it has.</param>
+    private async Task<bool> LoadAsync(IFileSystemProvider provider, string path, string? focusName, bool keepCaret,
+        HashSet<string>? marks = null)
     {
         _loadCts?.Cancel();
         var cts = new CancellationTokenSource();
         _loadCts = cts;
+        _loadCancelled = false;
         IsLoading = true;
         HashSet<string>? marked = keepCaret
             ? new HashSet<string>(_items.Where(i => i.IsMarked).Select(i => i.Entry.Name), StringComparer.OrdinalIgnoreCase)
-            : null;
+            : marks;
         int previousCaret = _caretIndex;
 
         DirectoryListing listing;
@@ -196,6 +209,7 @@ public sealed partial class PaneViewModel
         }
         catch (OperationCanceledException)
         {
+            _loadCancelled = true;
             return false;
         }
         finally
@@ -204,7 +218,10 @@ public sealed partial class PaneViewModel
                 IsLoading = false;
         }
         if (cts.IsCancellationRequested)
+        {
+            _loadCancelled = true;
             return false;
+        }
 
         // A missing/inaccessible directory: keep the current listing, show the error.
         if (listing.Error != null && listing.Entries.Count <= 1 && !string.Equals(path, _path, StringComparison.OrdinalIgnoreCase) && _path.Length > 0)

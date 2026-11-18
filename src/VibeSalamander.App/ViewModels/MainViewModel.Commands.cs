@@ -96,6 +96,17 @@ public sealed partial class MainViewModel
         });
         t.AddSync(CommandId.SwitchPanel, _ => { Activate(Inactive); _host.FocusPane(_active); });
         t.Add(CommandId.SwapPanels, _ => SwapPanelsAsync());
+        // tabs
+        t.Add(CommandId.NewTab, NewTabAsync);
+        t.Add(CommandId.CloseTab, CloseTabAsync);
+        t.Add(CommandId.CloseOtherTabs, CloseOtherTabsAsync);
+        t.Add(CommandId.NextTab, p => SwitchTabAsync(p, next: true));
+        t.Add(CommandId.PreviousTab, p => SwitchTabAsync(p, next: false));
+        t.Add(CommandId.OpenInNewTab, OpenInNewTabAsync);
+        t.Add(CommandId.OpenInNewTabOtherPanel, OpenInNewTabOtherPanelAsync);
+        t.Add(CommandId.ReopenClosedTab, ReopenClosedTabAsync);
+        t.AddSync(CommandId.LockTab, ToggleLockTab);
+        t.Add(CommandId.CopyTabToOtherPanel, p => CopyTabToOtherPanelAsync(p));
         t.AddSync(CommandId.MaximizePanel, p =>
         {
             _maximized = _maximized == null ? p : null;
@@ -378,6 +389,11 @@ public sealed partial class MainViewModel
 
     private async Task SwapPanelsAsync()
     {
+        if (LeftTabs.Count > 1 || RightTabs.Count > 1)
+        {
+            await SwapTabsAsync(); // the panels change places with all their tabs, as in Total Commander
+            return;
+        }
         string left = Left.IsThisPc ? ThisPcProvider.RootPath : Left.Path;
         string right = Right.IsThisPc ? ThisPcProvider.RootPath : Right.Path;
         await Task.WhenAll(Left.NavigateAsync(right), Right.NavigateAsync(left));

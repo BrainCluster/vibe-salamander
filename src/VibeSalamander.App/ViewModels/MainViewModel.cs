@@ -57,6 +57,9 @@ public sealed partial class MainViewModel : BindableBase
         Right = new PaneViewModel("Right", Registry, dispatcher, Icons, Settings.Right, () => Settings.ShowHidden, () => Settings);
         _active = Settings.RightPanelActive ? Right : Left;
         _active.IsActive = true;
+        Settings.Panels ??= new PanelOptions();
+        LeftTabs = CreateTabs(Left, Settings.Left);
+        RightTabs = CreateTabs(Right, Settings.Right);
         Settings.UserMenu ??= UserMenu.CreateDefaults();
         Settings.Compare ??= new CompareOptions();
         Settings.OpenedFiles ??= new List<string>();
@@ -284,6 +287,8 @@ public sealed partial class MainViewModel : BindableBase
             return;
         Left.StoreSettings(Settings.Left);
         Right.StoreSettings(Settings.Right);
+        StoreTabs(LeftTabs, Settings.Left);
+        StoreTabs(RightTabs, Settings.Right);
         Settings.RightPanelActive = _active == Right;
 
         // Configuration → History: lists that should not be kept are left out of the file (they stay in memory)
