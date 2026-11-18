@@ -56,7 +56,7 @@ public sealed partial class MainViewModel
         {
             string text = $"{Path.GetFileName(p.File)}: {(p.Outcome == ConversionOutcome.Unencodable ? Loc.T("left alone, ") : string.Empty)}{p.Problem}";
             notes.Add(text);
-            ErrorLog.Error("Convert " + text);
+            ErrorLog.Error("Convert", text);
         }
         _host.Notify(string.Join("; ", notes), isError: problems.Count > 0);
     }
