@@ -337,7 +337,8 @@
                     </Grid.ColumnDefinitions>
                     <!-- drive drop-down (Alt+F1 / Alt+F2): icon of the current drive, click for the drive menu -->
                     <Button x:Name="DriveMenuButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2,4,2"
-                            Click="DriveMenuButton_Click" ToolTipService.ToolTip="Change drive (Alt+F1 / Alt+F2)">
+                            Click="DriveMenuButton_Click" ToolTipService.ToolTip="Change drive (Alt+F1 / Alt+F2)"
+                            AutomationProperties.AutomationId="DriveMenuButton">
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <FontIcon Glyph="{x:Bind ViewModel.DriveMenuGlyph, Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="13"
                                       Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" VerticalAlignment="Center" />
