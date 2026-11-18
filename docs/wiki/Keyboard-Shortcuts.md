@@ -23,12 +23,26 @@ to its keys; they are listed [at the end of this page](#total-commander-shortcut
 | Ctrl+B | All files of the subfolders (again: back) |
 | Ctrl+Q | Quick view in the other panel |
 | typing | Quick search |
-| Ctrl+U | Swap panels |
+| Ctrl+U | Swap panels (with their tabs) |
 | Ctrl+F11 | Maximize / restore the panel |
 | Ctrl+R | Refresh |
 | Ctrl+H | Show hidden and system files |
 | Ctrl+F12 | Filter |
 | Shift+F3 | Open the folder in Explorer |
+
+## Tabs
+
+| Keys | Action |
+|---|---|
+| Ctrl+Shift+T (Total Commander keys: Ctrl+T) | New tab of the same folder |
+| Ctrl+Up | The folder under the cursor in a new tab |
+| Ctrl+Shift+Up | The folder under the cursor in a new tab of the other panel |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous tab |
+| Ctrl+Shift+W (Total Commander keys: Ctrl+W) | Close the tab |
+| middle click on a folder / on a tab | Open it in a background tab / close the tab |
+
+More in the Left / Right menu → **Tabs** and a tab's right-click menu: lock, copy to the other panel, close the
+others, reopen a closed tab.
 
 ## Views and sorting
 
@@ -162,7 +176,7 @@ With *Shortcuts like: Total Commander* (Configuration → Keyboard). Your own ch
 | Alt+Down | Folder history |
 | Ctrl+\ | Root directory |
 | Ctrl+Left / Ctrl+Right | Open in the other panel |
-| Ctrl+U | Swap panels |
+| Ctrl+U | Swap panels (with their tabs) |
 | Ctrl+F / Ctrl+N, Ctrl+Shift+F | Connect to FTP / SFTP, disconnect |
 | Num + / Num − / Num * / Num / | Select / unselect by mask, invert, restore the selection |
 | Ctrl+Num + / Ctrl+Num −, Ctrl+A | Select all / none |

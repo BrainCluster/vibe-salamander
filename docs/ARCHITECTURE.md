@@ -153,6 +153,17 @@ window (`Services/WindowOwner`).
 
   `CanExecute` greys out what doesn't apply. The view model reaches the window only through `IUiHost`
   (dialogs, menus, notifications, focus), which `MainWindow` implements.
+* **Tabs.** A side keeps one live `PaneViewModel`; a tab (`Core/Panels/PanelTab`) is a saved state of it: folder,
+  sort, view, history, caret, marks, filter, lock. Switching tabs saves the panel into the tab it leaves
+  (`PaneViewModel.SaveInto`) and shows the other (`ShowTabAsync`, which loads without "leaving" a server or a locked
+  tab). So the ~70 places that use `Left` / `Right` / `Active` / `Inactive`, the commands, plugins and tests are the
+  same with tabs. `TabList` (Core, tested) is the list logic: where a new tab goes, which tab shows after a close,
+  reopening, moving, swapping. `TabsViewModel` (one per side) joins a list and its panel and serializes switches;
+  `MainViewModel.Tabs.cs` has the commands and the other-panel cases; `FilePane.Tabs.cs` the row (clicks, menus,
+  dragging). A locked tab: `PaneViewModel.NavigateAsync` / Back / Forward call `LeavingTab` first, and the side
+  forks a new unlocked tab with the same history, so *every* way of going elsewhere — including commands aimed at
+  the other panel — opens a tab there instead. A server stays connected while any tab of either side uses it
+  (`ServerUsedElsewhere`). Saved as `PanelSettings.Tabs` / `ActiveTab` only when a side has two or more.
 * **File operations.** `FileOperationEngine` plans first (tree walk, totals), then executes with CopyFileEx
   (attributes, times and alternate streams kept; long paths; a junction or link to a folder has its content
   copied, a link that leads back up is left out, and a move or delete removes only the link itself), with

@@ -186,7 +186,7 @@ be able to carry them (that is the test of S1).
 | R1 | **Phones and cameras (MTP)** | Windows Portable Devices as an `IPluginFileSystem` (`mtp://device/…`), shown in This PC and the drive menu. The most common reason people open Explorer next to a file manager. Verified absent. |
 | R2 | **Network** | Browse computers and their shares (`\\server` lists its shares; a Network item in This PC), remembered credentials through Windows' own dialog. Salamander's Network plugin. Today only mapped drives and typed UNC paths work. |
 | R3 | **More servers** | WebDAV and S3-compatible storage as file system plugins; for FTP/SFTP: resume, compare and synchronize a local directory with a server (reuse `DirectorySync`), keep-alive, a transfer log. |
-| R4 | **Tabs in each panel** | *Decision needed (below).* Folder tabs per panel as Total Commander has them; Salamander never did. |
+| R4 | **Tabs in each panel** | **Done (BrainCluster chose it, 2026-11-18).** A row above the path line from two tabs on; Total Commander's keys (Ctrl+T/W with its scheme, Ctrl+Shift+T/W with Salamander's, Ctrl+Tab, Ctrl+Up, Ctrl+Shift+Up), locked tabs, dragging between panels, remembered. See ARCHITECTURE, "Tabs". |
 | R5 | **Instant name search** | Use the Windows Search index (or Everything, when installed) for name searches in indexed places, falling back to walking the disk. In `FileSearcher`, behind an option. |
 | R6 | **Split and combine files; encrypt, decrypt, shred** | Salamander's File Splitter and Encrypt plugins, as one "File tools" plugin. |
 | R7 | **Master password** | Optional password for saved server passwords (today protected by the Windows account through DPAPI), as in Salamander's Security page. |
@@ -205,11 +205,8 @@ be able to carry them (that is the test of S1).
 ### Decisions for BrainCluster
 
 1. **Signing (T7):** which route, and under whose name the publisher appears.
-2. **Tabs (R4):** in keeping with "what made Salamander great", or a step toward Total Commander? If yes, it
-   is large and touches `PaneViewModel`, settings and the keyboard; better decided before 1.0 even if
-   built after.
-3. **Undo (S4):** wanted for 1.0, or later?
-4. **1.0 date:** the plan above is roughly 0.9 = T1–T8, 1.0 = S1–S5. Anything that must be in 1.0 that
+2. **Undo (S4):** wanted for 1.0, or later?
+3. **1.0 date:** the plan above is roughly 0.9 = T1–T8, 1.0 = S1–S5. Anything that must be in 1.0 that
    isn't listed?
 
 ### Working rules (for whoever builds this, human or model)

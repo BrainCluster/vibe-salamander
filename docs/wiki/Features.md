@@ -16,6 +16,15 @@
   or swap the panels.
 - Rectangle selection with the mouse, drag and drop between the panels and to or from Explorer, automatic refresh
   that keeps the cursor and the marks.
+- **Tabs in each panel.** A slim row above the path line, shown once a panel has two tabs (or always: Configuration →
+  Panels). Ctrl+Shift+T (Ctrl+T with Total Commander keys) opens a tab of the same folder, Ctrl+Up the folder under
+  the cursor, Ctrl+Shift+Up the folder under the cursor in a tab of the **other** panel; a middle click on a folder
+  opens it in a background tab. Ctrl+Tab and Ctrl+Shift+Tab switch; Ctrl+Shift+W, a middle click or the tab's menu
+  closes one, and the menu reopens it. Each tab keeps its own folder, history, sort, view, filter, cursor and marks.
+  Drag tabs to reorder them, onto the other panel's row to move them (with Ctrl: copy), or drop a folder on the row.
+  A **locked** tab keeps its folder: going elsewhere from it — a folder, Back, a drive, a hot path, or a command that
+  changes the other panel such as Ctrl+Left / Ctrl+Right — opens the new place in a new tab next to it. A folder
+  sent to the running program opens in a new tab; Ctrl+U swaps the panels with their tabs; the tabs are remembered.
 - **Quick view** (Ctrl+Q): the other panel shows the item under the cursor — a picture, the start of a text, what's
   in a folder — and follows the cursor.
 - **Cloud files stay in the cloud.** Files that OneDrive, iCloud or Dropbox keep only online are downloaded only
