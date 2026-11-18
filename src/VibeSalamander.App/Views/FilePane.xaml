@@ -277,7 +277,13 @@
             </ScrollViewer>
             <Button x:Name="TabRowButton" Grid.Column="1" Style="{StaticResource VibeDriveButtonStyle}" Margin="0,3,4,1"
                     Click="TabRowButton_Click" AutomationProperties.AutomationId="TabRowButton">
-                <FontIcon x:Name="TabRowGlyph" Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
+                <Grid>
+                    <FontIcon x:Name="TabRowGlyph" Glyph="&#xE70D;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
+                    <!-- with the row closed and more than one tab: how many tabs the panel has -->
+                    <InfoBadge x:Name="TabCountBadge" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top"
+                               Margin="0,-7,-11,0" MinWidth="14" Height="14" FontSize="9"
+                               AutomationProperties.AutomationId="TabCountBadge" />
+                </Grid>
             </Button>
         </Grid>
 

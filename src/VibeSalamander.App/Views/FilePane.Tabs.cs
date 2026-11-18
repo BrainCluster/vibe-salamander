@@ -61,6 +61,12 @@ public sealed partial class FilePane
         bool open = _tabs.RowVisibility == Visibility.Visible;
         TabRowGlyph.Glyph = open ? "\uE70E" : "\uE70D";
         string tip = Loc.T(open ? "Hide tabs" : "Show tabs");
+        // closed with several tabs: a badge with their number, so hidden tabs aren't forgotten
+        bool badge = !open && _tabs.Count > 1;
+        TabCountBadge.Visibility = badge ? Visibility.Visible : Visibility.Collapsed;
+        TabCountBadge.Value = _tabs.Count;
+        if (badge)
+            tip = Loc.F("Show tabs ({0} open)", _tabs.Count);
         ToolTipService.SetToolTip(TabRowButton, tip);
         AutomationProperties.SetName(TabRowButton, tip);
     }

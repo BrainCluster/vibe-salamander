@@ -1768,5 +1768,6 @@
   "Show / hide tabs": "Tabs anzeigen / ausblenden",
   "Show / Hide Tabs": "Tabs anzeigen / ausblenden",
   "Earlier tabs": "Vorherige Tabs",
-  "Later tabs": "Weitere Tabs"
+  "Later tabs": "Weitere Tabs",
+  "Show tabs ({0} open)": "Tabs anzeigen ({0} offen)"
 }

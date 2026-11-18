@@ -1768,5 +1768,6 @@
   "Show / hide tabs": "Mostrar / ocultar guias",
   "Show / Hide Tabs": "Mostrar / ocultar guias",
   "Earlier tabs": "Guias anteriores",
-  "Later tabs": "Próximas guias"
+  "Later tabs": "Próximas guias",
+  "Show tabs ({0} open)": "Mostrar guias ({0} abertas)"
 }

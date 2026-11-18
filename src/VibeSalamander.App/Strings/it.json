@@ -1768,5 +1768,6 @@
   "Show / hide tabs": "Mostra / nascondi schede",
   "Show / Hide Tabs": "Mostra / nascondi schede",
   "Earlier tabs": "Schede precedenti",
-  "Later tabs": "Schede successive"
+  "Later tabs": "Schede successive",
+  "Show tabs ({0} open)": "Mostra schede ({0} aperte)"
 }

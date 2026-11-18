@@ -1768,5 +1768,6 @@
   "Show / hide tabs": "Prikaži / sakrij kartice",
   "Show / Hide Tabs": "Prikaži / sakrij kartice",
   "Earlier tabs": "Prethodne kartice",
-  "Later tabs": "Sljedeće kartice"
+  "Later tabs": "Sljedeće kartice",
+  "Show tabs ({0} open)": "Prikaži kartice (otvoreno: {0})"
 }

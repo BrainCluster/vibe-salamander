@@ -1768,5 +1768,6 @@
   "Show / hide tabs": "Tabbladen tonen / verbergen",
   "Show / Hide Tabs": "Tabbladen tonen / verbergen",
   "Earlier tabs": "Eerdere tabbladen",
-  "Later tabs": "Latere tabbladen"
+  "Later tabs": "Latere tabbladen",
+  "Show tabs ({0} open)": "Tabbladen tonen ({0} open)"
 }

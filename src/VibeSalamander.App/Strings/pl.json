@@ -1768,5 +1768,6 @@
   "Show / hide tabs": "Pokaż / ukryj karty",
   "Show / Hide Tabs": "Pokaż / ukryj karty",
   "Earlier tabs": "Wcześniejsze karty",
-  "Later tabs": "Dalsze karty"
+  "Later tabs": "Dalsze karty",
+  "Show tabs ({0} open)": "Pokaż karty (otwarte: {0})"
 }

@@ -1768,5 +1768,6 @@
   "Show / hide tabs": "Zobrazit / skrýt karty",
   "Show / Hide Tabs": "Zobrazit / skrýt karty",
   "Earlier tabs": "Předchozí karty",
-  "Later tabs": "Další karty"
+  "Later tabs": "Další karty",
+  "Show tabs ({0} open)": "Zobrazit karty (otevřeno: {0})"
 }

@@ -1768,5 +1768,6 @@
   "Show / hide tabs": "Afficher / masquer les onglets",
   "Show / Hide Tabs": "Afficher / masquer les onglets",
   "Earlier tabs": "Onglets précédents",
-  "Later tabs": "Onglets suivants"
+  "Later tabs": "Onglets suivants",
+  "Show tabs ({0} open)": "Afficher les onglets ({0} ouverts)"
 }
