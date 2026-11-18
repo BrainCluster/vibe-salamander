@@ -59,6 +59,8 @@ others, reopen a closed tab.
 |---|---|
 | F2 | Rename in place |
 | F3 / Alt+F3 | View / Open with |
+| Ctrl+Shift+F4 | Edit with: the built-in editor, your editors, Windows' editor or another program |
+| Ctrl+K | Convert the marked text files: line endings and encoding |
 | F4 / Shift+F4 | Edit / edit a new file |
 | F5 / F6 | Copy / move or rename |
 | Alt+Shift+D | Duplicate (a copy next to it, named in place) |
@@ -73,6 +75,8 @@ others, reopen a closed tab.
 | Ctrl+X / Ctrl+C / Ctrl+V | Cut / copy / paste (Windows clipboard) |
 | Ctrl+Shift+L / Ctrl+S | Copy as shortcut / paste shortcut |
 | Alt+Ins / Alt+Shift+Ins / Ctrl+Alt+Ins | Copy full path / name / folder path as text |
+| Ctrl+Shift+Ins | Copy network path as text (a mapped drive as \\\\server\\share) |
+| Ctrl+I | Plugins → Last command (the plugin command chosen last, again) |
 
 ## Marking
 

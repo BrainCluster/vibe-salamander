@@ -154,7 +154,7 @@ contracts of the previous release. From 1.0 on, contracts only grow, by members 
 - **per-plugin settings page** in Configuration → Plugins (today: forms the plugin opens itself);
 - `IPluginFileSystem`: free space, change permissions, symbolic link targets, resume of a broken transfer.
 
-**S2. The last parity items** (each small; see the checklist for details):
+**S2. The last parity items** — **done (2026-11-18)**, each with Core and UI tests (`ParityScenarios`):
 Convert (Ctrl+K: line endings and encodings; `TextDocuments` already does the work), Plugins → Last
 command (Ctrl+I), Copy UNC path as text (Ctrl+Shift+Ins), Edit with (Ctrl+Shift+F4), show/hide the directory
 line, rename and new folder inside ZIP/TAR archives, icon overlays (the shell's overlay index from
@@ -259,7 +259,7 @@ brackets).
 | Hot paths 1-9 (set / go; own button and menu, Shift+F9; more hot paths with shortcuts of their own; no 0: Windows uses Ctrl+Shift+0) | Ctrl+Shift+1-9 / Ctrl+1-9 | [x] |
 | Sort by Name/Ext/Size/Date/Attr | Ctrl+F3…F6 | [x] |
 | Views (Brief, Detailed, Icons, Thumbnails, Tiles; Classic or Modern folder views) | Alt+1…5 | [x] |
-| Show directory / header / information line | | [~] header and information line; the directory line can't be hidden (S2) |
+| Show directory / header / information line | | [x] Options → Show |
 | Choose columns (header right-click), resize columns (header grips) | | [x] |
 | Maximize/restore panel | Ctrl+F11 | [x] |
 | Swap panels | Ctrl+U | [x] |
@@ -273,7 +273,7 @@ brackets).
 | Quick rename (in place) | F2 | [x] |
 | View (built-in viewer; per-mask viewers; Windows app) / Open with | F3 / Alt+F3, Ctrl+Shift+F3 | [x] |
 | Edit (built-in editor; per-mask editors) / Edit new file | F4 / Shift+F4 | [x] |
-| Edit with | Ctrl+Shift+F4 | [ ] (S2) |
+| Edit with | Ctrl+Shift+F4 | [x] built-in, Configuration → Editors, Windows' editor, other program |
 | Copy / Move-rename (target dialog with Browse and "don't show again") | F5 / F6 | [x] |
 | Delete (Recycle Bin / permanent) | F8, Del / Shift+Del | [x] |
 | Email (Simple MAPI) | Ctrl+E | [x] |
@@ -282,7 +282,7 @@ brackets).
 | Change attributes | Ctrl+F2 | [x] |
 | NTFS compress/uncompress/encrypt/decrypt | | [x] |
 | Change case | Ctrl+F7 | [x] |
-| Convert (line endings, encodings) | Ctrl+K | [ ] (S2) |
+| Convert (line endings, encodings) | Ctrl+K | [x] `TextConversion`; binary files and lossy encodings are left alone |
 | Pack / Unpack (in the transfer panel, with passwords) | Alt+F5 / Alt+F6 | [x] |
 | New (shell "New" menu; the new item is renamed in place) | | [x] |
 | Run as administrator (new) | | [x] |
@@ -294,7 +294,7 @@ brackets).
 | Cut / Copy / Paste (clipboard) | Ctrl+X / Ctrl+C / Ctrl+V | [x] |
 | Paste shortcut; Copy as shortcut (new) | Ctrl+S; Ctrl+Shift+L | [x] |
 | Copy full name / name / path as text | Alt+Ins, Alt+Shift+Ins, Ctrl+Alt+Ins | [x] |
-| Copy UNC path as text | Ctrl+Shift+Ins | [ ] (S2) |
+| Copy UNC path as text | Ctrl+Shift+Ins | [x] mapped drives become \\\\server\\share |
 | Mark / unmark item | Insert, Space | [x] |
 | Select… / Unselect… (mask) | Num + / Num − | [x] |
 | Invert selection | Num * | [x] |
@@ -331,9 +331,9 @@ brackets).
 | Archives: pack ZIP / TAR / TAR.GZ (7z with the 7-Zip plugin), unpack ZIP, 7z, RAR, TAR (+gz/bz2/xz/lz) | [x] |
 | Archives: test, self-extracting archive (ZIP → .exe), ZIP comment, split volumes | [x] |
 | Browse archives like directories; copy out; open and edit a file inside | [x] |
-| Change archives in place: copy into, delete, move out (ZIP, TAR; 7z with the 7-Zip plugin) | [~] rename and new folder inside (S2) |
+| Change archives in place: copy into, delete, move out, rename (F2), new folder (F7) (ZIP, TAR; 7z with the 7-Zip plugin) | [x] rename and new folder for ZIP and TAR |
 | Checksums: calculate and verify CRC32 / MD5 / SHA-1 / SHA-256 / SHA-512 | [x] |
-| Last command (Ctrl+I) | [ ] (S2) |
+| Last command (Ctrl+I) | [x] |
 
 ### Options menu
 | Command | Done |
@@ -353,7 +353,7 @@ brackets).
 | Export / import / save / reset configuration | [x] |
 | Always on top; density; theme | [x] |
 | Security / master password | [ ] (R7) |
-| Icon overlays | [ ] (S2) |
+| Icon overlays | [x] local disks; Configuration → Panels |
 
 ### Panel behavior
 | Behavior | Done |
@@ -365,7 +365,7 @@ brackets).
 | Auto-refresh on file system changes (keeps caret and marks) | [x] |
 | Hidden/system files toggle (Ctrl+H) | [x] |
 | Real shell icons | [x] |
-| Icon overlays | [ ] (S2) |
+| Icon overlays | [x] local disks; Configuration → Panels |
 | Drag & drop between panels and to/from Explorer; rectangle selection | [x] |
 | Live drives (plugged in / pulled out) | [x] |
 | Context menu: Vibe Salamander's, with the Windows menu at the bottom (Shift+right-click = Windows menu) | [x] |
