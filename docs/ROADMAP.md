@@ -142,17 +142,15 @@ screenshots.
 
 ### 1.0 — Stable
 
-**S1. Freeze the plugin contracts.**
-*Where:* `Contracts.cs`: review every interface once for names and gaps (below), add
-`IVibePlugin.MinimumHostVersion` (default: any) and refuse a plugin that needs a newer host with a clear
-reason in the Plugins Manager; a test project that compiles `samples/HelloPlugin` against the published
-contracts of the previous release. From 1.0 on, contracts only grow, by members with defaults.
-*Gaps to close before the freeze:*
-- a **viewer contract** (`IPluginViewer`: masks it handles, a window through `IPluginUi`, or a picture it
-  draws) so formats can be added without touching the app;
-- **panel columns and an information line from a file system plugin** (permissions and owner on SFTP);
-- **per-plugin settings page** in Configuration → Plugins (today: forms the plugin opens itself);
-- `IPluginFileSystem`: free space, change permissions, symbolic link targets, resume of a broken transfer.
+**S1. Freeze the plugin contracts** — **done (2026-11-18).** `IVibePlugin.MinimumHostVersion` (a plugin that
+needs a newer host is refused with the reason in the Plugins Manager); a **settings page** per plugin
+(`GetSettings` / `ApplySettings`, Configuration → Plugins → Settings…); the **viewer contract** (`IPluginViewer`,
+F3 by mask, text for the built-in viewer or a window of its own; the example plugin views CSV); **server
+details** (`RemoteItem.AttributesText`, `Permissions`, `Description`, `LinkTarget`; `GetFreeSpaceAsync`;
+`CanSetPermissions` / `SetPermissionsAsync` behind Change Attributes; `ConflictInfo.CanResume` with Resume /
+Resume All), all done in the FTP / SFTP plugin. The contracts are listed in `docs/plugin-api/contracts.txt`;
+`PluginContractTests` keeps them from shrinking or changing, and new interface members need defaults.
+Core tests: PluginVersions, FtpPlugin (permissions, resume), PluginContract; UI tests: PluginContractScenarios.
 
 **S2. The last parity items** — **done (2026-11-18)**, each with Core and UI tests (`ParityScenarios`):
 Convert (Ctrl+K: line endings and encodings; `TextDocuments` already does the work), Plugins → Last
@@ -188,7 +186,7 @@ be able to carry them (that is the test of S1).
 |---|---|---|
 | R1 | **Phones and cameras (MTP)** | Windows Portable Devices as an `IPluginFileSystem` (`mtp://device/…`), shown in This PC and the drive menu. The most common reason people open Explorer next to a file manager. Verified absent. |
 | R2 | **Network** | Browse computers and their shares (`\\server` lists its shares; a Network item in This PC), remembered credentials through Windows' own dialog. Salamander's Network plugin. Today only mapped drives and typed UNC paths work. |
-| R3 | **More servers** | WebDAV and S3-compatible storage as file system plugins; for FTP/SFTP: resume, compare and synchronize a local directory with a server (reuse `DirectorySync`), keep-alive, a transfer log. |
+| R3 | **More servers** | WebDAV and S3-compatible storage as file system plugins; for FTP/SFTP: compare and synchronize a local directory with a server (reuse `DirectorySync`), keep-alive, a transfer log. |
 | R4 | **Tabs in each panel** | **Done (BrainCluster chose it, 2026-11-18).** A row above the path line from two tabs on; Total Commander's keys (Ctrl+T/W with its scheme, Ctrl+Shift+T/W with Salamander's, Ctrl+Tab, Ctrl+Up, Ctrl+Shift+Up), locked tabs, dragging between panels, remembered. See ARCHITECTURE, "Tabs". |
 | R5 | **Instant name search** | Use the Windows Search index (or Everything, when installed) for name searches in indexed places, falling back to walking the disk. In `FileSearcher`, behind an option. |
 | R6 | **Split and combine files; encrypt, decrypt, shred** | Salamander's File Splitter and Encrypt plugins, as one "File tools" plugin. |

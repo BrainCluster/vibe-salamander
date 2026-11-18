@@ -234,7 +234,8 @@ public class implementing `IVibePlugin`; in `Initialize(IPluginHost)` it registe
 | Menu extension | `ICommandContributor` (`RegisterCommands`): Plugins menu and, with `AppliesTo`, the file's context menu | all |
 | File system | `IPluginFileSystem` (`RegisterFileSystem`): URL-like paths shown in the panels | FTP / SFTP |
 | Windows | `IPluginUi`: `OpenListWindow`, `OpenCanvasWindow`, forms, questions, save dialog, clipboard, `T()` | Checksum, Disk Map, FTP |
-| Viewer | none yet (see the roadmap) | – |
+| Viewer | `IPluginViewer` (`RegisterViewer`): F3 by mask, after the user's rules and before the built-in viewer; text for the built-in viewer or a window of its own | Hello (CSV) |
+| Settings | `IVibePlugin.GetSettings` / `ApplySettings`: a Settings… page in Configuration → Plugins, the fields dialog in that window | Hello |
 
 * **Loading** (`Services/PluginManager`): built-in plugins are referenced by the app; others are found in
   `<program folder>\Plugins\<name>\` and `%AppData%\VibeSalamander\Plugins\<name>\` (`<name>.dll`, or every
@@ -242,8 +243,15 @@ public class implementing `IVibePlugin`; in `Initialize(IPluginHost)` it registe
   the app. Disabled plugins (Configuration → Plugins) are listed but not initialized; a plugin that fails
   to load is listed with the reason. A later-loaded archiver wins for a format it shares with a built-in
   one (that is how 7-Zip takes over `.7z`).
-* **Compatibility.** New members of the contracts get default implementations, so plugins built against
-  an older host keep loading. There is no declared API version yet beyond `IPluginHost.HostVersion`.
+* **Compatibility (frozen since 1.0).** `docs/plugin-api/contracts.txt` lists everything plugins see: the
+  Abstractions and the Core types their members use. `PluginContractTests` fails when a listed line is gone
+  or changed, when an existing interface gains a member without a default, and when the list is behind the
+  code (new lines are added to it). A plugin says the oldest host it needs with `IVibePlugin.MinimumHostVersion`;
+  `PluginManager.TooNew` refuses a newer one with the reason in the Plugins Manager, before `Initialize`.
+* **Server details.** `RemoteItem.AttributesText` replaces the Attr column's letters, `Description` and
+  `LinkTarget` end the information line, `GetFreeSpaceAsync` fills the panel's "free" (asked after each
+  listing, 3 s at most). Change Attributes on a server (`ServerPanelAction.Permissions`) asks for octal
+  digits when `CanSetPermissions`. A conflict with `ConflictInfo.CanResume` offers Resume / Resume All.
 * **Jobs.** Anything long a plugin does runs as an `IArchiveJob` in the transfer panel
   (`TransfersViewModel.EnqueueJob`): progress, pause, cancel, and conflict / error / password questions
   marshalled to the UI. `ProgressTracker` turns byte counts into speed and remaining time.

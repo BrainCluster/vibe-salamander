@@ -55,6 +55,7 @@ public sealed class HelloPlugin : IVibePlugin, ICommandContributor
     public string Description => "An example plugin.";
     public string Author => "Your name";
     public string? IconGlyph => "\uE8BD";         // a Segoe Fluent Icons character
+    public Version? MinimumHostVersion => null;   // the oldest Vibe Salamander it works with (null = any)
 
     public IReadOnlyList<PluginCommand> Commands { get; private set; } = Array.Empty<PluginCommand>();
 
@@ -104,6 +105,7 @@ plugin's.
 | `RegisterCommands(contributor)` | Commands in Plugins → *your plugin* |
 | `RegisterArchiver(archiver)` | Formats for Pack (Alt+F5), Unpack (Alt+F6) and browsing archives |
 | `RegisterFileSystem(fileSystem)` | A file system in the panels, with paths like `sftp://user@host/dir` |
+| `RegisterViewer(viewer)` | A viewer for F3 (below) |
 | `GetDataDirectory(plugin)` | A folder for the plugin's settings and data |
 | `HostVersion` | The version of Vibe Salamander |
 
@@ -158,6 +160,54 @@ window.RowMenu = row => new[] { new PluginMenuItem("Copy name", null, () => host
 
 ![The list window of the example plugin](images/hello-largest-files.png)
 
+### Viewers (`IPluginViewer`)
+
+F3 on a file that fits a viewer's `Masks` asks the plugin first (after the user's own Configuration → Viewers
+rules, before the built-in viewer). The example plugin lines up the columns of `.csv` files:
+
+```csharp
+host.RegisterViewer(new CsvViewer());
+
+public sealed class CsvViewer : IPluginViewer
+{
+    public string Id => "csv";
+    public string DisplayName => "CSV tables";
+    public string Masks => "*.csv";
+
+    public async Task<PluginView> ViewAsync(IPluginHost host, string path)
+    {
+        string[] lines = await File.ReadAllLinesAsync(path);
+        // ... line the columns up ...
+        return PluginView.Text(text, Path.GetFileName(path) + " (columns)");
+    }
+}
+```
+
+`PluginView.Text(text)` shows the text in the built-in viewer, where search, copy and print come with it.
+`PluginView.Shown` means the plugin opened a window of its own (`host.Ui.OpenListWindow`, `OpenCanvasWindow`).
+`PluginView.NotHandled` passes the file to the next viewer. `CanView(path)` can look closer than the masks do, for
+example at the file's first bytes.
+
+### A settings page
+
+A plugin with settings gets a **Settings…** button next to it in Configuration → Plugins. `GetSettings()` returns
+the fields with their current values (the same `PluginField`s as `EditFieldsAsync`), and `ApplySettings(fields)`
+gets them back when the user says OK. Keep them in `host.GetDataDirectory(this)`:
+
+```csharp
+public IReadOnlyList<PluginField>? GetSettings() => new[]
+{
+    new PluginField { Label = "How many files Largest files lists", Value = _largestCount.ToString() },
+};
+
+public void ApplySettings(IReadOnlyList<PluginField> fields)
+{
+    if (int.TryParse(fields[0].Value, out int count) && count > 0)
+        _largestCount = count;
+    File.WriteAllText(_settingsFile, _largestCount.ToString());
+}
+```
+
 ### Archive formats (`IArchiver`)
 
 Implement `IArchiver` and register it with `host.RegisterArchiver`. It says which formats it can create
@@ -174,8 +224,18 @@ are complete examples.
 
 A file system owns paths of its own (`ftp://…`, `sftp://…`): it lists a directory, gives the parent of a path,
 copies to and from local folders, deletes, renames and creates directories. The panels show it like a disk;
-copies run in the transfer panel. See the
-[FTP / SFTP plugin](https://github.com/BrainCluster/vibe-salamander/tree/main/src/VibeSalamander.Plugins.Ftp).
+copies run in the transfer panel. Optional members, each with a default:
+
+* **Details of an item.** `RemoteItem` has `AttributesText` for the Attr column (`rwxr-xr-x`), `Description` and
+  `LinkTarget` for the information line (the owner, where a link points), and `Permissions` (`755`).
+* **Free space.** `GetFreeSpaceAsync(path)` for the panel's "free"; return null when the server doesn't say.
+* **Permissions.** `CanSetPermissions(directory)` and `SetPermissionsAsync(items, "755")`: Change Attributes on
+  your paths asks for octal digits and calls you.
+* **Resume.** When a target is smaller than its source, set `CanResume` on the `ConflictInfo` you ask about;
+  the question then offers Resume and Resume All (`ConflictChoice.Resume`, `ResumeAll`).
+
+See the [FTP / SFTP plugin](https://github.com/BrainCluster/vibe-salamander/tree/main/src/VibeSalamander.Plugins.Ftp),
+which uses all of them.
 
 ## The full API
 
@@ -183,7 +243,14 @@ Everything is in one file with a comment on each member:
 [`src/VibeSalamander.Plugins.Abstractions/Contracts.cs`](https://github.com/BrainCluster/vibe-salamander/blob/main/src/VibeSalamander.Plugins.Abstractions/Contracts.cs).
 The built-in plugins in `src/VibeSalamander.Plugins.*` use nothing else.
 
-The API is young and may still change between versions (`host.HostVersion` tells you which one you run in).
+**The contracts are frozen.** From 1.0 on they only grow: nothing is removed or changed, and new members of
+existing interfaces come with defaults, so a plugin keeps loading in every later Vibe Salamander.
+[`docs/plugin-api/contracts.txt`](https://github.com/BrainCluster/vibe-salamander/blob/main/docs/plugin-api/contracts.txt)
+lists everything a plugin can use, and a test keeps it that way.
+
+**Newer features need a newer Vibe Salamander.** When your plugin uses something added later (the members say so,
+like `RegisterViewer`), set `MinimumHostVersion` to that version. An older Vibe Salamander then doesn't load the
+plugin and says in the Plugins Manager which version it needs, instead of failing halfway.
 Questions and ideas: [open an issue](https://github.com/BrainCluster/vibe-salamander/issues/new/choose).
 
 ## Sharing your plugin
