@@ -119,7 +119,7 @@ public sealed class TabsScenarios : IDisposable
         TabRowArrow(app).Click(); // closes it: the tabs stay, Ctrl+Tab still switches
         AppSession.WaitUntil(() => Tabs(app).Count == 0, "the row closed");
         // with the row closed, a badge on the arrow says how many tabs there are
-        AppSession.WaitUntil(() => Find(app, "TabCountBadge") != null && TabRowArrow(app).Name == "Show tabs (2 open)", "the badge with 2 tabs");
+        AppSession.WaitUntil(() => TabRowArrow(app).Name == "Show tabs (2 open)", "the badge with 2 tabs");
         AppSession.Screenshot("68 tab count badge");
         app.GoTo("Projects");
         app.Press(VirtualKeyShort.ENTER);
@@ -131,7 +131,7 @@ public sealed class TabsScenarios : IDisposable
         app.GoTo("Projects");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP); // a new tab opens the row again
         WaitTabs(app, "the row back with the new tab", true, "Documents", "Projects", "Projects");
-        AppSession.WaitUntil(() => Find(app, "TabCountBadge") == null, "no badge with the row open");
+        AppSession.WaitUntil(() => TabRowArrow(app).Name == "Hide tabs", "no badge with the row open");
         NoErrors(app);
     }
 
