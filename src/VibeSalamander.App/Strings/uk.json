@@ -1818,5 +1818,6 @@
   "Of {0}": "Для {0}",
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Права — це 3 або 4 вісімкові цифри, наприклад 755 або 644.",
   "Move tab to this panel": "Перемістити вкладку в цю панель",
-  "Copy tab to this panel": "Копіювати вкладку в цю панель"
+  "Copy tab to this panel": "Копіювати вкладку в цю панель",
+  "Eject": "Вийняти"
 }

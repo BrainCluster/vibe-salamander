@@ -1818,5 +1818,6 @@
   "Of {0}": "De {0}",
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Les permissions sont 3 ou 4 chiffres octaux, comme 755 ou 644.",
   "Move tab to this panel": "Déplacer l'onglet dans ce panneau",
-  "Copy tab to this panel": "Copier l'onglet dans ce panneau"
+  "Copy tab to this panel": "Copier l'onglet dans ce panneau",
+  "Eject": "Éjecter"
 }

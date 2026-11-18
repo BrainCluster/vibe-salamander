@@ -117,6 +117,45 @@ internal sealed class ServerPanelCommands
         return true;
     }
 
+    /// <summary>
+    /// Tabs about to close: the servers they leave without a tab still showing them (and still connected).
+    /// None: an empty list, nothing asked. Otherwise "Disconnect from ...?": the servers to disconnect once the
+    /// tabs are closed, or null for Cancel (keep the tabs).
+    /// </summary>
+    public async Task<IReadOnlyList<(IPluginFileSystem Fs, string Server)>?> ConfirmCloseAsync(
+        IEnumerable<string> closingPaths, IReadOnlyCollection<string> stayingPaths)
+    {
+        var leaving = new List<(IPluginFileSystem Fs, string Server)>();
+        foreach (string path in closingPaths)
+        {
+            if (Servers.FileSystemOf(path) is not { } fs || leaving.Any(l => RemoteFileSystemProvider.SameServer(l.Server, path)))
+                continue;
+            if (stayingPaths.Any(p => Servers.FileSystemOf(p) != null && RemoteFileSystemProvider.SameServer(p, path)))
+                continue; // another tab still shows it
+            if (SafeIsConnected(fs, path))
+                leaving.Add((fs, path));
+        }
+        if (leaving.Count == 0)
+            return leaving;
+        string names = string.Join(", ", leaving.Select(l => RemoteFileSystemProvider.ServerOf(l.Server).Replace("%40", "@")));
+        return await _host.ConfirmAsync("Disconnect", Loc.F("Do you want to disconnect from {0}?", names), "Disconnect") ? leaving : null;
+    }
+
+    public void Disconnect(IReadOnlyList<(IPluginFileSystem Fs, string Server)> servers)
+    {
+        foreach ((IPluginFileSystem fs, string server) in servers)
+        {
+            try
+            {
+                fs.Disconnect(server);
+            }
+            catch (Exception ex)
+            {
+                _host.Notify(ex.Message);
+            }
+        }
+    }
+
     private static bool SafeIsConnected(IPluginFileSystem fs, string path)
     {
         try

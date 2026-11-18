@@ -1818,5 +1818,6 @@
   "Of {0}": "Di {0}",
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "I permessi sono 3 o 4 cifre ottali, come 755 o 644.",
   "Move tab to this panel": "Sposta la scheda in questo pannello",
-  "Copy tab to this panel": "Copia la scheda in questo pannello"
+  "Copy tab to this panel": "Copia la scheda in questo pannello",
+  "Eject": "Espelli"
 }

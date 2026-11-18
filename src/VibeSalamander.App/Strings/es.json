@@ -1818,5 +1818,6 @@
   "Of {0}": "De {0}",
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Los permisos son 3 o 4 dígitos octales, como 755 o 644.",
   "Move tab to this panel": "Mover la pestaña a este panel",
-  "Copy tab to this panel": "Copiar la pestaña a este panel"
+  "Copy tab to this panel": "Copiar la pestaña a este panel",
+  "Eject": "Expulsar"
 }

@@ -1818,5 +1818,6 @@
   "Of {0}": "Pro {0}",
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Oprávnění jsou 3 nebo 4 osmičkové číslice, např. 755 nebo 644.",
   "Move tab to this panel": "Přesunout kartu do tohoto panelu",
-  "Copy tab to this panel": "Kopírovat kartu do tohoto panelu"
+  "Copy tab to this panel": "Kopírovat kartu do tohoto panelu",
+  "Eject": "Vysunout"
 }

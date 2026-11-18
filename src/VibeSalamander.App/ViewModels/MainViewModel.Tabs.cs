@@ -5,6 +5,7 @@ using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Panels;
 using VibeSalamander.Core.Settings;
 using VibeSalamander.Services;
+using VibeSalamander.Plugins;
 
 namespace VibeSalamander.ViewModels;
 
@@ -113,16 +114,73 @@ public sealed partial class MainViewModel
 
     private async Task CloseTabAsync(PaneViewModel pane)
     {
-        TabsViewModel tabs = TabsOf(pane);
-        await tabs.CloseAsync(tabs.List.ActiveIndex);
+        await CloseTabAsync(pane, TabsOf(pane).List.ActiveIndex);
         _host.FocusPane(pane);
     }
 
     private async Task CloseOtherTabsAsync(PaneViewModel pane)
     {
-        TabsViewModel tabs = TabsOf(pane);
-        await tabs.CloseOthersAsync(tabs.List.ActiveIndex);
+        await CloseOtherTabsAsync(pane, TabsOf(pane).List.ActiveIndex);
         _host.FocusPane(pane);
+    }
+
+    /// <summary>
+    /// Closes a tab (every way of closing one comes here). When it is the last place showing an FTP / SFTP
+    /// server, "Disconnect from ...?" first: Disconnect closes the tab and the connection, Cancel keeps the tab.
+    /// </summary>
+    public async Task CloseTabAsync(PaneViewModel pane, int index)
+    {
+        TabsViewModel tabs = TabsOf(pane);
+        if (tabs.Count <= 1 || index < 0 || index >= tabs.List.Count)
+            return;
+        await CloseWithServersAsync(pane, new HashSet<int> { index }, () => tabs.CloseAsync(index));
+    }
+
+    public async Task CloseOtherTabsAsync(PaneViewModel pane, int keep)
+    {
+        TabsViewModel tabs = TabsOf(pane);
+        if (tabs.Count <= 1 || keep < 0 || keep >= tabs.List.Count)
+            return;
+        var closing = Enumerable.Range(0, tabs.List.Count).Where(i => i != keep).ToHashSet();
+        await CloseWithServersAsync(pane, closing, () => tabs.CloseOthersAsync(keep));
+    }
+
+    private async Task CloseWithServersAsync(PaneViewModel pane, HashSet<int> closing, Func<Task> close)
+    {
+        TabsViewModel tabs = TabsOf(pane);
+        var closingPaths = closing.Select(i => tabs.List.Tabs[i].Path).ToList();
+        // what stays open: the other side's tabs, and this side's that aren't closing
+        PaneViewModel other = pane == Left ? Right : Left;
+        var staying = TabsOf(other).List.Tabs.Select(t => t.Path)
+            .Concat(tabs.List.Tabs.Where((_, i) => !closing.Contains(i)).Select(t => t.Path)).ToList();
+        IReadOnlyList<(IPluginFileSystem Fs, string Server)>? disconnect = await ServerPanels.ConfirmCloseAsync(closingPaths, staying);
+        if (disconnect == null)
+            return; // Cancel: the tabs stay
+        await close();
+        ServerPanels.Disconnect(disconnect);
+    }
+
+    /// <summary>The tabs (both sides) showing a drive: its root's letter matches.</summary>
+    private IEnumerable<(PaneViewModel Pane, int Index)> TabsOnDrive(string root) =>
+        new[] { Left, Right }.SelectMany(p => TabsOf(p).List.Tabs.Select((t, i) => (Tab: t, Index: i))
+            .Where(x => x.Tab.Path.Length >= 2 && x.Tab.Path.StartsWith(root[..2], StringComparison.OrdinalIgnoreCase))
+            .Select(x => (p, x.Index)));
+
+    /// <summary>
+    /// A tab's menu, Eject on a mounted disk image: unmounted; its tabs are closed afterwards (a panel's only tab
+    /// stays, on This PC).
+    /// </summary>
+    public async Task EjectTabImageAsync(string root)
+    {
+        if (!await UnmountImageAsync(root))
+            return;
+        foreach (PaneViewModel pane in new[] { Left, Right })
+        {
+            TabsViewModel tabs = TabsOf(pane);
+            foreach (int index in TabsOnDrive(root).Where(x => x.Pane == pane).Select(x => x.Index).OrderByDescending(i => i).ToList())
+                if (tabs.Count > 1)
+                    await tabs.CloseAsync(index);
+        }
     }
 
     private async Task SwitchTabAsync(PaneViewModel pane, bool next)

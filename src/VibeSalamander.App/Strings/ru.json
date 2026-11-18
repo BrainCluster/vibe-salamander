@@ -1818,5 +1818,6 @@
   "Of {0}": "Для {0}",
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Права — это 3 или 4 восьмеричные цифры, например 755 или 644.",
   "Move tab to this panel": "Переместить вкладку в эту панель",
-  "Copy tab to this panel": "Копировать вкладку в эту панель"
+  "Copy tab to this panel": "Копировать вкладку в эту панель",
+  "Eject": "Извлечь"
 }

@@ -1818,5 +1818,6 @@
   "Of {0}": "Dla {0}",
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Uprawnienia to 3 lub 4 cyfry ósemkowe, np. 755 lub 644.",
   "Move tab to this panel": "Przenieś kartę do tego panelu",
-  "Copy tab to this panel": "Kopiuj kartę do tego panelu"
+  "Copy tab to this panel": "Kopiuj kartę do tego panelu",
+  "Eject": "Wysuń"
 }

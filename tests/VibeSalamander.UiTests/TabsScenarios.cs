@@ -367,7 +367,7 @@ public sealed class TabsScenarios : IDisposable
     }
 
     [UiFact]
-    public void An_opened_disk_image_opens_in_a_new_tab_of_the_other_panel()
+    public void An_opened_disk_image_opens_in_a_new_tab_of_the_other_panel_and_ejects_from_it()
     {
         string content = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "vibe-iso-" + Guid.NewGuid().ToString("N")[..8])).FullName;
         File.WriteAllText(Path.Combine(content, "inside.txt"), "on the image");
@@ -385,6 +385,16 @@ public sealed class TabsScenarios : IDisposable
             AppSession.WaitUntil(() => app.Items(left: false).Contains("inside.txt"), "the image's files in the new tab");
             Assert.Empty(Tabs(app)); // the left panel: still its one tab (no row)
             AppSession.Screenshot("69 mounted image in a new tab");
+
+            // its tab's menu: Eject unmounts it, and the tab closes
+            string drive = Tabs(app, left: false)[1];
+            AutomationElement tab = TabNamed(app, drive, left: false);
+            AppSession.RightClick(Center(tab));
+            app.ClickNamed("Eject");
+            AppSession.WaitUntil(() => Tabs(app, left: false).Count == 0, "the image's tab closed (Target alone again: no row)", seconds: 60);
+            AppSession.WaitUntil(() => app.Items(left: false).Count == 0 || !app.Items(left: false).Contains("inside.txt"), "the right panel off the image");
+            string letter = drive[(drive.IndexOf('(') + 1)..drive.IndexOf(')')];
+            AppSession.WaitUntil(() => !Directory.Exists(letter + "\\"), "the image unmounted");
             NoErrors(app);
         }
         finally

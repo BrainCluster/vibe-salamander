@@ -360,7 +360,7 @@ public sealed partial class FilePane
             if (_tabs == null || _main == null)
                 return;
             _main.Activate(ViewModel!);
-            await _tabs.CloseAsync(IndexOfTab(item));
+            await _main.CloseTabAsync(ViewModel!, IndexOfTab(item));
             FocusList();
         };
         var host = new Grid { Tag = item };
@@ -714,7 +714,7 @@ public sealed partial class FilePane
             !e.GetCurrentPoint((UIElement)sender).Properties.IsMiddleButtonPressed)
             return;
         e.Handled = true;
-        await _tabs.CloseAsync(IndexOfTab(item)); // a middle click closes a tab, as in browsers
+        await _main!.CloseTabAsync(ViewModel!, IndexOfTab(item)); // a middle click closes a tab, as in browsers
     }
 
     private async void NewTabButton_Click(object sender, RoutedEventArgs e)
@@ -769,9 +769,17 @@ public sealed partial class FilePane
             tabs.ToggleLock(IndexOfTab(item));
             return Task.CompletedTask;
         }));
+        // a mounted disk image: Eject (unmount), and its tabs close
+        string? imageRoot = Core.Panels.PanelTab.DriveOf(item.Tab.Path) is string drive && Core.Interop.DiskImages.IsMountedImage(drive + "\\")
+            ? drive + "\\" : null;
+        if (imageRoot != null)
+        {
+            menu.Items.Add(new MenuFlyoutSeparator());
+            menu.Items.Add(Item("Eject", "\uF847", CommandId.UnmountImage, () => main.EjectTabImageAsync(imageRoot)));
+        }
         menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(Item("Close", "", CommandId.CloseTab, () => tabs.CloseAsync(IndexOfTab(item)), tabs.Count > 1));
-        menu.Items.Add(Item("Close Other Tabs", "", CommandId.CloseOtherTabs, () => tabs.CloseOthersAsync(IndexOfTab(item)), tabs.Count > 1));
+        menu.Items.Add(Item("Close", "", CommandId.CloseTab, () => main.CloseTabAsync(pane, IndexOfTab(item)), tabs.Count > 1));
+        menu.Items.Add(Item("Close Other Tabs", "", CommandId.CloseOtherTabs, () => main.CloseOtherTabsAsync(pane, IndexOfTab(item)), tabs.Count > 1));
         menu.Items.Add(Item("Reopen Closed Tab", "", CommandId.ReopenClosedTab, () => tabs.ReopenAsync(), tabs.List.CanReopen));
     }
 

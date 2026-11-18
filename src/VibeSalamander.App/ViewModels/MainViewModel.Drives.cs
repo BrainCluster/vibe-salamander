@@ -73,9 +73,10 @@ public sealed partial class MainViewModel
         return root != null && DiskImages.IsMountedImage(root) ? root : null;
     }
 
-    /// <summary>Unmounts a mounted image; panels showing it go to This PC first (they would keep it busy).</summary>
-    public async Task UnmountImageAsync(string root)
+    /// <summary>Unmounts a mounted image; panels showing it go to This PC first (they would keep it busy). False: it failed.</summary>
+    public async Task<bool> UnmountImageAsync(string root)
     {
+        bool done;
         foreach (PaneViewModel pane in new[] { Left, Right })
             if (pane.IsLocalDisk && pane.Path.StartsWith(root[..2], StringComparison.OrdinalIgnoreCase))
                 await pane.NavigateAsync(ThisPcProvider.RootPath, root[..2]);
@@ -83,15 +84,18 @@ public sealed partial class MainViewModel
         {
             await DiskImages.UnmountAsync(root);
             _host.Notify($"{root.TrimEnd('\\')} is unmounted.", isError: false);
+            done = true;
         }
         catch (Exception ex) when (ex is InvalidOperationException or IOException or OperationCanceledException)
         {
             _host.Notify($"{root.TrimEnd('\\')} could not be unmounted: {ex.Message}");
+            done = false;
         }
         await Task.WhenAll(Left.LoadDrivesAsync(), Right.LoadDrivesAsync());
         foreach (PaneViewModel pane in new[] { Left, Right })
             if (pane.IsThisPc)
                 await pane.RefreshAsync();
+        return done;
     }
 
     // ---- drives plugged in and pulled out (live USB) ---------------------------------------------
