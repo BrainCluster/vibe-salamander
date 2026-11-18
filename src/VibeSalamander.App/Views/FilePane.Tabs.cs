@@ -247,7 +247,12 @@ public sealed partial class FilePane
         host.Children.Add(button);
         host.Children.Add(close);
         bool hovered = false;
-        void ShowClose() => close.Visibility = hovered && item.IsShown && (_tabs?.Items.Count ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed;
+        int probe = 0;
+        void ShowClose()
+        {
+            close.Visibility = hovered && item.IsShown && (_tabs?.Items.Count ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed;
+            AutomationProperties.SetHelpText(button, $"PROBE hovered={hovered} shown={item.IsShown} count={_tabs?.Items.Count} n={++probe} close={close.Visibility}");
+        }
         host.AddHandler(PointerEnteredEvent, new PointerEventHandler((_, _) => { hovered = true; ShowClose(); }), handledEventsToo: true);
         host.AddHandler(PointerMovedEvent, new PointerEventHandler((_, _) =>
         {

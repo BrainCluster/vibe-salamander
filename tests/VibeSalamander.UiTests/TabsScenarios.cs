@@ -276,6 +276,8 @@ public sealed class TabsScenarios : IDisposable
         Mouse.MoveTo(new System.Drawing.Point(Center(shown).X + 3, Center(shown).Y)); // a move inside it too
         app.Calm(300);
         AppSession.Screenshot("67 hovering the shown tab");
+        string probe = TabNamed(app, "Projects").Properties.HelpText.ValueOrDefault ?? "(none)";
+        Assert.True(app.Window.FindFirstDescendant(cf => cf.ByAutomationId("PaneTabClose")) != null, "PROBE: " + probe);
         AutomationElement close = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByAutomationId("PaneTabClose")), "the close button");
         Assert.True(close.BoundingRectangle.Right > shown.BoundingRectangle.Right - 20 && close.BoundingRectangle.Top < shown.BoundingRectangle.Top + 8,
             $"The close button {close.BoundingRectangle} sits in the upper right corner of {shown.BoundingRectangle}");
@@ -297,18 +299,18 @@ public sealed class TabsScenarios : IDisposable
         AppSession.WaitUntil(() => app.Items().Contains("Empty folder"), "Documents again");
         app.GoTo("Empty folder");
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP);
-        WaitTabs(app, "three tabs", true, "Documents", "Projects", "Empty folder");
+        WaitTabs(app, "three tabs (a new one opens next to its own)", true, "Documents", "Empty folder", "Projects");
 
-        // Empty folder dropped before Documents
+        // Projects dropped before Documents
         AutomationElement first = TabNamed(app, "Documents");
-        AppSession.Drag(Center(TabNamed(app, "Empty folder")),
+        AppSession.Drag(Center(TabNamed(app, "Projects")),
             new System.Drawing.Point((int)first.BoundingRectangle.Left + 4, Center(first).Y), () => AppSession.Screenshot("68 dragging a tab"));
-        WaitTabs(app, "the new order", true, "Empty folder", "Documents", "Projects");
+        WaitTabs(app, "the new order", true, "Projects", "Documents", "Empty folder");
 
-        // Projects dropped on the right panel's files (it has one tab: no row there)
-        AppSession.Drag(Center(TabNamed(app, "Projects")), app.EmptyArea(left: false));
-        WaitTabs(app, "Projects moved right", false, "Target", "Projects");
-        WaitTabs(app, "two left", true, "Empty folder", "Documents");
+        // Empty folder dropped on the right panel's files (it has one tab: no row there)
+        AppSession.Drag(Center(TabNamed(app, "Empty folder")), app.EmptyArea(left: false));
+        WaitTabs(app, "Empty folder moved right", false, "Target", "Empty folder");
+        WaitTabs(app, "two left", true, "Projects", "Documents");
         NoErrors(app);
     }
 }
