@@ -189,7 +189,7 @@ public sealed partial class MainViewModel
     private void AddFileCommands(CommandTable t)
     {
         t.Add(CommandId.QuickRename, _ => Files.RenameAsync());
-        t.AddSync(CommandId.View, _ => ViewFile());
+        t.Add(CommandId.View, _ => ViewFileAsync());
         t.AddSync(CommandId.Edit, _ => EditFile());
         t.AddSync(CommandId.EditWith, EditWith);
         t.Add(CommandId.ConvertFiles, ConvertFilesAsync);
@@ -410,14 +410,15 @@ public sealed partial class MainViewModel
         await Task.WhenAll(Left.NavigateAsync(right), Right.NavigateAsync(left));
     }
 
-    private void ViewFile()
+    private async Task ViewFileAsync()
     {
-        // Configuration → Viewers by file mask first, then the built-in viewer (or the Windows app)
+        // Configuration → Viewers by file mask first, then plugin viewers, then the built-in viewer (or the Windows app)
         FileItemViewModel? item = _active.FocusedItem;
         if (item != null && !item.Entry.IsDirectory && !item.Entry.IsUpDir && !item.IsDrive)
         {
-            if (!RunProgramRule(Settings.Viewers, item))
-                ViewWithoutRules(item.Entry.FullPath, SiblingFiles(_active));
+            PaneViewModel pane = _active;
+            if (!RunProgramRule(Settings.Viewers, item) && !await ViewWithPluginAsync(item.Entry.FullPath, pane.IsLocalDisk))
+                ViewWithoutRules(item.Entry.FullPath, SiblingFiles(pane));
             RememberOpened(item.Entry.FullPath);
         }
     }

@@ -37,6 +37,7 @@ public sealed class PluginInfo
     public List<IArchiver> Archivers { get; } = new();
     public List<ICommandContributor> CommandContributors { get; } = new();
     public List<IPluginFileSystem> FileSystems { get; } = new();
+    public List<IPluginViewer> Viewers { get; } = new();
 
     /// <summary>"Pack and unpack", "3 commands" - what the plugin adds, for the manager.</summary>
     public string FeaturesText
@@ -53,6 +54,8 @@ public sealed class PluginInfo
             }
             foreach (IPluginFileSystem fs in FileSystems)
                 parts.Add(fs.DisplayName);
+            foreach (IPluginViewer v in Viewers)
+                parts.Add("View: " + v.DisplayName);
             int commands = CommandContributors.Sum(c => c.Commands.Count);
             if (commands > 0)
                 parts.Add(commands == 1 ? "1 command" : $"{commands} commands");
@@ -83,6 +86,10 @@ public sealed class PluginManager
     /// the formats it shares with a built-in one.
     /// </summary>
     public IEnumerable<IArchiver> Archivers => _plugins.Where(p => p.Enabled && p.Error == null).Reverse().SelectMany(p => p.Archivers);
+
+    /// <summary>The plugin viewers (F3), the last loaded plugin first, with their plugin's host.</summary>
+    public IEnumerable<(IPluginViewer Viewer, PluginInfo Plugin)> Viewers =>
+        _plugins.Where(p => p.Enabled && p.Error == null && p.Host != null).Reverse().SelectMany(p => p.Viewers.Select(v => (v, p)));
 
     /// <summary>Every format Pack can create, with its archiver (first plugin wins for the same id).</summary>
     public IReadOnlyList<(IArchiver Archiver, ArchiveFormat Format)> PackFormats =>
@@ -428,6 +435,8 @@ internal sealed class PluginHost : IPluginHost
     public void RegisterCommands(ICommandContributor contributor) => _info.CommandContributors.Add(contributor);
 
     public void RegisterFileSystem(IPluginFileSystem fileSystem) => _info.FileSystems.Add(fileSystem);
+
+    public void RegisterViewer(IPluginViewer viewer) => _info.Viewers.Add(viewer);
 
     public IPanelContext ActivePanel => new PanelContext(_main.Active);
 

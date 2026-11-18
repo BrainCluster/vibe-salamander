@@ -71,6 +71,9 @@ public interface IPluginHost
     /// <summary>A file system the panels can show (FTP, SFTP, ...), with paths like "sftp://user@host/dir".</summary>
     void RegisterFileSystem(IPluginFileSystem fileSystem) => throw new NotSupportedException("This host has no plugin file systems.");
 
+    /// <summary>Adds a viewer for F3 (Vibe Salamander 1.0 and newer: set MinimumHostVersion to 1.0 when you use it).</summary>
+    void RegisterViewer(IPluginViewer viewer) => throw new NotSupportedException("This host has no plugin viewers.");
+
     /// <summary>The active panel's current path and focused/marked items.</summary>
     IPanelContext ActivePanel { get; }
 
@@ -359,6 +362,58 @@ public sealed record PluginCommand(string Id, string MenuText, string? ShortcutT
     string? HostCommand = null, Func<string, bool>? AppliesTo = null, bool SeparatorBefore = false);
 
 // ---- file systems (FTP, SFTP, ...) ---------------------------------------------------------------
+
+/// <summary>
+/// A viewer for files the built-in viewer doesn't understand (or shows as plain bytes): F3 on a file that fits
+/// its <see cref="Masks"/> asks it first, after the user's own Configuration → Viewers rules and before the
+/// built-in viewer. Register it with <see cref="IPluginHost.RegisterViewer"/>.
+/// </summary>
+public interface IPluginViewer
+{
+    /// <summary>Unique within the plugin, e.g. "dbf".</summary>
+    string Id { get; }
+
+    /// <summary>"dBase tables" - shown in the Plugins Manager.</summary>
+    string DisplayName { get; }
+
+    /// <summary>The files it views, as masks separated by ';' ("*.dbf;*.dbt").</summary>
+    string Masks { get; }
+
+    /// <summary>A closer look than the masks (e.g. the file's first bytes); false = the next viewer gets it. Runs on a background thread.</summary>
+    bool CanView(string path) => true;
+
+    /// <summary>
+    /// Shows the file. Return <see cref="PluginView.Text"/> for the built-in viewer to show (search, copy and
+    /// print come with it), <see cref="PluginView.Shown"/> when the plugin opened its own window (e.g. through
+    /// <see cref="IPluginHost.Ui"/>), or <see cref="PluginView.NotHandled"/> to let the built-in viewer show the file.
+    /// Runs on the UI thread: long work goes to Task.Run.
+    /// </summary>
+    Task<PluginView> ViewAsync(IPluginHost host, string path);
+}
+
+/// <summary>What <see cref="IPluginViewer.ViewAsync"/> did.</summary>
+public sealed class PluginView
+{
+    private PluginView(bool handled, string? text, string? title)
+    {
+        Handled = handled;
+        TextContent = text;
+        Title = title;
+    }
+
+    /// <summary>The plugin showed the file itself.</summary>
+    public static PluginView Shown { get; } = new(true, null, null);
+
+    /// <summary>The plugin passes: the built-in viewer shows the file.</summary>
+    public static PluginView NotHandled { get; } = new(false, null, null);
+
+    /// <summary>The built-in viewer shows this text (title: what its window says; null = the file's name).</summary>
+    public static PluginView Text(string text, string? title = null) => new(true, text ?? string.Empty, title);
+
+    public bool Handled { get; }
+    public string? TextContent { get; }
+    public string? Title { get; }
+}
 
 /// <summary>
 /// A file system shown in the panels like a directory tree. Its paths are URLs the plugin understands

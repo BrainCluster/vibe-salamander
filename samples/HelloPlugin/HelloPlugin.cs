@@ -10,6 +10,7 @@ namespace HelloPlugin;
 /// <summary>
 /// The smallest useful plugin: three commands in Plugins → Hello. One reads the active panel and shows a
 /// notification, one opens a window with a list, and one appears in the right-click menu of text files.
+/// It also has a settings page and a viewer: F3 on a .csv file shows its columns lined up.
 /// </summary>
 public sealed class HelloPlugin : IVibePlugin, ICommandContributor
 {
@@ -22,9 +23,9 @@ public sealed class HelloPlugin : IVibePlugin, ICommandContributor
     public string Author => "Your name";
     public string? IconGlyph => "\uE8BD"; // a Segoe Fluent Icons character for the Plugins menu
 
-    // the oldest Vibe Salamander it works with; null = any. (0.9 has no settings pages yet: there the page is just
-    // not offered, so 0.9 is fine. A plugin that calls something newer says that version here.)
-    public Version? MinimumHostVersion => new(0, 9);
+    // the oldest Vibe Salamander it works with; null = any. Say the version that added the newest thing you use
+    // (settings pages and RegisterViewer came after 0.9.0), and an older Vibe Salamander explains instead of failing.
+    public Version? MinimumHostVersion => null;
 
     // ---- its settings page (Configuration → Plugins → Settings...) -----------------------------------------
 
@@ -61,6 +62,7 @@ public sealed class HelloPlugin : IVibePlugin, ICommandContributor
                 AppliesTo: path => path.EndsWith(".txt", StringComparison.OrdinalIgnoreCase), SeparatorBefore: true),
         };
         host.RegisterCommands(this);
+        host.RegisterViewer(new CsvViewer());
     }
 
     public void Shutdown()
@@ -112,5 +114,28 @@ public sealed class HelloPlugin : IVibePlugin, ICommandContributor
             return;
         int lines = await Task.Run(() => File.ReadLines(file.FullPath).Count());
         await host.Ui.ShowMessageAsync("Count lines", $"{file.Name} has {lines:N0} lines.");
+    }
+}
+
+/// <summary>F3 on a .csv file: its columns lined up, in the built-in viewer (search, copy and print come with it).</summary>
+public sealed class CsvViewer : IPluginViewer
+{
+    public string Id => "csv";
+    public string DisplayName => "CSV tables";
+    public string Masks => "*.csv";
+
+    public async Task<PluginView> ViewAsync(IPluginHost host, string path)
+    {
+        string[] lines = await File.ReadAllLinesAsync(path);
+        if (lines.Length == 0)
+            return PluginView.NotHandled; // nothing to line up: the built-in viewer shows the empty file
+        char separator = lines[0].Count(c => c == ';') > lines[0].Count(c => c == ',') ? ';' : ',';
+        List<string[]> rows = lines.Select(l => l.Split(separator)).ToList();
+        int columns = rows.Max(r => r.Length);
+        int[] widths = Enumerable.Range(0, columns).Select(c => rows.Max(r => c < r.Length ? r[c].Trim().Length : 0)).ToArray();
+        var text = new System.Text.StringBuilder();
+        foreach (string[] row in rows)
+            text.AppendLine(string.Join(" | ", Enumerable.Range(0, columns).Select(c => (c < row.Length ? row[c].Trim() : string.Empty).PadRight(widths[c]))).TrimEnd());
+        return PluginView.Text(text.ToString(), Path.GetFileName(path) + " (columns)");
     }
 }
