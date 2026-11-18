@@ -174,8 +174,16 @@ public sealed class TabsScenarios : IDisposable
             .Where(t => t.BoundingRectangle.Top < left.BoundingRectangle.Bottom && t.BoundingRectangle.Bottom > left.BoundingRectangle.Top &&
                         t.BoundingRectangle.Left < right.BoundingRectangle.Right)
             .ToList();
-        AppSession.WaitUntil(() => TabsHere().FirstOrDefault(t => t.ItemStatus == "shown") is { } shown && Whole(shown),
-            "the shown (last) tab whole in view");
+        string Describe() => string.Join("; ", TabsHere().Select(t => $"{t.BoundingRectangle.Left}-{t.BoundingRectangle.Right} '{t.Properties.ItemStatus.ValueOrDefault}'")) +
+                             $" | arrows {left.BoundingRectangle.Right} / {right.BoundingRectangle.Left}";
+        bool shownWhole = false;
+        for (int i = 0; i < 50 && !shownWhole; i++)
+        {
+            shownWhole = TabsHere().FirstOrDefault(t => t.Properties.ItemStatus.ValueOrDefault == "shown") is { } shown && Whole(shown);
+            if (!shownWhole)
+                Timing.Pause(100);
+        }
+        Assert.True(shownWhole, "the shown (last) tab isn't whole in view: " + Describe());
         AppSession.WaitUntil(() => left.IsEnabled && !right.IsEnabled, "scrolled to the end: left arrow on, right arrow off");
         AppSession.Screenshot("67 full row of tabs");
 
