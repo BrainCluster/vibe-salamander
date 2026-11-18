@@ -172,14 +172,16 @@ public sealed partial class MainViewModel
     /// </summary>
     public async Task EjectTabImageAsync(string root)
     {
+        // which tabs, noted before: unmounting moves a panel on the drive to This PC first
+        var onDrive = TabsOnDrive(root).Select(x => (x.Pane, Tab: TabsOf(x.Pane).List.Tabs[x.Index])).ToList();
         if (!await UnmountImageAsync(root))
             return;
-        foreach (PaneViewModel pane in new[] { Left, Right })
+        foreach ((PaneViewModel pane, PanelTab tab) in onDrive)
         {
             TabsViewModel tabs = TabsOf(pane);
-            foreach (int index in TabsOnDrive(root).Where(x => x.Pane == pane).Select(x => x.Index).OrderByDescending(i => i).ToList())
-                if (tabs.Count > 1)
-                    await tabs.CloseAsync(index);
+            int index = tabs.List.Tabs.ToList().IndexOf(tab);
+            if (index >= 0 && tabs.Count > 1)
+                await tabs.CloseAsync(index);
         }
     }
 
