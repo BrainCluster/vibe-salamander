@@ -19,8 +19,8 @@ public class PanelCommandRulesTests
     [InlineData(CommandId.Delete, true, ArchivePanelAction.Delete)]
     [InlineData(CommandId.DeletePermanently, true, ArchivePanelAction.Delete)]
     [InlineData(CommandId.ClipboardPaste, true, ArchivePanelAction.PasteIn)]
-    [InlineData(CommandId.QuickRename, true, ArchivePanelAction.ExplainEditable)]
-    [InlineData(CommandId.CreateDirectory, true, ArchivePanelAction.ExplainEditable)]
+    [InlineData(CommandId.QuickRename, true, ArchivePanelAction.Rename)]
+    [InlineData(CommandId.CreateDirectory, true, ArchivePanelAction.CreateDirectory)]
     [InlineData(CommandId.Move, false, ArchivePanelAction.ExplainReadOnly)]   // 7z, RAR: read-only
     [InlineData(CommandId.Delete, false, ArchivePanelAction.ExplainReadOnly)]
     [InlineData(CommandId.ClipboardPaste, false, ArchivePanelAction.ExplainReadOnly)]

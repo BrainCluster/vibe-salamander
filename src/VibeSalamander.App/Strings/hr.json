@@ -1801,5 +1801,9 @@
   "Converted: {0}": "Pretvoreno: {0}",
   "already so: {0}": "već takve: {0}",
   "not text, left alone: {0}": "nisu tekst, ostavljene: {0}",
-  "left alone, ": "ostavljeno, "
+  "left alone, ": "ostavljeno, ",
+  "In \"{0}\" files can be copied in and out (F5, F6), renamed (F2), deleted (F8), and folders made (F7).": "U „{0}” se datoteke mogu kopirati unutra i van (F5, F6), preimenovati (F2), brisati (F8), a mape stvarati (F7).",
+  "Names can't be changed in this archive.": "U ovoj arhivi nazivi se ne mogu mijenjati.",
+  "Directories can't be made in this archive.": "U ovoj arhivi ne mogu se stvarati mape.",
+  "Name of the new directory in the archive:": "Naziv nove mape u arhivi:"
 }

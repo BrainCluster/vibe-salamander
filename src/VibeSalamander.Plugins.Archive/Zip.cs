@@ -365,13 +365,40 @@ internal sealed class ZipBuilder
     }
 
     /// <summary>Copies an entry of another ZIP (compressed and possibly encrypted) without unpacking it.</summary>
-    public void CopyRaw(Stream source, ZipRecord record, Action<int>? progress = null)
+    /// <param name="newName">Another name for the entry (F2 in the archive): its local header is written again with it;
+    /// the data (compressed, maybe encrypted) is copied as it is.</param>
+    public void CopyRaw(Stream source, ZipRecord record, Action<int>? progress = null, string? newName = null)
     {
         long start = record.LocalHeaderOffset;
         long end = Zip.EntryEnd(source, record);
         ZipRecord copy = record.Clone();
         copy.LocalHeaderOffset = _out.Position;
         source.Position = start;
+        if (newName != null)
+        {
+            byte[] header = new byte[30];
+            source.ReadExactly(header);
+            int oldNameLength = BitConverter.ToUInt16(header, 26);
+            int extraLength = BitConverter.ToUInt16(header, 28);
+            source.Position = start + 30 + oldNameLength;
+            byte[] extra = new byte[extraLength];
+            source.ReadExactly(extra);
+            extra = WithoutUnicodePath(extra); // it would carry the old name
+            bool utf8 = NeedsUtf8(newName);
+            byte[] nameBytes = utf8 ? Encoding.UTF8.GetBytes(newName) : Encoding.ASCII.GetBytes(newName);
+            ushort flags = (ushort)((BitConverter.ToUInt16(header, 6) & ~0x800) | (utf8 ? 0x800 : 0));
+            BitConverter.TryWriteBytes(header.AsSpan(6), flags);
+            BitConverter.TryWriteBytes(header.AsSpan(26), (ushort)nameBytes.Length);
+            BitConverter.TryWriteBytes(header.AsSpan(28), (ushort)extra.Length);
+            _out.Write(header);
+            _out.Write(nameBytes);
+            _out.Write(extra);
+            copy.NameBytes = nameBytes;
+            copy.Flags = (ushort)((copy.Flags & ~0x800) | (utf8 ? 0x800 : 0));
+            copy.Extra = WithoutUnicodePath(copy.Extra);
+            start += 30 + oldNameLength + extraLength;
+            source.Position = start;
+        }
         long left = end - start;
         while (left > 0)
         {
@@ -383,6 +410,24 @@ internal sealed class ZipBuilder
             progress?.Invoke(read);
         }
         _records.Add(copy);
+    }
+
+    /// <summary>Extra fields without Info-ZIP's Unicode path (0x7075), which repeats the old name.</summary>
+    private static byte[] WithoutUnicodePath(byte[] extra)
+    {
+        using var kept = new MemoryStream();
+        int at = 0;
+        while (at + 4 <= extra.Length)
+        {
+            ushort id = BitConverter.ToUInt16(extra, at);
+            int size = BitConverter.ToUInt16(extra, at + 2);
+            if (at + 4 + size > extra.Length)
+                break;
+            if (id != 0x7075)
+                kept.Write(extra, at, 4 + size);
+            at += 4 + size;
+        }
+        return kept.ToArray();
     }
 
     /// <summary>A directory entry ("docs/images/").</summary>

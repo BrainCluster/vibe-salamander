@@ -68,11 +68,17 @@ internal sealed class ArchivePanelCommands
                 if (p.FocusedItem is { Entry.IsDirectory: false, Entry.IsUpDir: false } edited)
                     await OpenCopyAsync(p, edited, edit: true);
                 return true;
+            case ArchivePanelAction.Rename:
+                await RenameAsync(p, editable!);
+                return true;
+            case ArchivePanelAction.CreateDirectory:
+                await CreateDirectoryAsync(p, editable!);
+                return true;
             case ArchivePanelAction.ExplainEditable:
             case ArchivePanelAction.ExplainReadOnly:
                 string name = p.Archive is { } location ? Path.GetFileName(location.ArchivePath) : "The archive";
                 if (editable != null)
-                    _host.Notify(Loc.F("In \"{0}\" files can be copied in and out (F5, F6) and deleted (F8).", name), isError: false);
+                    _host.Notify(Loc.F("In \"{0}\" files can be copied in and out (F5, F6), renamed (F2), deleted (F8), and folders made (F7).", name), isError: false);
                 else
                     _host.Notify($"\"{name}\" is open read-only: copy files out with F5, or unpack it with Alt+F6 from its folder.", isError: false);
                 return true;
@@ -133,6 +139,82 @@ internal sealed class ArchivePanelCommands
                 OperationResult deleted = await engine.DeleteAsync(sources, job.Cancellation);
                 result.Failed += deleted.Failed;
             }
+            return result;
+        });
+    }
+
+    private static bool SafeCanRename(IArchiver archiver, string path)
+    {
+        try
+        {
+            return archiver.CanRename(path);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// F2 in a ZIP or TAR: the name is edited in its row, then the archive is written again with it (in the transfer
+    /// panel: a large archive takes a moment). A directory is renamed with everything in it.
+    /// </summary>
+    private async Task RenameAsync(PaneViewModel p, ArchiveLocation location)
+    {
+        FileItemViewModel? item = p.FocusedItem;
+        if (item == null || item.Entry.IsUpDir)
+            return;
+        if (!SafeCanRename(location.Archiver, location.ArchivePath))
+        {
+            _host.Notify(Loc.T("Names can't be changed in this archive."));
+            return;
+        }
+        string? newName = await _host.EditNameInPlaceAsync(p, item);
+        if (string.IsNullOrWhiteSpace(newName) || newName == item.Entry.Name)
+            return;
+        if (ServerNames.RenameProblem(newName) is { } problem)
+        {
+            _host.Notify(Loc.T(problem));
+            return;
+        }
+        string from = location.ItemPath(item.Entry.Name);
+        string to = location.ItemPath(newName);
+        _main.Transfers.EnqueueJob(OperationKind.Move, new[] { item.Entry.FullPath }, null, async job =>
+        {
+            OperationResult result = await Task.Run(() => location.Archiver.RenameAsync(new ArchiveRenameRequest
+            {
+                ArchivePath = location.ArchivePath,
+                Path = from,
+                NewPath = to,
+            }, job));
+            await p.NavigateAsync(p.Path, newName, addToHistory: false); // the caret on the new name
+            return result;
+        });
+    }
+
+    /// <summary>F7 in a ZIP or TAR: asks for the name and makes the directory (the archive is written again).</summary>
+    private async Task CreateDirectoryAsync(PaneViewModel p, ArchiveLocation location)
+    {
+        if (!SafeCanRename(location.Archiver, location.ArchivePath))
+        {
+            _host.Notify(Loc.T("Directories can't be made in this archive."));
+            return;
+        }
+        string? name = await _host.PromptAsync(Loc.T("Create Directory"), Loc.T("Name of the new directory in the archive:"), "New Folder", Loc.T("Create"));
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+        string[] parts = ServerNames.PathParts(name);
+        if (parts.Length == 0)
+            return;
+        string path = location.ItemPath(string.Join("/", parts));
+        _main.Transfers.EnqueueJob(OperationKind.Copy, new[] { name }, ArchiveFileSystemProvider.Combine(location.ArchivePath, location.InnerPath), async job =>
+        {
+            OperationResult result = await Task.Run(() => location.Archiver.CreateDirectoryAsync(new ArchiveCreateDirectoryRequest
+            {
+                ArchivePath = location.ArchivePath,
+                Path = path,
+            }, job));
+            await p.NavigateAsync(p.Path, parts[0], addToHistory: false);
             return result;
         });
     }

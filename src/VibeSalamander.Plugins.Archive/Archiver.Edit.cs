@@ -23,6 +23,14 @@ internal sealed partial class Archiver
     public Task<OperationResult> AddAsync(ArchiveAddRequest request, IArchiveJob job) =>
         Task.Run(() => Edit(request.ArchivePath, job, request, null));
 
+    public bool CanRename(string archivePath) => CanEdit(archivePath);
+
+    public Task<OperationResult> RenameAsync(ArchiveRenameRequest request, IArchiveJob job) =>
+        Task.Run(() => Edit(request.ArchivePath, job, null, null, request, null), job.Cancellation);
+
+    public Task<OperationResult> CreateDirectoryAsync(ArchiveCreateDirectoryRequest request, IArchiveJob job) =>
+        Task.Run(() => Edit(request.ArchivePath, job, null, null, null, request), job.Cancellation);
+
     public Task<OperationResult> DeleteAsync(ArchiveDeleteRequest request, IArchiveJob job) =>
         Task.Run(() => Edit(request.ArchivePath, job, null, request));
 
@@ -41,6 +49,22 @@ internal sealed partial class Archiver
 
         /// <summary>The panel's directory: kept as an empty directory when everything in it goes.</summary>
         public string KeepDirectory { get; set; } = string.Empty;
+
+        /// <summary>F2: an entry (a directory with everything under it) under another name.</summary>
+        public (string From, string To)? Renamed { get; set; }
+
+        /// <summary>F7: an empty directory to add.</summary>
+        public string? NewDirectory { get; set; }
+
+        /// <summary>The name an entry is written under (renamed, or as it was).</summary>
+        public string NameOf(string key)
+        {
+            if (Renamed is not (string from, string to))
+                return key;
+            if (key.Equals(from, StringComparison.OrdinalIgnoreCase))
+                return to;
+            return key.StartsWith(from + "/", StringComparison.OrdinalIgnoreCase) ? to + key[from.Length..] : key;
+        }
 
         public ArchiveCompression Compression { get; set; } = ArchiveCompression.Normal;
         public string? Password { get; set; }
@@ -61,7 +85,8 @@ internal sealed partial class Archiver
     /// <summary>One change of an archive at a time (transfers run side by side).</summary>
     private static readonly Dictionary<string, object> EditLocks = new(StringComparer.OrdinalIgnoreCase);
 
-    private OperationResult Edit(string archivePath, IArchiveJob job, ArchiveAddRequest? add, ArchiveDeleteRequest? delete)
+    private OperationResult Edit(string archivePath, IArchiveJob job, ArchiveAddRequest? add, ArchiveDeleteRequest? delete,
+        ArchiveRenameRequest? rename = null, ArchiveCreateDirectoryRequest? mkdir = null)
     {
         archivePath = Path.GetFullPath(archivePath);
         object gate;
@@ -71,10 +96,11 @@ internal sealed partial class Archiver
                 EditLocks[archivePath] = gate = new object();
         }
         lock (gate)
-            return EditLocked(archivePath, job, add, delete);
+            return EditLocked(archivePath, job, add, delete, rename, mkdir);
     }
 
-    private OperationResult EditLocked(string archivePath, IArchiveJob job, ArchiveAddRequest? add, ArchiveDeleteRequest? delete)
+    private OperationResult EditLocked(string archivePath, IArchiveJob job, ArchiveAddRequest? add, ArchiveDeleteRequest? delete,
+        ArchiveRenameRequest? rename, ArchiveCreateDirectoryRequest? mkdir)
     {
         string kind = KindOf(archivePath) ?? string.Empty;
         if (!EditableKinds.Contains(kind))
@@ -109,6 +135,33 @@ internal sealed partial class Archiver
         {
             plan.Deleted.AddRange(delete.Items.Select(UnpackState.Normalize).Where(k => k != null).Select(k => k!));
             plan.KeepDirectory = UnpackState.Normalize(delete.BasePath) ?? string.Empty;
+        }
+
+        // 2b. a new name, a new directory: checked against what is there
+        if (rename != null)
+        {
+            string from = UnpackState.Normalize(rename.Path) ?? throw new ArgumentException("No item to rename.");
+            string to = UnpackState.Normalize(rename.NewPath) ?? throw new ArgumentException("The new name is empty.");
+            bool Has(string key) => existing.Any(e => e.Key.Equals(key, StringComparison.OrdinalIgnoreCase) ||
+                                                      e.Key.StartsWith(key + "/", StringComparison.OrdinalIgnoreCase));
+            if (!Has(from))
+                throw new FileNotFoundException($"\"{from}\" isn't in the archive.");
+            bool onlyCase = from.Equals(to, StringComparison.OrdinalIgnoreCase);
+            if (!onlyCase && Has(to))
+                throw new IOException($"\"{to}\" is in the archive already.");
+            if (to.StartsWith(from + "/", StringComparison.OrdinalIgnoreCase))
+                throw new IOException("A directory can't go into itself.");
+            if (string.Equals(from, to, StringComparison.Ordinal))
+                return result;
+            plan.Renamed = (from, to);
+        }
+        if (mkdir != null)
+        {
+            string key = UnpackState.Normalize(mkdir.Path) ?? throw new ArgumentException("The name is empty.");
+            if (existing.Any(e => e.Key.Equals(key, StringComparison.OrdinalIgnoreCase)) ||
+                existing.Any(e => e.Key.StartsWith(key + "/", StringComparison.OrdinalIgnoreCase)))
+                throw new IOException($"\"{key}\" is in the archive already.");
+            plan.NewDirectory = key;
         }
 
         // 3. what comes in, and what it replaces
@@ -149,7 +202,7 @@ internal sealed partial class Archiver
                 }
             }
         }
-        if (plan.Added.Count == 0 && plan.Deleted.Count == 0)
+        if (plan.Added.Count == 0 && plan.Deleted.Count == 0 && plan.Renamed == null && plan.NewDirectory == null)
             return result;
 
         // 4. the new archive next to the old one; it replaces the old one when complete
@@ -317,11 +370,23 @@ internal sealed partial class Archiver
         {
             job.WaitWhilePaused();
             job.Cancellation.ThrowIfCancellationRequested();
+            string? key = UnpackState.Normalize(record.Name);
+            string? renamed = key != null && plan.NameOf(key) is string name && name != key ? name + (record.IsDirectory ? "/" : string.Empty) : null;
             zip.CopyRaw(input, record, read =>
             {
                 tracker.AddBytes(read);
                 tracker.ReportTo(job);
-            });
+            }, renamed);
+            if (renamed != null && !record.IsDirectory)
+                result.Succeeded++;
+        }
+        if (plan.Renamed is (string from, _) && !records.Any(r => !r.IsDirectory && UnpackState.Normalize(r.Name) is string k &&
+                (k.Equals(from, StringComparison.OrdinalIgnoreCase) || k.StartsWith(from + "/", StringComparison.OrdinalIgnoreCase))))
+            result.Succeeded++; // an empty directory renamed
+        if (plan.NewDirectory != null)
+        {
+            zip.AddDirectory(plan.NewDirectory, DateTime.Now);
+            result.Succeeded++;
         }
         if (KeepsDirectory(plan, kept.Select(r => UnpackState.Normalize(r.Name))))
             zip.AddDirectory(plan.KeepDirectory, DateTime.Now);
@@ -410,7 +475,18 @@ internal sealed partial class Archiver
                     if (!plan.Keeps(key, entry.EntryType == TarEntryType.Directory))
                         continue;
                     keptKeys.Add(key);
-                    writer.WriteEntry(entry); // header and data as they are, in the entry's own format
+                    if (key != null && plan.NameOf(key) is string name && name != key)
+                    {
+                        // a new name: the entry again as PAX (any name length), its data and times as they were
+                        var renamedEntry = new PaxTarEntry(entry) { Name = name + (entry.EntryType == TarEntryType.Directory ? "/" : string.Empty) };
+                        writer.WriteEntry(renamedEntry);
+                        if (entry.EntryType != TarEntryType.Directory)
+                            result.Succeeded++;
+                    }
+                    else
+                    {
+                        writer.WriteEntry(entry); // header and data as they are, in the entry's own format
+                    }
                     tracker.SetBytes(SafePosition(input));
                     tracker.ReportTo(job);
                 }
@@ -418,6 +494,11 @@ internal sealed partial class Archiver
 
                 if (KeepsDirectory(plan, keptKeys))
                     writer.WriteEntry(new PaxTarEntry(TarEntryType.Directory, plan.KeepDirectory + "/") { ModificationTime = DateTimeOffset.Now });
+                if (plan.NewDirectory != null)
+                {
+                    writer.WriteEntry(new PaxTarEntry(TarEntryType.Directory, plan.NewDirectory + "/") { ModificationTime = DateTimeOffset.Now });
+                    result.Succeeded++;
+                }
                 foreach (PackItem item in plan.Added)
                 {
                     job.WaitWhilePaused();

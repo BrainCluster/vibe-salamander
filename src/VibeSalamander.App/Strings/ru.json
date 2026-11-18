@@ -1801,5 +1801,9 @@
   "Converted: {0}": "Преобразовано: {0}",
   "already so: {0}": "уже так: {0}",
   "not text, left alone: {0}": "не текст, без изменений: {0}",
-  "left alone, ": "без изменений, "
+  "left alone, ": "без изменений, ",
+  "In \"{0}\" files can be copied in and out (F5, F6), renamed (F2), deleted (F8), and folders made (F7).": "В «{0}» файлы можно копировать внутрь и наружу (F5, F6), переименовывать (F2), удалять (F8) и создавать папки (F7).",
+  "Names can't be changed in this archive.": "В этом архиве нельзя менять имена.",
+  "Directories can't be made in this archive.": "В этом архиве нельзя создавать папки.",
+  "Name of the new directory in the archive:": "Имя новой папки в архиве:"
 }

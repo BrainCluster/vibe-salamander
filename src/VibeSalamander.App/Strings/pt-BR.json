@@ -1801,5 +1801,9 @@
   "Converted: {0}": "Convertidos: {0}",
   "already so: {0}": "já assim: {0}",
   "not text, left alone: {0}": "não são texto, inalterados: {0}",
-  "left alone, ": "inalterado, "
+  "left alone, ": "inalterado, ",
+  "In \"{0}\" files can be copied in and out (F5, F6), renamed (F2), deleted (F8), and folders made (F7).": "Em \"{0}\" os arquivos podem ser copiados para dentro e para fora (F5, F6), renomeados (F2), excluídos (F8) e pastas criadas (F7).",
+  "Names can't be changed in this archive.": "Os nomes não podem ser alterados neste arquivo.",
+  "Directories can't be made in this archive.": "Não é possível criar pastas neste arquivo.",
+  "Name of the new directory in the archive:": "Nome da nova pasta no arquivo:"
 }

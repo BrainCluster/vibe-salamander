@@ -1801,5 +1801,9 @@
   "Converted: {0}": "Převedeno: {0}",
   "already so: {0}": "již tak: {0}",
   "not text, left alone: {0}": "nejsou text, ponechány: {0}",
-  "left alone, ": "ponecháno, "
+  "left alone, ": "ponecháno, ",
+  "In \"{0}\" files can be copied in and out (F5, F6), renamed (F2), deleted (F8), and folders made (F7).": "V „{0}“ lze soubory kopírovat dovnitř i ven (F5, F6), přejmenovat (F2), mazat (F8) a vytvářet složky (F7).",
+  "Names can't be changed in this archive.": "V tomto archivu nelze měnit názvy.",
+  "Directories can't be made in this archive.": "V tomto archivu nelze vytvářet složky.",
+  "Name of the new directory in the archive:": "Název nové složky v archivu:"
 }

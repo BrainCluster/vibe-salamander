@@ -543,6 +543,25 @@ public sealed class ArchiveDeleteRequest
     public string BasePath { get; init; } = string.Empty;
 }
 
+/// <summary>F2 in a panel showing the archive: a file or directory (with its content) gets another name.</summary>
+public sealed class ArchiveRenameRequest
+{
+    public required string ArchivePath { get; init; }
+
+    /// <summary>"docs/readme.txt" or "docs/images" ('/' separated).</summary>
+    public required string Path { get; init; }
+
+    /// <summary>The new path, normally in the same directory ("docs/README.md").</summary>
+    public required string NewPath { get; init; }
+}
+
+/// <summary>F7 in a panel showing the archive: an empty directory ("docs/new"; parents are made too).</summary>
+public sealed class ArchiveCreateDirectoryRequest
+{
+    public required string ArchivePath { get; init; }
+    public required string Path { get; init; }
+}
+
 /// <summary>Alt+F6: unpack an archive into a directory.</summary>
 public sealed class UnpackRequest
 {
@@ -614,6 +633,20 @@ public interface IArchiver
     /// <summary>Deletes files and directories from the archive (rewritten like <see cref="AddAsync"/>). Background thread.</summary>
     Task<OperationResult> DeleteAsync(ArchiveDeleteRequest request, IArchiveJob job) =>
         throw new NotSupportedException("This archive can't be changed.");
+
+    /// <summary>
+    /// True when names can be changed and directories made inside this archive (<see cref="RenameAsync"/>,
+    /// <see cref="CreateDirectoryAsync"/>); archivers written before these existed say no.
+    /// </summary>
+    bool CanRename(string archivePath) => false;
+
+    /// <summary>Renames a file or a directory with its content (rewritten like <see cref="AddAsync"/>). Background thread.</summary>
+    Task<OperationResult> RenameAsync(ArchiveRenameRequest request, IArchiveJob job) =>
+        throw new NotSupportedException("Names can't be changed in this archive.");
+
+    /// <summary>Makes an empty directory (rewritten like <see cref="AddAsync"/>). Background thread.</summary>
+    Task<OperationResult> CreateDirectoryAsync(ArchiveCreateDirectoryRequest request, IArchiveJob job) =>
+        throw new NotSupportedException("Directories can't be made in this archive.");
 }
 
 /// <summary>

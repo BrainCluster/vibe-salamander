@@ -19,6 +19,12 @@ public enum ArchivePanelAction
     /// <summary>F4 in an archive that can be changed: edit a copy, and saving puts it back into the archive.</summary>
     EditCopy,
 
+    /// <summary>F2 in an archive that can be changed: a new name inside it.</summary>
+    Rename,
+
+    /// <summary>F7 in an archive that can be changed: a new directory inside it.</summary>
+    CreateDirectory,
+
     /// <summary>A change this archive allows only in other ways: say what can be done (copy in and out, delete).</summary>
     ExplainEditable,
 
@@ -58,6 +64,8 @@ public static class PanelCommandRules
         CommandId.Delete or CommandId.DeletePermanently when editable => ArchivePanelAction.Delete,
         CommandId.ClipboardPaste when editable => ArchivePanelAction.PasteIn,
         CommandId.Edit when editable => ArchivePanelAction.EditCopy,
+        CommandId.QuickRename when editable => ArchivePanelAction.Rename,
+        CommandId.CreateDirectory when editable => ArchivePanelAction.CreateDirectory,
         CommandId.View or CommandId.Edit => ArchivePanelAction.OpenCopy,
         CommandId.Move or CommandId.Delete or CommandId.DeletePermanently or CommandId.QuickRename or CommandId.CreateDirectory or
         CommandId.EditNewFile or CommandId.ChangeAttributes or CommandId.ChangeCase or CommandId.ClipboardCut or

@@ -423,6 +423,58 @@ public sealed class ArchivePluginTests : IDisposable
     }
 
     [Theory]
+    [InlineData("zip", "rename.zip")]
+    [InlineData("tar", "rename.tar")]
+    [InlineData("tar.gz", "rename.tar.gz")]
+    public async Task Files_and_directories_are_renamed_inside_and_still_unpack(string format, string name)
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackAsync(archiver, format, name);
+        Assert.True(archiver.CanRename(archive));
+
+        OperationResult file = await archiver.RenameAsync(new ArchiveRenameRequest { ArchivePath = archive, Path = "readme.txt", NewPath = "přečti mě.txt" }, new FakeJob());
+        OperationResult folder = await archiver.RenameAsync(new ArchiveRenameRequest { ArchivePath = archive, Path = "docs/deep", NewPath = "docs/deeper" }, new FakeJob());
+        OperationResult made = await archiver.CreateDirectoryAsync(new ArchiveCreateDirectoryRequest { ArchivePath = archive, Path = "docs/new folder" }, new FakeJob());
+
+        Assert.Equal(1, file.Succeeded);
+        Assert.Equal(1, folder.Succeeded); // data.bin
+        Assert.Equal(1, made.Succeeded);
+        var items = await ItemsAsync(archiver, archive);
+        Assert.Contains(items, i => i.Path == "přečti mě.txt" && !i.IsDirectory);
+        Assert.DoesNotContain(items, i => i.Path == "readme.txt");
+        Assert.Contains(items, i => i.Path == "docs/deeper/data.bin");
+        Assert.DoesNotContain(items, i => i.Path.StartsWith("docs/deep/", StringComparison.Ordinal));
+        Assert.Contains(items, i => i.Path == "docs/new folder" && i.IsDirectory);
+
+        string target = Path.Combine(_root, "renamed-out-" + format);
+        await archiver.UnpackAsync(new UnpackRequest { ArchivePath = archive, TargetDirectory = target }, new FakeJob());
+        Assert.Equal("hello", File.ReadAllText(Path.Combine(target, "přečti mě.txt")));
+        Assert.True(File.Exists(Path.Combine(target, "docs", "deeper", "data.bin")));
+        Assert.True(Directory.Exists(Path.Combine(target, "docs", "new folder")));
+    }
+
+    [Fact]
+    public async Task A_renamed_zip_entry_reads_in_other_programs_and_names_already_there_are_refused()
+    {
+        IArchiver archiver = NewArchiver();
+        string archive = await PackAsync(archiver, "zip", "rename-check.zip");
+        await archiver.RenameAsync(new ArchiveRenameRequest { ArchivePath = archive, Path = "docs/a.md", NewPath = "docs/b.md" }, new FakeJob());
+
+        using (ZipArchive zip = ZipFile.OpenRead(archive)) // .NET's own reader agrees
+        {
+            Assert.Contains("docs/b.md", zip.Entries.Select(e => e.FullName));
+            using var reader = new StreamReader(zip.GetEntry("readme.txt")!.Open());
+            Assert.Equal("hello", reader.ReadToEnd());
+        }
+        await Assert.ThrowsAsync<IOException>(() => archiver.RenameAsync(
+            new ArchiveRenameRequest { ArchivePath = archive, Path = "docs/b.md", NewPath = "readme.txt" }, new FakeJob()));
+        await Assert.ThrowsAsync<IOException>(() => archiver.CreateDirectoryAsync(
+            new ArchiveCreateDirectoryRequest { ArchivePath = archive, Path = "docs" }, new FakeJob()));
+        await Assert.ThrowsAsync<FileNotFoundException>(() => archiver.RenameAsync(
+            new ArchiveRenameRequest { ArchivePath = archive, Path = "nothing.txt", NewPath = "x.txt" }, new FakeJob()));
+    }
+
+    [Theory]
     [InlineData("zip", "delete.zip")]
     [InlineData("tar", "delete.tar")]
     [InlineData("tar.gz", "delete.tar.gz")]
