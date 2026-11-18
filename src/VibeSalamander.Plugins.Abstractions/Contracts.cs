@@ -32,6 +32,21 @@ public interface IVibePlugin
     /// </summary>
     string? IconGlyph => null;
 
+    /// <summary>
+    /// The oldest Vibe Salamander this plugin works with (it uses something that came in that version); null = any.
+    /// An older Vibe Salamander doesn't load it and says why in the Plugins Manager.
+    /// </summary>
+    Version? MinimumHostVersion => null;
+
+    /// <summary>
+    /// The plugin's settings for its page in Configuration → Plugins (Settings… next to it), with their current
+    /// values; null = no settings. Asked each time the page opens.
+    /// </summary>
+    IReadOnlyList<PluginField>? GetSettings() => null;
+
+    /// <summary>The user saved the settings page: the fields of <see cref="GetSettings"/> with their new values.</summary>
+    void ApplySettings(IReadOnlyList<PluginField> fields) { }
+
     /// <summary>Called once after loading; the plugin registers its features through the host.</summary>
     void Initialize(IPluginHost host);
 

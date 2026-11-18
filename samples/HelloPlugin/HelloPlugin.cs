@@ -22,12 +22,36 @@ public sealed class HelloPlugin : IVibePlugin, ICommandContributor
     public string Author => "Your name";
     public string? IconGlyph => "\uE8BD"; // a Segoe Fluent Icons character for the Plugins menu
 
+    // the oldest Vibe Salamander it works with; null = any. (0.9 has no settings pages yet: there the page is just
+    // not offered, so 0.9 is fine. A plugin that calls something newer says that version here.)
+    public Version? MinimumHostVersion => new(0, 9);
+
+    // ---- its settings page (Configuration → Plugins → Settings...) -----------------------------------------
+
+    private int _largestCount = 50;
+    private string _settingsFile = string.Empty;
+
+    public IReadOnlyList<PluginField>? GetSettings() => new[]
+    {
+        new PluginField { Label = "How many files Largest files lists", Value = _largestCount.ToString(CultureInfo.InvariantCulture) },
+    };
+
+    public void ApplySettings(IReadOnlyList<PluginField> fields)
+    {
+        if (int.TryParse(fields[0].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count) && count > 0)
+            _largestCount = Math.Min(count, 10_000);
+        File.WriteAllText(_settingsFile, _largestCount.ToString(CultureInfo.InvariantCulture)); // kept in the plugin's own folder
+    }
+
     // ---- what it adds ----------------------------------------------------------------------------------------
 
     public IReadOnlyList<PluginCommand> Commands { get; private set; } = Array.Empty<PluginCommand>();
 
     public void Initialize(IPluginHost host)
     {
+        _settingsFile = Path.Combine(host.GetDataDirectory(this), "settings.txt");
+        if (File.Exists(_settingsFile) && int.TryParse(File.ReadAllText(_settingsFile), out int saved) && saved > 0)
+            _largestCount = saved;
         Commands = new[]
         {
             new PluginCommand("count", "Count marked files", null, CountMarked),
@@ -55,7 +79,7 @@ public sealed class HelloPlugin : IVibePlugin, ICommandContributor
         return Task.CompletedTask;
     }
 
-    private static async Task ListLargest(IPluginHost host)
+    private async Task ListLargest(IPluginHost host)
     {
         string folder = host.ActivePanel.Path;
         if (!Directory.Exists(folder))
@@ -73,7 +97,7 @@ public sealed class HelloPlugin : IVibePlugin, ICommandContributor
         window.SetProgress(-1); // busy, end unknown
         List<FileInfo> largest = await Task.Run(() => new DirectoryInfo(folder)
             .EnumerateFiles("*", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true })
-            .OrderByDescending(f => f.Length).Take(50).ToList());
+            .OrderByDescending(f => f.Length).Take(_largestCount).ToList());
         foreach (FileInfo file in largest)
             window.AddRow(new[] { Path.GetRelativePath(folder, file.FullName), file.Length.ToString("N0", CultureInfo.CurrentCulture) });
         window.SetProgress(null);

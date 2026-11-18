@@ -1120,8 +1120,18 @@ public sealed partial class SettingsWindow
             var grid = new Grid { ColumnSpacing = 16 };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.Children.Add(text);
-            Grid.SetColumn(toggle, 1);
+            // the plugin's own settings (IVibePlugin.GetSettings), in a dialog of this window
+            if (plugin.Error == null && plugin.Enabled && Services.PluginManager.HasSettings(plugin))
+            {
+                var settings = new Button { Content = "Settings...", VerticalAlignment = VerticalAlignment.Center };
+                Services.PluginInfo shown = plugin;
+                settings.Click += async (_, _) => await Services.PluginManager.EditSettingsAsync(shown, _dialogs);
+                Grid.SetColumn(settings, 1);
+                grid.Children.Add(settings);
+            }
+            Grid.SetColumn(toggle, 2);
             grid.Children.Add(toggle);
             page.Children.Add(new Border { Child = grid, Style = ThemedStyle("SettingsCardStyle") });
         }

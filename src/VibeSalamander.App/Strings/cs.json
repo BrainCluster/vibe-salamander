@@ -1807,5 +1807,8 @@
   "Directories can't be made in this archive.": "V tomto archivu nelze vytvářet složky.",
   "Name of the new directory in the archive:": "Název nové složky v archivu:",
   "Icon overlays": "Překryvné ikony",
-  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "Značky, které Git, OneDrive a další programy kreslí přes ikony (jen na místních discích)."
+  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "Značky, které Git, OneDrive a další programy kreslí přes ikony (jen na místních discích).",
+  "It needs Vibe Salamander {0} or newer (this is {1}). Update Vibe Salamander (Help → Check for Updates).": "Vyžaduje Vibe Salamander {0} nebo novější (toto je {1}). Aktualizujte Vibe Salamander (Nápověda → Vyhledat aktualizace).",
+  "{0} settings": "Nastavení {0}",
+  "Settings...": "Nastavení..."
 }

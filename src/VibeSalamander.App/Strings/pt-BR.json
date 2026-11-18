@@ -1807,5 +1807,8 @@
   "Directories can't be made in this archive.": "Não é possível criar pastas neste arquivo.",
   "Name of the new directory in the archive:": "Nome da nova pasta no arquivo:",
   "Icon overlays": "Sobreposições de ícones",
-  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "As marcas que Git, OneDrive e outros programas desenham sobre os ícones (somente discos locais)."
+  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "As marcas que Git, OneDrive e outros programas desenham sobre os ícones (somente discos locais).",
+  "It needs Vibe Salamander {0} or newer (this is {1}). Update Vibe Salamander (Help → Check for Updates).": "Precisa do Vibe Salamander {0} ou mais recente (este é {1}). Atualize o Vibe Salamander (Ajuda → Verificar atualizações).",
+  "{0} settings": "Configurações de {0}",
+  "Settings...": "Configurações..."
 }

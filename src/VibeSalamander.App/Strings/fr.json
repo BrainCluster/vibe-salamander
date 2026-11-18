@@ -1807,5 +1807,8 @@
   "Directories can't be made in this archive.": "Impossible de créer des dossiers dans cette archive.",
   "Name of the new directory in the archive:": "Nom du nouveau dossier dans l'archive :",
   "Icon overlays": "Superpositions d'icônes",
-  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "Les marques que Git, OneDrive et d'autres programmes dessinent sur les icônes (disques locaux uniquement)."
+  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "Les marques que Git, OneDrive et d'autres programmes dessinent sur les icônes (disques locaux uniquement).",
+  "It needs Vibe Salamander {0} or newer (this is {1}). Update Vibe Salamander (Help → Check for Updates).": "Il faut Vibe Salamander {0} ou plus récent (celui-ci est {1}). Mettez à jour Vibe Salamander (Aide → Rechercher des mises à jour).",
+  "{0} settings": "Paramètres de {0}",
+  "Settings...": "Paramètres..."
 }

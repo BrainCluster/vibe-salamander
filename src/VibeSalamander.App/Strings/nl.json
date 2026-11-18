@@ -1807,5 +1807,8 @@
   "Directories can't be made in this archive.": "In dit archief kunnen geen mappen worden gemaakt.",
   "Name of the new directory in the archive:": "Naam van de nieuwe map in het archief:",
   "Icon overlays": "Pictogram-overlays",
-  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "De markeringen die Git, OneDrive en andere programma's over pictogrammen tekenen (alleen lokale schijven)."
+  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "De markeringen die Git, OneDrive en andere programma's over pictogrammen tekenen (alleen lokale schijven).",
+  "It needs Vibe Salamander {0} or newer (this is {1}). Update Vibe Salamander (Help → Check for Updates).": "Vereist Vibe Salamander {0} of nieuwer (dit is {1}). Werk Vibe Salamander bij (Help → Controleren op updates).",
+  "{0} settings": "Instellingen van {0}",
+  "Settings...": "Instellingen..."
 }

@@ -251,6 +251,60 @@ public sealed class PluginManager
         }
     }
 
+    /// <summary>The plugin has a settings page (Configuration → Plugins → Settings...).</summary>
+    public static bool HasSettings(PluginInfo plugin)
+    {
+        try
+        {
+            return plugin.Instance?.GetSettings() is { Count: > 0 };
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The plugin's settings in a dialog; saved through the plugin when the user says OK.</summary>
+    public static async Task EditSettingsAsync(PluginInfo plugin, Views.Dialogs dialogs)
+    {
+        if (plugin.Instance is not { } instance || plugin.Host?.Ui is not PluginUi ui)
+            return;
+        try
+        {
+            IReadOnlyList<PluginField>? fields = instance.GetSettings();
+            if (fields is not { Count: > 0 })
+                return;
+            if (await ui.EditFieldsInAsync(dialogs, Loc.F("{0} settings", plugin.Name), plugin.Description, fields))
+                instance.ApplySettings(fields);
+        }
+        catch (Exception ex)
+        {
+            Core.Diagnostics.ErrorLog.Exception("Plugin settings " + plugin.Name, ex);
+            plugin.Host?.Notify($"{plugin.Name}: {ex.Message}", isError: true);
+        }
+    }
+
+    /// <summary>This Vibe Salamander's version, as plugins see it.</summary>
+    public static Version HostVersion => typeof(PluginManager).Assembly.GetName().Version ?? new Version(0, 1);
+
+    /// <summary>Why a plugin that needs a newer Vibe Salamander isn't loaded, or null (it is).</summary>
+    internal static string? TooNew(IVibePlugin plugin)
+    {
+        Version? needs;
+        try
+        {
+            needs = plugin.MinimumHostVersion;
+        }
+        catch (Exception)
+        {
+            needs = null; // built for a host before this question existed
+        }
+        if (needs == null || Core.Panels.PluginVersions.Satisfies(HostVersion, needs))
+            return null;
+        return Loc.F("It needs Vibe Salamander {0} or newer (this is {1}). Update Vibe Salamander (Help → Check for Updates).",
+            Core.Panels.PluginVersions.Text(needs), Core.Panels.PluginVersions.Text(HostVersion));
+    }
+
     /// <summary>The plugin's menu icon (a plugin built for an older host has none).</summary>
     private static string? SafeGlyph(IVibePlugin plugin)
     {
@@ -284,6 +338,11 @@ public sealed class PluginManager
         _plugins.Add(info);
         if (!info.Enabled)
             return;
+        if (TooNew(plugin) is string needs)
+        {
+            info.Error = needs; // shown in the Plugins Manager; the plugin isn't initialized
+            return;
+        }
         try
         {
             info.Host = new PluginHost(main, info);

@@ -57,8 +57,26 @@ public sealed class PluginUi : IPluginUi
     /// above the main window, so a question there would be hidden behind it: SFTP's server identity while the
     /// Connections window connects), else in the main window.
     /// </summary>
+    /// <summary>A plugin's settings page, opened from the Configuration window: its dialogs go there.</summary>
+    private Dialogs? _dialogsOverride;
+
+    internal async Task<bool> EditFieldsInAsync(Dialogs dialogs, string title, string? description, IReadOnlyList<PluginField> fields)
+    {
+        _dialogsOverride = dialogs;
+        try
+        {
+            return await EditFieldsAsync(title, description, fields);
+        }
+        finally
+        {
+            _dialogsOverride = null;
+        }
+    }
+
     private Dialogs DialogsFor(IPluginListWindow? owner)
     {
+        if (_dialogsOverride != null)
+            return _dialogsOverride;
         if (owner is PluginListWindow { IsClosed: false } named)
             return named.Dialogs;
         IntPtr foreground = GetForegroundWindow();

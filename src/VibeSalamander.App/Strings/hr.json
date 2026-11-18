@@ -1807,5 +1807,8 @@
   "Directories can't be made in this archive.": "U ovoj arhivi ne mogu se stvarati mape.",
   "Name of the new directory in the archive:": "Naziv nove mape u arhivi:",
   "Icon overlays": "Preklapanja ikona",
-  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "Oznake koje Git, OneDrive i drugi programi crtaju preko ikona (samo lokalni diskovi)."
+  "The marks Git, OneDrive and other programs draw over icons (local disks only).": "Oznake koje Git, OneDrive i drugi programi crtaju preko ikona (samo lokalni diskovi).",
+  "It needs Vibe Salamander {0} or newer (this is {1}). Update Vibe Salamander (Help → Check for Updates).": "Treba Vibe Salamander {0} ili noviji (ovo je {1}). Ažurirajte Vibe Salamander (Pomoć → Provjeri ažuriranja).",
+  "{0} settings": "Postavke: {0}",
+  "Settings...": "Postavke..."
 }
