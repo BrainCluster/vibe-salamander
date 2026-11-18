@@ -63,6 +63,12 @@ public sealed class TabsScenarios : IDisposable
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.UP);
         AppSession.WaitUntil(() => app.Items().Contains("Vibe"), "Projects in the new tab");
         WaitTabs(app, "two tabs", true, "Documents", "Projects");
+        AppSession.WaitUntil(() =>
+        {
+            // the + right after the last tab, not at the end of the row
+            AutomationElement plus = app.Window.FindAllDescendants(cf => cf.ByName("New tab")).OrderBy(b => b.BoundingRectangle.Left).First();
+            return plus.BoundingRectangle.Left - TabNamed(app, "Projects").BoundingRectangle.Right < 20;
+        }, "the new tab button next to the last tab");
 
         // back to the first tab: its folder, with a mark made there kept while the other tab is shown
         app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.TAB);
@@ -279,8 +285,10 @@ public sealed class TabsScenarios : IDisposable
         app.Calm(300);
         AppSession.Screenshot("67 hovering the shown tab");
         AutomationElement close = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByAutomationId("PaneTabClose")), "the close button");
-        Assert.True(close.BoundingRectangle.Right > shown.BoundingRectangle.Right - 20 && close.BoundingRectangle.Top < shown.BoundingRectangle.Top + 8,
-            $"The close button {close.BoundingRectangle} sits in the upper right corner of {shown.BoundingRectangle}");
+        double closeMiddle = close.BoundingRectangle.Top + close.BoundingRectangle.Height / 2.0;
+        double tabMiddle = shown.BoundingRectangle.Top + shown.BoundingRectangle.Height / 2.0;
+        Assert.True(close.BoundingRectangle.Right > shown.BoundingRectangle.Right - 12 && Math.Abs(closeMiddle - tabMiddle) <= 3,
+            $"The close button {close.BoundingRectangle} sits in the middle of the right end of {shown.BoundingRectangle}");
         AppSession.Screenshot("67 tab close button (2)");
         close.Click();
         AppSession.WaitUntil(() => Tabs(app).Count == 0, "the tab closed (one left: no row)");

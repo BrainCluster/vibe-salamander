@@ -294,13 +294,12 @@
              accent-filled when this panel is active -->
         <StackPanel Grid.Row="1">
             <!-- the panel's tabs (FilePane.Tabs.cs): shown from two tabs on, or always (Configuration → Panels) -->
-            <Grid x:Name="TabRow" Margin="4,2,4,0" ColumnSpacing="2" Background="Transparent" AllowDrop="True"
+            <Grid x:Name="TabRow" Margin="4,4,4,0" ColumnSpacing="2" Background="Transparent" AllowDrop="True"
                   Visibility="Collapsed" DoubleTapped="TabRow_DoubleTapped" DragOver="TabRow_DragOver" Drop="TabRow_Drop"
                   DragLeave="TabRow_DragLeave">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <!-- when the tabs don't fit: arrows on both sides scroll the row (shown only then) -->
@@ -312,7 +311,14 @@
                               HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled" ViewChanged="TabScroller_ViewChanged"
                               SizeChanged="TabScroller_SizeChanged">
                     <Grid>
-                        <StackPanel x:Name="TabStrip" Orientation="Horizontal" Spacing="2" SizeChanged="TabScroller_SizeChanged" />
+                        <!-- the tabs, and the new tab button right after the last one (as in File Explorer) -->
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <StackPanel x:Name="TabStrip" Orientation="Horizontal" Spacing="2" SizeChanged="TabScroller_SizeChanged" />
+                            <Button x:Name="NewTabButton" Style="{StaticResource VibeToolButtonStyle}" Padding="8,4" Margin="2,0,0,3"
+                                    VerticalAlignment="Center" Click="NewTabButton_Click" AutomationProperties.Name="New tab">
+                                <FontIcon Glyph="&#xE710;" FontFamily="{StaticResource VibeIconFont}" FontSize="11" />
+                            </Button>
+                        </StackPanel>
                         <!-- where a dragged tab will land -->
                         <Canvas IsHitTestVisible="False">
                             <Rectangle x:Name="TabDropMarker" Width="2" Height="20" Canvas.Top="2" RadiusX="1" RadiusY="1"
@@ -324,10 +330,6 @@
                               Click="TabsRightButton_Click" AutomationProperties.AutomationId="TabsRightButton">
                     <FontIcon Glyph="&#xE76C;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
                 </RepeatButton>
-                <Button x:Name="NewTabButton" Grid.Column="3" Style="{StaticResource VibeToolButtonStyle}" Padding="6,3"
-                        Click="NewTabButton_Click" AutomationProperties.Name="New tab">
-                    <FontIcon Glyph="&#xE710;" FontFamily="{StaticResource VibeIconFont}" FontSize="10" />
-                </Button>
             </Grid>
             <Grid x:Name="DirectoryLine" Margin="4,2,4,2" MinHeight="26" CornerRadius="4" PointerPressed="DirectoryLine_PointerPressed">
                 <Border Background="{ThemeResource VibeInactivePathBrush}" CornerRadius="4" />

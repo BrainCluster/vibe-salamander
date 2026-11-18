@@ -58,6 +58,7 @@ public sealed partial class FilePane
             {
                 TabRow.Visibility = tabs.RowVisibility;
                 UpdateTabRowButton();
+                UpdateTabJoin();
             }
         };
         if (ViewModel != null)
@@ -68,6 +69,7 @@ public sealed partial class FilePane
             };
         TabRow.Visibility = tabs.RowVisibility;
         UpdateTabRowButton();
+        UpdateTabJoin();
         AutomationProperties.SetName(TabsLeftButton, Loc.T("Earlier tabs"));
         AutomationProperties.SetName(TabsRightButton, Loc.T("Later tabs"));
         ToolTipService.SetToolTip(TabsLeftButton, Loc.T("Earlier tabs"));
@@ -121,7 +123,33 @@ public sealed partial class FilePane
         TabsRightButton.IsEnabled = TabScroller.HorizontalOffset < TabScroller.ScrollableWidth - 0.5;
     }
 
-    private void TabScroller_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e) => UpdateTabScrollButtons();
+    private void TabScroller_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
+    {
+        UpdateTabScrollButtons();
+        UpdateTabJoin();
+    }
+
+    /// <summary>
+    /// The shown tab and the directory line under it are one shape, as in File Explorer: the tab's bottom corners
+    /// are square and it sits on the line; the line's top left corner is square while the first tab is shown there.
+    /// Without the directory line (Options → Show) the tabs are plain rounded buttons.
+    /// </summary>
+    internal void UpdateTabJoin()
+    {
+        bool joined = TabRow.Visibility == Visibility.Visible && DirectoryLine.Visibility == Visibility.Visible;
+        DirectoryLine.Margin = new Thickness(4, joined ? 0 : 2, 4, 2);
+        CornerRadius tabCorners = joined ? new CornerRadius(6, 6, 0, 0) : new CornerRadius(6);
+        foreach (UIElement child in TabStrip.Children)
+            if (child is Grid { Children.Count: > 0 } host && host.Children[0] is Button button)
+                button.CornerRadius = tabCorners;
+        bool firstShownAtStart = joined && _tabs?.List.ActiveIndex == 0 && TabScroller.HorizontalOffset < 1 &&
+                                 TabsLeftButton.Visibility != Visibility.Visible;
+        var lineCorners = new CornerRadius(firstShownAtStart ? 0 : 6, 6, 6, 6);
+        DirectoryLine.CornerRadius = lineCorners;
+        foreach (UIElement child in DirectoryLine.Children)
+            if (child is Border border)
+                border.CornerRadius = lineCorners;
+    }
 
     private void TabScroller_SizeChanged(object sender, SizeChangedEventArgs e) =>
         DispatcherQueue.TryEnqueue(UpdateTabScrollButtons); // after the scroller has measured the new size
@@ -175,6 +203,7 @@ public sealed partial class FilePane
             TabStrip.Children.Add(MakeTab(_tabs.Items[i]));
         TabRow.Visibility = _tabs.RowVisibility;
         UpdateTabRowButton();
+        UpdateTabJoin();
         BringShownTabIntoView();
     }
 
@@ -206,9 +235,10 @@ public sealed partial class FilePane
         {
             Content = content,
             Style = (Style)Application.Current.Resources["VibeToolButtonStyle"],
-            Padding = new Thickness(10, 3, 10, 3),
-            MinHeight = 24,
-            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(12, 5, 12, 5),
+            MinHeight = 30,
+            CornerRadius = new CornerRadius(6, 6, 0, 0),
+            VerticalAlignment = VerticalAlignment.Stretch,
             Tag = item,
         };
         var close = new Button
@@ -217,18 +247,18 @@ public sealed partial class FilePane
             {
                 Glyph = "\uE711",
                 FontFamily = (FontFamily)Application.Current.Resources["VibeIconFont"],
-                FontSize = 8,
+                FontSize = 10,
             },
             Style = (Style)Application.Current.Resources["VibeToolButtonStyle"],
-            Width = 16,
-            Height = 16,
+            Width = 22,
+            Height = 22,
             MinWidth = 0,
             MinHeight = 0,
             Padding = new Thickness(0),
-            CornerRadius = new CornerRadius(3),
+            CornerRadius = new CornerRadius(4),
             HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, 1, 1, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 5, 0),
             Visibility = Visibility.Collapsed,
             IsTabStop = false,
         };
@@ -311,6 +341,7 @@ public sealed partial class FilePane
             {
                 Restyle(button, item);
                 ShowClose();
+                UpdateTabJoin();
                 BringShownTabIntoView();
             }
         };
@@ -326,20 +357,21 @@ public sealed partial class FilePane
         {
             button.Background = (Brush)Application.Current.Resources[active ? "AccentFillColorDefaultBrush" : "VibeInactivePathBrush"];
             button.Foreground = PathForeground(active);
-            button.Padding = new Thickness(10, 3, 20, 3); // room for the close button
+            button.Padding = new Thickness(12, 5, 32, 5); // room for the close button
             AutomationProperties.SetItemStatus(button, "shown");
         }
         else
         {
             button.ClearValue(Control.BackgroundProperty);
             button.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
-            button.Padding = new Thickness(10, 3, 10, 3);
+            button.Padding = new Thickness(12, 5, 12, 5);
             AutomationProperties.SetItemStatus(button, string.Empty);
         }
     }
 
     private void RestyleTabs()
     {
+        UpdateTabJoin();
         foreach (UIElement child in TabStrip.Children)
             if (child is Grid { Tag: TabItemViewModel item } host && host.Children[0] is Button button)
                 Restyle(button, item);

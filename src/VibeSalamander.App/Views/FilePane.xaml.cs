@@ -123,6 +123,7 @@ public sealed partial class FilePane : UserControl
         DriveBar.Visibility = driveBar ? Visibility.Visible : Visibility.Collapsed;
         DirectoryLine.Visibility = directoryLine ? Visibility.Visible : Visibility.Collapsed;
         InfoLine.Visibility = infoLine ? Visibility.Visible : Visibility.Collapsed;
+        UpdateTabJoin();
     }
 
     // ---- x:Bind helpers --------------------------------------------------------------------
