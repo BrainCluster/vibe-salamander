@@ -160,7 +160,10 @@ command (Ctrl+I), Copy UNC path as text (Ctrl+Shift+Ins), Edit with (Ctrl+Shift+
 line, rename and new folder inside ZIP/TAR archives, icon overlays (the shell's overlay index from
 `SHGetFileInfo`, drawn over the icon in `IconCache`; this is also how OneDrive and Git clients show state).
 
-**S3. Windows integration** (verified absent; an installer task each, off by default):
+**S3. Windows integration** — **done (2026-11-18)**: three installer tasks, off by default; the release workflow
+installs the installer with all three, checks the registry and the PATH, uninstalls and checks they are gone;
+the starter makes relative folders absolute; a running program opens a folder sent to it in a new tab
+(`TabsScenarios`). Windows 11's new context menu needs a packaged extension: the verb is under "Show more options".
 "Open in Vibe Salamander" in Explorer's folder menu; `vibesalamander <folder>` on the PATH; optionally
 Win+E / the default folder handler. *Where:* `build/installer/VibeSalamander.iss` (registry, removed on
 uninstall), `StartupArguments` already takes folders.

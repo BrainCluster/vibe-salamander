@@ -12,6 +12,16 @@ Settings → System → About → *System type* (ARM64 PCs are for example Snapd
    **for all users** installs into Program Files (Windows asks for permission).
 4. It adds Vibe Salamander to the Start menu (and, if you tick it, to the desktop) and an uninstaller.
 
+**Windows integration** (each off unless you tick it; the uninstaller takes it away again):
+
+- **"Open in Vibe Salamander" in Explorer**: on a folder, on the empty space of an open folder, and on a drive. On
+  Windows 11 it is under **Show more options**.
+- **`vibesalamander <folder>` from a command prompt**: the program's folder goes on your PATH (open a new command
+  prompt afterwards). `vibesalamander .` opens the folder you are in.
+- **Win+E opens Vibe Salamander** instead of File Explorer (for the user who installs).
+
+When Vibe Salamander is running already, a folder sent to it this way opens in a **new tab** of the active panel.
+
 Settings are kept in `%AppData%\VibeSalamander`, so they stay when you update or reinstall.
 
 ## Portable zip
