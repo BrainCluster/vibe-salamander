@@ -52,6 +52,17 @@ public sealed class PanelTab
     /// The tab's caption: the folder's name; "C:" for a drive; This PC; an archive's name at its root; a server's
     /// host at its root.
     /// </summary>
+    /// <summary>The root of a drive ("C:\\"), as "C:"; null for anything else.</summary>
+    public static string? DriveOf(string path)
+    {
+        string trimmed = (path ?? string.Empty).TrimEnd('\\');
+        return trimmed.Length == 2 && trimmed[1] == ':' && char.IsLetter(trimmed[0]) ? trimmed.ToUpperInvariant() : null;
+    }
+
+    /// <summary>A tab's caption with the drive's label, as File Explorer writes it: "System (C:)"; no label: "C:".</summary>
+    public static string Title(string path, string? driveLabel) =>
+        DriveOf(path) is string drive && !string.IsNullOrWhiteSpace(driveLabel) ? $"{driveLabel.Trim()} ({drive})" : Title(path);
+
     public static string Title(string path)
     {
         if (string.IsNullOrEmpty(path))

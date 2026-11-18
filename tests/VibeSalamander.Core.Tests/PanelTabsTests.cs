@@ -168,6 +168,15 @@ public sealed class PanelTabsTests
     [InlineData("sftp://ana@example.org/my%20site", "my site")]
     public void Tab_titles(string path, string title) => Assert.Equal(title, PanelTab.Title(path));
 
+    [Theory]
+    [InlineData(@"C:\", "System", "System (C:)")]
+    [InlineData(@"d:", "Data ", "Data (D:)")]
+    [InlineData(@"C:\", "", "C:")]
+    [InlineData(@"C:\", null, "C:")]
+    [InlineData(@"C:\Users", "System", "Users")] // only a drive's root carries the label
+    public void A_drive_root_tab_has_the_drives_label(string path, string? label, string title) =>
+        Assert.Equal(title, PanelTab.Title(path, label));
+
     [Fact]
     public void Tabs_are_saved_with_place_sort_view_and_lock_only()
     {

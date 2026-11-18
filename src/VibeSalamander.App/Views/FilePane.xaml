@@ -335,6 +335,8 @@
                 <Border Background="{ThemeResource VibeInactivePathBrush}" CornerRadius="4" />
                 <Border Background="{ThemeResource AccentFillColorDefaultBrush}" CornerRadius="4"
                         Visibility="{x:Bind VisibleIf(ViewModel.IsActive), Mode=OneWay}" />
+                <!-- a little lighter or dimmer while the pointer is on the shown tab (one shape with it) -->
+                <Border x:Name="DirectoryLineHover" CornerRadius="4" IsHitTestVisible="False" />
                 <Grid ColumnSpacing="6" Padding="2,0,8,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />

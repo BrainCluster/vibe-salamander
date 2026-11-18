@@ -157,9 +157,40 @@ public sealed class TabsViewModel : BindableBase
         return -1;
     }
 
+    /// <summary>Drive labels by drive ("C:"), read once off the UI thread (a network drive can take a while).</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> DriveLabels = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The label of the drive whose root the path is, or null (not a root, or not read yet: it's being read).</summary>
+    private string? LabelOf(string path)
+    {
+        if (PanelTab.DriveOf(path) is not string drive)
+            return null;
+        if (DriveLabels.TryGetValue(drive, out string? label))
+            return label;
+        DriveLabels.TryAdd(drive, string.Empty);
+        SynchronizationContext? ui = SynchronizationContext.Current;
+        _ = Task.Run(() =>
+        {
+            string read;
+            try
+            {
+                var info = new DriveInfo(drive + "\\");
+                read = info.IsReady ? info.VolumeLabel : string.Empty;
+            }
+            catch (Exception)
+            {
+                read = string.Empty; // no disc, no access: the plain "D:"
+            }
+            DriveLabels[drive] = read;
+            if (read.Length > 0)
+                ui?.Post(_ => Sync(), null); // the captions with it
+        });
+        return null;
+    }
+
     private void Describe(TabItemViewModel item, bool shown)
     {
-        item.Title = PanelTab.Title(item.Tab.Path);
+        item.Title = PanelTab.Title(item.Tab.Path, LabelOf(item.Tab.Path));
         string where = item.Tab.Path.StartsWith(Core.FileSystem.ThisPcProvider.RootPath, StringComparison.OrdinalIgnoreCase)
             ? Loc.T("This PC")
             : _display(item.Tab.Path);

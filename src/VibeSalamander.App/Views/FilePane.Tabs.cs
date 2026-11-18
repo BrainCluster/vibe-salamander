@@ -3,6 +3,9 @@
 
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using Microsoft.UI.Xaml.Media.Animation;
+using Windows.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
@@ -213,13 +216,63 @@ public sealed partial class FilePane
     /// </summary>
     private Grid MakeTab(TabItemViewModel item)
     {
+        // the caption: at least ten characters wide, at most TabTitleMaxWidth; a longer one scrolls while the
+        // pointer is on the tab (in a clipping canvas)
         var title = new TextBlock
         {
             Text = item.Title,
-            MaxWidth = 180,
             TextTrimming = TextTrimming.CharacterEllipsis,
-            VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.NoWrap,
         };
+        var shift = new TranslateTransform();
+        title.RenderTransform = shift;
+        var titleBox = new Canvas { VerticalAlignment = VerticalAlignment.Center };
+        titleBox.Children.Add(title);
+        double fullWidth = 0;
+        Storyboard? scrolling = null;
+        void FitTitle()
+        {
+            title.Width = double.NaN;
+            title.TextTrimming = TextTrimming.None;
+            title.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+            fullWidth = Math.Ceiling(title.DesiredSize.Width);
+            double width = Math.Clamp(fullWidth, TenCharacters(title), TabTitleMaxWidth);
+            double height = Math.Ceiling(title.DesiredSize.Height);
+            titleBox.Width = width;
+            titleBox.Height = height;
+            titleBox.Clip = new RectangleGeometry { Rect = new Windows.Foundation.Rect(0, 0, width, height) };
+            title.Width = width;
+            title.TextTrimming = TextTrimming.CharacterEllipsis;
+        }
+        void Scroll(bool on)
+        {
+            scrolling?.Stop();
+            scrolling = null;
+            shift.X = 0;
+            double distance = fullWidth - titleBox.Width;
+            if (!on || distance < 1 || double.IsNaN(titleBox.Width))
+            {
+                title.Width = titleBox.Width;
+                title.TextTrimming = TextTrimming.CharacterEllipsis;
+                return;
+            }
+            title.TextTrimming = TextTrimming.None;
+            title.Width = fullWidth;
+            var move = new DoubleAnimation
+            {
+                From = 0,
+                To = -distance,
+                BeginTime = TimeSpan.FromMilliseconds(500),
+                Duration = TimeSpan.FromSeconds(Math.Max(0.8, distance / 40.0)), // 40 pixels a second
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+            };
+            Storyboard.SetTarget(move, shift);
+            Storyboard.SetTargetProperty(move, "X");
+            scrolling = new Storyboard { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever };
+            scrolling.Children.Add(move);
+            scrolling.Begin();
+        }
+        title.Loaded += (_, _) => FitTitle();
         var lockIcon = new FontIcon
         {
             Glyph = "",
@@ -234,7 +287,7 @@ public sealed partial class FilePane
         var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         content.Children.Add(iconHolder);
         content.Children.Add(lockIcon);
-        content.Children.Add(title);
+        content.Children.Add(titleBox);
         var button = new Button
         {
             Content = content,
@@ -246,14 +299,25 @@ public sealed partial class FilePane
             VerticalAlignment = VerticalAlignment.Stretch,
             Tag = item,
         };
-        var close = new Button
+        var look = new TabLook();
+        var closeFace = new Border
         {
-            Content = new FontIcon
+            Width = 22,
+            Height = 22,
+            CornerRadius = new CornerRadius(4),
+            Child = new FontIcon
             {
                 Glyph = "\uE711",
                 FontFamily = (FontFamily)Application.Current.Resources["VibeIconFont"],
-                FontSize = 10,
+                FontSize = 11,
+                Foreground = look.CloseGlyph,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
             },
+        };
+        var close = new Button
+        {
+            Content = closeFace,
             Style = (Style)Application.Current.Resources["VibeToolButtonStyle"],
             Width = 22,
             Height = 22,
@@ -267,6 +331,24 @@ public sealed partial class FilePane
             Visibility = Visibility.Collapsed,
             IsTabStop = false,
         };
+        // the tab's colors come from TabLook (Restyle sets them): the button's own hover colors are its brushes
+        button.Foreground = look.Fore;
+        button.Resources["ButtonBackgroundPointerOver"] = look.Hover;
+        button.Resources["ButtonBackgroundPressed"] = look.Pressed;
+        button.Resources["ButtonForegroundPointerOver"] = look.Fore;
+        button.Resources["ButtonForegroundPressed"] = look.Fore;
+        button.Resources["ButtonBorderBrushPointerOver"] = look.Outline;
+        button.Resources["ButtonBorderBrushPressed"] = look.Outline;
+        var clear = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        close.Resources["ButtonBackgroundPointerOver"] = clear;
+        close.Resources["ButtonBackgroundPressed"] = clear;
+        close.Resources["ButtonBorderBrushPointerOver"] = clear;
+        close.Resources["ButtonBorderBrushPressed"] = clear;
+        close.AddHandler(PointerEnteredEvent, new PointerEventHandler((_, _) => closeFace.Background = look.CloseHover), handledEventsToo: true);
+        close.AddHandler(PointerExitedEvent, new PointerEventHandler((_, _) => closeFace.Background = null), handledEventsToo: true);
+        close.AddHandler(PointerPressedEvent, new PointerEventHandler((_, _) => closeFace.Background = look.ClosePressed), handledEventsToo: true);
+        close.AddHandler(PointerReleasedEvent, new PointerEventHandler((_, _) => closeFace.Background = look.CloseHover), handledEventsToo: true);
+        _looks.AddOrUpdate(button, look);
         AutomationProperties.SetAutomationId(close, "PaneTabClose");
         AutomationProperties.SetName(close, Loc.T("Close tab"));
         ToolTipService.SetToolTip(close, Loc.T("Close tab"));
@@ -283,16 +365,25 @@ public sealed partial class FilePane
         host.Children.Add(close);
         bool hovered = false;
         void ShowClose() => close.Visibility = hovered && item.IsShown && (_tabs?.Items.Count ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed;
-        host.AddHandler(PointerEnteredEvent, new PointerEventHandler((_, _) => { hovered = true; ShowClose(); }), handledEventsToo: true);
-        host.AddHandler(PointerMovedEvent, new PointerEventHandler((_, _) =>
+        // the shown tab under the pointer: the address bar under it takes the same lighter or dimmer color
+        look.UpdateBar = () =>
         {
-            if (!hovered)
-            {
-                hovered = true; // entered without an Entered (the pointer was there when the tab appeared)
-                ShowClose();
-            }
-        }), handledEventsToo: true);
-        host.AddHandler(PointerExitedEvent, new PointerEventHandler((_, _) => { hovered = false; ShowClose(); }), handledEventsToo: true);
+            if (item.IsShown)
+                DirectoryLineHover.Background = hovered ? new SolidColorBrush(look.Overlay) : null;
+        };
+        void Hover(bool on)
+        {
+            if (hovered == on)
+                return;
+            hovered = on;
+            ShowClose();
+            look.UpdateBar();
+            Scroll(on);
+        }
+        host.AddHandler(PointerEnteredEvent, new PointerEventHandler((_, _) => Hover(true)), handledEventsToo: true);
+        // entered without an Entered (the pointer was there when the tab appeared)
+        host.AddHandler(PointerMovedEvent, new PointerEventHandler((_, _) => Hover(true)), handledEventsToo: true);
+        host.AddHandler(PointerExitedEvent, new PointerEventHandler((_, _) => Hover(false)), handledEventsToo: true);
         // dragging: started by hand once the pointer moved a little (the button keeps the press to itself)
         Windows.Foundation.Point? pressedAt = null;
         button.AddHandler(PointerPressedEvent, new PointerEventHandler((s, e) =>
@@ -336,6 +427,11 @@ public sealed partial class FilePane
             if (e.PropertyName == nameof(TabItemViewModel.Title))
             {
                 title.Text = item.Title;
+                if (title.IsLoaded)
+                {
+                    FitTitle();
+                    Scroll(hovered);
+                }
                 SetTabIcon(iconHolder, item); // another folder
                 AutomationProperties.SetName(button, item.Title);
             }
@@ -347,6 +443,7 @@ public sealed partial class FilePane
             {
                 Restyle(button, item);
                 ShowClose();
+                look.UpdateBar();
                 UpdateTabJoin();
                 BringShownTabIntoView();
             }
@@ -391,14 +488,70 @@ public sealed partial class FilePane
         });
     }
 
+    /// <summary>The widest a tab's caption gets before it is cut short (and scrolls under the pointer).</summary>
+    private const double TabTitleMaxWidth = 180;
+
+    private double _tenCharacters;
+    private double _tenCharactersSize;
+
+    /// <summary>The narrowest a caption is: ten characters of its font.</summary>
+    private double TenCharacters(TextBlock like)
+    {
+        if (_tenCharactersSize != like.FontSize)
+        {
+            var probe = new TextBlock { Text = "0123456789", FontSize = like.FontSize, FontFamily = like.FontFamily };
+            probe.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+            _tenCharacters = Math.Ceiling(probe.DesiredSize.Width);
+            _tenCharactersSize = like.FontSize;
+        }
+        return _tenCharacters;
+    }
+
+    private readonly ConditionalWeakTable<Button, TabLook> _looks = new();
+
+    /// <summary>
+    /// A tab's colors. Hovering lays <see cref="Overlay"/> over the tab's fill (and the address bar under the
+    /// shown tab): black for a bright fill, white for a dark one, so the accent turns a little dimmer or lighter.
+    /// The close button's × and its hover face follow the same brightness.
+    /// </summary>
+    private sealed class TabLook
+    {
+        public SolidColorBrush Fore { get; } = new();
+        public SolidColorBrush Hover { get; } = new();
+        public SolidColorBrush Pressed { get; } = new();
+        public SolidColorBrush Outline { get; } = new(Microsoft.UI.Colors.Transparent);
+        public SolidColorBrush CloseGlyph { get; } = new();
+        public SolidColorBrush CloseHover { get; } = new();
+        public SolidColorBrush ClosePressed { get; } = new();
+        public Color Overlay { get; private set; }
+        public Action UpdateBar { get; set; } = () => { };
+
+        public void Paint(FilePane pane, Brush fill, Brush text, Brush? outline)
+        {
+            Color baseColor = fill is SolidColorBrush solid ? solid.Color : Microsoft.UI.Colors.Transparent;
+            Color page = pane.ActualTheme == ElementTheme.Dark ? Color.FromArgb(255, 32, 32, 32) : Microsoft.UI.Colors.White;
+            bool bright = TabColors.IsBright(TabColors.Over(page, baseColor));
+            Overlay = bright ? Color.FromArgb(0x16, 0, 0, 0) : Color.FromArgb(0x24, 255, 255, 255);
+            Hover.Color = TabColors.Over(baseColor, Overlay);
+            Pressed.Color = TabColors.Over(baseColor, TabColors.Stronger(Overlay, 1.7));
+            Fore.Color = text is SolidColorBrush t ? t.Color : bright ? Microsoft.UI.Colors.Black : Microsoft.UI.Colors.White;
+            Outline.Color = outline is SolidColorBrush o ? o.Color : Microsoft.UI.Colors.Transparent;
+            CloseGlyph.Color = bright ? Color.FromArgb(0xE4, 0, 0, 0) : Microsoft.UI.Colors.White;
+            CloseHover.Color = bright ? Color.FromArgb(0x24, 0, 0, 0) : Color.FromArgb(0x38, 255, 255, 255);
+            ClosePressed.Color = bright ? Color.FromArgb(0x3C, 0, 0, 0) : Color.FromArgb(0x58, 255, 255, 255);
+            UpdateBar();
+        }
+    }
+
     /// <summary>The shown tab looks like the path line under it: accent-filled in the active panel.</summary>
     private void Restyle(Button button, TabItemViewModel item)
     {
         bool active = ViewModel?.IsActive == true;
+        TabLook? look = _looks.TryGetValue(button, out TabLook? found) ? found : null;
         if (item.IsShown)
         {
             button.Background = (Brush)Application.Current.Resources[active ? "AccentFillColorDefaultBrush" : "VibeInactivePathBrush"];
-            button.Foreground = PathForeground(active);
+            look?.Paint(this, button.Background, PathForeground(active), null);
             button.Padding = new Thickness(12, 5, 32, 5); // room for the close button
             button.Margin = new Thickness(0);
             button.MinHeight = 30;
@@ -410,10 +563,10 @@ public sealed partial class FilePane
             // behind the shown tab, as in File Explorer: a lower, duller shape with a fine outline
             button.Background = (Brush)Application.Current.Resources["VibeBackTabBrush"];
             button.BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
+            look?.Paint(this, button.Background, (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"], button.BorderBrush);
             button.BorderThickness = new Thickness(1, 1, 1, 0);
             button.Margin = new Thickness(0, 3, 0, 0);
             button.MinHeight = 27;
-            button.Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"];
             button.Padding = new Thickness(11, 3, 11, 4);
             AutomationProperties.SetItemStatus(button, string.Empty);
         }
