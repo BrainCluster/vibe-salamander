@@ -3,6 +3,7 @@
 
 using System.Collections.ObjectModel;
 using Microsoft.UI.Xaml;
+using VibeSalamander.Core;
 using VibeSalamander.Core.Panels;
 using VibeSalamander.Services;
 
