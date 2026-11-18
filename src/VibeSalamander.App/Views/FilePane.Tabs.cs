@@ -366,10 +366,11 @@ public sealed partial class FilePane
         bool hovered = false;
         void ShowClose() => close.Visibility = hovered && item.IsShown && (_tabs?.Items.Count ?? 0) > 1 ? Visibility.Visible : Visibility.Collapsed;
         // the shown tab under the pointer: the address bar under it takes the same lighter or dimmer color
+        look.BarHovered = () => _barHovered;
         look.UpdateBar = () =>
         {
             if (item.IsShown)
-                DirectoryLineHover.Background = hovered ? new SolidColorBrush(look.Overlay) : null;
+                DirectoryLineHover.Background = hovered || _barHovered ? new SolidColorBrush(look.Overlay) : null;
         };
         void Hover(bool on)
         {
@@ -490,6 +491,33 @@ public sealed partial class FilePane
         });
     }
 
+    /// <summary>The pointer is on the address bar: it and the shown tab take the hover tint together.</summary>
+    private bool _barHovered;
+
+    private void DirectoryLine_PointerEntered(object sender, PointerRoutedEventArgs e) => BarHover(true);
+
+    private void DirectoryLine_PointerExited(object sender, PointerRoutedEventArgs e) => BarHover(false);
+
+    private void BarHover(bool on)
+    {
+        if (_barHovered == on)
+            return;
+        _barHovered = on;
+        foreach (UIElement child in TabStrip.Children)
+            if (child is Grid { Tag: TabItemViewModel { IsShown: true } } host && host.Children[0] is Button button &&
+                _looks.TryGetValue(button, out TabLook? look))
+            {
+                look.Apply(button);
+                look.UpdateBar();
+                return;
+            }
+        // no tabs built (yet): the bar alone, with the tint its color calls for
+        var alone = new TabLook();
+        alone.Paint(this, (Brush)Application.Current.Resources[ViewModel?.IsActive == true ? "AccentFillColorDefaultBrush" : "VibeInactivePathBrush"],
+            PathForeground(ViewModel?.IsActive == true), null);
+        DirectoryLineHover.Background = on ? new SolidColorBrush(alone.Overlay) : null;
+    }
+
     /// <summary>The widest a tab's caption gets before it is cut short (and scrolls under the pointer).</summary>
     private const double TabTitleMaxWidth = 180;
 
@@ -531,6 +559,11 @@ public sealed partial class FilePane
         /// <summary>The pointer is on the tab (its button or the close button on it).</summary>
         public bool Hovered { get; set; }
 
+        /// <summary>The shown tab: one shape with the address bar, so the pointer on the bar tints it too.</summary>
+        public bool Shown { get; set; }
+
+        public Func<bool> BarHovered { get; set; } = () => false;
+
         /// <summary>The tab's own fill, not hovered.</summary>
         public Brush? Fill { get; private set; }
 
@@ -538,7 +571,7 @@ public sealed partial class FilePane
         public void Apply(Button button)
         {
             if (Fill != null)
-                button.Background = Hovered ? Hover : Fill;
+                button.Background = Hovered || (Shown && BarHovered()) ? Hover : Fill;
         }
 
         public void Paint(FilePane pane, Brush fill, Brush text, Brush? outline)
@@ -569,6 +602,8 @@ public sealed partial class FilePane
         if (item.IsShown)
         {
             button.Background = (Brush)Application.Current.Resources[active ? "AccentFillColorDefaultBrush" : "VibeInactivePathBrush"];
+            if (look != null)
+                look.Shown = true;
             look?.Paint(this, button.Background, PathForeground(active), null);
             look?.Apply(button);
             button.Padding = new Thickness(12, 5, 32, 5); // room for the close button
@@ -582,6 +617,8 @@ public sealed partial class FilePane
             // behind the shown tab, as in File Explorer: a lower, duller shape with a fine outline
             button.Background = (Brush)Application.Current.Resources["VibeBackTabBrush"];
             button.BorderBrush = (Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"];
+            if (look != null)
+                look.Shown = false;
             look?.Paint(this, button.Background, (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"], button.BorderBrush);
             look?.Apply(button);
             button.BorderThickness = new Thickness(1, 1, 1, 0);
