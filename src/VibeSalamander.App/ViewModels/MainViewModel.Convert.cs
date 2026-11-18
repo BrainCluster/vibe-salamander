@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using VibeSalamander.Core.Diagnostics;
 using VibeSalamander.Core.Viewing;
 using VibeSalamander.Services;
 
