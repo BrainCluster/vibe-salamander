@@ -222,6 +222,7 @@ public sealed class TabsViewModel : BindableBase
             return;
         Pane.SaveInto(List.Active);
         List.Select(index);
+        await Pane.NextFrameAsync(); // the tab row shows the switch now, not after the folder has loaded
         await Pane.ShowTabAsync(List.Active);
     });
 

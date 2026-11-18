@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using Microsoft.UI.Dispatching;
 using VibeSalamander.Core;
 using VibeSalamander.Core.FileSystem;
 using VibeSalamander.Core.Panels;
@@ -35,6 +36,32 @@ public sealed partial class PaneViewModel
     }
 
     /// <summary>Shows a tab: its folder with its caret, marks, sort, view, filter and history.</summary>
+    /// <summary>
+    /// Waits until a frame has been drawn (what changed so far is on screen), at most 50 ms (a minimized
+    /// window draws none). The work after it doesn't hold that frame back.
+    /// </summary>
+    internal Task NextFrameAsync()
+    {
+        var drawn = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        EventHandler<object>? rendering = null;
+        rendering = (_, _) =>
+        {
+            Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= rendering;
+            drawn.TrySetResult();
+        };
+        Microsoft.UI.Xaml.Media.CompositionTarget.Rendering += rendering;
+        DispatcherQueueTimer timeout = _dispatcher.CreateTimer();
+        timeout.Interval = TimeSpan.FromMilliseconds(50);
+        timeout.IsRepeating = false;
+        timeout.Tick += (_, _) =>
+        {
+            Microsoft.UI.Xaml.Media.CompositionTarget.Rendering -= rendering;
+            drawn.TrySetResult();
+        };
+        timeout.Start();
+        return drawn.Task.ContinueWith(_ => timeout.Stop(), TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
     public async Task ShowTabAsync(PanelTab tab)
     {
         _history.Load(tab.Back, tab.Forward);
