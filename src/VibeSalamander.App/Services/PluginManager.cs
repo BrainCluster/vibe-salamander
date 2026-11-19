@@ -38,6 +38,7 @@ public sealed class PluginInfo
     public List<ICommandContributor> CommandContributors { get; } = new();
     public List<IPluginFileSystem> FileSystems { get; } = new();
     public List<IPluginViewer> Viewers { get; } = new();
+    public List<IPluginPanelDecorator> Decorators { get; } = new();
 
     /// <summary>"Pack and unpack", "3 commands" - what the plugin adds, for the manager.</summary>
     public string FeaturesText
@@ -56,6 +57,8 @@ public sealed class PluginInfo
                 parts.Add(fs.DisplayName);
             foreach (IPluginViewer v in Viewers)
                 parts.Add("View: " + v.DisplayName);
+            foreach (IPluginPanelDecorator d in Decorators)
+                parts.Add("Panels: " + d.ColumnHeader);
             int commands = CommandContributors.Sum(c => c.Commands.Count);
             if (commands > 0)
                 parts.Add(commands == 1 ? "1 command" : $"{commands} commands");
@@ -86,6 +89,10 @@ public sealed class PluginManager
     /// the formats it shares with a built-in one.
     /// </summary>
     public IEnumerable<IArchiver> Archivers => _plugins.Where(p => p.Enabled && p.Error == null).Reverse().SelectMany(p => p.Archivers);
+
+    /// <summary>The panel decorators of the plugins that loaded, with their plugin.</summary>
+    public IEnumerable<(IPluginPanelDecorator Decorator, PluginInfo Plugin)> Decorators =>
+        _plugins.Where(p => p.Enabled && p.Error == null && p.Host != null).SelectMany(p => p.Decorators.Select(d => (d, p)));
 
     /// <summary>The plugin viewers (F3), the last loaded plugin first, with their plugin's host.</summary>
     public IEnumerable<(IPluginViewer Viewer, PluginInfo Plugin)> Viewers =>
@@ -437,6 +444,13 @@ internal sealed class PluginHost : IPluginHost
     public void RegisterFileSystem(IPluginFileSystem fileSystem) => _info.FileSystems.Add(fileSystem);
 
     public void RegisterViewer(IPluginViewer viewer) => _info.Viewers.Add(viewer);
+
+    public void RegisterPanelDecorator(IPluginPanelDecorator decorator) => _info.Decorators.Add(decorator);
+
+    public void CompareFiles(string left, string right, string? leftTitle = null, string? rightTitle = null) =>
+        _main.RunOnUi(() => _main.CompareFiles(left, right, leftTitle, rightTitle));
+
+    public void RunJob(PluginJobRequest request) => _main.RunOnUi(() => _main.Transfers.EnqueuePluginJob(request));
 
     public IPanelContext ActivePanel => new PanelContext(_main.Active);
 

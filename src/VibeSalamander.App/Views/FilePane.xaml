@@ -18,6 +18,7 @@
                     <ColumnDefinition Width="{x:Bind Columns.DateColumn, Mode=OneWay}" />
                     <ColumnDefinition Width="{x:Bind Columns.TimeColumn, Mode=OneWay}" />
                     <ColumnDefinition Width="{x:Bind Columns.AttrColumn, Mode=OneWay}" />
+                    <ColumnDefinition Width="{x:Bind Columns.PluginColumn, Mode=OneWay}" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="{x:Bind Glyph}" FontFamily="{StaticResource VibeIconFont}" FontSize="14"
                           Foreground="{x:Bind GlyphBrush, Mode=OneWay}" Visibility="{x:Bind GlyphVisibility, Mode=OneWay}"
@@ -57,6 +58,10 @@
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Grid.Column="6" Text="{x:Bind AttrText}" Foreground="{x:Bind TextBrush, Mode=OneWay}"
                            VerticalAlignment="Center" Margin="4,0,0,0" />
+                <!-- a plugin's column (Git: M, A, ??...), only where it decorates the panel -->
+                <TextBlock Grid.Column="7" Text="{x:Bind DecorationText, Mode=OneWay}" Foreground="{x:Bind DecorationBrush, Mode=OneWay}"
+                           ToolTipService.ToolTip="{x:Bind DecorationToolTip, Mode=OneWay}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="8,0,0,0" />
             </Grid>
         </DataTemplate>
 
@@ -381,9 +386,20 @@
                     </Border>
                     <ProgressRing Grid.Column="4" IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" Width="14" Height="14"
                                   Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
-                    <TextBlock Grid.Column="5" Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"
-                               Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
-                               VerticalAlignment="Center" Opacity="0.85" />
+                    <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <!-- a plugin's word on this folder (Git: the branch, commits to push and pull) -->
+                        <StackPanel x:Name="DecorationStatus" Orientation="Horizontal" Spacing="4"
+                                    Visibility="{x:Bind VisibleIfText(ViewModel.DecorationStatus), Mode=OneWay}"
+                                    ToolTipService.ToolTip="{x:Bind ViewModel.DecorationToolTip, Mode=OneWay}"
+                                    AutomationProperties.AutomationId="DecorationStatus"
+                                    AutomationProperties.Name="{x:Bind ViewModel.DecorationStatus, Mode=OneWay}">
+                            <TextBlock Text="{x:Bind ViewModel.DecorationStatus, Mode=OneWay}" VerticalAlignment="Center" Tag="NoLoc"
+                                       Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
+                        </StackPanel>
+                        <TextBlock Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"
+                                   Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}"
+                                   VerticalAlignment="Center" Opacity="0.85" />
+                    </StackPanel>
                     <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="0" Margin="0,0,-6,0">
                         <!-- maximize / restore this panel (Configuration → Appearance) -->
                         <Button x:Name="MaximizeButton" Style="{StaticResource VibeToolButtonStyle}" Padding="5,2"
@@ -434,6 +450,7 @@
                 <ColumnDefinition Width="{x:Bind ViewModel.Columns.DateColumn, Mode=OneWay}" />
                 <ColumnDefinition Width="{x:Bind ViewModel.Columns.TimeColumn, Mode=OneWay}" />
                 <ColumnDefinition Width="{x:Bind ViewModel.Columns.AttrColumn, Mode=OneWay}" />
+                <ColumnDefinition Width="{x:Bind ViewModel.Columns.PluginColumn, Mode=OneWay}" />
             </Grid.ColumnDefinitions>
             <Button Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource VibeHeaderButtonStyle}" Tag="Name" Click="Header_Click" Padding="22,0,6,0">
                 <StackPanel Orientation="Horizontal" Spacing="4">
@@ -473,6 +490,8 @@
                     <FontIcon Glyph="{x:Bind SortGlyph(ViewModel.SortMode, ViewModel.SortDescending, 'Attributes'), Mode=OneWay}" FontFamily="{StaticResource VibeIconFont}" FontSize="9" />
                 </StackPanel>
             </Button>
+            <TextBlock Grid.Column="7" Text="{x:Bind ViewModel.Columns.PluginHeader, Mode=OneWay}" Margin="8,0,0,0" VerticalAlignment="Center"
+                       Visibility="{x:Bind ViewModel.Columns.PluginVisibility, Mode=OneWay}" Opacity="0.85" FontSize="12" />
             <!-- resize grips on the left edge of each column (drag; double-click resets the width) -->
             <views:PanelSplitter Grid.Column="2" Tag="Ext" Width="7" Margin="-4,3,0,3" HorizontalAlignment="Left" Background="Transparent"
                                  Visibility="{x:Bind ViewModel.Columns.ExtVisibility, Mode=OneWay}"

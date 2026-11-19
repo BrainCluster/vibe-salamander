@@ -37,6 +37,25 @@ public sealed class ColumnLayout : BindableBase
     public GridLength TimeColumn => Length(DetailColumn.Time);
     public GridLength AttrColumn => Length(DetailColumn.Attr);
 
+    // ---- a plugin's column (Git): shown only where its decorator decorates the panel ------------------
+
+    private string? _pluginHeader;
+
+    public GridLength PluginColumn => new(_pluginHeader != null ? 72 : 0);
+    public Visibility PluginVisibility => _pluginHeader != null ? Visibility.Visible : Visibility.Collapsed;
+    public string PluginHeader => _pluginHeader ?? string.Empty;
+
+    /// <summary>Shows the plugin column with this header, or hides it (null).</summary>
+    public void ShowPluginColumn(string? header)
+    {
+        if (_pluginHeader == header)
+            return;
+        _pluginHeader = header;
+        OnPropertyChanged(nameof(PluginColumn));
+        OnPropertyChanged(nameof(PluginVisibility));
+        OnPropertyChanged(nameof(PluginHeader));
+    }
+
     public Visibility ExtVisibility => Vis(DetailColumn.Ext);
     public Visibility SizeVisibility => Vis(DetailColumn.Size);
     public Visibility DateVisibility => Vis(DetailColumn.Date);

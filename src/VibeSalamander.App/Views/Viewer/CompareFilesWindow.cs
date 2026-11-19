@@ -51,6 +51,9 @@ internal sealed class CompareFilesWindow : Window
     private CoreWebView2? _core;
     private bool _ready;
     private string _left, _right;
+
+    /// <summary>What each side is called instead of its path (a plugin's "HEAD" for a version it wrote to a temp file).</summary>
+    private string? _leftTitle, _rightTitle;
     private Side _l = new(), _r = new();
     private bool _binary;
     private int _nextRequest = 1;
@@ -66,8 +69,10 @@ internal sealed class CompareFilesWindow : Window
         public bool Dirty => Saved >= 0 && Version != Saved;
     }
 
-    public CompareFilesWindow(MainViewModel main, string left, string right, ElementTheme theme)
+    public CompareFilesWindow(MainViewModel main, string left, string right, ElementTheme theme, string? leftTitle = null, string? rightTitle = null)
     {
+        _leftTitle = leftTitle;
+        _rightTitle = rightTitle;
         _main = main;
         _options = main.Settings.Viewer;
         _left = left;
@@ -221,14 +226,14 @@ internal sealed class CompareFilesWindow : Window
 
     private void UpdateTitle()
     {
-        string left = (_l.Dirty ? "● " : string.Empty) + Path.GetFileName(_left);
-        string right = (_r.Dirty ? "● " : string.Empty) + Path.GetFileName(_right);
+        string left = (_l.Dirty ? "● " : string.Empty) + (_leftTitle ?? Path.GetFileName(_left));
+        string right = (_r.Dirty ? "● " : string.Empty) + (_rightTitle ?? Path.GetFileName(_right));
         // the count in the title too: on the taskbar, and for screen readers that read the title
         string count = _status.Text.Length > 0 ? "  ·  " + _status.Text : string.Empty;
         Title = $"{left} ↔ {right}{count} - {Loc.T("Compare Files")}";
         _titleText.Text = Title;
-        _leftName.Text = (_l.Dirty ? "● " : string.Empty) + _left;
-        _rightName.Text = (_r.Dirty ? "● " : string.Empty) + _right;
+        _leftName.Text = (_l.Dirty ? "● " : string.Empty) + (_leftTitle ?? _left);
+        _rightName.Text = (_r.Dirty ? "● " : string.Empty) + (_rightTitle ?? _right);
         ToolTipService.SetToolTip(_leftName, _left);
         ToolTipService.SetToolTip(_rightName, _right);
     }
@@ -399,6 +404,7 @@ internal sealed class CompareFilesWindow : Window
         if ((_l.Dirty || _r.Dirty) && !await ConfirmCloseAsync())
             return;
         (_left, _right) = (_right, _left);
+        (_leftTitle, _rightTitle) = (_rightTitle, _leftTitle);
         _l = new Side();
         _r = new Side();
         await OpenAsync();

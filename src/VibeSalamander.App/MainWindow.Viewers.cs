@@ -37,9 +37,9 @@ public sealed partial class MainWindow
         editor.Activate();
     }
 
-    public void OpenCompareFiles(string left, string right)
+    public void OpenCompareFiles(string left, string right, string? leftTitle = null, string? rightTitle = null)
     {
-        var window = new CompareFilesWindow(_vm, left, right, RootGrid.ActualTheme);
+        var window = new CompareFilesWindow(_vm, left, right, RootGrid.ActualTheme, leftTitle, rightTitle);
         _editors.Add(window);
         window.Closed += (_, _) =>
         {

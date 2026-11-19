@@ -44,6 +44,19 @@ public sealed class TransferItemViewModel : BindableBase
     /// <summary>The graph's size in the row.</summary>
     public const double GraphWidth = 120, GraphHeight = 26;
 
+    /// <summary>A plugin's own job (OperationKind.Task): its title, icon and the line under the title.</summary>
+    public TransferItemViewModel(PluginJobRequest request)
+    {
+        Kind = OperationKind.Task;
+        Sources = Array.Empty<string>();
+        Disks = Array.Empty<string>(); // a plugin's job doesn't wait for copies on the same disk
+        Title = request.Title;
+        Route = request.Location;
+        _taskGlyph = request.Glyph;
+    }
+
+    private readonly string? _taskGlyph;
+
     public TransferItemViewModel(OperationKind kind, IReadOnlyList<string> sources, string? target)
     {
         Kind = kind;
@@ -194,6 +207,7 @@ public sealed class TransferItemViewModel : BindableBase
         OperationKind.Delete => "\uE74D",
         OperationKind.Pack => "\uE7B8",
         OperationKind.Unpack => "\uE896",
+        OperationKind.Task => _taskGlyph ?? "\uE9F5",
         _ => "\uE8C8",
     };
 
@@ -599,10 +613,21 @@ public sealed class TransfersViewModel : BindableBase
             return run(job);
         });
 
+    /// <summary>A plugin's own job (IPluginHost.RunJob).</summary>
+    public TransferItemViewModel EnqueuePluginJob(PluginJobRequest request) =>
+        Add(new TransferItemViewModel(request) { SharedLimiter = SharedLimiter, ShowGraph = false }, item =>
+        {
+            var job = new PluginJob(item, new ItemCallbacks(item, _dispatcher, _dialogs), new ItemProgress(item, _dispatcher), SharedLimiter);
+            item.Pausable = job;
+            return request.Run(job);
+        });
+
     private TransferItemViewModel Add(OperationKind kind, IReadOnlyList<string> sources, string? target,
-        Func<TransferItemViewModel, Task<OperationResult>> run)
+        Func<TransferItemViewModel, Task<OperationResult>> run) =>
+        Add(new TransferItemViewModel(kind, sources, target) { SharedLimiter = SharedLimiter, ShowGraph = _showGraphs }, run);
+
+    private TransferItemViewModel Add(TransferItemViewModel item, Func<TransferItemViewModel, Task<OperationResult>> run)
     {
-        var item = new TransferItemViewModel(kind, sources, target) { SharedLimiter = SharedLimiter, ShowGraph = _showGraphs };
         item.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(TransferItemViewModel.State))

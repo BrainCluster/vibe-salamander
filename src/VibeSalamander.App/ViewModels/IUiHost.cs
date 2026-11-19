@@ -49,7 +49,7 @@ public interface IUiHost
     void ShowCompareWindow(string left, string right, Core.Tools.CompareOptions options);
 
     /// <summary>Compare Files (Ctrl+Shift+C): two files side by side.</summary>
-    void OpenCompareFiles(string left, string right);
+    void OpenCompareFiles(string left, string right, string? leftTitle = null, string? rightTitle = null);
 
     /// <summary>Find Duplicates (Alt+Shift+F7), looking in <paramref name="directory"/>.</summary>
     void ShowDuplicatesWindow(string directory);

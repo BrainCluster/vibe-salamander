@@ -85,7 +85,8 @@ public sealed partial class MainViewModel
     }
 
     /// <summary>Compare Files for two given files (from the Compare Directories list).</summary>
-    public void CompareFiles(string left, string right) => _host.OpenCompareFiles(left, right);
+    public void CompareFiles(string left, string right, string? leftTitle = null, string? rightTitle = null) =>
+        _host.OpenCompareFiles(left, right, leftTitle, rightTitle);
 
     /// <summary>Ctrl+F10: marks, in both panels, what is missing on the other side or differs.</summary>
     private async Task CompareDirectoriesAsync()

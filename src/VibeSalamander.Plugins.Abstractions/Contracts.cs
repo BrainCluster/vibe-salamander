@@ -74,6 +74,19 @@ public interface IPluginHost
     /// <summary>Adds a viewer for F3 (Vibe Salamander 1.0 and newer: set MinimumHostVersion to 1.0 when you use it).</summary>
     void RegisterViewer(IPluginViewer viewer) => throw new NotSupportedException("This host has no plugin viewers.");
 
+    /// <summary>Adds a panel decorator (item colors, a column, a status on the path line; Vibe Salamander after 0.9.1).</summary>
+    void RegisterPanelDecorator(IPluginPanelDecorator decorator) => throw new NotSupportedException("This host has no panel decorators.");
+
+    /// <summary>
+    /// Opens the file comparator on two files (titles: what each side is called, e.g. "HEAD" and "Working tree";
+    /// null = the file's path). Vibe Salamander after 0.9.1.
+    /// </summary>
+    void CompareFiles(string left, string right, string? leftTitle = null, string? rightTitle = null) =>
+        throw new NotSupportedException("This host has no file comparator for plugins.");
+
+    /// <summary>Runs a plugin's own job in the transfer queue (Vibe Salamander after 0.9.1).</summary>
+    void RunJob(PluginJobRequest request) => throw new NotSupportedException("This host runs no plugin jobs.");
+
     /// <summary>The active panel's current path and focused/marked items.</summary>
     IPanelContext ActivePanel { get; }
 
@@ -362,6 +375,76 @@ public sealed record PluginCommand(string Id, string MenuText, string? ShortcutT
     string? HostCommand = null, Func<string, bool>? AppliesTo = null, bool SeparatorBefore = false);
 
 // ---- file systems (FTP, SFTP, ...) ---------------------------------------------------------------
+
+// ---- panel decorations (Git) -----------------------------------------------------------------------
+
+/// <summary>
+/// Decorates panels showing local folders it knows (Git: the files of a repository): a short text per item in a
+/// column of its own (shown only where it decorates), a color for the item's name, and a status on the panel's
+/// path line (the branch). Asked after each listing of a local folder, off the UI thread; register it with
+/// <see cref="IPluginHost.RegisterPanelDecorator"/> (Vibe Salamander after 0.9.1).
+/// </summary>
+public interface IPluginPanelDecorator
+{
+    /// <summary>Unique within the plugin, e.g. "git".</summary>
+    string Id { get; }
+
+    /// <summary>The column's header ("Git").</summary>
+    string ColumnHeader { get; }
+
+    /// <summary>
+    /// The decoration of a folder's items, or null: none here (the column isn't shown). Answer within a second or
+    /// two (a later answer is dropped); the token is cancelled when the panel goes elsewhere.
+    /// </summary>
+    Task<PanelDecoration?> DecorateAsync(string directory, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Raise with a folder (a repository's root) when what it says about it changed (a commit, a staged file): the
+    /// panels showing that folder or one inside it are decorated again. Any thread.
+    /// </summary>
+    event EventHandler<string>? Changed;
+}
+
+/// <summary>What a decorator says about one folder.</summary>
+public sealed class PanelDecoration
+{
+    /// <summary>On the panel's path line, after the free space, e.g. "main ↑2 ↓1"; null = none.</summary>
+    public string? Status { get; init; }
+
+    /// <summary>The status's tooltip ("2 commits to push, 1 to pull").</summary>
+    public string? StatusToolTip { get; init; }
+
+    /// <summary>By item name (any case): its text in the column and its color. Items not here get <see cref="Others"/>.</summary>
+    public IReadOnlyDictionary<string, ItemDecoration> Items { get; init; } = new Dictionary<string, ItemDecoration>();
+
+    /// <summary>For the items not in <see cref="Items"/> (unchanged files); null = nothing.</summary>
+    public ItemDecoration? Others { get; init; }
+}
+
+/// <summary>
+/// One item's decoration: <paramref name="Text"/> in the decorator's column, <paramref name="Color"/> for its name
+/// (0xRRGGBB; null = the usual color; marked items keep the marked color).
+/// </summary>
+public sealed record ItemDecoration(string Text, uint? Color = null, string? ToolTip = null);
+
+/// <summary>A plugin's own job in the transfer queue (fetch, push, clone): its title and what it runs.</summary>
+public sealed class PluginJobRequest
+{
+    /// <summary>"Fetch origin" - the job's title in the queue.</summary>
+    public required string Title { get; init; }
+
+    /// <summary>Under the title: where it works ("C:\src\app").</summary>
+    public string Location { get; init; } = string.Empty;
+
+    /// <summary>A Segoe Fluent Icons character for the job; null = a generic one.</summary>
+    public string? Glyph { get; init; }
+
+    /// <summary>
+    /// The work, off the UI thread: report progress, ask questions and watch for cancel through the job. The
+    /// result shows in the queue (errors as failed items).
+    /// </summary>
+    public required Func<IArchiveJob, Task<OperationResult>> Run { get; init; }
+}
 
 /// <summary>
 /// A viewer for files the built-in viewer doesn't understand (or shows as plain bytes): F3 on a file that fits

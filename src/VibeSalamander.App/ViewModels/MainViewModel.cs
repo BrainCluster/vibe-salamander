@@ -197,9 +197,22 @@ public sealed partial class MainViewModel : BindableBase
     public ArchiveFileSystemProvider ArchiveProvider { get; }
 
     /// <summary>Loads the plugins; called by the window once the panels exist.</summary>
-    public void LoadPlugins() => Plugins.LoadAll(this, Settings.Plugins.Disabled);
+    public void LoadPlugins()
+    {
+        Plugins.LoadAll(this, Settings.Plugins.Disabled);
+        StartDecorations();
+    }
 
     /// <summary>A notification-bar message (also callable from plugins on other threads).</summary>
+    /// <summary>Runs on the UI thread (now, when already there).</summary>
+    public void RunOnUi(Action action)
+    {
+        if (_dispatcher.HasThreadAccess)
+            action();
+        else
+            _dispatcher.TryEnqueue(() => action());
+    }
+
     public void Notify(string message, bool isError = true)
     {
         if (_dispatcher.HasThreadAccess)

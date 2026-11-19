@@ -12,6 +12,9 @@ public enum OperationKind
     Pack,
     /// <summary>Alt+F6 (archiver plugins).</summary>
     Unpack,
+
+    /// <summary>A plugin's own job (fetch, push, clone): its title and icon come with it.</summary>
+    Task,
 }
 
 /// <summary>Answer to "target already exists" (Salamander's overwrite confirmation).</summary>

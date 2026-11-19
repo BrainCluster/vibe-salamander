@@ -155,6 +155,7 @@ public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
             {
                 OnPropertyChanged(nameof(NameBrush));
                 OnPropertyChanged(nameof(TextBrush));
+                OnPropertyChanged(nameof(DecorationBrush));
             }
         }
     }
@@ -211,6 +212,8 @@ public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
                 return UiState.MarkedBrush;
             if (_isCaret && UiState.FocusTextBrush is { } focusText)
                 return focusText;
+            if (_decorationBrush != null)
+                return _decorationBrush; // a plugin's color (Git: modified, new, ignored)
             if (!_highlightChecked)
             {
                 _highlightChecked = true;
@@ -219,6 +222,31 @@ public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
             return _highlight ?? UiState.TextBrush;
         }
     }
+    // ---- a plugin's decoration (Git): its column's text and the name's color ---------------------------
+
+    private string _decorationText = string.Empty;
+    private Brush? _decorationBrush;
+    private string? _decorationToolTip;
+
+    public string DecorationText => _decorationText;
+    public string? DecorationToolTip => _decorationToolTip;
+    public Brush DecorationBrush => _isMarked ? UiState.MarkedBrush : _decorationBrush ?? UiState.SecondaryTextBrush;
+
+    internal void Decorate(Plugins.ItemDecoration? decoration)
+    {
+        string text = decoration?.Text ?? string.Empty;
+        Brush? brush = decoration?.Color is uint color ? UiState.ColorBrush(color) : null;
+        if (text == _decorationText && ReferenceEquals(brush, _decorationBrush) && decoration?.ToolTip == _decorationToolTip)
+            return;
+        _decorationText = text;
+        _decorationBrush = brush;
+        _decorationToolTip = decoration?.ToolTip;
+        OnPropertyChanged(nameof(DecorationText));
+        OnPropertyChanged(nameof(DecorationBrush));
+        OnPropertyChanged(nameof(DecorationToolTip));
+        OnPropertyChanged(nameof(NameBrush));
+    }
+
     public Brush TextBrush => _isMarked ? UiState.MarkedBrush
         : _isCaret && UiState.FocusTextBrush is { } focusText ? focusText
         : UiState.SecondaryTextBrush;
@@ -238,6 +266,7 @@ public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
             {
                 OnPropertyChanged(nameof(NameBrush));
                 OnPropertyChanged(nameof(TextBrush));
+                OnPropertyChanged(nameof(DecorationBrush));
                 OnPropertyChanged(nameof(GlyphBrush));
             }
         }
@@ -365,6 +394,19 @@ public sealed class FileItemViewModel : BindableBase, Core.Panels.IMarkable
 /// <summary>Shared appearance state (density, brushes) used by item view models.</summary>
 public static class UiState
 {
+    private static readonly Dictionary<uint, Brush> ColorBrushes = new();
+
+    /// <summary>A brush of a plugin's color (0xRRGGBB), one per color (UI thread).</summary>
+    public static Brush ColorBrush(uint rgb)
+    {
+        if (!ColorBrushes.TryGetValue(rgb, out Brush? brush))
+        {
+            brush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb));
+            ColorBrushes[rgb] = brush;
+        }
+        return brush;
+    }
+
     public static double RowHeight { get; set; } = 20;
     public static double FontSize { get; set; } = 13;
 
