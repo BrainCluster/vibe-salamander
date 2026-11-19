@@ -198,4 +198,110 @@ public sealed class GitPluginTests : IDisposable
         Assert.False(string.IsNullOrEmpty(decoration.Status));
         Assert.Null(await decorator.DecorateAsync(_folder, CancellationToken.None)); // not a repository
     }
+
+    // ---- the changes window: what it lists, the old versions it compares with, and git.exe doing the work ----
+
+    [Fact]
+    public void Changes_are_listed_by_area()
+    {
+        string root = Repo();
+        File.AppendAllText(Path.Combine(root, "README.md"), "more\n");                   // not staged
+        Write(root, "notes.txt", "new\n");                                               // new
+        Write(root, @"docs\a.md", "deep new\n");                                         // new, in a new folder
+        File.Delete(Path.Combine(root, @"src\lib\util.cs"));                             // deleted, not staged
+        File.AppendAllText(Path.Combine(root, @"src\app.cs"), "// staged\n");            // staged, then changed again
+        using (var repo = new Repository(root))
+            LibGit2Sharp.Commands.Stage(repo, "src/app.cs");
+        File.AppendAllText(Path.Combine(root, @"src\app.cs"), "// again\n");
+        IReadOnlyList<GitChange> changes;
+        using (var repo = new Repository(root))
+            changes = GitChanges.Read(repo);
+        Assert.Contains(new GitChange("src/app.cs", ChangeArea.Staged, ChangeKind.Modified), changes);
+        Assert.Contains(new GitChange("src/app.cs", ChangeArea.Changes, ChangeKind.Modified), changes);
+        Assert.Contains(new GitChange("README.md", ChangeArea.Changes, ChangeKind.Modified), changes);
+        Assert.Contains(new GitChange("src/lib/util.cs", ChangeArea.Changes, ChangeKind.Deleted), changes);
+        Assert.Contains(new GitChange("notes.txt", ChangeArea.Untracked, ChangeKind.New), changes);
+        Assert.Contains(new GitChange("docs/a.md", ChangeArea.Untracked, ChangeKind.New), changes); // files in new folders, one by one
+        Assert.Equal(ChangeArea.Staged, changes[0].Area); // staged first
+    }
+
+    [Fact]
+    public void A_change_compares_with_its_staged_or_committed_version()
+    {
+        string root = Repo();
+        File.WriteAllText(Path.Combine(root, "README.md"), "staged\n");
+        using (var repo = new Repository(root))
+            LibGit2Sharp.Commands.Stage(repo, "README.md");
+        File.WriteAllText(Path.Combine(root, "README.md"), "working\n");
+        string temp = Path.Combine(_folder, "compare");
+        using var repository = new Repository(root);
+        var notStaged = GitChanges.Sides(repository, new GitChange("README.md", ChangeArea.Changes, ChangeKind.Modified), temp)!.Value;
+        Assert.Equal("staged", File.ReadAllText(notStaged.Left).Trim());
+        Assert.Equal(Path.Combine(root, "README.md"), notStaged.Right);
+        var staged = GitChanges.Sides(repository, new GitChange("README.md", ChangeArea.Staged, ChangeKind.Modified), Path.Combine(temp, "2"))!.Value;
+        Assert.Equal("hello", File.ReadAllText(staged.Left).Trim());   // HEAD
+        Assert.Equal("staged", File.ReadAllText(staged.Right).Trim()); // the index
+        Assert.Contains("(HEAD)", staged.LeftTitle);
+        Assert.Null(GitChanges.Sides(repository, new GitChange("x.txt", ChangeArea.Untracked, ChangeKind.New), temp));
+    }
+
+    [Fact]
+    public void Paths_reach_git_as_literal_files()
+    {
+        var odd = new GitChange("-n *.cs", ChangeArea.Changes, ChangeKind.Modified);
+        Assert.Equal(new[] { "--literal-pathspecs", "add", "-A", "--", "-n *.cs" }, GitActions.Stage(odd));
+        Assert.Equal(new[] { "--literal-pathspecs", "restore", "--worktree", "--", "-n *.cs" }, GitActions.Discard(odd));
+        Assert.Null(GitActions.Discard(odd with { Area = ChangeArea.Untracked }));
+        Assert.Equal(new[] { "--literal-pathspecs", "rm", "--cached", "-q", "--", "-n *.cs" }, GitActions.Unstage(odd with { Area = ChangeArea.Staged }, noCommitsYet: true));
+        Assert.Equal(new[] { "--literal-pathspecs", "restore", "--staged", "--", "new.cs", "old.cs" },
+            GitActions.Unstage(new GitChange("new.cs", ChangeArea.Staged, ChangeKind.Renamed, "old.cs"), noCommitsYet: false));
+    }
+
+    [Fact]
+    public void Git_is_found_by_its_full_path()
+    {
+        string? git = GitProgram.Find(null);
+        Assert.True(git != null, "git.exe isn't on this machine (GitHub's runners have it)");
+        Assert.True(Path.IsPathFullyQualified(git));
+        Assert.Equal(git, GitProgram.Find("")); // nothing set: the same
+        Assert.Equal(git, GitProgram.Find("relative\\git.exe")); // only a full path counts
+    }
+
+    [Fact]
+    public async Task Git_stages_unstages_discards_and_commits()
+    {
+        string git = GitProgram.Find(null)!;
+        string root = Repo();
+        Environment.SetEnvironmentVariable("GIT_AUTHOR_NAME", "Test");
+        Environment.SetEnvironmentVariable("GIT_AUTHOR_EMAIL", "test@example.com");
+        Environment.SetEnvironmentVariable("GIT_COMMITTER_NAME", "Test");
+        Environment.SetEnvironmentVariable("GIT_COMMITTER_EMAIL", "test@example.com");
+        File.AppendAllText(Path.Combine(root, "README.md"), "more\n");
+        var change = new GitChange("README.md", ChangeArea.Changes, ChangeKind.Modified);
+
+        Assert.True((await GitProgram.RunAsync(git, root, GitActions.Stage(change))).Succeeded);
+        using (var repo = new Repository(root))
+            Assert.Equal(FileStatus.ModifiedInIndex, repo.RetrieveStatus("README.md"));
+
+        Assert.True((await GitProgram.RunAsync(git, root, GitActions.Unstage(change with { Area = ChangeArea.Staged }, noCommitsYet: false))).Succeeded);
+        using (var repo = new Repository(root))
+            Assert.Equal(FileStatus.ModifiedInWorkdir, repo.RetrieveStatus("README.md"));
+
+        Assert.True((await GitProgram.RunAsync(git, root, GitActions.Discard(change)!)).Succeeded);
+        Assert.Equal("hello", File.ReadAllText(Path.Combine(root, "README.md")).Trim());
+
+        Write(root, "c.txt", "c\n");
+        await GitProgram.RunAsync(git, root, GitActions.StageAll());
+        GitResult commit = await GitProgram.RunAsync(git, root, GitActions.Commit(amend: false), input: "Second: with \"quotes\" and ünïcode\n\nand a body\n");
+        Assert.True(commit.Succeeded, commit.Message);
+        using (var repo = new Repository(root))
+        {
+            Assert.Equal("Second: with \"quotes\" and ünïcode", repo.Head.Tip.MessageShort);
+            Assert.Equal("and a body", repo.Head.Tip.Message.Split('\n', 3)[2].Trim());
+        }
+
+        GitResult failed = await GitProgram.RunAsync(git, root, new[] { "checkout", "no-such-branch" });
+        Assert.False(failed.Succeeded);
+        Assert.Contains("no-such-branch", failed.Message);
+    }
 }

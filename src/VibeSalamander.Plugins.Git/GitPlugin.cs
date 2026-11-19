@@ -25,19 +25,74 @@ public sealed class GitPlugin : IVibePlugin, ICommandContributor
     public Version? MinimumHostVersion => null;
 
     private IPluginHost? _host;
+    private GitSettings _settings = new();
+    private string? _settingsFile;
     internal GitRepositories Repositories { get; } = new();
 
     public IReadOnlyList<PluginCommand> Commands { get; private set; } = Array.Empty<PluginCommand>();
 
     internal string T(string text) => _host?.Ui.T(text) ?? text;
 
+    internal GitSettings Settings => _settings;
+
     public void Initialize(IPluginHost host)
     {
         _host = host;
+        _settingsFile = Path.Combine(host.GetDataDirectory(this), "settings.json");
+        _settings = GitSettings.Load(_settingsFile);
         host.RegisterPanelDecorator(new GitDecorator(Repositories, T));
-        Commands = Array.Empty<PluginCommand>();
+        Commands = new[]
+        {
+            new PluginCommand("changes", "Changes...", null, ChangesAsync),
+        };
         host.RegisterCommands(this);
     }
 
     public void Shutdown() => Repositories.Dispose();
+
+    // ---- settings page ------------------------------------------------------------------------------------
+
+    public IReadOnlyList<PluginField>? GetSettings() => new[]
+    {
+        new PluginField
+        {
+            Label = T("Git program (git.exe); empty: the one on the PATH"),
+            Value = _settings.GitPath,
+            Placeholder = GitProgram.Find(null) ?? T("Git isn't installed"),
+        },
+        new PluginField { Label = T("Clone into (empty: the active panel's folder)"), Value = _settings.CloneFolder },
+    };
+
+    public void ApplySettings(IReadOnlyList<PluginField> fields)
+    {
+        _settings.GitPath = fields[0].Value.Trim().Trim('"');
+        _settings.CloneFolder = fields[1].Value.Trim().Trim('"');
+        if (_settingsFile != null)
+            _settings.Save(_settingsFile);
+    }
+
+    // ---- git.exe ---------------------------------------------------------------------------------------------
+
+    /// <summary>git.exe's full path, or null: not installed (nor set).</summary>
+    internal string? GitExe() => GitProgram.Find(_settings.GitPath);
+
+    internal Task SayGitIsMissingAsync(IPluginListWindow? owner) =>
+        _host!.Ui.ShowMessageAsync("Git", T("This needs Git (git.exe), which isn't installed here. Get it from git-scm.com, or set where it is in Configuration → Plugins → Git → Settings."), owner);
+
+    // ---- commands --------------------------------------------------------------------------------------------
+
+    /// <summary>The repository of the active panel's folder, or null (said in a notification).</summary>
+    private string? ActiveRepository(IPluginHost host)
+    {
+        string? root = GitRepositories.RootOf(host.ActivePanel.Path);
+        if (root == null)
+            host.Notify(T("The active panel isn't in a Git repository."), isError: true);
+        return root;
+    }
+
+    private async Task ChangesAsync(IPluginHost host)
+    {
+        if (ActiveRepository(host) is string root)
+            await new GitChangesWindow(this, host, root).ShowAsync();
+    }
 }
