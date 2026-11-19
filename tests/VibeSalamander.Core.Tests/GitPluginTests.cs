@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using LibGit2Sharp;
+using VibeSalamander.Plugins;
 using VibeSalamander.Plugins.Git;
+using Commands = LibGit2Sharp.Commands;
 
 namespace VibeSalamander.Core.Tests;
 
