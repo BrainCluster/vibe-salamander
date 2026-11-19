@@ -226,6 +226,7 @@ public sealed class GitScenarios : IDisposable
         Press(history, "Browse This Version");
         AppSession.WaitUntil(() => app.Items().Contains("README.md") && !app.Items().Contains("notes.txt"), "the first commit's files in the panel");
         history.Close();
+        app.Calm(600); // the window gone, not fading
         AppSession.Screenshot("93 git browse this version");
         app.GoTo("README.md");
         app.Press(VirtualKeyShort.F5);
