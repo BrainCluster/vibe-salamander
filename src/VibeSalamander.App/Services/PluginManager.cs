@@ -178,6 +178,7 @@ public sealed class PluginManager
         Add(new global::VibeSalamander.Plugins.Checksum.ChecksumPlugin(), "Built-in", builtIn: true, main, disabled);
         Add(new global::VibeSalamander.Plugins.Ftp.FtpPlugin(), "Built-in", builtIn: true, main, disabled);
         Add(new global::VibeSalamander.Plugins.DiskMap.DiskMapPlugin(), "Built-in", builtIn: true, main, disabled);
+        Add(new global::VibeSalamander.Plugins.MediaInfo.MediaInfoPlugin(), "Built-in", builtIn: true, main, disabled);
 
         // external: one folder per plugin
         foreach (string root in new[] { AppPluginDirectory, UserPluginDirectory })

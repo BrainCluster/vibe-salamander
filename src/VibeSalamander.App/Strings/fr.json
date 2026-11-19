@@ -1819,5 +1819,21 @@
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Les permissions sont 3 ou 4 chiffres octaux, comme 755 ou 644.",
   "Move tab to this panel": "Déplacer l'onglet dans ce panneau",
   "Copy tab to this panel": "Copier l'onglet dans ce panneau",
-  "Eject": "Éjecter"
+  "Eject": "Éjecter",
+  "Media Info": "Infos média",
+  "Media Info...": "Infos média...",
+  "Show every field MediaInfo knows (its Complete view)": "Afficher tous les champs connus de MediaInfo (vue complète)",
+  "F3 on a video or audio file shows its media information": "F3 sur un fichier vidéo ou audio affiche ses infos média",
+  "Focus or mark the video, audio or picture files to show their media information.": "Placez le curseur sur les fichiers vidéo, audio ou image, ou marquez-les, pour afficher leurs infos média.",
+  "MediaInfo's library is missing: reinstall Vibe Salamander.": "La bibliothèque de MediaInfo est absente : réinstallez Vibe Salamander.",
+  "Field": "Champ",
+  "Copy Value": "Copier la valeur",
+  "Copy Line": "Copier la ligne",
+  "Basic": "Simple",
+  "Complete": "Complet",
+  "Save Report...": "Enregistrer le rapport...",
+  "Save Report": "Enregistrer le rapport",
+  "(MediaInfo can't read this file)": "(MediaInfo ne peut pas lire ce fichier)",
+  "{0} fields ({1} view) · MediaInfo {2}": "{0} champs (vue : {1}) · MediaInfo {2}",
+  "Saved to {0}": "Enregistré dans {0}"
 }

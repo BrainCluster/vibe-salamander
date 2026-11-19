@@ -95,6 +95,8 @@ Salamander application icon (`src/res/salamand.ico`),
 | [SharpCompress](https://github.com/adamhathcock/sharpcompress) | MIT | archive plugin (zip, 7z, rar, tar, gz, bz2, xz, lz) |
 | [FluentFTP](https://github.com/robinrodricks/FluentFTP) | MIT | FTP / SFTP plugin (FTP, FTPS) |
 | [SSH.NET](https://github.com/sshnet/SSH.NET) | MIT | FTP / SFTP plugin (SFTP) |
+| [MediaInfoLib](https://github.com/MediaArea/MediaInfoLib) (MediaArea.net) | BSD-2-Clause | Media Info plugin: reads video, audio and image files; its license is in lib\MediaInfo |
+| [MediaInfoDLL](https://www.nuget.org/packages/MediaInfoDLL) (.NET wrapper) | BSD-2-Clause | Media Info plugin: calls MediaInfoLib |
 | [Monaco Editor](https://github.com/microsoft/monaco-editor) | MIT | the built-in editor (F4); downloaded by the build, its LICENSE is in Assets\Monaco |
 | [Inno Setup](https://jrsoftware.org/isinfo.php) | Inno Setup License (free) | makes the installer (not part of the program itself) |
 | [Markdig](https://github.com/xoofx/markdig) | BSD 2-clause | Markdown in the viewer and the editor's preview |

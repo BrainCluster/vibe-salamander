@@ -1819,5 +1819,21 @@
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Права — це 3 або 4 вісімкові цифри, наприклад 755 або 644.",
   "Move tab to this panel": "Перемістити вкладку в цю панель",
   "Copy tab to this panel": "Копіювати вкладку в цю панель",
-  "Eject": "Вийняти"
+  "Eject": "Вийняти",
+  "Media Info": "Відомості про медіафайл",
+  "Media Info...": "Відомості про медіафайл...",
+  "Show every field MediaInfo knows (its Complete view)": "Показувати всі поля, відомі MediaInfo (повний вигляд)",
+  "F3 on a video or audio file shows its media information": "F3 на відео- чи аудіофайлі показує відомості про нього",
+  "Focus or mark the video, audio or picture files to show their media information.": "Виберіть або позначте відео-, аудіофайли чи зображення, щоб побачити відомості про них.",
+  "MediaInfo's library is missing: reinstall Vibe Salamander.": "Бракує бібліотеки MediaInfo: перевстановіть Vibe Salamander.",
+  "Field": "Поле",
+  "Copy Value": "Копіювати значення",
+  "Copy Line": "Копіювати рядок",
+  "Basic": "Основні",
+  "Complete": "Повний",
+  "Save Report...": "Зберегти звіт...",
+  "Save Report": "Зберегти звіт",
+  "(MediaInfo can't read this file)": "(MediaInfo не може прочитати цей файл)",
+  "{0} fields ({1} view) · MediaInfo {2}": "Полів: {0} (вигляд: {1}) · MediaInfo {2}",
+  "Saved to {0}": "Збережено в {0}"
 }

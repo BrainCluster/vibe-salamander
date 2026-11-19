@@ -1819,5 +1819,21 @@
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Rechten zijn 3 of 4 octale cijfers, zoals 755 of 644.",
   "Move tab to this panel": "Tabblad naar dit paneel verplaatsen",
   "Copy tab to this panel": "Tabblad naar dit paneel kopiëren",
-  "Eject": "Uitwerpen"
+  "Eject": "Uitwerpen",
+  "Media Info": "Media-info",
+  "Media Info...": "Media-info...",
+  "Show every field MediaInfo knows (its Complete view)": "Alle velden tonen die MediaInfo kent (volledige weergave)",
+  "F3 on a video or audio file shows its media information": "F3 op een video- of audiobestand toont de media-info",
+  "Focus or mark the video, audio or picture files to show their media information.": "Selecteer of markeer de video-, audio- of afbeeldingsbestanden om hun media-info te tonen.",
+  "MediaInfo's library is missing: reinstall Vibe Salamander.": "De bibliotheek van MediaInfo ontbreekt: installeer Vibe Salamander opnieuw.",
+  "Field": "Veld",
+  "Copy Value": "Waarde kopiëren",
+  "Copy Line": "Regel kopiëren",
+  "Basic": "Basis",
+  "Complete": "Volledig",
+  "Save Report...": "Rapport opslaan...",
+  "Save Report": "Rapport opslaan",
+  "(MediaInfo can't read this file)": "(MediaInfo kan dit bestand niet lezen)",
+  "{0} fields ({1} view) · MediaInfo {2}": "{0} velden (weergave: {1}) · MediaInfo {2}",
+  "Saved to {0}": "Opgeslagen in {0}"
 }

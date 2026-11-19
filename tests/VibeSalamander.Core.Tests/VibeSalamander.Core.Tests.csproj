@@ -7,6 +7,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <PackageReference Include="xunit" Version="2.*" />
+    <!-- MediaInfo's library for the Media Info plugin tests (x64, as the tests run) -->
+    <PackageReference Include="MediaInfoDLL" Version="26.1.0" GeneratePathProperty="true" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.*" />
   </ItemGroup>
   <ItemGroup>
@@ -15,11 +17,15 @@
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Checksum\VibeSalamander.Plugins.Checksum.csproj" />
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.Ftp\VibeSalamander.Plugins.Ftp.csproj" />
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.DiskMap\VibeSalamander.Plugins.DiskMap.csproj" />
+    <ProjectReference Include="..\..\src\VibeSalamander.Plugins.MediaInfo\VibeSalamander.Plugins.MediaInfo.csproj" />
     <ProjectReference Include="..\..\src\VibeSalamander.Plugins.SevenZip\VibeSalamander.Plugins.SevenZip.csproj" />
     <!-- the administrator helper, built beside the tests: ElevationTests start it (without administrator rights) -->
     <ProjectReference Include="..\..\src\VibeSalamander.Elevated\VibeSalamander.Elevated.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(PkgMediaInfoDLL)\lib\netstandard2.0\x64\MediaInfo.dll" Link="lib\MediaInfo\MediaInfo.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

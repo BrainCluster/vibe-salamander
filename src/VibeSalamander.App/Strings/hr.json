@@ -1819,5 +1819,21 @@
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Dozvole su 3 ili 4 oktalne znamenke, npr. 755 ili 644.",
   "Move tab to this panel": "Premjesti karticu u ovu ploču",
   "Copy tab to this panel": "Kopiraj karticu u ovu ploču",
-  "Eject": "Izbaci"
+  "Eject": "Izbaci",
+  "Media Info": "Informacije o mediju",
+  "Media Info...": "Informacije o mediju...",
+  "Show every field MediaInfo knows (its Complete view)": "Prikaži sva polja koja MediaInfo poznaje (potpuni prikaz)",
+  "F3 on a video or audio file shows its media information": "F3 na video ili audio datoteci prikazuje informacije o mediju",
+  "Focus or mark the video, audio or picture files to show their media information.": "Odaberite ili označite video, audio ili slikovne datoteke za prikaz informacija o mediju.",
+  "MediaInfo's library is missing: reinstall Vibe Salamander.": "Nedostaje biblioteka MediaInfo: ponovno instalirajte Vibe Salamander.",
+  "Field": "Polje",
+  "Copy Value": "Kopiraj vrijednost",
+  "Copy Line": "Kopiraj redak",
+  "Basic": "Osnovno",
+  "Complete": "Potpuno",
+  "Save Report...": "Spremi izvješće...",
+  "Save Report": "Spremi izvješće",
+  "(MediaInfo can't read this file)": "(MediaInfo ne može pročitati ovu datoteku)",
+  "{0} fields ({1} view) · MediaInfo {2}": "{0} polja (prikaz: {1}) · MediaInfo {2}",
+  "Saved to {0}": "Spremljeno u {0}"
 }

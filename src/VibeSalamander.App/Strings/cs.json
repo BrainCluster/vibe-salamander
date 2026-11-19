@@ -1819,5 +1819,21 @@
   "Permissions are 3 or 4 octal digits, like 755 or 644.": "Oprávnění jsou 3 nebo 4 osmičkové číslice, např. 755 nebo 644.",
   "Move tab to this panel": "Přesunout kartu do tohoto panelu",
   "Copy tab to this panel": "Kopírovat kartu do tohoto panelu",
-  "Eject": "Vysunout"
+  "Eject": "Vysunout",
+  "Media Info": "Informace o médiu",
+  "Media Info...": "Informace o médiu...",
+  "Show every field MediaInfo knows (its Complete view)": "Zobrazit všechna pole, která MediaInfo zná (úplné zobrazení)",
+  "F3 on a video or audio file shows its media information": "F3 na video nebo zvukovém souboru zobrazí informace o médiu",
+  "Focus or mark the video, audio or picture files to show their media information.": "Vyberte nebo označte video, zvukové nebo obrazové soubory, jejichž informace chcete zobrazit.",
+  "MediaInfo's library is missing: reinstall Vibe Salamander.": "Chybí knihovna MediaInfo: přeinstalujte Vibe Salamander.",
+  "Field": "Pole",
+  "Copy Value": "Kopírovat hodnotu",
+  "Copy Line": "Kopírovat řádek",
+  "Basic": "Základní",
+  "Complete": "Úplné",
+  "Save Report...": "Uložit zprávu...",
+  "Save Report": "Uložit zprávu",
+  "(MediaInfo can't read this file)": "(MediaInfo tento soubor nedokáže přečíst)",
+  "{0} fields ({1} view) · MediaInfo {2}": "{0} polí (zobrazení: {1}) · MediaInfo {2}",
+  "Saved to {0}": "Uloženo do {0}"
 }
