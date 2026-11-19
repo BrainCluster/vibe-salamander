@@ -225,13 +225,57 @@ public sealed class GitScenarios : IDisposable
         Cell(history, "first").Click();
         Press(history, "Browse This Version");
         AppSession.WaitUntil(() => app.Items().Contains("README.md") && !app.Items().Contains("notes.txt"), "the first commit's files in the panel");
-        AppSession.Screenshot("93 git browse this version");
         history.Close();
+        AppSession.Screenshot("93 git browse this version");
         app.GoTo("README.md");
         app.Press(VirtualKeyShort.F5);
         app.Press(VirtualKeyShort.ENTER);
         string copied = Path.Combine(_files.Target, "README.md");
         AppSession.WaitUntil(() => File.Exists(copied) && File.ReadAllText(copied).Trim() == "hello", "README.md of the first commit copied out");
+        NoErrors(app);
+    }
+
+    [UiFact]
+    public void Push_and_fetch_run_as_jobs_in_the_queue()
+    {
+        using AppSession? app = Start();
+        if (app == null)
+            return;
+        string server = Path.Combine(_files.Root, "server.git");
+        Directory.CreateDirectory(server);
+        Git(server, "init --bare -b main");
+        Git(_repo, "remote add origin \"" + server + "\"");
+        AutomationElement status = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByAutomationId("DecorationStatus")), "the branch on the path line");
+
+        // the first push: the branch goes to origin and tracks it
+        app.Menu("Plugins", "Git", "Push");
+        app.WaitTransfers();
+        AppSession.WaitUntil(() => Git(server, "branch --list main").Contains("main"), "main pushed to the server");
+        AppSession.WaitUntil(() => Git(_repo, "rev-parse --abbrev-ref main@{upstream}").Trim() == "origin/main", "main tracking origin/main");
+
+        // a commit not pushed yet: ↑1 on the path line, gone after the push
+        Git(_repo, "add -A");
+        Git(_repo, "commit -m second");
+        AppSession.WaitUntil(() => (status.Properties.Name.ValueOrDefault ?? string.Empty).Contains("↑1"), "↑1 on the path line");
+        app.Menu("Plugins", "Git", "Push");
+        AppSession.Screenshot("94 git push in the queue");
+        app.WaitTransfers();
+        AppSession.WaitUntil(() => !(status.Properties.Name.ValueOrDefault ?? string.Empty).Contains('↑'), "nothing left to push");
+
+        // a commit on the server (from another clone): fetch shows ↓1
+        string other = Path.Combine(_files.Root, "other");
+        Git(_files.Root, "clone \"" + server + "\" other");
+        File.WriteAllText(Path.Combine(other, "theirs.txt"), "theirs");
+        Git(other, "add -A");
+        Git(other, "commit -m theirs");
+        Git(other, "push");
+        app.Menu("Plugins", "Git", "Fetch");
+        app.WaitTransfers();
+        AppSession.WaitUntil(() => (status.Properties.Name.ValueOrDefault ?? string.Empty).Contains("↓1"), "↓1 on the path line after the fetch");
+        app.Menu("Plugins", "Git", "Pull");
+        app.WaitTransfers();
+        AppSession.WaitUntil(() => app.Items().Contains("theirs.txt"), "theirs.txt pulled");
+        AppSession.Screenshot("95 git pulled");
         NoErrors(app);
     }
 }
