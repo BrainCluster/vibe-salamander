@@ -164,6 +164,8 @@
   list (double-click a file that's on both sides).
 - Directory sizes (Ctrl+Shift+F10), occupied space (Alt+F10), drive information (Ctrl+F1), file lists (Ctrl+M).
 - **Disk Map** (plugin): what takes the space, as blocks, a sunburst, columns or Salamander's classic treemap.
+- **Media Info** (plugin): MediaInfo's details of video, audio and picture files, in a window or with F3; saved as
+  text, HTML, XML or JSON.
 
 ![Find results](images/find-results.png)
 

@@ -13,6 +13,7 @@ Built in (they come with the program):
 | [FTP / SFTP](#ftp--sftp) | Servers in the panels like folders |
 | [Checksum](#checksum) | CRC32, MD5, SHA-1, SHA-256, SHA-512: calculate and verify |
 | [Disk Map](#disk-map) | What takes the space in a folder |
+| [Media Info](#media-info) | Details of video, audio and picture files, as the MediaInfo app shows them |
 
 A separate download: [7-Zip](#7-zip). And you can [write your own](Writing-Plugins).
 
@@ -62,6 +63,20 @@ double-click a folder to zoom in, Backspace to go back up, right-click for *Show
 |---|---|
 | ![Blocks](images/disk-map-blocks.png) | ![Sunburst](images/disk-map-sunburst.png) |
 | ![Columns](images/disk-map-columns.png) | ![Classic](images/disk-map-classic.png) |
+
+## Media Info
+
+Plugins → Media Info → **Media Info...** (also in the right-click menu of video, audio and picture files) shows what
+the [MediaInfo](https://mediaarea.net/MediaInfo) app shows about the focused or marked files: the container, each
+video, audio and subtitle track with its codec, profile, bit rate, resolution, frame rate, HDR, channels, sampling
+rate and language, chapters and tags. It is read by MediaInfo's own library, so the details are the same.
+
+- **Complete** shows every field MediaInfo knows, **Basic** the usual ones.
+- **Copy** puts the text report on the clipboard; right-click a line to copy just its value.
+- **Save Report** writes it as text, HTML, XML or JSON.
+- **F3** on a video or audio file shows the text report in the viewer (pictures keep the picture viewer).
+
+Configuration → Plugins → Media Info → **Settings...**: start in the Complete view, and turn the F3 report off.
 
 ## 7-Zip
 
