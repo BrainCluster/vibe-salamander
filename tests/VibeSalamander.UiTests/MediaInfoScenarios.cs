@@ -81,7 +81,7 @@ public sealed class MediaInfoScenarios : IDisposable
             return;
         app.GoTo("tone.wav");
         // the right-click menu of a sound file offers it
-        AppSession.RightClick(app.OnName("tone"));
+        AppSession.RightClick(app.OnName("tone.wav"));
         AppSession.Screenshot("85 media info in the right-click menu");
         app.ClickNamed("Media Info...");
         Window window = app.OtherWindow("Media Info - tone.wav");
@@ -103,7 +103,7 @@ public sealed class MediaInfoScenarios : IDisposable
         app.Menu("Plugins", "Media Info", "Media Info...");
         app.OtherWindow("Media Info - tone.wav").Close();
         // a text file's right-click menu doesn't offer it
-        AppSession.RightClick(app.OnName("report"));
+        AppSession.RightClick(app.OnName("report.txt"));
         app.Calm(300);
         Assert.Null(app.Window.FindFirstDescendant(cf => cf.ByName("Media Info...")));
         app.Press(VirtualKeyShort.ESCAPE);
