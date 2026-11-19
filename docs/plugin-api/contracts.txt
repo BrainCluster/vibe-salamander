@@ -65,6 +65,7 @@ enum VibeSalamander.Core.Operations.OperationKind
   VibeSalamander.Core.Operations.OperationKind.Delete = 2
   VibeSalamander.Core.Operations.OperationKind.Move = 1
   VibeSalamander.Core.Operations.OperationKind.Pack = 3
+  VibeSalamander.Core.Operations.OperationKind.Task = 5
   VibeSalamander.Core.Operations.OperationKind.Unpack = 4
 class VibeSalamander.Core.Operations.OperationProgress
   VibeSalamander.Core.Operations.OperationProgress.Analyzing : System.Boolean { get; init; }
@@ -217,6 +218,7 @@ interface VibeSalamander.Plugins.IPluginFileSystem
   VibeSalamander.Plugins.IPluginFileSystem.UploadAsync(System.Collections.Generic.IReadOnlyList<System.String> sources, System.String targetDirectory, VibeSalamander.Plugins.IArchiveJob job) : System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>
 interface VibeSalamander.Plugins.IPluginHost
   VibeSalamander.Plugins.IPluginHost.ActivePanel : VibeSalamander.Plugins.IPanelContext { get; }
+  VibeSalamander.Plugins.IPluginHost.CompareFiles(System.String left, System.String right, System.String leftTitle = null, System.String rightTitle = null) : System.Void
   VibeSalamander.Plugins.IPluginHost.GetDataDirectory(VibeSalamander.Plugins.IVibePlugin plugin) : System.String
   VibeSalamander.Plugins.IPluginHost.HostVersion : System.Version { get; }
   VibeSalamander.Plugins.IPluginHost.InactivePanel : VibeSalamander.Plugins.IPanelContext { get; }
@@ -224,7 +226,9 @@ interface VibeSalamander.Plugins.IPluginHost
   VibeSalamander.Plugins.IPluginHost.RegisterArchiver(VibeSalamander.Plugins.IArchiver archiver) : System.Void
   VibeSalamander.Plugins.IPluginHost.RegisterCommands(VibeSalamander.Plugins.ICommandContributor contributor) : System.Void
   VibeSalamander.Plugins.IPluginHost.RegisterFileSystem(VibeSalamander.Plugins.IPluginFileSystem fileSystem) : System.Void
+  VibeSalamander.Plugins.IPluginHost.RegisterPanelDecorator(VibeSalamander.Plugins.IPluginPanelDecorator decorator) : System.Void
   VibeSalamander.Plugins.IPluginHost.RegisterViewer(VibeSalamander.Plugins.IPluginViewer viewer) : System.Void
+  VibeSalamander.Plugins.IPluginHost.RunJob(VibeSalamander.Plugins.PluginJobRequest request) : System.Void
   VibeSalamander.Plugins.IPluginHost.Ui : VibeSalamander.Plugins.IPluginUi { get; }
 interface VibeSalamander.Plugins.IPluginListWindow
   VibeSalamander.Plugins.IPluginListWindow.AddRow(System.Collections.Generic.IReadOnlyList<System.String> cells) : VibeSalamander.Plugins.IPluginRow
@@ -240,6 +244,11 @@ interface VibeSalamander.Plugins.IPluginListWindow
   VibeSalamander.Plugins.IPluginListWindow.SetProgress(System.Nullable<System.Double> value) : System.Void
   VibeSalamander.Plugins.IPluginListWindow.SetStatus(System.String text) : System.Void
   VibeSalamander.Plugins.IPluginListWindow.UpdateButton(System.String id, System.String text = null, System.Nullable<System.Boolean> enabled = null) : System.Void
+interface VibeSalamander.Plugins.IPluginPanelDecorator
+  VibeSalamander.Plugins.IPluginPanelDecorator.Changed : event System.EventHandler<System.String>
+  VibeSalamander.Plugins.IPluginPanelDecorator.ColumnHeader : System.String { get; }
+  VibeSalamander.Plugins.IPluginPanelDecorator.DecorateAsync(System.String directory, System.Threading.CancellationToken cancellationToken) : System.Threading.Tasks.Task<VibeSalamander.Plugins.PanelDecoration>
+  VibeSalamander.Plugins.IPluginPanelDecorator.Id : System.String { get; }
 interface VibeSalamander.Plugins.IPluginRow
   VibeSalamander.Plugins.IPluginRow.Item[System.Int32] : System.String { get; set; }
   VibeSalamander.Plugins.IPluginRow.Remove() : System.Void
@@ -272,6 +281,16 @@ interface VibeSalamander.Plugins.IVibePlugin
   VibeSalamander.Plugins.IVibePlugin.MinimumHostVersion : System.Version { get; }
   VibeSalamander.Plugins.IVibePlugin.Shutdown() : System.Void
   VibeSalamander.Plugins.IVibePlugin.Version : System.Version { get; }
+class VibeSalamander.Plugins.ItemDecoration
+  VibeSalamander.Plugins.ItemDecoration.Color : System.Nullable<System.UInt32> { get; init; }
+  VibeSalamander.Plugins.ItemDecoration.Deconstruct(out System.String Text, out System.Nullable<System.UInt32> Color, out System.String ToolTip) : System.Void
+  VibeSalamander.Plugins.ItemDecoration.Equals(System.Object obj) : System.Boolean
+  VibeSalamander.Plugins.ItemDecoration.Equals(VibeSalamander.Plugins.ItemDecoration other) : System.Boolean
+  VibeSalamander.Plugins.ItemDecoration.GetHashCode() : System.Int32
+  VibeSalamander.Plugins.ItemDecoration.Text : System.String { get; init; }
+  VibeSalamander.Plugins.ItemDecoration.ToString() : System.String
+  VibeSalamander.Plugins.ItemDecoration.ToolTip : System.String { get; init; }
+  VibeSalamander.Plugins.ItemDecoration.new(System.String Text, System.Nullable<System.UInt32> Color = null, System.String ToolTip = null)
 class VibeSalamander.Plugins.PackOption
   VibeSalamander.Plugins.PackOption.Choices : System.Collections.Generic.IReadOnlyList<System.String> { get; init; }
   VibeSalamander.Plugins.PackOption.Deconstruct(out System.String Id, out System.String Label, out VibeSalamander.Plugins.PluginFieldKind Kind, out System.Collections.Generic.IReadOnlyList<System.String> Choices, out System.String Default, out System.Boolean NeedsPassword) : System.Void
@@ -310,6 +329,12 @@ enum VibeSalamander.Plugins.PackUpdateMode
   VibeSalamander.Plugins.PackUpdateMode.Replace = 0
   VibeSalamander.Plugins.PackUpdateMode.Synchronize = 4
   VibeSalamander.Plugins.PackUpdateMode.UpdateAndAdd = 2
+class VibeSalamander.Plugins.PanelDecoration
+  VibeSalamander.Plugins.PanelDecoration.Items : System.Collections.Generic.IReadOnlyDictionary<System.String, VibeSalamander.Plugins.ItemDecoration> { get; init; }
+  VibeSalamander.Plugins.PanelDecoration.Others : VibeSalamander.Plugins.ItemDecoration { get; init; }
+  VibeSalamander.Plugins.PanelDecoration.Status : System.String { get; init; }
+  VibeSalamander.Plugins.PanelDecoration.StatusToolTip : System.String { get; init; }
+  VibeSalamander.Plugins.PanelDecoration.new()
 class VibeSalamander.Plugins.PluginButton
   VibeSalamander.Plugins.PluginButton.Click : System.Action { get; init; }
   VibeSalamander.Plugins.PluginButton.Deconstruct(out System.String Id, out System.String Text, out System.Action Click, out System.Boolean IsDefault) : System.Void
@@ -370,6 +395,12 @@ class VibeSalamander.Plugins.PluginFileType
   VibeSalamander.Plugins.PluginFileType.Name : System.String { get; init; }
   VibeSalamander.Plugins.PluginFileType.ToString() : System.String
   VibeSalamander.Plugins.PluginFileType.new(System.String Name, System.String Extension)
+class VibeSalamander.Plugins.PluginJobRequest
+  VibeSalamander.Plugins.PluginJobRequest.Glyph : System.String { get; init; }
+  VibeSalamander.Plugins.PluginJobRequest.Location : System.String { get; init; }
+  VibeSalamander.Plugins.PluginJobRequest.Run : System.Func<VibeSalamander.Plugins.IArchiveJob, System.Threading.Tasks.Task<VibeSalamander.Core.Operations.OperationResult>> { get; init; }
+  VibeSalamander.Plugins.PluginJobRequest.Title : System.String { get; init; }
+  VibeSalamander.Plugins.PluginJobRequest.new()
 class VibeSalamander.Plugins.PluginLabel
   VibeSalamander.Plugins.PluginLabel.Background : System.UInt32 { get; init; }
   VibeSalamander.Plugins.PluginLabel.Bold : System.Boolean { get; init; }
