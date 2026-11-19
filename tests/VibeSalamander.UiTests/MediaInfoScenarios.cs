@@ -6,7 +6,7 @@ using FlaUI.Core.WindowsAPI;
 
 namespace VibeSalamander.UiTests;
 
-/// <summary>The built-in Media Info plugin: its window and F3 on a sound file.</summary>
+/// <summary>The Media Info plugin (a separate download, installed into the test's Plugins folder): its window, its item in the right-click menu, F3.</summary>
 public sealed class MediaInfoScenarios : IDisposable
 {
     private readonly DummyFiles _files = new();
@@ -40,13 +40,28 @@ public sealed class MediaInfoScenarios : IDisposable
         return path;
     }
 
-    private AppSession Start()
+    /// <summary>The plugin's folder (build\publish-mediainfo-plugin.ps1), or null when it isn't built here.</summary>
+    private static string? PluginFolder() =>
+        Environment.GetEnvironmentVariable("VIBE_MEDIAINFO_PLUGIN") is { Length: > 0 } folder && Directory.Exists(folder) ? folder : null;
+
+    private static void CopyFolder(string from, string to)
     {
+        Directory.CreateDirectory(to);
+        foreach (string file in Directory.GetFiles(from))
+            File.Copy(file, Path.Combine(to, Path.GetFileName(file)));
+        foreach (string sub in Directory.GetDirectories(from))
+            CopyFolder(sub, Path.Combine(to, Path.GetFileName(sub)));
+    }
+
+    private AppSession? Start()
+    {
+        if (PluginFolder() is not string plugin)
+            return null; // not built on this machine
         var app = new AppSession(s =>
         {
             s.Left.Path = _files.Documents;
             s.Right.Path = _files.Target;
-        });
+        }, prepareHome: home => CopyFolder(plugin, Path.Combine(home, "Plugins", "Media Info")));
         AppSession.WaitUntil(() => app.Items().Contains("tone.wav"), "the sound file");
         return app;
     }
@@ -61,9 +76,14 @@ public sealed class MediaInfoScenarios : IDisposable
     public void Media_Info_shows_a_sound_files_details()
     {
         Wave();
-        using AppSession app = Start();
+        using AppSession? app = Start();
+        if (app == null)
+            return;
         app.GoTo("tone.wav");
-        app.Menu("Plugins", "Media Info", "Media Info...");
+        // the right-click menu of a sound file offers it
+        AppSession.RightClick(app.OnName("tone"));
+        AppSession.Screenshot("85 media info in the right-click menu");
+        app.ClickNamed("Media Info...");
         Window window = app.OtherWindow("Media Info - tone.wav");
         foreach (string shown in new[] { "General", "Audio", "PCM", "44.1 kHz", "2 channels" })
             AppSession.Retry(() => window.FindFirstDescendant(cf => cf.ByName(shown)), $"\"{shown}\" in the Media Info window");
@@ -73,10 +93,30 @@ public sealed class MediaInfoScenarios : IDisposable
     }
 
     [UiFact]
+    public void Media_Info_is_in_the_Plugins_menu_and_not_on_text_files()
+    {
+        Wave();
+        using AppSession? app = Start();
+        if (app == null)
+            return;
+        app.GoTo("tone.wav");
+        app.Menu("Plugins", "Media Info", "Media Info...");
+        app.OtherWindow("Media Info - tone.wav").Close();
+        // a text file's right-click menu doesn't offer it
+        AppSession.RightClick(app.OnName("report"));
+        app.Calm(300);
+        Assert.Null(app.Window.FindFirstDescendant(cf => cf.ByName("Media Info...")));
+        app.Press(VirtualKeyShort.ESCAPE);
+        NoErrors(app);
+    }
+
+    [UiFact]
     public void F3_on_a_sound_file_shows_its_media_information()
     {
         Wave();
-        using AppSession app = Start();
+        using AppSession? app = Start();
+        if (app == null)
+            return;
         app.GoTo("tone.wav");
         app.Press(VirtualKeyShort.F3, settleMs: 400);
         Window viewer = app.OtherWindow("tone.wav - Media Info");

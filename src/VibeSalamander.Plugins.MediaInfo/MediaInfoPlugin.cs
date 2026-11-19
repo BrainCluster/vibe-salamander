@@ -8,7 +8,7 @@ using VibeSalamander.Core.FileSystem;
 namespace VibeSalamander.Plugins.MediaInfo;
 
 /// <summary>
-/// The built-in Media Info plugin: what the MediaInfo app shows about video, audio and image files - container,
+/// The Media Info plugin (a separate download, like 7-Zip): what the MediaInfo app shows about video, audio and image files - container,
 /// codecs, profiles, bit rates, resolution, frame rate, HDR, channels, sampling, languages, chapters and tags - read
 /// by MediaInfo's own library. Plugins → Media Info (and the right-click menu of media files) opens a window with
 /// the report of the focused or marked files, which can be copied or saved as text, HTML, XML or JSON; F3 on a video

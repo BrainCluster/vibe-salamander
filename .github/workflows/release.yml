@@ -233,6 +233,14 @@ jobs:
           Compress-Archive -Path publish/plugin/7-Zip -DestinationPath $zip
           "PLUGIN_ZIP=$zip" >> $env:GITHUB_ENV
 
+      - name: Media Info plugin
+        shell: pwsh
+        run: |
+          ./build/publish-mediainfo-plugin.ps1 -Runtime ${{ matrix.rid }} -Output "publish/plugin/Media Info"
+          $zip = "VibeSalamander-Media-Info-plugin-${{ needs.version.outputs.version }}-${{ matrix.rid }}.zip"
+          Compress-Archive -Path "publish/plugin/Media Info" -DestinationPath $zip
+          "MEDIAINFO_ZIP=$zip" >> $env:GITHUB_ENV
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.rid }}
@@ -240,6 +248,7 @@ jobs:
             ${{ env.SETUP }}
             ${{ env.ZIP }}
             ${{ env.PLUGIN_ZIP }}
+            ${{ env.MEDIAINFO_ZIP }}
 
   release:
     needs: [ version, build ]

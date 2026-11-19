@@ -182,6 +182,66 @@ public sealed partial class FilePane
         return sub;
     }
 
+    /// <summary>
+    /// The commands of plugins (other than archive plugins, whose commands are in the archive's submenu) that say
+    /// they fit the right-clicked file (PluginCommand.AppliesTo), e.g. Media Info on video, audio and pictures.
+    /// True: some were added.
+    /// </summary>
+    private bool AddPluginCommandItems(MenuFlyout menu, FileItemViewModel item, PaneViewModel pane)
+    {
+        if (item.Entry.IsDirectory || item.Entry.IsUpDir || item.IsDrive || !pane.IsLocalDisk)
+            return false;
+        string path = item.Entry.FullPath;
+        Services.PluginInfo? archiveOwner = _main!.Plugins.UnpackerPlugin(path);
+        bool added = false;
+        foreach (Services.PluginInfo plugin in _main.Plugins.Plugins)
+        {
+            // archive plugins' commands belong in the archive's submenu
+            if (!plugin.Enabled || plugin.Error != null || plugin.Host == null || plugin == archiveOwner || plugin.Archivers.Count > 0)
+                continue;
+            foreach (Plugins.PluginCommand command in plugin.CommandContributors.SelectMany(c => c.Commands))
+            {
+                bool fits;
+                try
+                {
+                    fits = command.AppliesTo?.Invoke(path) == true;
+                }
+                catch (Exception)
+                {
+                    fits = false; // the plugin's check failed: not offered
+                }
+                if (!fits)
+                    continue;
+                if (!added && menu.Items.Count > 0 && menu.Items[^1] is not MenuFlyoutSeparator)
+                    menu.Items.Add(new MenuFlyoutSeparator());
+                added = true;
+                var entry = new MenuFlyoutItem
+                {
+                    Text = Loc.T(command.MenuText),
+                    Icon = new FontIcon { Glyph = plugin.IconGlyph is { Length: > 0 } glyph ? glyph : "\uF012" },
+                };
+                if (command.ShortcutText is { Length: > 0 } keys)
+                    entry.KeyboardAcceleratorTextOverride = keys;
+                Plugins.PluginCommand c = command;
+                Services.PluginInfo owner = plugin;
+                entry.Click += async (_, _) =>
+                {
+                    _main.Activate(pane);
+                    try
+                    {
+                        await c.Execute(owner.Host!);
+                    }
+                    catch (Exception ex)
+                    {
+                        _main.Notify($"{owner.Name}: {ex.Message}");
+                    }
+                };
+                menu.Items.Add(entry);
+            }
+        }
+        return added;
+    }
+
     /// <param name="screenX">Screen position for the Windows menu.</param>
     /// <param name="fromMouse">Shift+right-click opens the Windows menu (Shift+F10 is just the menu key).</param>
     private void ShowContextMenu(FileItemViewModel? item, Windows.Foundation.Point position, int screenX, int screenY, bool fromMouse = true)
@@ -229,6 +289,9 @@ public sealed partial class FilePane
                         menu.Items.Add(RunScriptItem(item.Entry.FullPath, facts.Script));
                     break;
                 case ContextMenuEntryKind.WindowsMenu:
+                    // plugins' commands for this kind of file ("Media Info..." on a video), before Windows' menu
+                    if (item != null && AddPluginCommandItems(menu, item, pane) && menu.Items[^1] is not MenuFlyoutSeparator)
+                        menu.Items.Add(new MenuFlyoutSeparator());
                     var windows = new MenuFlyoutItem
                     {
                         Text = "Windows context menu",

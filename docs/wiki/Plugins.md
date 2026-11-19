@@ -13,9 +13,8 @@ Built in (they come with the program):
 | [FTP / SFTP](#ftp--sftp) | Servers in the panels like folders |
 | [Checksum](#checksum) | CRC32, MD5, SHA-1, SHA-256, SHA-512: calculate and verify |
 | [Disk Map](#disk-map) | What takes the space in a folder |
-| [Media Info](#media-info) | Details of video, audio and picture files, as the MediaInfo app shows them |
 
-A separate download: [7-Zip](#7-zip). And you can [write your own](Writing-Plugins).
+Separate downloads: [7-Zip](#7-zip) and [Media Info](#media-info). And you can [write your own](Writing-Plugins).
 
 ## Archives
 
@@ -66,7 +65,12 @@ double-click a folder to zoom in, Backspace to go back up, right-click for *Show
 
 ## Media Info
 
-Plugins → Media Info → **Media Info...** (also in the right-click menu of video, audio and picture files) shows what
+A separate download, because it carries MediaInfo's library (`VibeSalamander-Media-Info-plugin-<version>-win-x64.zip`
+or `-win-arm64.zip` on the [releases page](https://github.com/BrainCluster/vibe-salamander/releases/latest)). Put its
+`Media Info` folder into `%AppData%\VibeSalamander\Plugins` (Plugins → Plugins Manager → *Open plugins folder*) and
+start Vibe Salamander again.
+
+**Media Info...** in the right-click menu of a video, audio or picture file (or Plugins → Media Info) shows what
 the [MediaInfo](https://mediaarea.net/MediaInfo) app shows about the focused or marked files: the container, each
 video, audio and subtitle track with its codec, profile, bit rate, resolution, frame rate, HDR, channels, sampling
 rate and language, chapters and tags. It is read by MediaInfo's own library, so the details are the same.

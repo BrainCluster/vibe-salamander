@@ -39,23 +39,8 @@
     <ProjectReference Include="..\VibeSalamander.Plugins.Checksum\VibeSalamander.Plugins.Checksum.csproj" />
     <ProjectReference Include="..\VibeSalamander.Plugins.Ftp\VibeSalamander.Plugins.Ftp.csproj" />
     <ProjectReference Include="..\VibeSalamander.Plugins.DiskMap\VibeSalamander.Plugins.DiskMap.csproj" />
-    <ProjectReference Include="..\VibeSalamander.Plugins.MediaInfo\VibeSalamander.Plugins.MediaInfo.csproj" />
   </ItemGroup>
 
-  <!-- Media Info: MediaInfo's library for this processor, in lib\MediaInfo (the plugin loads it from there) -->
-  <ItemGroup>
-    <PackageReference Include="MediaInfoDLL" Version="26.1.0" GeneratePathProperty="true" />
-  </ItemGroup>
-  <PropertyGroup>
-    <MediaInfoArch Condition="'$(RuntimeIdentifier)' == 'win-arm64'">arm64</MediaInfoArch>
-    <MediaInfoArch Condition="'$(RuntimeIdentifier)' != 'win-arm64'">x64</MediaInfoArch>
-  </PropertyGroup>
-  <ItemGroup>
-    <Content Include="$(PkgMediaInfoDLL)\lib\netstandard2.0\$(MediaInfoArch)\MediaInfo.dll" Link="lib\MediaInfo\MediaInfo.dll"
-             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="$(PkgMediaInfoDLL)\License.html" Link="lib\MediaInfo\License.html"
-             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="Exists('$(PkgMediaInfoDLL)\License.html')" />
-  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Assets\VibeSalamander.ico" CopyToOutputDirectory="PreserveNewest" />

@@ -1,14 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Built-in plugin: technical and tag details of video, audio and image files, as the MediaInfo app shows them.
-       The reading is MediaInfo's own library (MediaInfoLib, MediaArea.net, BSD-2-Clause) through the MediaInfoDLL
-       wrapper (BSD-2-Clause); the app copies the library for its processor into lib\MediaInfo. -->
+  <!-- A separate plugin (not built into the app), like 7-Zip: technical and tag details of video, audio and image
+       files, as the MediaInfo app shows them, read by MediaInfo's own library (MediaInfoLib, MediaArea.net,
+       BSD-2-Clause) through the MediaInfoDLL wrapper (BSD-2-Clause). build\publish-mediainfo-plugin.ps1 makes its
+       download: this assembly, the wrapper, and in lib\MediaInfo the library for one processor. The host shares
+       Core and the contracts, so they aren't copied. No UI framework. -->
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <RootNamespace>VibeSalamander.Plugins.MediaInfo</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\VibeSalamander.Plugins.Abstractions\VibeSalamander.Plugins.Abstractions.csproj" />
+    <ProjectReference Include="..\VibeSalamander.Plugins.Abstractions\VibeSalamander.Plugins.Abstractions.csproj" Private="false" />
     <PackageReference Include="MediaInfoDLL" Version="26.1.0" />
   </ItemGroup>
   <ItemGroup>

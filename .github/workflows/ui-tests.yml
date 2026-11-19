@@ -61,6 +61,10 @@ jobs:
         continue-on-error: true
         run: dotnet build samples/HelloPlugin/HelloPlugin.csproj -c Release
 
+      - name: Build the Media Info plugin (a separate download)
+        shell: pwsh
+        run: ./build/publish-mediainfo-plugin.ps1 -Runtime win-x64 -Output "$env:RUNNER_TEMP/Media Info"
+
       - name: UI tests
         shell: pwsh
         env:
@@ -77,6 +81,8 @@ jobs:
           }
           $hello = Get-ChildItem samples/HelloPlugin/bin -Recurse -Filter HelloPlugin.dll -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($hello) { $env:VIBE_HELLO_PLUGIN = $hello.FullName }
+          $mediaInfo = Join-Path $env:RUNNER_TEMP "Media Info"
+          if (Test-Path $mediaInfo) { $env:VIBE_MEDIAINFO_PLUGIN = $mediaInfo }
           $exe = Get-ChildItem src/VibeSalamander.App/bin -Recurse -Filter VibeSalamander.exe | Select-Object -First 1
           $env:VIBE_APP_EXE = $exe.FullName
           $env:VIBE_SCREENSHOTS = Join-Path $env:RUNNER_TEMP "ui-screenshots"

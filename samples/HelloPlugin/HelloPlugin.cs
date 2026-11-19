@@ -57,7 +57,7 @@ public sealed class HelloPlugin : IVibePlugin, ICommandContributor
         {
             new PluginCommand("count", "Count marked files", null, CountMarked),
             new PluginCommand("largest", "Largest files here...", null, ListLargest),
-            // AppliesTo: the command also shows in the right-click menu of files it fits (under "Hello")
+            // AppliesTo: the command also shows in the right-click menu of the files it fits
             new PluginCommand("lines", "Count lines", null, CountLines,
                 AppliesTo: path => path.EndsWith(".txt", StringComparison.OrdinalIgnoreCase), SeparatorBefore: true),
         };
