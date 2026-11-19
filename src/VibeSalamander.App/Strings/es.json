@@ -1920,5 +1920,7 @@
   "Push": "Push",
   "Clone...": "Clonar...",
   "Git History of This File...": "Historial de Git de este archivo...",
-  "Git Blame...": "Git Blame..."
+  "Git Blame...": "Git Blame...",
+  "{0} - Copy": "{0} - copia",
+  "{0} - Copy ({1})": "{0} - copia ({1})"
 }

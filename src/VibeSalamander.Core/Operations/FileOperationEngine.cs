@@ -167,6 +167,9 @@ public sealed class FileOperationEngine : IPausable
                     steps.Add(new RenameStep(source, dest, isDir));
                     continue;
                 }
+                // copied onto itself (into its own folder, or to its own name): a copy next to it, "Name - Copy" (as Explorer)
+                if (!move && string.Equals(source, dest, StringComparison.OrdinalIgnoreCase))
+                    dest = CopyNames.FreeCopyOf(dest, isDir);
                 if (string.Equals(source, dest, StringComparison.OrdinalIgnoreCase))
                 {
                     if (!await HandleErrorAsync(source, move ? "Cannot move an item onto itself." : "Cannot copy an item onto itself.", result))

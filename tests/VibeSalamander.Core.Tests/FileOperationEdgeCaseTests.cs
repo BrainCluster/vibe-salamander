@@ -37,6 +37,54 @@ public sealed class FileOperationEdgeCaseTests : IDisposable
         return path;
     }
 
+    // ---- copied onto itself: a copy next to it, named as Explorer names it ------------------------------------
+
+    [Fact]
+    public async Task A_folder_copied_into_its_own_folder_gets_a_copy_name()
+    {
+        Make(@"here\Photos\a.jpg", "a");
+        Make(@"here\Photos\sub\b.jpg", "b");
+        var engine = new FileOperationEngine(new OperationAnswers());
+
+        OperationResult first = await engine.CopyAsync(new[] { P(@"here\Photos") }, P("here"));
+        Assert.Equal(new[] { "Photos - Copy" }, first.CreatedTopLevelNames);
+        Assert.Equal("b", File.ReadAllText(P(@"here\Photos - Copy\sub\b.jpg")));
+        Assert.Equal(0, first.Failed);
+
+        OperationResult second = await new FileOperationEngine(new OperationAnswers()).CopyAsync(new[] { P(@"here\Photos") }, P(@"here\"));
+        Assert.Equal(new[] { "Photos - Copy (2)" }, second.CreatedTopLevelNames);
+        Assert.Equal("a", File.ReadAllText(P(@"here\Photos\a.jpg"))); // the source is untouched
+        Assert.Equal(new[] { "Photos", "Photos - Copy", "Photos - Copy (2)" },
+            Directory.GetDirectories(P("here")).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Files_copied_onto_themselves_get_copy_names()
+    {
+        Make(@"here\Report.docx", "r");
+        Make(@"here\.gitignore", "g");
+        Make(@"here\Report - Copy.docx", "taken");
+        OperationResult result = await new FileOperationEngine(new OperationAnswers())
+            .CopyAsync(new[] { P(@"here\Report.docx"), P(@"here\.gitignore") }, P("here"));
+        Assert.Equal(new[] { "Report - Copy (2).docx", ".gitignore - Copy" }, result.CreatedTopLevelNames);
+        Assert.Equal("r", File.ReadAllText(P(@"here\Report - Copy (2).docx")));
+        Assert.Equal("taken", File.ReadAllText(P(@"here\Report - Copy.docx"))); // never overwritten
+
+        // to its own name (one item, the name typed in the copy dialog): a copy too
+        OperationResult named = await new FileOperationEngine(new OperationAnswers()).CopyAsync(new[] { P(@"here\.gitignore") }, P(@"here\.gitignore"));
+        Assert.Equal(new[] { ".gitignore - Copy (2)" }, named.CreatedTopLevelNames);
+    }
+
+    [Fact]
+    public async Task A_move_onto_itself_still_does_nothing()
+    {
+        Make(@"here\Photos\a.jpg", "a");
+        OperationResult result = await new FileOperationEngine(new OperationAnswers()).MoveAsync(new[] { P(@"here\Photos") }, P("here"));
+        Assert.Single(Directory.GetDirectories(P("here")));
+        Assert.Equal("a", File.ReadAllText(P(@"here\Photos\a.jpg")));
+        Assert.Empty(result.CreatedTopLevelNames);
+    }
+
     // ---- links: nothing outside the operation is deleted ----------------------------------------------
 
     [Fact]

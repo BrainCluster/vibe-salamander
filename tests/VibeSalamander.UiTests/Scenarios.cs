@@ -65,6 +65,28 @@ public sealed class Scenarios : IDisposable
     }
 
     [UiFact]
+    public void A_folder_copied_onto_itself_gets_a_copy_name()
+    {
+        using AppSession app = Start(s => s.Right.Path = _files.Documents); // both panels: the same folder
+        AppSession.WaitUntil(() => app.Items().Contains("Empty folder"), "the documents");
+        app.GoTo("Empty folder");
+        app.Press(VirtualKeyShort.F5);
+        app.WaitDialog();
+        app.Press(VirtualKeyShort.ENTER);
+        AppSession.WaitUntil(() => Directory.Exists(Path.Combine(_files.Documents, "Empty folder - Copy")), "Empty folder - Copy made");
+        AppSession.WaitUntil(() => app.Items().Contains("Empty folder - Copy"), "the copy in the panel");
+        AppSession.Screenshot("12 a folder copied onto itself");
+
+        // Ctrl+C, Ctrl+V on the same folder: the next name
+        app.GoTo("Empty folder");
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_C);
+        app.Press(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_V);
+        AppSession.WaitUntil(() => Directory.Exists(Path.Combine(_files.Documents, "Empty folder - Copy (2)")), "Empty folder - Copy (2) pasted");
+        Assert.True(Directory.Exists(Path.Combine(_files.Documents, "Empty folder")));
+        NoErrors(app);
+    }
+
+    [UiFact]
     public void Copy_with_F5()
     {
         using AppSession app = Start(s => s.Right.Path = _files.Target);
