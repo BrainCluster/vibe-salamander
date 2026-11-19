@@ -8,6 +8,7 @@
 #     LibGit2Sharp.dll                                 reads repositories (MIT)
 #     runtimes\<win-x64|win-arm64>\native\git2-*.dll   libgit2 for this processor (GPLv2 with the linking exception)
 #     README.txt                                       how to install the plugin
+#     libgit2-license.txt                              libgit2's license (GPLv2 with the linking exception)
 #
 # Usage:  build\publish-git-plugin.ps1 [-Runtime win-x64|win-arm64] [-Output publish\Git]
 
@@ -40,6 +41,16 @@ if (-not (Test-Path $native)) { throw "libgit2 for $Runtime is not in the build 
 $target = New-Item (Join-Path $out "runtimes\$Runtime\native") -ItemType Directory -Force
 Copy-Item (Join-Path $native '*') $target
 if (-not (Test-Path (Join-Path $out 'VibeSalamander.Plugins.Git.dll'))) { throw 'The plugin was not built.' }
+# libgit2's license (GPLv2 with the linking exception) goes with its library: from the NuGet package it came in
+$packages = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $HOME '.nuget\packages' }
+$license = Get-ChildItem (Join-Path $packages 'libgit2sharp.nativebinaries') -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like 'libgit2*license*' -or $_.Name -eq 'COPYING' } | Sort-Object FullName -Descending | Select-Object -First 1
+if ($license) {
+    Copy-Item $license.FullName (Join-Path $out 'libgit2-license.txt')
+    Write-Host "libgit2's license: $($license.FullName)"
+} else {
+    Write-Warning "libgit2's license was not found under $packages\libgit2sharp.nativebinaries"
+}
 
 @"
 Vibe Salamander - Git plugin ($Runtime)
@@ -59,8 +70,8 @@ Repositories are read inside Vibe Salamander by libgit2 (through LibGit2Sharp), 
 or any other program a repository names. Committing, fetching, pulling, pushing and cloning run in your
 own Git (git.exe, https://git-scm.com), by its full path.
 
-libgit2 is GPLv2 with the linking exception, LibGit2Sharp is MIT; the plugin is GPL-3.0-or-later, like
-Vibe Salamander.
+libgit2 is GPLv2 with the linking exception (libgit2-license.txt; its source is at
+https://github.com/libgit2/libgit2), LibGit2Sharp is MIT; the plugin is GPL-3.0-or-later, like Vibe Salamander.
 "@ | Set-Content (Join-Path $out 'README.txt') -Encoding UTF8
 
 Write-Host "The Git plugin ($Runtime) is in $out"

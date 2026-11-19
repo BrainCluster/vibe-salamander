@@ -13,7 +13,7 @@ A fast, keyboard-first **dual-pane file manager** for Windows: a modern spiritua
 | [Getting started](Getting-Started) | The two panels, moving around, marking, copying, the transfer panel |
 | [Features](Features) | Views, file operations, find and compare, the user menu, looks, Configuration |
 | [Keyboard shortcuts](Keyboard-Shortcuts) | Every default key (all of them can be changed) |
-| [Plugins](Plugins) | Archives, 7-Zip, FTP / SFTP, Checksum, Disk Map, Media Info |
+| [Plugins](Plugins) | Archives, 7-Zip, FTP / SFTP, Checksum, Disk Map, Media Info, Git |
 | [Writing plugins](Writing-Plugins) | Make your own: a walk through the example plugin and the plugin API |
 | [Troubleshooting](Troubleshooting) | SmartScreen, the error log, settings, reporting a bug |
 

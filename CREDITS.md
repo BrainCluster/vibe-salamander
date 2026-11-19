@@ -97,6 +97,8 @@ Salamander application icon (`src/res/salamand.ico`),
 | [SSH.NET](https://github.com/sshnet/SSH.NET) | MIT | FTP / SFTP plugin (SFTP) |
 | [MediaInfoLib](https://github.com/MediaArea/MediaInfoLib) (MediaArea.net) | BSD-2-Clause | Media Info plugin (a separate download): reads video, audio and image files; its license is in the plugin's lib\MediaInfo |
 | [MediaInfoDLL](https://www.nuget.org/packages/MediaInfoDLL) (.NET wrapper) | BSD-2-Clause | Media Info plugin: calls MediaInfoLib |
+| [libgit2](https://libgit2.org/) | GPL-2.0 with a linking exception | Git plugin (a separate download): reads repositories, their status, history and blame; its native library is in the plugin's runtimes folder |
+| [LibGit2Sharp](https://github.com/libgit2/libgit2sharp) | MIT | Git plugin: calls libgit2 from .NET |
 | [Monaco Editor](https://github.com/microsoft/monaco-editor) | MIT | the built-in editor (F4); downloaded by the build, its LICENSE is in Assets\Monaco |
 | [Inno Setup](https://jrsoftware.org/isinfo.php) | Inno Setup License (free) | makes the installer (not part of the program itself) |
 | [Markdig](https://github.com/xoofx/markdig) | BSD 2-clause | Markdown in the viewer and the editor's preview |

@@ -14,7 +14,7 @@ Built in (they come with the program):
 | [Checksum](#checksum) | CRC32, MD5, SHA-1, SHA-256, SHA-512: calculate and verify |
 | [Disk Map](#disk-map) | What takes the space in a folder |
 
-Separate downloads: [7-Zip](#7-zip) and [Media Info](#media-info). And you can [write your own](Writing-Plugins).
+Separate downloads: [7-Zip](#7-zip), [Media Info](#media-info) and [Git](#git). And you can [write your own](Writing-Plugins).
 
 ## Archives
 
@@ -81,6 +81,46 @@ rate and language, chapters and tags. It is read by MediaInfo's own library, so 
 - **F3** on a video or audio file shows the text report in the viewer (pictures keep the picture viewer).
 
 Configuration → Plugins → Media Info → **Settings...**: start in the Complete view, and turn the F3 report off.
+
+## Git
+
+A separate download, because it carries libgit2 (`VibeSalamander-Git-plugin-<version>-win-x64.zip` or `-win-arm64.zip`
+on the [releases page](https://github.com/BrainCluster/vibe-salamander/releases/latest)). Put its `Git` folder into
+`%AppData%\VibeSalamander\Plugins` and start Vibe Salamander again. Fetch, pull, push, clone and the changes need
+[Git for Windows](https://git-scm.com/download/win); reading a repository doesn't.
+
+**In the panels.** In a working tree, the path line shows the branch with the commits to push and to pull
+(`main ↑2 ↓1`, or `· merging` in the middle of a merge), each file is colored by its Git state, and a **Git** column
+says it: Modified, Staged, Added, Renamed, New, Conflict, Ignored, and Changes for a folder with changes inside.
+They follow the repository as it changes, whether Vibe Salamander or another program changed it.
+
+**Changes** (Plugins → Git → Changes...): the staged and unstaged changes, new files and conflicts.
+
+- **Stage**, **Unstage** and **Stage All**; **Discard...** puts a file back to its staged (or last committed)
+  version, and sends a new file to the Recycle Bin.
+- **Compare** (or Enter) shows the change in the file comparator: the working tree against the staged version, or
+  the staged version against the last commit.
+- **Commit...** asks for the message, with *Amend the last commit*. With nothing staged, it offers to stage all.
+
+**History** (Plugins → Git → History..., or *Git History of This File...* in a file's right-click menu): the commits
+with a graph of the branches and merges, their branches and tags, author, date and ID.
+
+- **Changed Files...** lists what a commit changed; Compare shows a file against its version before the commit.
+- **Browse This Version** opens the commit's whole tree in the panel: look around, view files with F3, and copy
+  files or folders out with F5. It is read-only; Up from its top goes back to the repository's folder.
+- **Git Blame...** (in a file's right-click menu, or Plugins → Git) shows who last changed each line, in which
+  commit and when.
+
+**Fetch, Pull, Push, Clone...** (Plugins → Git) run as jobs in the transfer panel, with Git's progress, and can be
+cancelled there; a failure shows Git's own message. Push sends a branch with no upstream to `origin` and sets it as
+the upstream. Clone asks for the address, the folder (by default the one in the settings, else the active panel's)
+and the new folder's name.
+
+**Safety.** Repositories are read inside Vibe Salamander (by libgit2), so looking at a repository never runs its
+hooks or any program. What changes a repository or talks to a server runs in your own Git, started by its full
+path: the one set in Configuration → Plugins → Git → **Settings...**, else the first `git.exe` on the PATH (relative
+PATH entries are skipped), else Git for Windows' usual folder — never a `git.exe` from the repository's folder.
+Git's password prompts go to Git's credential manager; there is no console to wait on.
 
 ## 7-Zip
 

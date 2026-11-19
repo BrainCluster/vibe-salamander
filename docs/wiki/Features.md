@@ -166,6 +166,9 @@
 - **Disk Map** (plugin): what takes the space, as blocks, a sunburst, columns or Salamander's classic treemap.
 - **Media Info** (plugin, a separate download): MediaInfo's details of video, audio and picture files, in a window or with F3; saved as
   text, HTML, XML or JSON.
+- **Git** (plugin, a separate download): the branch and each file's state in the panels; stage, unstage, discard,
+  commit and compare changes; history with a commit graph, blame, and any commit's tree to browse and copy from;
+  fetch, pull, push and clone in the transfer panel.
 
 ![Find results](images/find-results.png)
 
