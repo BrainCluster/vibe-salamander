@@ -4,7 +4,6 @@
 using LibGit2Sharp;
 using VibeSalamander.Plugins;
 using VibeSalamander.Plugins.Git;
-using Commands = LibGit2Sharp.Commands;
 
 namespace VibeSalamander.Core.Tests;
 
@@ -39,7 +38,7 @@ public sealed class GitPluginTests : IDisposable
         Write(root, @"src\app.cs", "class App {}\n");
         Write(root, @"src\lib\util.cs", "class Util {}\n");
         Write(root, ".gitignore", "*.log\nbin/\n");
-        Commands.Stage(repo, "*");
+        LibGit2Sharp.Commands.Stage(repo, "*");
         repo.Commit("first", Me, Me);
         return root;
     }
@@ -83,8 +82,8 @@ public sealed class GitPluginTests : IDisposable
         File.AppendAllText(Path.Combine(root, ".gitignore"), "# x\n");      // staged, then changed again
         using (var repo = new Repository(root))
         {
-            Commands.Stage(repo, "staged.txt");
-            Commands.Stage(repo, ".gitignore");
+            LibGit2Sharp.Commands.Stage(repo, "staged.txt");
+            LibGit2Sharp.Commands.Stage(repo, ".gitignore");
         }
         File.AppendAllText(Path.Combine(root, ".gitignore"), "# y\n");
         GitFolderState state = Read(root);
@@ -132,13 +131,13 @@ public sealed class GitPluginTests : IDisposable
         {
             string main = repo.Head.FriendlyName;
             Branch other = repo.CreateBranch("other");
-            Commands.Checkout(repo, other);
+            LibGit2Sharp.Commands.Checkout(repo, other);
             Write(root, "README.md", "theirs\n");
-            Commands.Stage(repo, "README.md");
+            LibGit2Sharp.Commands.Stage(repo, "README.md");
             repo.Commit("theirs", Me, Me);
-            Commands.Checkout(repo, repo.Branches[main]);
+            LibGit2Sharp.Commands.Checkout(repo, repo.Branches[main]);
             Write(root, "README.md", "ours\n");
-            Commands.Stage(repo, "README.md");
+            LibGit2Sharp.Commands.Stage(repo, "README.md");
             repo.Commit("ours", Me, Me);
             MergeResult result = repo.Merge(other, Me);
             Assert.Equal(MergeStatus.Conflicts, result.Status);
@@ -157,20 +156,20 @@ public sealed class GitPluginTests : IDisposable
         using (var repo = new Repository(clone))
         {
             Write(clone, "mine.txt", "1\n");
-            Commands.Stage(repo, "mine.txt");
+            LibGit2Sharp.Commands.Stage(repo, "mine.txt");
             repo.Commit("mine 1", Me, Me);
             Write(clone, "mine.txt", "2\n");
-            Commands.Stage(repo, "mine.txt");
+            LibGit2Sharp.Commands.Stage(repo, "mine.txt");
             repo.Commit("mine 2", Me, Me);
         }
         using (var repo = new Repository(origin))
         {
             Write(origin, "theirs.txt", "1\n");
-            Commands.Stage(repo, "theirs.txt");
+            LibGit2Sharp.Commands.Stage(repo, "theirs.txt");
             repo.Commit("theirs", Me, Me);
         }
         using (var repo = new Repository(clone))
-            Commands.Fetch(repo, "origin", Array.Empty<string>(), null, null);
+            LibGit2Sharp.Commands.Fetch(repo, "origin", Array.Empty<string>(), null, null);
         GitFolderState state = Read(clone);
         Assert.EndsWith("↑2 ↓1", state.Branch);
         Assert.Contains("2 commits to push, 1 commit to pull", state.BranchToolTip);
