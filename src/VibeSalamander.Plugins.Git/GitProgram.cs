@@ -76,6 +76,8 @@ internal static class GitProgram
             RedirectStandardInput = input != null,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
+            // a commit message in any language: git reads UTF-8 (no byte order mark, or it would be in the message)
+            StandardInputEncoding = input != null ? new UTF8Encoding(false) : null,
         };
         // quoted paths and messages as they are (UTF-8, no \ooo escapes); never wait for a password on a console
         // nobody sees (a credential manager still asks in its own window)
