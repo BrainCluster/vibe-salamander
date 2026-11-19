@@ -95,7 +95,7 @@ says it: Modified, Staged, Added, Renamed, New, Conflict, Ignored, and Changes f
 They follow the repository as it changes, whether Vibe Salamander or another program changed it.
 
 **Right-click a repository's folder** for *Git ▸* Changes..., History..., Fetch, Pull and Push on that repository
-(handy in a folder of projects); a file in a repository has *Git ▸* History of This File and Blame. The Plugins → Git
+(handy in a folder of projects), or inside it the empty area or `..` of its top folder (not of its subfolders); a file in a repository has *Git ▸* History of This File and Blame. The Plugins → Git
 menu works on the focused repository folder too, else on the repository the panel is in.
 
 **Changes** (Plugins → Git → Changes...): the staged and unstaged changes, new files and conflicts.

@@ -286,11 +286,29 @@ public sealed class GitScenarios : IDisposable
         using AppSession? app = Start();
         if (app == null)
             return;
-        // a folder inside the repository: no Git commands
+        // inside the repository's folder: ".." (the folder itself) has Git ▸
+        AppSession.RightClick(app.OnName(".."));
+        app.WaitMenu();
+        app.ClickNamed("Git");
+        AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByName("Fetch")), "Fetch in the Git submenu of the repository's folder");
+        AppSession.Screenshot("97 git in the repository folder's own menu");
+        app.Press(VirtualKeyShort.ESCAPE);
+        app.Press(VirtualKeyShort.ESCAPE);
+
+        // a folder inside the repository: no Git commands, neither on it nor inside it
         AppSession.RightClick(app.OnName("src"));
         app.WaitMenu();
         Assert.Null(app.Window.FindFirstDescendant(cf => cf.ByName("Fetch")));
         app.Press(VirtualKeyShort.ESCAPE);
+        app.GoTo("src");
+        app.Press(VirtualKeyShort.ENTER);
+        AppSession.WaitUntil(() => app.Items().Contains("app.cs"), "inside src");
+        AppSession.RightClick(app.OnName(".."));
+        app.WaitMenu();
+        Assert.Null(app.Window.FindFirstDescendant(cf => cf.ByName("Fetch")));
+        app.Press(VirtualKeyShort.ESCAPE);
+        app.Press(VirtualKeyShort.BACK);
+        AppSession.WaitUntil(() => app.Items().Contains("README.md"), "back in the repository's folder");
 
         // the repository's own folder, from its parent: Git ▸ Changes..., History..., Fetch, Pull, Push
         app.Press(VirtualKeyShort.BACK);

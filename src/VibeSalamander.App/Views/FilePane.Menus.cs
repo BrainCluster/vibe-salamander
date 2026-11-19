@@ -184,15 +184,17 @@ public sealed partial class FilePane
 
     /// <summary>
     /// The commands of plugins (other than archive plugins, whose commands are in the archive's submenu) that say
-    /// they fit the right-clicked file or folder (PluginCommand.AppliesTo), e.g. Media Info on video, audio and pictures.
+    /// they fit the right-clicked file or folder, or the panel's folder for its empty area and ".." (PluginCommand.AppliesTo), e.g. Media Info on video, audio and pictures.
     /// True: some were added.
     /// </summary>
-    private bool AddPluginCommandItems(MenuFlyout menu, FileItemViewModel item, PaneViewModel pane)
+    private bool AddPluginCommandItems(MenuFlyout menu, FileItemViewModel? item, PaneViewModel pane)
     {
-        if (item.Entry.IsUpDir || item.IsDrive || !pane.IsLocalDisk)
+        if (item?.IsDrive == true || !pane.IsLocalDisk || pane.IsArchive)
             return false;
-        string path = item.Entry.FullPath;
-        Services.PluginInfo? archiveOwner = item.Entry.IsDirectory ? null : _main!.Plugins.UnpackerPlugin(path);
+        // the empty area or "..": the panel's own folder (a Git repository's folder gets Git's commands there too)
+        bool onFolder = item == null || item.Entry.IsUpDir;
+        string path = onFolder ? pane.Path : item!.Entry.FullPath;
+        Services.PluginInfo? archiveOwner = onFolder || item!.Entry.IsDirectory ? null : _main!.Plugins.UnpackerPlugin(path);
         bool added = false;
         foreach (Services.PluginInfo plugin in _main!.Plugins.Plugins)
         {
@@ -303,7 +305,7 @@ public sealed partial class FilePane
                     break;
                 case ContextMenuEntryKind.WindowsMenu:
                     // plugins' commands for this kind of file ("Media Info..." on a video), before Windows' menu
-                    if (item != null && AddPluginCommandItems(menu, item, pane) && menu.Items[^1] is not MenuFlyoutSeparator)
+                    if (AddPluginCommandItems(menu, item, pane) && menu.Items[^1] is not MenuFlyoutSeparator)
                         menu.Items.Add(new MenuFlyoutSeparator());
                     var windows = new MenuFlyoutItem
                     {
