@@ -406,12 +406,100 @@ public sealed class GitPluginTests : IDisposable
         await Assert.ThrowsAsync<NotSupportedException>(() => fs.CreateDirectoryAsync(fs.Combine(top, "x"), CancellationToken.None));
     }
 
+    // ---- fetch, pull, push, clone -------------------------------------------------------------------------------
+
+    [Fact]
+    public void Git_progress_lines_are_read()
+    {
+        Assert.Equal(new GitProgressStep("Receiving objects", 45, 450, 1000), GitRemoteJobs.ParseProgress("Receiving objects:  45% (450/1000), 1.2 MiB | 3 MiB/s"));
+        Assert.Equal(new GitProgressStep("Counting objects", 100, 20, 20), GitRemoteJobs.ParseProgress("remote: Counting objects: 100% (20/20), done."));
+        Assert.Equal(new GitProgressStep("Writing objects", 7, 7, 100), GitRemoteJobs.ParseProgress("Writing objects:   7%"));
+        Assert.Null(GitRemoteJobs.ParseProgress("Cloning into 'app'..."));
+        Assert.Null(GitRemoteJobs.ParseProgress("fatal: repository 'x' does not exist"));
+        Assert.Equal("fatal: no", GitRemoteJobs.LastLines("Receiving objects:  45% (450/1000)\nfatal: no\n"));
+    }
+
+    [Theory]
+    [InlineData("https://github.com/team/app.git", "app")]
+    [InlineData("git@github.com:team/app.git", "app")]
+    [InlineData("https://host/team/app/", "app")]
+    [InlineData(@"C:\repos\tool", "tool")]
+    [InlineData("", "repository")]
+    public void A_clone_is_named_after_its_address(string url, string name) => Assert.Equal(name, GitRemoteJobs.FolderNameOf(url));
+
+    [Fact]
+    public void The_jobs_ask_git_for_the_right_things()
+    {
+        Assert.Equal(new[] { "clone", "--progress", "--", "-x", "app" }, GitRemoteJobs.CloneArguments("-x", "app")); // an address can't pass for an option
+        Assert.Equal(new[] { "push", "--progress" }, GitRemoteJobs.PushArguments(null, null));
+        Assert.Equal(new[] { "push", "--progress", "--set-upstream", "origin", "main" }, GitRemoteJobs.PushArguments("main", "origin"));
+    }
+
+    [Fact]
+    public async Task Clone_push_fetch_and_pull_run_in_git()
+    {
+        string? git = GitProgram.Find(null);
+        if (git == null)
+            return; // no Git here (the Windows runners have it)
+        string server = Path.Combine(_folder, "server.git");
+        Repository.Init(server, isBare: true);
+        string source = RepoWithHistory();
+        using (var repo = new Repository(source))
+        {
+            repo.Network.Remotes.Add("origin", server);
+            Assert.Equal((repo.Head.FriendlyName, "origin"), GitRemoteJobs.PushTarget(repo)); // no upstream yet
+        }
+        string branch;
+        using (var repo = new Repository(source))
+            branch = repo.Head.FriendlyName;
+
+        var progress = new List<OperationProgress>();
+        async Task Run(string folder, IReadOnlyList<string> arguments)
+        {
+            bool done = false;
+            var job = new TestJob(progress.Add);
+            OperationResult result = await GitRemoteJobs.Job("t", folder, null, git, folder, arguments, () => done = true).Run(job);
+            Assert.Equal(1, result.Succeeded);
+            Assert.True(done);
+        }
+
+        await Run(source, GitRemoteJobs.PushArguments(branch, "origin"));
+        using (var repo = new Repository(source))
+        {
+            Assert.True(repo.Head.IsTracking); // from now on the branch pushes to origin
+            Assert.Equal((null, null), GitRemoteJobs.PushTarget(repo));
+        }
+        await Run(_folder, GitRemoteJobs.CloneArguments(server, "copy"));
+        string copy = Path.Combine(_folder, "copy");
+        Assert.Equal("hello", File.ReadAllText(Path.Combine(copy, "README.md")).Split('\n')[0].Trim());
+        Assert.Contains(progress, p => p.ItemsDone == 100);
+
+        // a new commit pushed from the source: fetched, then pulled into the copy
+        using (var repo = new Repository(source))
+        {
+            Write(source, "new.txt", "new");
+            LibGit2Sharp.Commands.Stage(repo, "new.txt");
+            repo.Commit("third", Me, Me);
+        }
+        await Run(source, GitRemoteJobs.PushArguments(null, null));
+        await Run(copy, GitRemoteJobs.FetchArguments());
+        using (var repo = new Repository(copy))
+            Assert.Equal(1, repo.Head.TrackingDetails.BehindBy);
+        await Run(copy, GitRemoteJobs.PullArguments());
+        Assert.True(File.Exists(Path.Combine(copy, "new.txt")));
+
+        // a failure says git's reason
+        var failing = GitRemoteJobs.Job("t", _folder, null, git, _folder, GitRemoteJobs.CloneArguments(Path.Combine(_folder, "nothing-here"), "x"));
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => failing.Run(new TestJob()));
+        Assert.Contains("nothing-here", error.Message);
+    }
+
     /// <summary>A job that answers nothing (no conflicts in these tests).</summary>
-    private sealed class TestJob : IArchiveJob
+    private sealed class TestJob(Action<OperationProgress>? report = null) : IArchiveJob
     {
         public CancellationToken Cancellation => CancellationToken.None;
         public void WaitWhilePaused() { }
-        public void Report(OperationProgress progress) { }
+        public void Report(OperationProgress progress) => report?.Invoke(progress);
         public Task<ConflictChoice> ResolveConflictAsync(ConflictInfo conflict) => Task.FromResult(ConflictChoice.Overwrite);
         public Task<ErrorChoice> ResolveErrorAsync(OperationError error) => Task.FromResult(ErrorChoice.Cancel);
         public Task<string?> AskPasswordAsync(string archivePath, bool wrongPassword) => Task.FromResult<string?>(null);

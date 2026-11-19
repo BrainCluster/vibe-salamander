@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Vibe Salamander Authors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+using System.Globalization;
+
 namespace VibeSalamander.Plugins.Git;
 
 /// <summary>
@@ -46,6 +48,10 @@ public sealed class GitPlugin : IVibePlugin, ICommandContributor
         {
             new PluginCommand("changes", "Changes...", null, ChangesAsync),
             new PluginCommand("history", "History...", null, HistoryAsync),
+            new PluginCommand("fetch", "Fetch", null, FetchAsync, SeparatorBefore: true),
+            new PluginCommand("pull", "Pull", null, PullAsync),
+            new PluginCommand("push", "Push", null, PushAsync),
+            new PluginCommand("clone", "Clone...", null, CloneAsync),
             // these two also in the right-click menu of a file in a repository
             new PluginCommand("file-history", "Git History of This File...", null, FileHistoryAsync, AppliesTo: IsInRepository, SeparatorBefore: true),
             new PluginCommand("blame", "Git Blame...", null, BlameAsync, AppliesTo: IsInRepository),
@@ -134,5 +140,80 @@ public sealed class GitPlugin : IVibePlugin, ICommandContributor
     {
         if (FocusedFile(host) is (string root, string path))
             await new GitBlameWindow(this, host, root, path).ShowAsync();
+    }
+
+    // ---- fetch, pull, push, clone: jobs in the queue -----------------------------------------------------------
+
+    /// <summary>A job of git in the repository; when it ends, the panels read the repository again.</summary>
+    private async Task RemoteJobAsync(IPluginHost host, string titleFormat, string glyph, Func<string, IReadOnlyList<string>> arguments)
+    {
+        if (ActiveRepository(host) is not string root)
+            return;
+        if (GitExe() is not string git)
+        {
+            await SayGitIsMissingAsync(null);
+            return;
+        }
+        IReadOnlyList<string> args = arguments(root);
+        host.RunJob(GitRemoteJobs.Job(
+            string.Format(CultureInfo.CurrentCulture, titleFormat, Path.GetFileName(root)),
+            root, glyph, git, root, args, () => Repositories.Refresh(root)));
+    }
+
+    private Task FetchAsync(IPluginHost host) => RemoteJobAsync(host, T("Fetch {0}"), "\uE896", _ => GitRemoteJobs.FetchArguments());
+
+    private Task PullAsync(IPluginHost host) => RemoteJobAsync(host, T("Pull {0}"), "\uE896", _ => GitRemoteJobs.PullArguments());
+
+    private Task PushAsync(IPluginHost host) => RemoteJobAsync(host, T("Push {0}"), "\uE898", root =>
+    {
+        (string? branch, string? remote) = Repositories.Read(root, GitRemoteJobs.PushTarget);
+        return GitRemoteJobs.PushArguments(branch, remote);
+    });
+
+    private async Task CloneAsync(IPluginHost host)
+    {
+        if (GitExe() is not string git)
+        {
+            await SayGitIsMissingAsync(null);
+            return;
+        }
+        string into = _settings.CloneFolder.Length > 0 && Directory.Exists(_settings.CloneFolder)
+            ? _settings.CloneFolder
+            : host.ActivePanel.Path;
+        var url = new PluginField { Label = T("Repository address"), Placeholder = "https://github.com/owner/project.git" };
+        var folder = new PluginField { Label = T("Into the folder"), Value = into };
+        var name = new PluginField { Label = T("Folder name"), Placeholder = T("(empty: from the address)") };
+        bool ok = await host.Ui.EditFieldsAsync(T("Clone a Git Repository"), null, new[] { url, folder, name }, () =>
+        {
+            if (url.Value.Trim().Length == 0)
+                return T("Type the repository's address.");
+            if (!Path.IsPathFullyQualified(folder.Value.Trim()) || !Directory.Exists(folder.Value.Trim()))
+                return T("The folder doesn't exist.");
+            string n = (name.Value.Trim().Length > 0 ? name.Value.Trim() : GitRemoteJobs.FolderNameOf(url.Value));
+            if (n.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                return T("The folder name can't contain \\ / : * ? \" < > |.");
+            string target = Path.Combine(folder.Value.Trim(), n);
+            return Directory.Exists(target) && Directory.EnumerateFileSystemEntries(target).Any()
+                ? T("That folder already exists and isn't empty.")
+                : null;
+        });
+        if (!ok)
+            return;
+        string parent = folder.Value.Trim();
+        string folderName = name.Value.Trim().Length > 0 ? name.Value.Trim() : GitRemoteJobs.FolderNameOf(url.Value);
+        string address = url.Value.Trim();
+        // after the clone: show it in the panel, if the panel is still where the clone went (on the UI thread)
+        SynchronizationContext? ui = SynchronizationContext.Current;
+        IPanelContext panel = host.ActivePanel;
+        host.RunJob(GitRemoteJobs.Job(
+            string.Format(CultureInfo.CurrentCulture, T("Clone {0}"), folderName),
+            $"{address}  →  {Path.Combine(parent, folderName)}", "\uE8C8", git, parent,
+            GitRemoteJobs.CloneArguments(address, folderName),
+            () => ui?.Post(_ =>
+            {
+                if (Directory.Exists(Path.Combine(parent, folderName)) &&
+                    string.Equals(panel.Path.TrimEnd('\\'), parent.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+                    _ = panel.RefreshAsync();
+            }, null)));
     }
 }
