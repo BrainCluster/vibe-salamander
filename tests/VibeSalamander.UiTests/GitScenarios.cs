@@ -98,7 +98,7 @@ public sealed class GitScenarios : IDisposable
     private static string GitText(AppSession app, string name)
     {
         AutomationElement row = app.Row(name);
-        return string.Join(" ", row.FindAllDescendants().Select(e => e.Name ?? string.Empty)
+        return string.Join(" ", row.FindAllDescendants().Select(e => e.Properties.Name.ValueOrDefault ?? string.Empty)
             .Where(t => t is "Modified" or "New" or "Ignored" or "Changes" or "Staged" or "Added" or "Conflict"));
     }
 
@@ -110,16 +110,7 @@ public sealed class GitScenarios : IDisposable
             return;
         AutomationElement status = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByAutomationId("DecorationStatus")), "the branch on the path line");
         AppSession.WaitUntil(() => status.Name == "main", $"the branch \"main\" (it says \"{status.Name}\")");
-        try
-        {
-            AppSession.WaitUntil(() => GitText(app, "README.md") == "Modified", "README.md modified");
-        }
-        catch (TimeoutException)
-        {
-            AutomationElement row = app.Row("README.md");
-            throw new TimeoutException("README.md's row: " + string.Join(" | ",
-                row.FindAllDescendants().Select(e => $"{e.ControlType}:{e.Name}")) + " / row name: " + row.Name);
-        }
+        AppSession.WaitUntil(() => GitText(app, "README.md") == "Modified", "README.md modified");
         Assert.Equal("New", GitText(app, "notes.txt"));
         Assert.Equal("Ignored", GitText(app, "debug.log"));
         Assert.Equal("Changes", GitText(app, "src"));
