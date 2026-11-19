@@ -19,6 +19,13 @@ public sealed class GitScenarios : IDisposable
     public GitScenarios()
     {
         _repo = Path.Combine(_files.Documents, "Project");
+        // who commits (the app's git.exe gets it from here; GitHub's runners have no user.name)
+        foreach ((string name, string value) in new[]
+                 {
+                     ("GIT_AUTHOR_NAME", "Test"), ("GIT_COMMITTER_NAME", "Test"),
+                     ("GIT_AUTHOR_EMAIL", "test@example.com"), ("GIT_COMMITTER_EMAIL", "test@example.com"),
+                 })
+            Environment.SetEnvironmentVariable(name, value);
     }
 
     public void Dispose()
@@ -136,6 +143,53 @@ public sealed class GitScenarios : IDisposable
         AppSession.WaitUntil(() => app.Window.FindFirstDescendant(cf => cf.ByAutomationId("DecorationStatus")) is null or { IsOffscreen: true },
             "no branch on the path line");
         Assert.Null(app.Window.FindFirstDescendant(cf => cf.ByName("Git")));
+        NoErrors(app);
+    }
+
+    /// <summary>A row of a plugin window by the text of one of its cells.</summary>
+    private static AutomationElement Cell(Window window, string text) =>
+        AppSession.Retry(() => window.FindAllDescendants(cf => cf.ByName(text)).FirstOrDefault(), "\"" + text + "\" in " + window.Title);
+
+    private static void Press(Window window, string button) =>
+        AppSession.Retry(() => window.FindFirstDescendant(cf => cf.ByName(button).And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))), "the button " + button)
+            .AsButton().Invoke();
+
+    [UiFact]
+    public void Changes_are_staged_compared_and_committed()
+    {
+        using AppSession? app = Start();
+        if (app == null)
+            return;
+        app.Menu("Plugins", "Git", "Changes...");
+        Window changes = app.OtherWindow("Git Changes - Project");
+        Cell(changes, "notes.txt");
+        Cell(changes, @"src\app.cs");
+        AppSession.Screenshot("89 git changes");
+
+        // stage README.md: it moves to Staged
+        Cell(changes, "README.md").Click();
+        Press(changes, "Stage");
+        AppSession.WaitUntil(() => Cell(changes, "Staged") != null, "README.md staged");
+        AppSession.WaitUntil(() => GitText(app, "README.md") == "Staged", "the panel says README.md is staged");
+
+        // compare the staged change: the comparator opens on HEAD's version against the staged one
+        Cell(changes, "README.md").Click();
+        Press(changes, "Compare");
+        Window compare = app.OtherWindow("README.md (HEAD)");
+        app.Calm(400);
+        AppSession.Screenshot("90 git compare");
+        compare.Close();
+
+        // commit (only the staged README.md)
+        Press(changes, "Commit...");
+        AutomationElement message = AppSession.Retry(() => changes.FindFirstDescendant(cf =>
+            cf.ByName("Message").And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit))), "the commit message");
+        message.AsTextBox().Text = "Update the readme";
+        Press(changes, "OK");
+        AppSession.WaitUntil(() => Git(_repo, "log -1 --format=%s").Trim() == "Update the readme", "the commit");
+        AppSession.WaitUntil(() => GitText(app, "README.md") == string.Empty, "README.md clean in the panel");
+        Assert.Equal("New", GitText(app, "notes.txt")); // not staged: not committed
+        changes.Close();
         NoErrors(app);
     }
 }
