@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using LibGit2Sharp;
+using VibeSalamander.Core.Operations;
 using VibeSalamander.Plugins;
 using VibeSalamander.Plugins.Git;
 
@@ -303,5 +304,116 @@ public sealed class GitPluginTests : IDisposable
         GitResult failed = await GitProgram.RunAsync(git, root, new[] { "checkout", "no-such-branch" });
         Assert.False(failed.Succeeded);
         Assert.Contains("no-such-branch", failed.Message);
+    }
+
+    // ---- history, blame, browse this version -----------------------------------------------------------------
+
+    [Fact]
+    public void The_graph_shows_branches_and_merges()
+    {
+        // m merges b into a: m(a, b); a(base); b(base); base()
+        var commits = new (string, IReadOnlyList<string>)[]
+        {
+            ("m", new[] { "a", "b" }),
+            ("a", new[] { "base" }),
+            ("b", new[] { "base" }),
+            ("base", Array.Empty<string>()),
+        };
+        Assert.Equal(new[] { "● ╮", "● │", "│ ●", "● ╯" }, GitGraph.Lay(commits));
+        // a straight line stays one lane
+        Assert.Equal(new[] { "●", "●", "●" }, GitGraph.Lay(new (string, IReadOnlyList<string>)[] { ("c", new[] { "b" }), ("b", new[] { "a" }), ("a", Array.Empty<string>()) }));
+    }
+
+    private string RepoWithHistory()
+    {
+        string root = Repo();
+        using var repo = new Repository(root);
+        Write(root, "README.md", "hello\nsecond line\n");
+        LibGit2Sharp.Commands.Stage(repo, "README.md");
+        var other = new Signature("Other", "other@example.com", DateTimeOffset.Now);
+        repo.Commit("second", other, other);
+        repo.ApplyTag("v1");
+        return root;
+    }
+
+    [Fact]
+    public void History_lists_commits_with_their_branches_and_tags()
+    {
+        string root = RepoWithHistory();
+        using var repo = new Repository(root);
+        IReadOnlyList<GitCommitInfo> history = GitHistory.Read(repo, 100);
+        Assert.Equal(new[] { "second", "first" }, history.Select(c => c.Message));
+        Assert.Contains(repo.Head.FriendlyName, history[0].Labels);
+        Assert.Contains("tag v1", history[0].Labels);
+        Assert.Equal("Other", history[0].Author);
+        Assert.Single(GitHistory.Read(repo, 100, "src/app.cs")); // only the first commit touched it
+        Assert.Equal(2, GitHistory.Read(repo, 100, "README.md").Count);
+    }
+
+    [Fact]
+    public void A_commits_files_compare_with_its_parent()
+    {
+        string root = RepoWithHistory();
+        using var repo = new Repository(root);
+        string second = repo.Head.Tip.Sha, first = repo.Head.Tip.Parents.Single().Sha;
+        Assert.Equal(new[] { new GitCommitFile("README.md", "Modified", null) }, GitHistory.Files(repo, second));
+        Assert.Equal(4, GitHistory.Files(repo, first).Count); // the first commit: everything added
+        string temp = Path.Combine(_folder, "versions");
+        Assert.Equal("hello", File.ReadAllText(GitHistory.WriteVersion(repo, first, "README.md", temp, "a")!).Trim());
+        Assert.Null(GitHistory.WriteVersion(repo, first, "nothing.txt", temp, "b"));
+    }
+
+    [Fact]
+    public void Blame_says_who_changed_each_line()
+    {
+        string root = RepoWithHistory();
+        using var repo = new Repository(root);
+        IReadOnlyList<GitBlameLine> lines = GitHistory.Blame(repo, "README.md")!;
+        Assert.Equal(2, lines.Count);
+        Assert.Equal(("hello", "Test", 1), (lines[0].Text, lines[0].Author, lines[0].Number));
+        Assert.Equal(("second line", "Other", 2), (lines[1].Text, lines[1].Author, lines[1].Number));
+        Assert.True(lines[1].FirstOfHunk);
+        Assert.Null(GitHistory.Blame(repo, "not-committed.txt"));
+    }
+
+    [Fact]
+    public async Task An_old_version_is_browsed_and_copied_out()
+    {
+        string root = RepoWithHistory();
+        string first;
+        using (var repo = new Repository(root))
+            first = repo.Head.Tip.Parents.Single().Sha;
+        var plugin = new GitPlugin();
+        var fs = new GitVersionFileSystem(plugin);
+        string top = GitVersionFileSystem.PathOf(root, first);
+        Assert.True(fs.CanHandle(top));
+        Assert.Equal((root, first, ""), GitVersionFileSystem.Parse(top));
+        Assert.Equal(root, fs.GetParent(top)); // up from the top: the folder on disk
+        Assert.Equal($"{root} @ {first[..7]}\\src", fs.GetDisplayPath(fs.Combine(top, "src")));
+
+        IReadOnlyList<RemoteItem> items = await fs.ListAsync(top, CancellationToken.None);
+        Assert.Equal(new[] { ".gitignore", "README.md", "src" }, items.Select(i => i.Name).OrderBy(n => n, StringComparer.Ordinal));
+        Assert.True(items.Single(i => i.Name == "src").IsDirectory);
+        IReadOnlyList<RemoteItem> lib = await fs.ListAsync(fs.Combine(fs.Combine(top, "src"), "lib"), CancellationToken.None);
+        Assert.Equal("util.cs", lib.Single().Name);
+        Assert.Equal(fs.Combine(top, "src"), fs.GetParent(fs.Combine(fs.Combine(top, "src"), "lib")));
+
+        string target = Directory.CreateDirectory(Path.Combine(_folder, "out")).FullName;
+        OperationResult result = await fs.DownloadAsync(items.Where(i => i.Name is "README.md" or "src").ToList(), target, new TestJob());
+        Assert.Equal(3, result.Succeeded); // README.md, src\app.cs, src\lib\util.cs
+        Assert.Equal("hello", File.ReadAllText(Path.Combine(target, "README.md")).Trim()); // the first version, not the second
+        Assert.True(File.Exists(Path.Combine(target, @"src\lib\util.cs")));
+        await Assert.ThrowsAsync<NotSupportedException>(() => fs.CreateDirectoryAsync(fs.Combine(top, "x"), CancellationToken.None));
+    }
+
+    /// <summary>A job that answers nothing (no conflicts in these tests).</summary>
+    private sealed class TestJob : IArchiveJob
+    {
+        public CancellationToken Cancellation => CancellationToken.None;
+        public void WaitWhilePaused() { }
+        public void Report(OperationProgress progress) { }
+        public Task<ConflictChoice> ResolveConflictAsync(ConflictInfo conflict) => Task.FromResult(ConflictChoice.Overwrite);
+        public Task<ErrorChoice> ResolveErrorAsync(OperationError error) => Task.FromResult(ErrorChoice.Cancel);
+        public Task<string?> AskPasswordAsync(string archivePath, bool wrongPassword) => Task.FromResult<string?>(null);
     }
 }

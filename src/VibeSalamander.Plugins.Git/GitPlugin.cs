@@ -41,9 +41,14 @@ public sealed class GitPlugin : IVibePlugin, ICommandContributor
         _settingsFile = Path.Combine(host.GetDataDirectory(this), "settings.json");
         _settings = GitSettings.Load(_settingsFile);
         host.RegisterPanelDecorator(new GitDecorator(Repositories, T));
+        host.RegisterFileSystem(new GitVersionFileSystem(this));
         Commands = new[]
         {
             new PluginCommand("changes", "Changes...", null, ChangesAsync),
+            new PluginCommand("history", "History...", null, HistoryAsync),
+            // these two also in the right-click menu of a file in a repository
+            new PluginCommand("file-history", "Git History of This File...", null, FileHistoryAsync, AppliesTo: IsInRepository, SeparatorBefore: true),
+            new PluginCommand("blame", "Git Blame...", null, BlameAsync, AppliesTo: IsInRepository),
         };
         host.RegisterCommands(this);
     }
@@ -94,5 +99,40 @@ public sealed class GitPlugin : IVibePlugin, ICommandContributor
     {
         if (ActiveRepository(host) is string root)
             await new GitChangesWindow(this, host, root).ShowAsync();
+    }
+
+    private async Task HistoryAsync(IPluginHost host)
+    {
+        if (ActiveRepository(host) is string root)
+            await new GitHistoryWindow(this, host, root, null).ShowAsync();
+    }
+
+    /// <summary>A file (not a folder) in a working tree.</summary>
+    private static bool IsInRepository(string path) =>
+        File.Exists(path) && Path.GetDirectoryName(path) is string folder && GitRepositories.RootOf(folder) != null;
+
+    /// <summary>The focused file's repository and its path there ('/' separated), or null (said).</summary>
+    private (string Root, string Path)? FocusedFile(IPluginHost host)
+    {
+        Core.FileSystem.FileEntry? item = host.ActivePanel.FocusedItem;
+        if (item == null || item.IsDirectory || item.IsUpDir || !File.Exists(item.FullPath) ||
+            GitRepositories.RootOf(Path.GetDirectoryName(item.FullPath)!) is not string root)
+        {
+            host.Notify(T("Focus a file in a Git repository."), isError: true);
+            return null;
+        }
+        return (root, Path.GetRelativePath(root, item.FullPath).Replace('\\', '/'));
+    }
+
+    private async Task FileHistoryAsync(IPluginHost host)
+    {
+        if (FocusedFile(host) is (string root, string path))
+            await new GitHistoryWindow(this, host, root, path).ShowAsync();
+    }
+
+    private async Task BlameAsync(IPluginHost host)
+    {
+        if (FocusedFile(host) is (string root, string path))
+            await new GitBlameWindow(this, host, root, path).ShowAsync();
     }
 }
