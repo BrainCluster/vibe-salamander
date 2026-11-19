@@ -65,14 +65,24 @@ internal sealed class AddressBar
             // the server, then its directories: walked up through the plugin's parents
             var chain = new List<string>();
             string? step = pane.Path;
-            while (step != null && step != ThisPcProvider.RootPath && chain.Count < 64)
+            while (step != null && step != ThisPcProvider.RootPath && main.RemoteProvider.CanHandle(step) && chain.Count < 64)
             {
                 chain.Add(step);
                 step = main.RemoteProvider.GetParent(step)?.Path;
             }
             chain.Reverse();
+            // a plugin place that opens from a folder on disk (an old Git commit): that folder's segments come first
+            string? onDisk = step != null && step != ThisPcProvider.RootPath && Path.IsPathRooted(step) ? step : null;
+            if (onDisk != null)
+                segments.AddRange(BreadcrumbRules.DiskSegments(onDisk, drive =>
+                    pane.Drives.FirstOrDefault(d => d.Drive.Root.StartsWith(drive, StringComparison.OrdinalIgnoreCase))?.Drive.Caption));
             for (int i = 0; i < chain.Count; i++)
-                segments.Add((i == 0 ? main.RemoteProvider.GetDisplayPath(chain[i]).TrimEnd('/') : RemoteFileSystemProvider.LastName(chain[i]), chain[i]));
+            {
+                string name = i == 0 ? main.RemoteProvider.GetDisplayPath(chain[i]).TrimEnd('/') : RemoteFileSystemProvider.LastName(chain[i]);
+                if (i == 0 && onDisk != null && name.StartsWith(onDisk.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+                    name = name[onDisk.TrimEnd('\\').Length..].Trim(' ', '\\') is { Length: > 0 } rest ? rest : name;
+                segments.Add((name, chain[i]));
+            }
             return segments;
         }
         if (!pane.IsLocalDisk && !pane.IsArchive)
