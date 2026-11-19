@@ -150,6 +150,10 @@ public sealed class GitScenarios : IDisposable
     private static AutomationElement Cell(Window window, string text) =>
         AppSession.Retry(() => window.FindAllDescendants(cf => cf.ByName(text)).FirstOrDefault(), "\"" + text + "\" in " + window.Title);
 
+    /// <summary>A cell whose text ends with <paramref name="text"/> (history rows put branch labels before the message).</summary>
+    private static AutomationElement CellEndingWith(Window window, string text) =>
+        AppSession.Retry(() => window.FindAllDescendants().FirstOrDefault(e => e.Properties.Name.ValueOrDefault?.EndsWith(text, StringComparison.Ordinal) == true), "\"…" + text + "\" in " + window.Title);
+
     private static void Press(Window window, string button) =>
         AppSession.Retry(() => window.FindFirstDescendant(cf => cf.ByName(button).And(cf.ByControlType(FlaUI.Core.Definitions.ControlType.Button))), "the button " + button)
             .AsButton().Invoke();
@@ -214,7 +218,7 @@ public sealed class GitScenarios : IDisposable
         // the history: both commits, the graph
         app.Menu("Plugins", "Git", "History...");
         Window history = app.OtherWindow("Git History - Project");
-        Cell(history, "second");
+        CellEndingWith(history, "second");
         AppSession.Screenshot("92 git history");
 
         // browse the first commit and copy its README.md out (the version before "more")
