@@ -110,7 +110,16 @@ public sealed class GitScenarios : IDisposable
             return;
         AutomationElement status = AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByAutomationId("DecorationStatus")), "the branch on the path line");
         AppSession.WaitUntil(() => status.Name == "main", $"the branch \"main\" (it says \"{status.Name}\")");
-        AppSession.WaitUntil(() => GitText(app, "README.md") == "Modified", "README.md modified");
+        try
+        {
+            AppSession.WaitUntil(() => GitText(app, "README.md") == "Modified", "README.md modified");
+        }
+        catch (TimeoutException)
+        {
+            AutomationElement row = app.Row("README.md");
+            throw new TimeoutException("README.md's row: " + string.Join(" | ",
+                row.FindAllDescendants().Select(e => $"{e.ControlType}:{e.Name}")) + " / row name: " + row.Name);
+        }
         Assert.Equal("New", GitText(app, "notes.txt"));
         Assert.Equal("Ignored", GitText(app, "debug.log"));
         Assert.Equal("Changes", GitText(app, "src"));
