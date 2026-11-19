@@ -14,7 +14,7 @@ internal enum ChangeArea
     Conflict,
 }
 
-internal enum ChangeKind
+internal enum GitChangeKind
 {
     Modified,
     Added,
@@ -26,7 +26,7 @@ internal enum ChangeKind
 }
 
 /// <summary>One row of the changes window: a file (path relative to the root, '/' separated) in one area.</summary>
-internal sealed record GitChange(string Path, ChangeArea Area, ChangeKind Kind, string? OldPath = null);
+internal sealed record GitChange(string Path, ChangeArea Area, GitChangeKind Kind, string? OldPath = null);
 
 /// <summary>A repository's changes (libgit2: no program runs), and the old versions to compare them with.</summary>
 internal static class GitChanges
@@ -48,28 +48,28 @@ internal static class GitChanges
             string path = entry.FilePath;
             if ((s & FileStatus.Conflicted) != 0)
             {
-                changes.Add(new GitChange(path, ChangeArea.Conflict, ChangeKind.Conflict));
+                changes.Add(new GitChange(path, ChangeArea.Conflict, GitChangeKind.Conflict));
                 continue;
             }
             if ((s & FileStatus.NewInIndex) != 0)
-                changes.Add(new GitChange(path, ChangeArea.Staged, ChangeKind.Added));
+                changes.Add(new GitChange(path, ChangeArea.Staged, GitChangeKind.Added));
             else if ((s & FileStatus.RenamedInIndex) != 0)
-                changes.Add(new GitChange(path, ChangeArea.Staged, ChangeKind.Renamed, entry.HeadToIndexRenameDetails?.OldFilePath));
+                changes.Add(new GitChange(path, ChangeArea.Staged, GitChangeKind.Renamed, entry.HeadToIndexRenameDetails?.OldFilePath));
             else if ((s & FileStatus.DeletedFromIndex) != 0)
-                changes.Add(new GitChange(path, ChangeArea.Staged, ChangeKind.Deleted));
+                changes.Add(new GitChange(path, ChangeArea.Staged, GitChangeKind.Deleted));
             else if ((s & FileStatus.TypeChangeInIndex) != 0)
-                changes.Add(new GitChange(path, ChangeArea.Staged, ChangeKind.TypeChanged));
+                changes.Add(new GitChange(path, ChangeArea.Staged, GitChangeKind.TypeChanged));
             else if ((s & FileStatus.ModifiedInIndex) != 0)
-                changes.Add(new GitChange(path, ChangeArea.Staged, ChangeKind.Modified));
+                changes.Add(new GitChange(path, ChangeArea.Staged, GitChangeKind.Modified));
 
             if ((s & FileStatus.NewInWorkdir) != 0)
-                changes.Add(new GitChange(path, ChangeArea.Untracked, ChangeKind.New));
+                changes.Add(new GitChange(path, ChangeArea.Untracked, GitChangeKind.New));
             else if ((s & FileStatus.DeletedFromWorkdir) != 0)
-                changes.Add(new GitChange(path, ChangeArea.Changes, ChangeKind.Deleted));
+                changes.Add(new GitChange(path, ChangeArea.Changes, GitChangeKind.Deleted));
             else if ((s & FileStatus.TypeChangeInWorkdir) != 0)
-                changes.Add(new GitChange(path, ChangeArea.Changes, ChangeKind.TypeChanged));
+                changes.Add(new GitChange(path, ChangeArea.Changes, GitChangeKind.TypeChanged));
             else if ((s & FileStatus.ModifiedInWorkdir) != 0)
-                changes.Add(new GitChange(path, ChangeArea.Changes, ChangeKind.Modified));
+                changes.Add(new GitChange(path, ChangeArea.Changes, GitChangeKind.Modified));
         }
         return changes
             .OrderBy(c => c.Area)

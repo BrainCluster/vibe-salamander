@@ -71,14 +71,14 @@ internal sealed class GitChangesWindow
         _ => T("Conflict"),
     };
 
-    private string KindText(ChangeKind kind) => kind switch
+    private string KindText(GitChangeKind kind) => kind switch
     {
-        ChangeKind.Modified => T("Modified"),
-        ChangeKind.Added => T("Added"),
-        ChangeKind.Deleted => T("Deleted"),
-        ChangeKind.Renamed => T("Renamed"),
-        ChangeKind.TypeChanged => T("Type changed"),
-        ChangeKind.New => T("New"),
+        GitChangeKind.Modified => T("Modified"),
+        GitChangeKind.Added => T("Added"),
+        GitChangeKind.Deleted => T("Deleted"),
+        GitChangeKind.Renamed => T("Renamed"),
+        GitChangeKind.TypeChanged => T("Type changed"),
+        GitChangeKind.New => T("New"),
         _ => T("Conflict"),
     };
 

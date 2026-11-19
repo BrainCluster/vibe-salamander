@@ -216,12 +216,12 @@ public sealed class GitPluginTests : IDisposable
         IReadOnlyList<GitChange> changes;
         using (var repo = new Repository(root))
             changes = GitChanges.Read(repo);
-        Assert.Contains(new GitChange("src/app.cs", ChangeArea.Staged, ChangeKind.Modified), changes);
-        Assert.Contains(new GitChange("src/app.cs", ChangeArea.Changes, ChangeKind.Modified), changes);
-        Assert.Contains(new GitChange("README.md", ChangeArea.Changes, ChangeKind.Modified), changes);
-        Assert.Contains(new GitChange("src/lib/util.cs", ChangeArea.Changes, ChangeKind.Deleted), changes);
-        Assert.Contains(new GitChange("notes.txt", ChangeArea.Untracked, ChangeKind.New), changes);
-        Assert.Contains(new GitChange("docs/a.md", ChangeArea.Untracked, ChangeKind.New), changes); // files in new folders, one by one
+        Assert.Contains(new GitChange("src/app.cs", ChangeArea.Staged, GitChangeKind.Modified), changes);
+        Assert.Contains(new GitChange("src/app.cs", ChangeArea.Changes, GitChangeKind.Modified), changes);
+        Assert.Contains(new GitChange("README.md", ChangeArea.Changes, GitChangeKind.Modified), changes);
+        Assert.Contains(new GitChange("src/lib/util.cs", ChangeArea.Changes, GitChangeKind.Deleted), changes);
+        Assert.Contains(new GitChange("notes.txt", ChangeArea.Untracked, GitChangeKind.New), changes);
+        Assert.Contains(new GitChange("docs/a.md", ChangeArea.Untracked, GitChangeKind.New), changes); // files in new folders, one by one
         Assert.Equal(ChangeArea.Staged, changes[0].Area); // staged first
     }
 
@@ -235,26 +235,26 @@ public sealed class GitPluginTests : IDisposable
         File.WriteAllText(Path.Combine(root, "README.md"), "working\n");
         string temp = Path.Combine(_folder, "compare");
         using var repository = new Repository(root);
-        var notStaged = GitChanges.Sides(repository, new GitChange("README.md", ChangeArea.Changes, ChangeKind.Modified), temp)!.Value;
+        var notStaged = GitChanges.Sides(repository, new GitChange("README.md", ChangeArea.Changes, GitChangeKind.Modified), temp)!.Value;
         Assert.Equal("staged", File.ReadAllText(notStaged.Left).Trim());
         Assert.Equal(Path.Combine(root, "README.md"), notStaged.Right);
-        var staged = GitChanges.Sides(repository, new GitChange("README.md", ChangeArea.Staged, ChangeKind.Modified), Path.Combine(temp, "2"))!.Value;
+        var staged = GitChanges.Sides(repository, new GitChange("README.md", ChangeArea.Staged, GitChangeKind.Modified), Path.Combine(temp, "2"))!.Value;
         Assert.Equal("hello", File.ReadAllText(staged.Left).Trim());   // HEAD
         Assert.Equal("staged", File.ReadAllText(staged.Right).Trim()); // the index
         Assert.Contains("(HEAD)", staged.LeftTitle);
-        Assert.Null(GitChanges.Sides(repository, new GitChange("x.txt", ChangeArea.Untracked, ChangeKind.New), temp));
+        Assert.Null(GitChanges.Sides(repository, new GitChange("x.txt", ChangeArea.Untracked, GitChangeKind.New), temp));
     }
 
     [Fact]
     public void Paths_reach_git_as_literal_files()
     {
-        var odd = new GitChange("-n *.cs", ChangeArea.Changes, ChangeKind.Modified);
+        var odd = new GitChange("-n *.cs", ChangeArea.Changes, GitChangeKind.Modified);
         Assert.Equal(new[] { "--literal-pathspecs", "add", "-A", "--", "-n *.cs" }, GitActions.Stage(odd));
         Assert.Equal(new[] { "--literal-pathspecs", "restore", "--worktree", "--", "-n *.cs" }, GitActions.Discard(odd));
         Assert.Null(GitActions.Discard(odd with { Area = ChangeArea.Untracked }));
         Assert.Equal(new[] { "--literal-pathspecs", "rm", "--cached", "-q", "--", "-n *.cs" }, GitActions.Unstage(odd with { Area = ChangeArea.Staged }, noCommitsYet: true));
         Assert.Equal(new[] { "--literal-pathspecs", "restore", "--staged", "--", "new.cs", "old.cs" },
-            GitActions.Unstage(new GitChange("new.cs", ChangeArea.Staged, ChangeKind.Renamed, "old.cs"), noCommitsYet: false));
+            GitActions.Unstage(new GitChange("new.cs", ChangeArea.Staged, GitChangeKind.Renamed, "old.cs"), noCommitsYet: false));
     }
 
     [Fact]
@@ -277,7 +277,7 @@ public sealed class GitPluginTests : IDisposable
         Environment.SetEnvironmentVariable("GIT_COMMITTER_NAME", "Test");
         Environment.SetEnvironmentVariable("GIT_COMMITTER_EMAIL", "test@example.com");
         File.AppendAllText(Path.Combine(root, "README.md"), "more\n");
-        var change = new GitChange("README.md", ChangeArea.Changes, ChangeKind.Modified);
+        var change = new GitChange("README.md", ChangeArea.Changes, GitChangeKind.Modified);
 
         Assert.True((await GitProgram.RunAsync(git, root, GitActions.Stage(change))).Succeeded);
         using (var repo = new Repository(root))
