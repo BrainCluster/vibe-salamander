@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- A separate plugin (not built into the app), like 7-Zip: Git in the panels. Repositories are read inside the
+       program by libgit2 (through LibGit2Sharp, MIT; libgit2 is GPLv2 with the linking exception), which never runs
+       a hook, a filter or any other program; what changes a repository or talks to a server is run by the user's
+       own git.exe, by its full path. build\publish-git-plugin.ps1 makes its download. The host shares Core and the
+       contracts, so they aren't copied. No UI framework. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RootNamespace>VibeSalamander.Plugins.Git</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\VibeSalamander.Plugins.Abstractions\VibeSalamander.Plugins.Abstractions.csproj" Private="false" />
+    <PackageReference Include="LibGit2Sharp" Version="0.32.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="VibeSalamander.Core.Tests" />
+  </ItemGroup>
+</Project>
