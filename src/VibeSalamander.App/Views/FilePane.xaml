@@ -390,10 +390,9 @@
                         <!-- a plugin's word on this folder (Git: the branch, commits to push and pull) -->
                         <StackPanel x:Name="DecorationStatus" Orientation="Horizontal" Spacing="4"
                                     Visibility="{x:Bind VisibleIfText(ViewModel.DecorationStatus), Mode=OneWay}"
-                                    ToolTipService.ToolTip="{x:Bind ViewModel.DecorationToolTip, Mode=OneWay}"
-                                    AutomationProperties.AutomationId="DecorationStatus"
-                                    AutomationProperties.Name="{x:Bind ViewModel.DecorationStatus, Mode=OneWay}">
+                                    ToolTipService.ToolTip="{x:Bind ViewModel.DecorationToolTip, Mode=OneWay}">
                             <TextBlock Text="{x:Bind ViewModel.DecorationStatus, Mode=OneWay}" VerticalAlignment="Center" Tag="NoLoc"
+                                       AutomationProperties.AutomationId="DecorationStatus"
                                        Foreground="{x:Bind PathForeground(ViewModel.IsActive), Mode=OneWay}" />
                         </StackPanel>
                         <TextBlock Text="{x:Bind ViewModel.FreeSpaceText, Mode=OneWay}"

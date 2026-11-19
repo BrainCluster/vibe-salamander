@@ -65,6 +65,10 @@ jobs:
         shell: pwsh
         run: ./build/publish-mediainfo-plugin.ps1 -Runtime win-x64 -Output "$env:RUNNER_TEMP/Media Info"
 
+      - name: Build the Git plugin (a separate download)
+        shell: pwsh
+        run: ./build/publish-git-plugin.ps1 -Runtime win-x64 -Output "$env:RUNNER_TEMP/Git"
+
       - name: UI tests
         shell: pwsh
         env:
@@ -83,6 +87,8 @@ jobs:
           if ($hello) { $env:VIBE_HELLO_PLUGIN = $hello.FullName }
           $mediaInfo = Join-Path $env:RUNNER_TEMP "Media Info"
           if (Test-Path $mediaInfo) { $env:VIBE_MEDIAINFO_PLUGIN = $mediaInfo }
+          $git = Join-Path $env:RUNNER_TEMP "Git"
+          if (Test-Path $git) { $env:VIBE_GIT_PLUGIN = $git }
           $exe = Get-ChildItem src/VibeSalamander.App/bin -Recurse -Filter VibeSalamander.exe | Select-Object -First 1
           $env:VIBE_APP_EXE = $exe.FullName
           $env:VIBE_SCREENSHOTS = Join-Path $env:RUNNER_TEMP "ui-screenshots"
