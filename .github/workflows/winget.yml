@@ -4,7 +4,9 @@
 # winget-pkgs with "429 gitmon refuses to schedule us": then it waits and tries again), and by hand
 # (Actions → winget → Run workflow).
 # Needs the repository secret WINGET_TOKEN: a classic GitHub token of the account that submits, with the
-# "public_repo" scope (wingetcreate forks winget-pkgs into that account and opens the pull request from it).
+# "public_repo" and "workflow" scopes (wingetcreate forks winget-pkgs into that account and opens the pull request
+# from it; keeping that fork up to date brings in winget-pkgs' own workflow files, which GitHub lets a token push
+# only with "workflow" - without it the fork can't be synced and every submission is refused).
 name: winget
 
 on:
@@ -83,7 +85,7 @@ jobs:
             $upstream = gh api repos/microsoft/winget-pkgs/git/ref/heads/master --jq .object.sha
             gh api -X PATCH "repos/$me/winget-pkgs/git/refs/heads/master" -f sha=$upstream -F force=true --silent
             if ($LASTEXITCODE -eq 0) { "The fork's master is set to winget-pkgs' ($upstream)." }
-            else { "::warning::The fork $me/winget-pkgs could not be brought up to date." }
+            else { "::warning::The fork $me/winget-pkgs could not be brought up to date: give WINGET_TOKEN the 'workflow' scope, or press Sync fork on github.com/$me/winget-pkgs." }
           }
 
           Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
