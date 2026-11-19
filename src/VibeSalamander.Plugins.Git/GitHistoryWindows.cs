@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 using System.Globalization;
+using LibGit2Sharp;
 
 namespace VibeSalamander.Plugins.Git;
 
@@ -129,7 +130,7 @@ internal sealed class GitCommitFilesWindow : GitCommitWindowBase
             new PluginButton("browse", T("Browse This Version"), () => _ = BrowseAsync(_sha)),
         });
         (IReadOnlyList<GitCommitFile> files, string message) = await Task.Run(() => Plugin.Repositories.Read(Root, r =>
-            (GitHistory.Files(r, _sha), r.Lookup<LibGit2Sharp.Commit>(_sha)?.MessageShort ?? string.Empty)));
+            (GitHistory.Files(r, _sha), r.Lookup<Commit>(_sha)?.MessageShort ?? string.Empty)));
         foreach (GitCommitFile f in files)
         {
             IPluginRow row = Window.AddRow(new[] { T(f.Change), f.Path.Replace('/', '\\') + (f.OldPath != null ? "  ←  " + f.OldPath.Replace('/', '\\') : string.Empty) });
@@ -144,7 +145,7 @@ internal sealed class GitCommitFilesWindow : GitCommitWindowBase
         string folder = Path.Combine(Path.GetTempPath(), "VibeSalamander", "Git", Guid.NewGuid().ToString("N")[..8]);
         var sides = await Task.Run(() => Plugin.Repositories.Read(Root, r =>
         {
-            string? parent = r.Lookup<LibGit2Sharp.Commit>(_sha)?.Parents.FirstOrDefault()?.Sha;
+            string? parent = r.Lookup<Commit>(_sha)?.Parents.FirstOrDefault()?.Sha;
             string name = Path.GetFileName(file.Path);
             string before = (parent != null ? GitHistory.WriteVersion(r, parent, file.OldPath ?? file.Path, folder, "before") : null)
                             ?? Empty(folder, "before", name);
