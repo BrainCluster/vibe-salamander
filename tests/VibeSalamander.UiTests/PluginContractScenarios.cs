@@ -69,17 +69,9 @@ public sealed class PluginContractScenarios : IDisposable
         app.Menu("Options", "Configuration...");
         Window configuration = app.OpenedWindow("Configuration");
         app.ClickNamed("Plugins");
-        // the Settings... button on Hello's card (built-in plugins with settings come before it)
-        AutomationElement settings = AppSession.Retry(() =>
-        {
-            AutomationElement? name = configuration.FindAllDescendants(cf => cf.ByControlType(ControlType.Text))
-                .FirstOrDefault(t => (t.Name ?? string.Empty).StartsWith("Hello", StringComparison.Ordinal)); // "Hello  1.0"
-            var walker = app.Automation.TreeWalkerFactory.GetControlViewWalker();
-            for (AutomationElement? card = name; card != null; card = walker.GetParent(card))
-                if (card.FindFirstDescendant(cf => cf.ByName("Settings...").And(cf.ByControlType(ControlType.Button))) is { } button)
-                    return button;
-            return null;
-        }, "the Settings... button of Hello");
+        // the Settings... button on Hello's card: plugins added by the user come after the built-in ones, so it's the last
+        AutomationElement settings = AppSession.Retry(() => configuration.FindAllDescendants(cf =>
+            cf.ByName("Settings...").And(cf.ByControlType(ControlType.Button))).LastOrDefault(), "the Settings... button of Hello");
         settings.AsButton().Invoke(); // the card may be below the visible part of the page
         AutomationElement field = AppSession.Retry(() => configuration.FindFirstDescendant(cf =>
             cf.ByName("How many files Largest files lists").And(cf.ByControlType(ControlType.Edit))), "the plugin's field");
