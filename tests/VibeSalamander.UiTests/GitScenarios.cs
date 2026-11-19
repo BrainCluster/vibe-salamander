@@ -192,4 +192,42 @@ public sealed class GitScenarios : IDisposable
         changes.Close();
         NoErrors(app);
     }
+
+    [UiFact]
+    public void History_blame_and_an_old_version_copied_out()
+    {
+        using AppSession? app = Start();
+        if (app == null)
+            return;
+        Git(_repo, "add -A");
+        Git(_repo, "commit -m second");
+
+        // blame of the focused file (also in its right-click menu)
+        app.GoTo("README.md");
+        app.Menu("Plugins", "Git", "Git Blame...");
+        Window blame = app.OtherWindow("Git Blame - README.md");
+        Cell(blame, "hello");
+        Cell(blame, "more");
+        AppSession.Screenshot("91 git blame");
+        blame.Close();
+
+        // the history: both commits, the graph
+        app.Menu("Plugins", "Git", "History...");
+        Window history = app.OtherWindow("Git History - Project");
+        Cell(history, "second");
+        AppSession.Screenshot("92 git history");
+
+        // browse the first commit and copy its README.md out (the version before "more")
+        Cell(history, "first").Click();
+        Press(history, "Browse This Version");
+        AppSession.WaitUntil(() => app.Items().Contains("README.md") && !app.Items().Contains("notes.txt"), "the first commit's files in the panel");
+        AppSession.Screenshot("93 git browse this version");
+        history.Close();
+        app.GoTo("README.md");
+        app.Press(VirtualKeyShort.F5);
+        app.Press(VirtualKeyShort.ENTER);
+        string copied = Path.Combine(_files.Target, "README.md");
+        AppSession.WaitUntil(() => File.Exists(copied) && File.ReadAllText(copied).Trim() == "hello", "README.md of the first commit copied out");
+        NoErrors(app);
+    }
 }
