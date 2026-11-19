@@ -184,42 +184,55 @@ public sealed partial class FilePane
 
     /// <summary>
     /// The commands of plugins (other than archive plugins, whose commands are in the archive's submenu) that say
-    /// they fit the right-clicked file (PluginCommand.AppliesTo), e.g. Media Info on video, audio and pictures.
+    /// they fit the right-clicked file or folder (PluginCommand.AppliesTo), e.g. Media Info on video, audio and pictures.
     /// True: some were added.
     /// </summary>
     private bool AddPluginCommandItems(MenuFlyout menu, FileItemViewModel item, PaneViewModel pane)
     {
-        if (item.Entry.IsDirectory || item.Entry.IsUpDir || item.IsDrive || !pane.IsLocalDisk)
+        if (item.Entry.IsUpDir || item.IsDrive || !pane.IsLocalDisk)
             return false;
         string path = item.Entry.FullPath;
-        Services.PluginInfo? archiveOwner = _main!.Plugins.UnpackerPlugin(path);
+        Services.PluginInfo? archiveOwner = item.Entry.IsDirectory ? null : _main!.Plugins.UnpackerPlugin(path);
         bool added = false;
-        foreach (Services.PluginInfo plugin in _main.Plugins.Plugins)
+        foreach (Services.PluginInfo plugin in _main!.Plugins.Plugins)
         {
             // archive plugins' commands belong in the archive's submenu
             if (!plugin.Enabled || plugin.Error != null || plugin.Host == null || plugin == archiveOwner || plugin.Archivers.Count > 0)
                 continue;
+            var fitting = new List<Plugins.PluginCommand>();
             foreach (Plugins.PluginCommand command in plugin.CommandContributors.SelectMany(c => c.Commands))
             {
-                bool fits;
                 try
                 {
-                    fits = command.AppliesTo?.Invoke(path) == true;
+                    if (command.AppliesTo?.Invoke(path) == true)
+                        fitting.Add(command);
                 }
                 catch (Exception)
                 {
-                    fits = false; // the plugin's check failed: not offered
+                    // the plugin's check failed: not offered
                 }
-                if (!fits)
-                    continue;
-                if (!added && menu.Items.Count > 0 && menu.Items[^1] is not MenuFlyoutSeparator)
-                    menu.Items.Add(new MenuFlyoutSeparator());
-                added = true;
-                var entry = new MenuFlyoutItem
-                {
-                    Text = Loc.T(command.MenuText),
-                    Icon = new FontIcon { Glyph = plugin.IconGlyph is { Length: > 0 } glyph ? glyph : "\uF012" },
-                };
+            }
+            if (fitting.Count == 0)
+                continue;
+            if (!added && menu.Items.Count > 0 && menu.Items[^1] is not MenuFlyoutSeparator)
+                menu.Items.Add(new MenuFlyoutSeparator());
+            added = true;
+            string glyph = plugin.IconGlyph is { Length: > 0 } own ? own : "\uF012";
+            // one command: in the menu itself ("Media Info..."); several: in a submenu named after the plugin ("Git ▸")
+            IList<MenuFlyoutItemBase> items = menu.Items;
+            if (fitting.Count > 1)
+            {
+                var sub = new MenuFlyoutSubItem { Text = plugin.Name, Icon = new FontIcon { Glyph = glyph } };
+                menu.Items.Add(sub);
+                items = sub.Items;
+            }
+            foreach (Plugins.PluginCommand command in fitting)
+            {
+                if (fitting.Count > 1 && command.SeparatorBefore && items.Count > 0)
+                    items.Add(new MenuFlyoutSeparator());
+                var entry = new MenuFlyoutItem { Text = Loc.T(command.MenuText) };
+                if (fitting.Count == 1)
+                    entry.Icon = new FontIcon { Glyph = glyph };
                 if (command.ShortcutText is { Length: > 0 } keys)
                     entry.KeyboardAcceleratorTextOverride = keys;
                 Plugins.PluginCommand c = command;
@@ -236,7 +249,7 @@ public sealed partial class FilePane
                         _main.Notify($"{owner.Name}: {ex.Message}");
                     }
                 };
-                menu.Items.Add(entry);
+                items.Add(entry);
             }
         }
         return added;

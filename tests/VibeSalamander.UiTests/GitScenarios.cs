@@ -279,4 +279,42 @@ public sealed class GitScenarios : IDisposable
         AppSession.Screenshot("95 git pulled");
         NoErrors(app);
     }
+
+    [UiFact]
+    public void A_repository_folder_has_git_in_its_right_click_menu()
+    {
+        using AppSession? app = Start();
+        if (app == null)
+            return;
+        // a folder inside the repository: no Git commands
+        AppSession.RightClick(app.OnName("src"));
+        app.WaitMenu();
+        Assert.Null(app.Window.FindFirstDescendant(cf => cf.ByName("Fetch")));
+        app.Press(VirtualKeyShort.ESCAPE);
+
+        // the repository's own folder, from its parent: Git ▸ Changes..., History..., Fetch, Pull, Push
+        app.Press(VirtualKeyShort.BACK);
+        AppSession.WaitUntil(() => app.Items().Contains("Project"), "the folder holding the repository");
+        app.GoTo("Project");
+        AppSession.RightClick(app.OnName("Project"));
+        app.WaitMenu();
+        app.ClickNamed("Git");
+        foreach (string command in new[] { "History...", "Fetch", "Pull", "Push" })
+            AppSession.Retry(() => app.Window.FindFirstDescendant(cf => cf.ByName(command)), command + " in the Git submenu");
+        AppSession.Screenshot("96 git in a repository folder's menu");
+        app.ClickNamed("Changes...");
+        Window changes = app.OtherWindow("Git Changes - Project");
+        Cell(changes, "notes.txt");
+        changes.Close();
+
+        // History... of the right-clicked folder too
+        AppSession.RightClick(app.OnName("Project"));
+        app.WaitMenu();
+        app.ClickNamed("Git");
+        app.ClickNamed("History...");
+        Window history = app.OtherWindow("Git History - Project");
+        Cell(history, "first");
+        history.Close();
+        NoErrors(app);
+    }
 }

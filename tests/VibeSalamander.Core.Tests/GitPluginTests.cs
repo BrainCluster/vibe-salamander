@@ -494,6 +494,22 @@ public sealed class GitPluginTests : IDisposable
         Assert.Contains("nothing-here", error.Message);
     }
 
+    [Fact]
+    public void Only_a_repositorys_own_folder_gets_the_folder_commands()
+    {
+        string root = Repo();
+        Assert.True(GitPlugin.IsRepositoryFolder(root));
+        Assert.True(GitPlugin.IsRepositoryFolder(root + "\\"));
+        Assert.False(GitPlugin.IsRepositoryFolder(Path.Combine(root, "src"))); // inside, not the repository's folder
+        Assert.False(GitPlugin.IsRepositoryFolder(Path.Combine(root, ".git")));
+        Assert.False(GitPlugin.IsRepositoryFolder(_folder));
+        var plugin = new GitPlugin();
+        Assert.Equal(new[] { "changes", "history", "fetch", "pull", "push" },
+            plugin.Commands.Where(c => c.AppliesTo?.Invoke(root) == true).Select(c => c.Id));
+        Assert.Equal(new[] { "file-history", "blame" },
+            plugin.Commands.Where(c => c.AppliesTo?.Invoke(Path.Combine(root, "README.md")) == true).Select(c => c.Id));
+    }
+
     /// <summary>A job that answers nothing (no conflicts in these tests).</summary>
     private sealed class TestJob(Action<OperationProgress>? report = null) : IArchiveJob
     {

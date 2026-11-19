@@ -31,7 +31,23 @@ public sealed class GitPlugin : IVibePlugin, ICommandContributor
     private string? _settingsFile;
     internal GitRepositories Repositories { get; } = new();
 
-    public IReadOnlyList<PluginCommand> Commands { get; private set; } = Array.Empty<PluginCommand>();
+    public IReadOnlyList<PluginCommand> Commands { get; }
+
+    public GitPlugin()
+    {
+        Commands = new[]
+        {
+            new PluginCommand("changes", "Changes...", null, ChangesAsync, AppliesTo: IsRepositoryFolder),
+            new PluginCommand("history", "History...", null, HistoryAsync, AppliesTo: IsRepositoryFolder),
+            new PluginCommand("fetch", "Fetch", null, FetchAsync, AppliesTo: IsRepositoryFolder, SeparatorBefore: true),
+            new PluginCommand("pull", "Pull", null, PullAsync, AppliesTo: IsRepositoryFolder),
+            new PluginCommand("push", "Push", null, PushAsync, AppliesTo: IsRepositoryFolder),
+            new PluginCommand("clone", "Clone...", null, CloneAsync),
+            // with AppliesTo: also in the right-click menu (of a repository's folder; of a file in a repository)
+            new PluginCommand("file-history", "Git History of This File...", null, FileHistoryAsync, AppliesTo: IsInRepository, SeparatorBefore: true),
+            new PluginCommand("blame", "Git Blame...", null, BlameAsync, AppliesTo: IsInRepository),
+        };
+    }
 
     internal string T(string text) => _host?.Ui.T(text) ?? text;
 
@@ -44,18 +60,6 @@ public sealed class GitPlugin : IVibePlugin, ICommandContributor
         _settings = GitSettings.Load(_settingsFile);
         host.RegisterPanelDecorator(new GitDecorator(Repositories, T));
         host.RegisterFileSystem(new GitVersionFileSystem(this));
-        Commands = new[]
-        {
-            new PluginCommand("changes", "Changes...", null, ChangesAsync),
-            new PluginCommand("history", "History...", null, HistoryAsync),
-            new PluginCommand("fetch", "Fetch", null, FetchAsync, SeparatorBefore: true),
-            new PluginCommand("pull", "Pull", null, PullAsync),
-            new PluginCommand("push", "Push", null, PushAsync),
-            new PluginCommand("clone", "Clone...", null, CloneAsync),
-            // these two also in the right-click menu of a file in a repository
-            new PluginCommand("file-history", "Git History of This File...", null, FileHistoryAsync, AppliesTo: IsInRepository, SeparatorBefore: true),
-            new PluginCommand("blame", "Git Blame...", null, BlameAsync, AppliesTo: IsInRepository),
-        };
         host.RegisterCommands(this);
     }
 
@@ -93,13 +97,27 @@ public sealed class GitPlugin : IVibePlugin, ICommandContributor
     // ---- commands --------------------------------------------------------------------------------------------
 
     /// <summary>The repository of the active panel's folder, or null (said in a notification).</summary>
+    /// <summary>
+    /// The repository a command works on: the focused folder when it is a repository's folder (the right-clicked one,
+    /// or one picked in a folder of projects), else the one the active panel is in; null (said) when neither.
+    /// </summary>
     private string? ActiveRepository(IPluginHost host)
     {
-        string? root = GitRepositories.RootOf(host.ActivePanel.Path);
+        Core.FileSystem.FileEntry? focused = host.ActivePanel.FocusedItem;
+        string? root = focused is { IsDirectory: true, IsUpDir: false } && IsRepositoryFolder(focused.FullPath)
+            ? GitRepositories.RootOf(focused.FullPath)
+            : GitRepositories.RootOf(host.ActivePanel.Path);
         if (root == null)
             host.Notify(T("The active panel isn't in a Git repository."), isError: true);
         return root;
     }
+
+    /// <summary>A repository's own folder (its working tree's top, where .git is): Git's commands in its right-click menu.</summary>
+    internal static bool IsRepositoryFolder(string path) =>
+        !path.Contains("://", StringComparison.Ordinal) &&
+        (Directory.Exists(Path.Combine(path, ".git")) || File.Exists(Path.Combine(path, ".git"))) &&
+        GitRepositories.RootOf(path) is string root &&
+        string.Equals(root.TrimEnd('\\', '/'), path.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase);
 
     private async Task ChangesAsync(IPluginHost host)
     {
