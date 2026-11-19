@@ -313,7 +313,7 @@ public sealed class GitScenarios : IDisposable
         app.ClickNamed("Git");
         app.ClickNamed("History...");
         Window history = app.OtherWindow("Git History - Project");
-        Cell(history, "first");
+        CellEndingWith(history, "first");
         history.Close();
         NoErrors(app);
     }
