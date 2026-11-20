@@ -22,9 +22,8 @@ public sealed class GitPlugin : IVibePlugin, ICommandContributor
     public string Author => "Vibe Salamander (libgit2 through LibGit2Sharp)";
     public string? IconGlyph => "";
 
-    // Panel decorators, the comparator and plugin jobs came after 0.9.1: the release that ships them sets this to
-    // its own version (until then, builds of the branch still say 0.9.1).
-    public Version? MinimumHostVersion => null;
+    // panel decorators, the comparator and plugin jobs came in 0.9.2
+    public Version? MinimumHostVersion { get; } = new(0, 9, 2);
 
     private IPluginHost? _host;
     private GitSettings _settings = new();

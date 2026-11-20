@@ -16,6 +16,9 @@ namespace VibeSalamander.Plugins.MediaInfo;
 /// </summary>
 public sealed class MediaInfoPlugin : IVibePlugin, ICommandContributor
 {
+    // viewers and settings pages came in 0.9.1 (its right-click entry shows from 0.9.2 on, but nothing fails before)
+    public Version? MinimumHostVersion { get; } = new(0, 9, 1);
+
     public string Id => "vibe.mediainfo";
     public string DisplayName => "Media Info";
     public Version Version => new(1, 0);
